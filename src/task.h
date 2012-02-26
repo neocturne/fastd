@@ -25,44 +25,45 @@
 */
 
 
-#ifndef _FASTD_PACKET_H_
-#define _FASTD_PACKET_H_
+#ifndef _FASTD_TASK_H_
+#define _FASTD_TASK_H_
+
+#include "fastd.h"
+
+#include <sys/uio.h>
 
 
-typedef enum _fastd_reply_code {
-	REPLY_SUCCESS = 0,
-} fastd_reply_code;
+typedef enum _fastd_task_type {
+	TASK_SEND,
+	TASK_HANDLE_RECV,
+} fastd_task_type;
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_any {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-} fastd_packet_any;
+typedef struct _fastd_task_send {
+	fastd_task_type type;
+	const fastd_peer *peer;
+	uint8_t packet_type;
+	struct iovec buffer;
+} fastd_task_send;
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_request {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned flags      : 8;
-	unsigned proto      : 8;
-	unsigned method_len : 8;
-	char     method_name[];
-} fastd_packet_request;
+typedef struct _fastd_task_handle_recv {
+	fastd_task_type type;
+	const fastd_peer *peer;
+	uint8_t packet_type;
+	struct iovec buffer;
+} fastd_task_handle_recv;
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_reply {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned reply_code : 8;
-} fastd_packet_reply;
+typedef union _fastd_task {
+	fastd_task_type type;
+	fastd_task_send send;
+	fastd_task_handle_recv handle_recv;
+} fastd_task;
 
-typedef union _fastd_packet {
-	fastd_packet_any any;
-	fastd_packet_request request;
-	fastd_packet_reply reply;
-} fastd_packet;
 
-#endif /* _FASTD_PACKET_H_ */
+fastd_task* fastd_task_get(fastd_context *ctx);
+
+void fastd_task_put_send_handshake(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
+
+void fastd_task_put_send(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
+void fastd_task_put_handle_recv(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
+
+#endif /* _FASTD_TASK_H_ */

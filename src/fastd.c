@@ -25,8 +25,12 @@
 */
 
 
+#include "fastd.h"
+#include "handshake.h"
+#include "task.h"
+
+#include <arpa/inet.h>
 #include <fcntl.h>
-#include <linux/if_ether.h>
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <poll.h>
@@ -36,120 +40,227 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "fastd.h"
-#include "packet.h"
-
 
 extern fastd_method fastd_method_null;
 
 
-static int init_tuntap(const fastd_context *ctx) {
-	int tunfd;
+static void init_tuntap(fastd_context *ctx) {
 	struct ifreq ifr;
 
 	pr_debug(ctx, "Initializing tun/tap device...");
 
-	if ((tunfd = open("/dev/net/tun", O_RDWR)) < 0)
-		exit_fatal_errno(ctx, "Could not open tun/tap device file");
+	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR)) < 0)
+		exit_errno(ctx, "Could not open tun/tap device file");
 
 	memset(&ifr, 0, sizeof(ifr));
-	// strcpy(ifr.ifr_name, name);
+
+	if (ctx->conf->ifname)
+		strncpy(ifr.ifr_name, ctx->conf->ifname, IF_NAMESIZE-1);
+
 	ifr.ifr_flags = IFF_TAP;
 	ifr.ifr_flags |= IFF_NO_PI;
-	if (ioctl(tunfd, TUNSETIFF, (void *)&ifr) < 0)
-		exit_fatal_errno(ctx, "TUNSETIFF ioctl failed");
+	if (ioctl(ctx->tunfd, TUNSETIFF, (void *)&ifr) < 0)
+		exit_errno(ctx, "TUNSETIFF ioctl failed");
 
-	return tunfd;
+	pr_debug(ctx, "Tun/tap device initialized.");
+}
+
+static void init_socket(fastd_context *ctx) {
+	pr_debug(ctx, "Initializing UDP socket...");
+
+	if ((ctx->sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+		exit_errno(ctx, "socket");
+
+	struct sockaddr_in bindaddr;
+	bindaddr.sin_family = AF_INET;
+	bindaddr.sin_addr.s_addr = ctx->conf->bind_address;
+	bindaddr.sin_port = ctx->conf->bind_port;
+
+	if (bind(ctx->sockfd, (struct sockaddr*)&bindaddr, sizeof(struct sockaddr_in)))
+		exit_errno(ctx, "bind");
+
+	pr_debug(ctx, "UDP socket initialized.");
 }
 
 static void configure(fastd_context *ctx, fastd_config *conf) {
 	conf->loglevel = LOG_DEBUG;
+	conf->ifname = NULL;
+	conf->bind_address = htonl(INADDR_ANY);
+	conf->bind_port = htons(1337);
 	conf->mtu = 1500;
 	conf->protocol = PROTOCOL_ETHERNET;
 	conf->method = &fastd_method_null;
-	conf->n_peers = 0;
-	conf->peers = NULL;
-}
 
-static size_t get_max_packet_size(const fastd_context *ctx) {
-	switch (ctx->conf->protocol) {
-	case PROTOCOL_ETHERNET:
-		return ctx->conf->mtu+ETH_HLEN;
-	case PROTOCOL_IP:
-		return ctx->conf->mtu;
-	default:
-		exit_fatal_bug(ctx, "invalid protocol");
+	conf->peers = malloc(sizeof(fastd_peer_config));
+	conf->peers->next = NULL;
+	conf->peers->address = inet_addr("172.22.184.1");
+	conf->peers->port = htons(1337);
+
+	ctx->peers = NULL;
+	fastd_peer **current_peer = &ctx->peers;
+
+	for (fastd_peer_config *peer_conf = conf->peers; peer_conf; peer_conf = peer_conf->next) {
+		*current_peer = malloc(sizeof(fastd_peer));
+		(*current_peer)->next = NULL;
+		(*current_peer)->config = peer_conf;
+		(*current_peer)->address = peer_conf->address;
+		(*current_peer)->port = peer_conf->port;
+		(*current_peer)->state = STATE_WAIT;
+		(*current_peer)->last_req_id = 0;
+		(*current_peer)->addresses = NULL;
+
+		current_peer = &(*current_peer)->next;
 	}
 }
 
-static void *get_source_address(const fastd_context *ctx, void *buffer) {
+static void* get_source_address(const fastd_context *ctx, void *buffer) {
 	switch (ctx->conf->protocol) {
 	case PROTOCOL_ETHERNET:
 		return &((struct ethhdr*)buffer)->h_source;
 	case PROTOCOL_IP:
 		return NULL;
 	default:
-		exit_fatal_bug(ctx, "invalid protocol");
+		exit_bug(ctx, "invalid protocol");
 	}
 }
 
-static void *get_dest_address(const fastd_context *ctx, void *buffer) {
+static void* get_dest_address(const fastd_context *ctx, void *buffer) {
 	switch (ctx->conf->protocol) {
 	case PROTOCOL_ETHERNET:
 		return &((struct ethhdr*)buffer)->h_dest;
 	case PROTOCOL_IP:
 		return NULL;
 	default:
-		exit_fatal_bug(ctx, "invalid protocol");
+		exit_bug(ctx, "invalid protocol");
 	}
 }
 
-static void run(const fastd_context *ctx) {
-	int tunfd;
+static void handle_tasks(fastd_context *ctx) {
+	fastd_task *task;
+	while ((task = fastd_task_get(ctx)) != NULL) {
+		switch (task->type) {
+		case TASK_SEND:
+			if (task->send.peer) {
+				struct msghdr msg;
+				memset(&msg, 0, sizeof(msg));
 
-	tunfd = init_tuntap(ctx);
+				struct sockaddr_in sendaddr;
+				sendaddr.sin_family = AF_INET;
+				sendaddr.sin_addr.s_addr = task->send.peer->address;
+				sendaddr.sin_port = task->send.peer->port;
+					
+				msg.msg_name = &sendaddr;
+				msg.msg_namelen = sizeof(sendaddr);
 
-	struct pollfd fds[ctx->conf->n_peers+1];
-	fds[0].fd = tunfd;
+				struct iovec vec[2] = { { .iov_base = &task->send.packet_type, .iov_len = 1 }, task->send.buffer };
+
+				msg.msg_iov = vec;
+				msg.msg_iovlen = 2;
+
+				sendmsg(ctx->sockfd, &msg, 0);
+			}
+
+			free(task->send.buffer.iov_base);
+			break;
+
+		case TASK_HANDLE_RECV:
+			// TODO Handle source address
+			writev(ctx->tunfd, &task->handle_recv.buffer, 1);
+			free(task->handle_recv.buffer.iov_base);
+			break;
+
+		default:
+			exit_bug(ctx, "invalid task type");
+		}
+
+		free(task);
+	}
+}
+
+static void handle_input(fastd_context *ctx) {
+	struct pollfd fds[2];
+	fds[0].fd = ctx->tunfd;
 	fds[0].events = POLLIN;
+	fds[1].fd = ctx->sockfd;
+	fds[1].events = POLLIN;
 
-	while (1) {
-		int ret = poll(fds, 1, -1);
-		if (ret < 0)
-			exit_fatal_errno(ctx, "poll error");
+	int ret = poll(fds, 2, -1);
+	if (ret < 0)
+		exit_errno(ctx, "poll");
 
-		if (fds[0].revents & POLLIN) {
-			size_t max_len = get_max_packet_size(ctx);
-			char buffer[max_len];
+	if (fds[0].revents & POLLIN) {
+		size_t max_len = fastd_max_packet_size(ctx);
+		void *buffer = malloc(max_len);
 
-			unsigned len = read(tunfd, buffer, max_len);
-			if (len < 0)
-				exit_fatal_errno(ctx, "read");
+		ssize_t len = read(ctx->tunfd, buffer, max_len);
+		if (len < 0)
+			exit_errno(ctx, "read");
 
-			uint8_t *src_addr = get_source_address(ctx, buffer);
-			uint8_t *dest_addr = get_dest_address(ctx, buffer);
+		uint8_t *src_addr = get_source_address(ctx, buffer);
+		uint8_t *dest_addr = get_dest_address(ctx, buffer);
 
-			pr_debug(ctx, "A packet with length %u was received from %02x:%02x:%02x:%02x:%02x:%02x to %02x:%02x:%02x:%02x:%02x:%02x",
-				 len, src_addr[0], src_addr[1], src_addr[2], src_addr[3], src_addr[4], src_addr[5],
-				 dest_addr[0], dest_addr[1], dest_addr[2], dest_addr[3], dest_addr[4], dest_addr[5]);
+		pr_debug(ctx, "A packet with length %u is to be sent from %02x:%02x:%02x:%02x:%02x:%02x to %02x:%02x:%02x:%02x:%02x:%02x",
+			 (unsigned)len, src_addr[0], src_addr[1], src_addr[2], src_addr[3], src_addr[4], src_addr[5],
+			 dest_addr[0], dest_addr[1], dest_addr[2], dest_addr[3], dest_addr[4], dest_addr[5]);
 
-			ctx->conf->method->method_send(ctx, buffer, len);
+		// TODO find correct peer
+
+		struct iovec vec = { .iov_base = buffer, .iov_len = len };
+		ctx->conf->method->method_send(ctx, ctx->peers, vec);
+	}
+	if (fds[1].revents & POLLIN) {
+		size_t max_len = ctx->conf->method->method_max_packet_size(ctx); // 1 is the packet type header
+		void *buffer = malloc(max_len);
+
+		uint8_t packet_type;
+
+		struct iovec vec[2] = {{ .iov_base = &packet_type, .iov_len = 1 }, { .iov_base = buffer, .iov_len = max_len }};
+		struct sockaddr_in recvaddr;
+			
+		struct msghdr msg;
+		memset(&msg, 0, sizeof(msg));
+
+		msg.msg_name = &recvaddr;
+		msg.msg_namelen = sizeof(recvaddr);
+		msg.msg_iov = vec;
+		msg.msg_iovlen = 2;
+
+		ssize_t len = recvmsg(ctx->sockfd, &msg, 0);
+		if (len < 0)
+			pr_warn(ctx, "recvfrom: %s", strerror(errno));
+
+		// TODO get peer
+
+		switch (packet_type) {
+		case 0:
+			vec[1].iov_len = len - 1;
+			ctx->conf->method->method_handle_recv(ctx, NULL, vec[1]);
+			break;
+
+		default:
+			fastd_handshake_handle(ctx, NULL, packet_type, vec[1]);
+			free(buffer);
+			break;
 		}
 	}
 }
 
 
-int main()
-{
-	fastd_context ctx = {
-		.conf = NULL,
-	};
+int main() {
+	fastd_context ctx;
+	memset(&ctx, 0, sizeof(ctx));
 
 	fastd_config conf;
 	configure(&ctx, &conf);
 	ctx.conf = &conf;
 
-	run(&ctx);
+	init_tuntap(&ctx);
+	init_socket(&ctx);
+
+	while (1) {
+		handle_tasks(&ctx);
+		handle_input(&ctx);
+	}
 
 	return 0;
 }

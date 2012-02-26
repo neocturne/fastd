@@ -25,44 +25,12 @@
 */
 
 
-#ifndef _FASTD_PACKET_H_
-#define _FASTD_PACKET_H_
+#ifndef _FASTD_HANDSHAKE_H_
+#define _FASTD_HANDSHAKE_H_
 
+#include "fastd.h"
 
-typedef enum _fastd_reply_code {
-	REPLY_SUCCESS = 0,
-} fastd_reply_code;
+void fastd_handshake_send(fastd_context *ctx, const fastd_peer *peer);
+void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, struct iovec buffer);
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_any {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-} fastd_packet_any;
-
-typedef struct __attribute__ ((__packed__)) _fastd_packet_request {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned flags      : 8;
-	unsigned proto      : 8;
-	unsigned method_len : 8;
-	char     method_name[];
-} fastd_packet_request;
-
-typedef struct __attribute__ ((__packed__)) _fastd_packet_reply {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned reply_code : 8;
-} fastd_packet_reply;
-
-typedef union _fastd_packet {
-	fastd_packet_any any;
-	fastd_packet_request request;
-	fastd_packet_reply reply;
-} fastd_packet;
-
-#endif /* _FASTD_PACKET_H_ */
+#endif /* _FASTD_HANDSHAKE_H_ */

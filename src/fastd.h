@@ -28,11 +28,16 @@
 #ifndef _FASTD_FASTD_H_
 #define _FASTD_FASTD_H_
 
+#include "queue.h"
+
 #include <errno.h>
+#include <linux/if_ether.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/uio.h>
 
 
 typedef enum _fastd_loglevel {
@@ -51,39 +56,68 @@ typedef enum _fastd_protocol {
 
 typedef struct _fastd_peer_config {
 	struct _fastd_peer_config *next;
+
+	in_addr_t address;
+	in_port_t port;
 } fastd_peer_config;
 
+typedef enum _fastd_peer_state {
+	STATE_WAIT,
+	STATE_HANDSHAKE_SENT,
+	STATE_ESTABLISHED,
+} fastd_peer_state;
 
-typedef struct _fastd_peer_state {
-	struct _fastd_peer_state *next;
+typedef struct _fastd_peer {
+	struct _fastd_peer *next;
 
 	const fastd_peer_config *config;
-} fastd_peer_state;
+
+	in_addr_t address;
+	in_port_t port;
+
+	fastd_peer_state state;
+	uint8_t last_req_id;
+
+	void **addresses;
+} fastd_peer;
 
 typedef struct _fastd_context fastd_context;
 
 typedef struct _fastd_method {
 	const char *name;
-	void (*method_init)(const fastd_context *ctx);
 
-	void (*method_recv)(const fastd_context *ctx, void *buffer, size_t len);
-	void (*method_send)(const fastd_context *ctx, void *buffer, size_t len);
+	size_t (*method_max_packet_size)(fastd_context *ctx);
+
+	void (*method_init)(fastd_context *ctx, const fastd_peer *peer);
+
+	void (*method_handle_recv)(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
+	void (*method_send)(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
 } fastd_method;
 
 typedef struct _fastd_config {
 	fastd_loglevel loglevel;
+
+	char *ifname;
+
+	in_addr_t bind_address;
+	in_port_t bind_port;
 
 	uint16_t mtu;
 	fastd_protocol protocol;
 
 	fastd_method *method;
 
-	unsigned n_peers;
 	fastd_peer_config *peers;
 } fastd_config;
 
 struct _fastd_context {
 	const fastd_config *conf;
+
+	fastd_peer *peers;
+	fastd_queue task_queue;
+
+	int tunfd;
+	int sockfd;
 };
 
 
@@ -96,7 +130,19 @@ struct _fastd_context {
 #define pr_debug(context, args...) pr_log(context, LOG_DEBUG, args)
 
 #define exit_fatal(context, args...) do { pr_fatal(context, args); exit(1); } while(0)
-#define exit_fatal_bug(context, message) exit_fatal(context, "BUG: %s", message)
-#define exit_fatal_errno(context, message) exit_fatal(context, "%s: %s", message, strerror(errno))
+#define exit_bug(context, message) exit_fatal(context, "BUG: %s", message)
+#define exit_errno(context, message) exit_fatal(context, "%s: %s", message, strerror(errno))
+
+
+static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
+	switch (ctx->conf->protocol) {
+	case PROTOCOL_ETHERNET:
+		return ctx->conf->mtu+ETH_HLEN;
+	case PROTOCOL_IP:
+		return ctx->conf->mtu;
+	default:
+		exit_bug(ctx, "invalid protocol");
+	}
+}
 
 #endif /* _FASTD_FASTD_H_ */

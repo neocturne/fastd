@@ -25,44 +25,50 @@
 */
 
 
-#ifndef _FASTD_PACKET_H_
-#define _FASTD_PACKET_H_
+#ifndef _FASTD_QUEUE_H_
+#define _FASTD_QUEUE_H_
+
+#include <stdlib.h>
 
 
-typedef enum _fastd_reply_code {
-	REPLY_SUCCESS = 0,
-} fastd_reply_code;
+typedef struct _fastd_queue_entry fastd_queue_entry;
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_any {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-} fastd_packet_any;
+struct _fastd_queue_entry {
+	fastd_queue_entry *next;
+	void *data;
+};
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_request {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned flags      : 8;
-	unsigned proto      : 8;
-	unsigned method_len : 8;
-	char     method_name[];
-} fastd_packet_request;
+typedef struct _fastd_queue {
+	fastd_queue_entry *head;
+	fastd_queue_entry *tail;
+} fastd_queue;
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_reply {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned reply_code : 8;
-} fastd_packet_reply;
 
-typedef union _fastd_packet {
-	fastd_packet_any any;
-	fastd_packet_request request;
-	fastd_packet_reply reply;
-} fastd_packet;
+static inline void fastd_queue_put(fastd_queue *queue, void *data) {
+	fastd_queue_entry *entry = malloc(sizeof(fastd_queue_entry));
+	entry->next = NULL;
+	entry->data = data;
 
-#endif /* _FASTD_PACKET_H_ */
+	if (queue->tail)
+		queue->tail->next = entry;
+	else
+		queue->head = entry;
+
+	queue->tail = entry;
+}
+
+static inline void* fastd_queue_get(fastd_queue *queue) {
+	if (!queue->head)
+		return NULL;
+
+	fastd_queue_entry *entry = queue->head;
+	queue->head = entry->next;
+	if (!queue->head)
+		queue->tail = NULL;
+
+	void *data = entry->data;
+	free(entry);
+	return data;
+}
+
+#endif /* _FASTD_QUEUE_H_ */
