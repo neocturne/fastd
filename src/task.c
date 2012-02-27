@@ -33,7 +33,7 @@ fastd_task* fastd_task_get(fastd_context *ctx) {
 	return fastd_queue_get(&ctx->task_queue);
 }
 
-static void fastd_task_put_send_type(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, struct iovec buffer) {
+static void fastd_task_put_send_type(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
 	fastd_task_send *task = malloc(sizeof(fastd_task_send));
 
 	task->type = TASK_SEND;
@@ -44,15 +44,15 @@ static void fastd_task_put_send_type(fastd_context *ctx, const fastd_peer *peer,
 	fastd_queue_put(&ctx->task_queue, task);
 }
 
-void fastd_task_put_send_handshake(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer) {
+void fastd_task_put_send_handshake(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
 	fastd_task_put_send_type(ctx, peer, 1, buffer);
 }
 
-void fastd_task_put_send(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer) {
+void fastd_task_put_send(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
 	fastd_task_put_send_type(ctx, peer, 0, buffer);
 }
 
-void fastd_task_put_handle_recv(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer) {
+void fastd_task_put_handle_recv(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
 	fastd_task_handle_recv *task = malloc(sizeof(fastd_task_handle_recv));
 
 	task->type = TASK_HANDLE_RECV;

@@ -152,21 +152,24 @@ static void handle_tasks(fastd_context *ctx) {
 				msg.msg_name = &sendaddr;
 				msg.msg_namelen = sizeof(sendaddr);
 
-				struct iovec vec[2] = { { .iov_base = &task->send.packet_type, .iov_len = 1 }, task->send.buffer };
+				struct iovec vec[2] = {
+					{ .iov_base = &task->send.packet_type, .iov_len = 1 },
+					{ .iov_base = task->send.buffer.base, .iov_len = task->send.buffer.len }
+				};
 
 				msg.msg_iov = vec;
-				msg.msg_iovlen = 2;
+				msg.msg_iovlen = task->send.buffer.len ? 2 : 1;
 
 				sendmsg(ctx->sockfd, &msg, 0);
 			}
 
-			free(task->send.buffer.iov_base);
+			fastd_buffer_free(task->send.buffer);
 			break;
 
 		case TASK_HANDLE_RECV:
 			// TODO Handle source address
-			writev(ctx->tunfd, &task->handle_recv.buffer, 1);
-			free(task->handle_recv.buffer.iov_base);
+			write(ctx->tunfd, task->handle_recv.buffer.base, task->handle_recv.buffer.len);
+			fastd_buffer_free(task->handle_recv.buffer);
 			break;
 
 		default:
@@ -190,14 +193,14 @@ static void handle_input(fastd_context *ctx) {
 
 	if (fds[0].revents & POLLIN) {
 		size_t max_len = fastd_max_packet_size(ctx);
-		void *buffer = malloc(max_len);
+		fastd_buffer buffer = fastd_buffer_alloc(max_len, 0);
 
-		ssize_t len = read(ctx->tunfd, buffer, max_len);
+		ssize_t len = read(ctx->tunfd, buffer.base, max_len);
 		if (len < 0)
 			exit_errno(ctx, "read");
 
-		uint8_t *src_addr = get_source_address(ctx, buffer);
-		uint8_t *dest_addr = get_dest_address(ctx, buffer);
+		uint8_t *src_addr = get_source_address(ctx, buffer.base);
+		uint8_t *dest_addr = get_dest_address(ctx, buffer.base);
 
 		pr_debug(ctx, "A packet with length %u is to be sent from %02x:%02x:%02x:%02x:%02x:%02x to %02x:%02x:%02x:%02x:%02x:%02x",
 			 (unsigned)len, src_addr[0], src_addr[1], src_addr[2], src_addr[3], src_addr[4], src_addr[5],
@@ -205,16 +208,18 @@ static void handle_input(fastd_context *ctx) {
 
 		// TODO find correct peer
 
-		struct iovec vec = { .iov_base = buffer, .iov_len = len };
-		ctx->conf->method->method_send(ctx, ctx->peers, vec);
+		ctx->conf->method->method_send(ctx, ctx->peers, buffer);
 	}
 	if (fds[1].revents & POLLIN) {
-		size_t max_len = ctx->conf->method->method_max_packet_size(ctx); // 1 is the packet type header
-		void *buffer = malloc(max_len);
+		size_t max_len = ctx->conf->method->method_max_packet_size(ctx);
+		fastd_buffer buffer = fastd_buffer_alloc(max_len, 0);
 
 		uint8_t packet_type;
 
-		struct iovec vec[2] = {{ .iov_base = &packet_type, .iov_len = 1 }, { .iov_base = buffer, .iov_len = max_len }};
+		struct iovec vec[2] = {
+			{ .iov_base = &packet_type, .iov_len = 1 },
+			{ .iov_base = buffer.base, .iov_len = max_len }
+		};
 		struct sockaddr_in recvaddr;
 			
 		struct msghdr msg;
@@ -234,12 +239,11 @@ static void handle_input(fastd_context *ctx) {
 		switch (packet_type) {
 		case 0:
 			vec[1].iov_len = len - 1;
-			ctx->conf->method->method_handle_recv(ctx, NULL, vec[1]);
+			ctx->conf->method->method_handle_recv(ctx, NULL, buffer);
 			break;
 
 		default:
-			fastd_handshake_handle(ctx, NULL, packet_type, vec[1]);
-			free(buffer);
+			fastd_handshake_handle(ctx, NULL, packet_type, buffer);
 			break;
 		}
 	}

@@ -33,15 +33,15 @@ static size_t null_max_packet_size(fastd_context *ctx) {
 }
 
 static void null_init(fastd_context *ctx, const fastd_peer *peer) {
-	struct iovec buffer = { .iov_base = NULL, .iov_len = 0 };
+	fastd_buffer buffer = { .base = NULL, .len = 0, .free = NULL, .free_p = NULL };
 	fastd_task_put_send(ctx, peer, buffer);
 }
 
-static void null_handle_recv(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer) {
+static void null_handle_recv(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
 	fastd_task_put_handle_recv(ctx, peer, buffer);
 }
 
-static void null_send(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer) {
+static void null_send(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
 	fastd_task_put_send(ctx, peer, buffer);
 }
 

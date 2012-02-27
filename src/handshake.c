@@ -35,7 +35,8 @@
 void fastd_handshake_send(fastd_context *ctx, const fastd_peer *peer) {
 	size_t method_len = strlen(ctx->conf->method->name);
 	size_t len = sizeof(fastd_packet_request)+method_len;
-	fastd_packet_request *request = malloc(len);
+	fastd_buffer buffer = fastd_buffer_alloc(len, 0);
+	fastd_packet_request *request = buffer.base;
 
 	request->reply = 0;
 	request->cp = 0;
@@ -46,38 +47,37 @@ void fastd_handshake_send(fastd_context *ctx, const fastd_peer *peer) {
 	request->method_len = method_len;
 	strncpy(request->method_name, ctx->conf->method->name, method_len);
 
-	struct iovec buffer = { .iov_base = request, .iov_len = len };
 	fastd_task_put_send_handshake(ctx, peer, buffer);
 }
 
-void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, struct iovec buffer) {
+void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
 	if (packet_type != 1)
-		return; // TODO
+		goto end_free; // TODO
 
-	if (buffer.iov_len < sizeof(fastd_packet_any))
-		return;
+	if (buffer.len < sizeof(fastd_packet_any))
+		goto end_free;
 
-	fastd_packet *packet = buffer.iov_base;
+	fastd_packet *packet = buffer.base;
 
 	if (!packet->any.reply && !packet->any.cp) {
-		if (buffer.iov_len < sizeof(fastd_packet_request))
-			return;
+		if (buffer.len < sizeof(fastd_packet_request))
+			goto end_free;
 
-		if (buffer.iov_len < sizeof(fastd_packet_request) + packet->request.method_len)
-			return;
+		if (buffer.len < sizeof(fastd_packet_request) + packet->request.method_len)
+			goto end_free;
 
 		if (packet->request.flags)
-			return; // TODO
+			goto end_free; // TODO
 
 		if (packet->request.proto != ctx->conf->protocol)
-			return; // TODO
+			goto end_free; // TODO
 
 		if (packet->request.method_len != strlen(ctx->conf->method->name) ||
 		    strncmp(packet->request.method_name, ctx->conf->method->name, packet->request.method_len))
-			return; // TODO
+			goto end_free; // TODO
 
-
-		fastd_packet_reply *reply = malloc(sizeof(fastd_packet_reply));
+		fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet_reply), 0);
+		fastd_packet_reply *reply = reply_buffer.base;
 
 		reply->reply = 1;
 		reply->cp = 0;
@@ -85,11 +85,9 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t 
 		reply->rsv = 0;
 		reply->reply_code = REPLY_SUCCESS;
 
-		free(packet);
-
-		buffer.iov_base = reply;
-		buffer.iov_len = sizeof(fastd_packet_reply);
-
-		fastd_task_put_send_handshake(ctx, peer, buffer);
+		fastd_task_put_send_handshake(ctx, peer, reply_buffer);
 	}
+
+ end_free:
+	fastd_buffer_free(buffer);
 }

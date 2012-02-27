@@ -42,14 +42,14 @@ typedef struct _fastd_task_send {
 	fastd_task_type type;
 	const fastd_peer *peer;
 	uint8_t packet_type;
-	struct iovec buffer;
+	fastd_buffer buffer;
 } fastd_task_send;
 
 typedef struct _fastd_task_handle_recv {
 	fastd_task_type type;
 	const fastd_peer *peer;
 	uint8_t packet_type;
-	struct iovec buffer;
+	fastd_buffer buffer;
 } fastd_task_handle_recv;
 
 typedef union _fastd_task {
@@ -61,9 +61,9 @@ typedef union _fastd_task {
 
 fastd_task* fastd_task_get(fastd_context *ctx);
 
-void fastd_task_put_send_handshake(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
+void fastd_task_put_send_handshake(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer);
 
-void fastd_task_put_send(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
-void fastd_task_put_handle_recv(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
+void fastd_task_put_send(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer);
+void fastd_task_put_handle_recv(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer);
 
 #endif /* _FASTD_TASK_H_ */

@@ -31,6 +31,6 @@
 #include "fastd.h"
 
 void fastd_handshake_send(fastd_context *ctx, const fastd_peer *peer);
-void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, struct iovec buffer);
+void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer);
 
 #endif /* _FASTD_HANDSHAKE_H_ */

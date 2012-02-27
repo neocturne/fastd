@@ -48,6 +48,13 @@ typedef enum _fastd_loglevel {
 	LOG_DEBUG,
 } fastd_loglevel;
 
+typedef struct _fastd_buffer {
+	void *base;
+	size_t len;
+
+	void (*free)(void *free_p);
+	void *free_p;
+} fastd_buffer;
 
 typedef enum _fastd_protocol {
 	PROTOCOL_ETHERNET,
@@ -90,8 +97,8 @@ typedef struct _fastd_method {
 
 	void (*method_init)(fastd_context *ctx, const fastd_peer *peer);
 
-	void (*method_handle_recv)(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
-	void (*method_send)(fastd_context *ctx, const fastd_peer *peer, struct iovec buffer);
+	void (*method_handle_recv)(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer);
+	void (*method_send)(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer);
 } fastd_method;
 
 typedef struct _fastd_config {
@@ -132,6 +139,18 @@ struct _fastd_context {
 #define exit_fatal(context, args...) do { pr_fatal(context, args); exit(1); } while(0)
 #define exit_bug(context, message) exit_fatal(context, "BUG: %s", message)
 #define exit_errno(context, message) exit_fatal(context, "%s: %s", message, strerror(errno))
+
+
+static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space) {
+	uint8_t *ptr = malloc(head_space+len);
+	return (fastd_buffer){ .base = ptr, .len = len, .free = free, .free_p = ptr+head_space };
+}
+
+static inline void fastd_buffer_free(fastd_buffer buffer) {
+	if (buffer.free) {
+		buffer.free(buffer.free_p);
+	}
+}
 
 
 static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
