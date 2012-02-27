@@ -81,7 +81,7 @@ int fastd_queue_timeout(fastd_queue *queue) {
 	struct timespec tp;
 	clock_gettime(CLOCK_MONOTONIC, &tp);
 
-	int64_t diff_msec = ((int64_t)(queue->head->timeout.tv_sec-tp.tv_sec))*1000 - (queue->head->timeout.tv_nsec-tp.tv_nsec)/1e6;
+	int64_t diff_msec = ((int64_t)(queue->head->timeout.tv_sec-tp.tv_sec))*1000 + (queue->head->timeout.tv_nsec-tp.tv_nsec)/1e6;
 	if (diff_msec < 0)
 		return 0;
 	else
