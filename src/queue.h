@@ -29,6 +29,7 @@
 #define _FASTD_QUEUE_H_
 
 #include <stdlib.h>
+#include <time.h>
 
 
 typedef struct _fastd_queue_entry fastd_queue_entry;
@@ -36,39 +37,16 @@ typedef struct _fastd_queue_entry fastd_queue_entry;
 struct _fastd_queue_entry {
 	fastd_queue_entry *next;
 	void *data;
+	struct timespec timeout;
 };
 
 typedef struct _fastd_queue {
 	fastd_queue_entry *head;
-	fastd_queue_entry *tail;
 } fastd_queue;
 
 
-static inline void fastd_queue_put(fastd_queue *queue, void *data) {
-	fastd_queue_entry *entry = malloc(sizeof(fastd_queue_entry));
-	entry->next = NULL;
-	entry->data = data;
-
-	if (queue->tail)
-		queue->tail->next = entry;
-	else
-		queue->head = entry;
-
-	queue->tail = entry;
-}
-
-static inline void* fastd_queue_get(fastd_queue *queue) {
-	if (!queue->head)
-		return NULL;
-
-	fastd_queue_entry *entry = queue->head;
-	queue->head = entry->next;
-	if (!queue->head)
-		queue->tail = NULL;
-
-	void *data = entry->data;
-	free(entry);
-	return data;
-}
+void fastd_queue_put(fastd_queue *queue, void *data, int timeout);
+void* fastd_queue_get(fastd_queue *queue);
+int fastd_queue_timeout(fastd_queue *queue);
 
 #endif /* _FASTD_QUEUE_H_ */

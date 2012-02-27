@@ -99,7 +99,8 @@ static void configure(fastd_context *ctx, fastd_config *conf) {
 	ctx->peers = NULL;
 	fastd_peer **current_peer = &ctx->peers;
 
-	for (fastd_peer_config *peer_conf = conf->peers; peer_conf; peer_conf = peer_conf->next) {
+	fastd_peer_config *peer_conf;
+	for (peer_conf = conf->peers; peer_conf; peer_conf = peer_conf->next) {
 		*current_peer = malloc(sizeof(fastd_peer));
 		(*current_peer)->next = NULL;
 		(*current_peer)->config = peer_conf;
@@ -187,7 +188,7 @@ static void handle_input(fastd_context *ctx) {
 	fds[1].fd = ctx->sockfd;
 	fds[1].events = POLLIN;
 
-	int ret = poll(fds, 2, -1);
+	int ret = poll(fds, 2, fastd_task_timeout(ctx));
 	if (ret < 0)
 		exit_errno(ctx, "poll");
 

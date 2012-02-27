@@ -25,39 +25,65 @@
 */
 
 
-#include "task.h"
 #include "queue.h"
 
+#include <stdint.h>
 
-fastd_task* fastd_task_get(fastd_context *ctx) {
-	return fastd_queue_get(&ctx->task_queue);
+
+static inline int after(const struct timespec *tp1, const struct timespec *tp2) {
+	return (tp1->tv_sec > tp2->tv_sec ||
+		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
 }
 
-static void fastd_task_put_send_type(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
-	fastd_task_send *task = malloc(sizeof(fastd_task_send));
+void fastd_queue_put(fastd_queue *queue, void *data, int timeout) {
+	fastd_queue_entry *entry = malloc(sizeof(fastd_queue_entry));
+	entry->data = data;
+	entry->timeout = (struct timespec){ 0, 0 };
 
-	task->type = TASK_SEND;
-	task->peer = peer;
-	task->packet_type = packet_type;
-	task->buffer = buffer;
+	if (timeout) {
+		clock_gettime(CLOCK_MONOTONIC, &entry->timeout);
 
-	fastd_queue_put(&ctx->task_queue, task, 0);
+		entry->timeout.tv_sec += timeout/1000;
+		entry->timeout.tv_nsec += (timeout%1000)*1e6;
+
+		if (entry->timeout.tv_nsec > 1e9) {
+			entry->timeout.tv_sec++;
+			entry->timeout.tv_nsec -= 1e9;
+		}
+	}
+
+	fastd_queue_entry **current;
+	for (current = &queue->head;; current = &(*current)->next) {
+		if (!(*current) || after(&(*current)->timeout, &entry->timeout)) {
+			entry->next = *current;
+			*current = entry;
+			break;
+		}
+	}
 }
 
-void fastd_task_put_send_handshake(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_put_send_type(ctx, peer, 1, buffer);
+void* fastd_queue_get(fastd_queue *queue) {
+	if (!queue->head || fastd_queue_timeout(queue) > 0)
+		return NULL;
+
+	fastd_queue_entry *entry = queue->head;
+	queue->head = entry->next;
+
+	void *data = entry->data;
+	free(entry);
+	return data;
 }
 
-void fastd_task_put_send(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_put_send_type(ctx, peer, 0, buffer);
-}
+int fastd_queue_timeout(fastd_queue *queue) {
+	if (!queue->head)
+		return -1;
 
-void fastd_task_put_handle_recv(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_handle_recv *task = malloc(sizeof(fastd_task_handle_recv));
+	struct timespec tp;
+	clock_gettime(CLOCK_MONOTONIC, &tp);
 
-	task->type = TASK_HANDLE_RECV;
-	task->peer = peer;
-	task->buffer = buffer;
-
-	fastd_queue_put(&ctx->task_queue, task, 0);
+	int64_t diff_msec = ((int64_t)(queue->head->timeout.tv_sec-tp.tv_sec))*1000 - (queue->head->timeout.tv_nsec-tp.tv_nsec)/1e6;
+	if (diff_msec < 0)
+		return 0;
+	else
+		return (int)diff_msec;
 }
