@@ -152,12 +152,12 @@ static void handle_tasks(fastd_context *ctx) {
 				msg.msg_name = &sendaddr;
 				msg.msg_namelen = sizeof(sendaddr);
 
-				struct iovec vec[2] = {
+				struct iovec iov[2] = {
 					{ .iov_base = &task->send.packet_type, .iov_len = 1 },
 					{ .iov_base = task->send.buffer.base, .iov_len = task->send.buffer.len }
 				};
 
-				msg.msg_iov = vec;
+				msg.msg_iov = iov;
 				msg.msg_iovlen = task->send.buffer.len ? 2 : 1;
 
 				sendmsg(ctx->sockfd, &msg, 0);
@@ -208,6 +208,7 @@ static void handle_input(fastd_context *ctx) {
 
 		// TODO find correct peer
 
+		buffer.len = len;
 		ctx->conf->method->method_send(ctx, ctx->peers, buffer);
 	}
 	if (fds[1].revents & POLLIN) {
@@ -216,7 +217,7 @@ static void handle_input(fastd_context *ctx) {
 
 		uint8_t packet_type;
 
-		struct iovec vec[2] = {
+		struct iovec iov[2] = {
 			{ .iov_base = &packet_type, .iov_len = 1 },
 			{ .iov_base = buffer.base, .iov_len = max_len }
 		};
@@ -227,7 +228,7 @@ static void handle_input(fastd_context *ctx) {
 
 		msg.msg_name = &recvaddr;
 		msg.msg_namelen = sizeof(recvaddr);
-		msg.msg_iov = vec;
+		msg.msg_iov = iov;
 		msg.msg_iovlen = 2;
 
 		ssize_t len = recvmsg(ctx->sockfd, &msg, 0);
@@ -238,7 +239,7 @@ static void handle_input(fastd_context *ctx) {
 
 		switch (packet_type) {
 		case 0:
-			vec[1].iov_len = len - 1;
+			buffer.len = len - 1;
 			ctx->conf->method->method_handle_recv(ctx, NULL, buffer);
 			break;
 
