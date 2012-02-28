@@ -127,17 +127,19 @@ struct _fastd_context {
 };
 
 
-#define pr_log(context, level, args...) if ((context)->conf == NULL || (level) <= (context)->conf->loglevel) do { fprintf(stderr, args); fputs("\n", stderr); } while(0)
+#define pr_log(context, level, prefix, args...) if ((context)->conf == NULL || (level) <= (context)->conf->loglevel) \
+		do { fputs(prefix, stderr); fprintf(stderr, args); fputs("\n", stderr); } while(0)
 
-#define pr_fatal(context, args...) pr_log(context, LOG_FATAL, args)
-#define pr_error(context, args...) pr_log(context, LOG_ERROR, args)
-#define pr_warn(context, args...) pr_log(context, LOG_WARN, args)
-#define pr_info(context, args...) pr_log(context, LOG_INFO, args)
-#define pr_debug(context, args...) pr_log(context, LOG_DEBUG, args)
+#define pr_fatal(context, args...) pr_log(context, LOG_FATAL, "Fatal: ", args)
+#define pr_error(context, args...) pr_log(context, LOG_ERROR, "Error: ", args)
+#define pr_warn(context, args...) pr_log(context, LOG_WARN, "Warning: ", args)
+#define pr_info(context, args...) pr_log(context, LOG_INFO, "", args)
+#define pr_debug(context, args...) pr_log(context, LOG_DEBUG, "DEBUG: ", args)
 
-#define exit_fatal(context, args...) do { pr_fatal(context, args); exit(1); } while(0)
+#define exit_fatal(context, args...) do { pr_fatal(context, args); abort(); } while(0)
 #define exit_bug(context, message) exit_fatal(context, "BUG: %s", message)
-#define exit_errno(context, message) exit_fatal(context, "%s: %s", message, strerror(errno))
+#define exit_error(context, args...) do { pr_error(context, args); exit(1); } while(0)
+#define exit_errno(context, message) exit_error(context, "%s: %s", message, strerror(errno))
 
 
 static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space) {

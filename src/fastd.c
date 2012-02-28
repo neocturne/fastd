@@ -31,6 +31,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <poll.h>
@@ -82,7 +83,7 @@ static void init_socket(fastd_context *ctx) {
 	pr_debug(ctx, "UDP socket initialized.");
 }
 
-static void configure(fastd_context *ctx, fastd_config *conf) {
+static void default_config(fastd_config *conf) {
 	conf->loglevel = LOG_DEBUG;
 	conf->ifname = NULL;
 	conf->bind_address = htonl(INADDR_ANY);
@@ -90,13 +91,131 @@ static void configure(fastd_context *ctx, fastd_config *conf) {
 	conf->mtu = 1500;
 	conf->protocol = PROTOCOL_ETHERNET;
 	conf->method = &fastd_method_null;
+	conf->peers = NULL;
+}
 
-	conf->peers = malloc(sizeof(fastd_peer_config));
-	conf->peers->next = NULL;
-	conf->peers->address = inet_addr("172.22.184.1");
-	conf->peers->port = htons(1337);
+static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *argv[]) {
+	default_config(conf);
 
-	ctx->peers = NULL;
+	fastd_peer_config **current_peer = &conf->peers;
+
+	static const struct option long_options[] = {
+		{"dev",      required_argument, 0, 'i'},
+		{"bind",     required_argument, 0, 'b'},
+		{"mtu",      required_argument, 0, 'M'},
+		{"protocol", required_argument, 0, 'P'},
+		{"method",   required_argument, 0, 'm'},
+		{"peer",     required_argument, 0, 'p'},
+		{0, 0, 0, 0}
+	};
+
+	int c;
+	int option_index = 0;
+	struct in_addr addr;
+	long l;
+	char *charptr;
+	char *endptr;
+	char *addrstr;
+
+	while ((c = getopt_long (argc, argv, "i:b:M:P:m:p:", long_options, &option_index)) != -1) {
+		switch(c) {
+		case 'i':
+			conf->ifname = optarg;
+			break;
+
+		case 'b':
+			charptr = strchr(optarg, ':');
+			if (charptr) {
+				addrstr = strndup(optarg, charptr-optarg);
+			}
+			else {
+				addrstr = optarg;
+			}
+
+			if (inet_pton(AF_INET, addrstr, &addr) != 1) {
+				exit_error(ctx, "invalid bind address `%s'", addrstr);
+			}
+
+			conf->bind_address = addr.s_addr;
+
+			if (charptr) {
+				l = strtol(charptr+1, &endptr, 10);
+				if (*endptr || l > 65535)
+					exit_error(ctx, "invalid bind port `%s'", charptr+1);
+				conf->bind_port = htons(l);
+
+				free(addrstr);
+			}
+
+			break;
+
+		case 'M':
+			conf->mtu = strtol(optarg, &endptr, 10);
+			if (*endptr || conf->mtu < 576)
+				exit_error(ctx, "invalid mtu `%s'", optarg);
+			break;
+
+		case 'P':
+			if (!strcmp(optarg, "ethernet"))
+				conf->protocol = PROTOCOL_ETHERNET;
+			else if (!strcmp(optarg, "ip"))
+				conf->protocol = PROTOCOL_IP;
+			else
+				exit_error(ctx, "invalid protocol `%s'", optarg);
+			break;
+
+		case 'm':
+			if (!strcmp(optarg, "null"))
+				conf->method = &fastd_method_null;
+			else
+				exit_error(ctx, "invalid method `%s'", optarg);
+			break;
+
+		case 'p':
+			*current_peer = malloc(sizeof(fastd_peer_config));
+			(*current_peer)->next = NULL;
+
+			charptr = strchr(optarg, ':');
+			if (charptr) {
+				addrstr = strndup(optarg, charptr-optarg);
+			}
+			else {
+				addrstr = optarg;
+			}
+
+			if (inet_pton(AF_INET, addrstr, &addr) != 1) {
+				exit_error(ctx, "invalid bind address `%s'", addrstr);
+			}
+
+			(*current_peer)->address = addr.s_addr;
+
+			if (charptr) {
+				l = strtol(charptr+1, &endptr, 10);
+				if (*endptr || l > 65535)
+					exit_error(ctx, "invalid bind port `%s'", charptr+1);
+				(*current_peer)->port = htons(l);
+
+				free(addrstr);
+			}
+			else {
+				(*current_peer)->port = htons(1337); // Default port
+			}
+
+			current_peer = &(*current_peer)->next;
+
+			break;
+
+		case '?':
+			exit(1);
+
+		default:
+			abort();
+		}
+	}
+
+	if (!conf->peers) {
+		exit_error(ctx, "no peers have been configured");
+	}
 }
 
 static void init_peers(fastd_context *ctx) {
@@ -277,12 +396,12 @@ static void handle_input(fastd_context *ctx) {
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
 	fastd_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
 
 	fastd_config conf;
-	configure(&ctx, &conf);
+	configure(&ctx, &conf, argc, argv);
 	ctx.conf = &conf;
 
 	init_peers(&ctx);
