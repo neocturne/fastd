@@ -32,7 +32,7 @@
 #include <string.h>
 
 
-void fastd_handshake_send(fastd_context *ctx, const fastd_peer *peer) {
+void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer) {
 	size_t method_len = strlen(ctx->conf->method->name);
 	size_t len = sizeof(fastd_packet_request)+method_len;
 	fastd_buffer buffer = fastd_buffer_alloc(len, 0);
@@ -40,7 +40,7 @@ void fastd_handshake_send(fastd_context *ctx, const fastd_peer *peer) {
 
 	request->reply = 0;
 	request->cp = 0;
-	request->req_id = 0;
+	request->req_id = ++peer->last_req_id;
 	request->rsv = 0;
 	request->flags = 0;
 	request->proto = ctx->conf->protocol;
@@ -50,10 +50,7 @@ void fastd_handshake_send(fastd_context *ctx, const fastd_peer *peer) {
 	fastd_task_put_send_handshake(ctx, peer, buffer);
 }
 
-void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
-	if (packet_type != 1)
-		goto end_free; // TODO
-
+void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	if (buffer.len < sizeof(fastd_packet_any))
 		goto end_free;
 
@@ -86,6 +83,30 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer *peer, uint8_t 
 		reply->reply_code = REPLY_SUCCESS;
 
 		fastd_task_put_send_handshake(ctx, peer, reply_buffer);
+	}
+	else if (packet->any.reply) {
+		if (buffer.len < sizeof(fastd_packet_reply))
+			goto end_free;
+
+		if (!packet->reply.cp) {
+			if (packet->reply.req_id != peer->last_req_id)
+				goto end_free;
+		}
+		else {
+			goto end_free; // TODO
+		}
+
+		switch (packet->reply.reply_code) {
+		case REPLY_SUCCESS:
+			pr_info(ctx, "Handshake successful.");
+			pr_info(ctx, "Connection established.");
+			peer->state = STATE_ESTABLISHED;
+			ctx->conf->method->method_init(ctx, peer);
+			break;
+
+		default:
+			pr_warn(ctx, "Handshake failed with code %i.", packet->reply.reply_code);
+		}
 	}
 
  end_free:

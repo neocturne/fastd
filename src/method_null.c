@@ -32,16 +32,24 @@ static size_t null_max_packet_size(fastd_context *ctx) {
 	return fastd_max_packet_size(ctx);
 }
 
-static void null_init(fastd_context *ctx, const fastd_peer *peer) {
+static void null_init(fastd_context *ctx, fastd_peer *peer) {
 	fastd_buffer buffer = { .base = NULL, .len = 0, .free = NULL, .free_p = NULL };
 	fastd_task_put_send(ctx, peer, buffer);
 }
 
-static void null_handle_recv(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_put_handle_recv(ctx, peer, buffer);
+static void null_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	if (peer->state != STATE_ESTABLISHED) {
+		pr_info(ctx, "Connection established.");
+		peer->state = STATE_ESTABLISHED;
+	}
+	
+	if (buffer.len)
+		fastd_task_put_handle_recv(ctx, peer, buffer);
+	else
+		fastd_buffer_free(buffer);
 }
 
-static void null_send(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer) {
+static void null_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	fastd_task_put_send(ctx, peer, buffer);
 }
 

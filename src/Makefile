@@ -10,4 +10,4 @@ task.o : task.c task.h queue.h
 queue.o : queue.c queue.h
 
 clean :
-	rm -f fastd fastd.o method_null.o task.o
+	rm -f fastd fastd.o handshake.o method_null.o task.o queue.o

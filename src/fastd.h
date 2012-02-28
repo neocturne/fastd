@@ -70,7 +70,6 @@ typedef struct _fastd_peer_config {
 
 typedef enum _fastd_peer_state {
 	STATE_WAIT,
-	STATE_HANDSHAKE_SENT,
 	STATE_ESTABLISHED,
 } fastd_peer_state;
 
@@ -95,10 +94,10 @@ typedef struct _fastd_method {
 
 	size_t (*method_max_packet_size)(fastd_context *ctx);
 
-	void (*method_init)(fastd_context *ctx, const fastd_peer *peer);
+	void (*method_init)(fastd_context *ctx, fastd_peer *peer);
 
-	void (*method_handle_recv)(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer);
-	void (*method_send)(fastd_context *ctx, const fastd_peer *peer, fastd_buffer buffer);
+	void (*method_handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+	void (*method_send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 } fastd_method;
 
 typedef struct _fastd_config {

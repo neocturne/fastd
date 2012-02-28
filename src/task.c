@@ -61,3 +61,12 @@ void fastd_task_put_handle_recv(fastd_context *ctx, const fastd_peer *peer, fast
 
 	fastd_queue_put(&ctx->task_queue, task, 0);
 }
+
+void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout) {
+	fastd_task_handshake *task = malloc(sizeof(fastd_task_handshake));
+
+	task->type = TASK_HANDSHAKE;
+	task->peer = peer;
+
+	fastd_queue_put(&ctx->task_queue, task, timeout);
+}
