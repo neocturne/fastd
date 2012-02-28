@@ -28,35 +28,65 @@
 #ifndef _FASTD_PACKET_H_
 #define _FASTD_PACKET_H_
 
+#include <asm/byteorder.h>
+#include <stdint.h>
+
 
 typedef enum _fastd_reply_code {
 	REPLY_SUCCESS = 0,
 } fastd_reply_code;
 
 typedef struct __attribute__ ((__packed__)) _fastd_packet_any {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+	unsigned req_id : 6;
+	unsigned cp     : 1;
+	unsigned reply  : 1;
+#elif defined (__BIG_ENDIAN_BITFIELD)
+	unsigned reply  : 1;
+	unsigned cp     : 1;
+	unsigned req_id : 6;
+#else
+#error "Bitfield endianess not defined."
+#endif
+
+	uint8_t rsv;
 } fastd_packet_any;
 
 typedef struct __attribute__ ((__packed__)) _fastd_packet_request {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned flags      : 8;
-	unsigned proto      : 8;
-	unsigned method_len : 8;
-	char     method_name[];
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+	unsigned req_id : 6;
+	unsigned cp     : 1;
+	unsigned reply  : 1;
+#elif defined (__BIG_ENDIAN_BITFIELD)
+	unsigned reply  : 1;
+	unsigned cp     : 1;
+	unsigned req_id : 6;
+#else
+#error "Bitfield endianess not defined."
+#endif
+
+	uint8_t rsv;
+	uint8_t flags;
+	uint8_t proto;
+	uint8_t method_len;
+	char    method_name[];
 } fastd_packet_request;
 
 typedef struct __attribute__ ((__packed__)) _fastd_packet_reply {
-	unsigned reply      : 1;
-	unsigned cp         : 1;
-	unsigned req_id     : 6;
-	unsigned rsv        : 8;
-	unsigned reply_code : 8;
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+	unsigned req_id : 6;
+	unsigned cp     : 1;
+	unsigned reply  : 1;
+#elif defined (__BIG_ENDIAN_BITFIELD)
+	unsigned reply  : 1;
+	unsigned cp     : 1;
+	unsigned req_id : 6;
+#else
+#error "Bitfield endianess not defined."
+#endif
+
+	uint8_t rsv;
+	uint8_t reply_code;
 } fastd_packet_reply;
 
 typedef union _fastd_packet {
