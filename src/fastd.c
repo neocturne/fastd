@@ -343,15 +343,17 @@ static void handle_input(fastd_context *ctx) {
 			 dest_addr[0], dest_addr[1], dest_addr[2], dest_addr[3], dest_addr[4], dest_addr[5]);
 
 		// TODO find correct peer
-		fastd_peer *peer = ctx->peers;
 
-		if (peer->state == STATE_ESTABLISHED) {
-			buffer.len = len;
-			ctx->conf->method->method_send(ctx, peer, buffer);
+		fastd_peer *peer;
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (peer->state == STATE_ESTABLISHED) {
+				fastd_buffer send_buffer = fastd_buffer_alloc(len, 0);
+				memcpy(send_buffer.base, buffer.base, len);
+				ctx->conf->method->method_send(ctx, peer, send_buffer);
+			}
 		}
-		else {
-			fastd_buffer_free(buffer);
-		}
+
+		fastd_buffer_free(buffer);
 	}
 	if (fds[1].revents & POLLIN) {
 		size_t max_len = ctx->conf->method->method_max_packet_size(ctx);
