@@ -35,8 +35,8 @@
 void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer) {
 	size_t method_len = strlen(ctx->conf->method->name);
 	size_t len = sizeof(fastd_packet_request)+method_len;
-	fastd_buffer buffer = fastd_buffer_alloc(len, 0);
-	fastd_packet_request *request = buffer.base;
+	fastd_buffer buffer = fastd_buffer_alloc(len, 0, 0);
+	fastd_packet_request *request = buffer.data;
 
 	request->reply = 0;
 	request->cp = 0;
@@ -73,8 +73,8 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		    strncmp(packet->request.method_name, ctx->conf->method->name, packet->request.method_len))
 			goto end_free; // TODO
 
-		fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet_reply), 0);
-		fastd_packet_reply *reply = reply_buffer.base;
+		fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet_reply), 0, 0);
+		fastd_packet_reply *reply = reply_buffer.data;
 
 		reply->reply = 1;
 		reply->cp = 0;

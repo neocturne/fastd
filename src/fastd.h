@@ -50,10 +50,10 @@ typedef enum _fastd_loglevel {
 
 typedef struct _fastd_buffer {
 	void *base;
-	size_t len;
+	size_t base_len;
 
-	void (*free)(void *free_p);
-	void *free_p;
+	void *data;
+	size_t len;
 } fastd_buffer;
 
 typedef enum _fastd_protocol {
@@ -142,15 +142,14 @@ struct _fastd_context {
 #define exit_errno(context, message) exit_error(context, "%s: %s", message, strerror(errno))
 
 
-static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space) {
+static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, size_t tail_space) {
+	size_t base_len = head_space+len+tail_space;
 	uint8_t *ptr = malloc(head_space+len);
-	return (fastd_buffer){ .base = ptr, .len = len, .free = free, .free_p = ptr+head_space };
+	return (fastd_buffer){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
 }
 
 static inline void fastd_buffer_free(fastd_buffer buffer) {
-	if (buffer.free) {
-		buffer.free(buffer.free_p);
-	}
+	free(buffer.base);
 }
 
 

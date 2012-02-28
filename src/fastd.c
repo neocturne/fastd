@@ -237,8 +237,6 @@ static void init_peers(fastd_context *ctx) {
 	}
 }
 
-
-
 static void* get_source_address(const fastd_context *ctx, void *buffer) {
 	switch (ctx->conf->protocol) {
 	case PROTOCOL_ETHERNET:
@@ -280,7 +278,7 @@ static void handle_tasks(fastd_context *ctx) {
 
 				struct iovec iov[2] = {
 					{ .iov_base = &task->send.packet_type, .iov_len = 1 },
-					{ .iov_base = task->send.buffer.base, .iov_len = task->send.buffer.len }
+					{ .iov_base = task->send.buffer.data, .iov_len = task->send.buffer.len }
 				};
 
 				msg.msg_iov = iov;
@@ -294,7 +292,7 @@ static void handle_tasks(fastd_context *ctx) {
 
 		case TASK_HANDLE_RECV:
 			// TODO Handle source address
-			write(ctx->tunfd, task->handle_recv.buffer.base, task->handle_recv.buffer.len);
+			write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
 			fastd_buffer_free(task->handle_recv.buffer);
 			break;
 
@@ -329,14 +327,14 @@ static void handle_input(fastd_context *ctx) {
 
 	if (fds[0].revents & POLLIN) {
 		size_t max_len = fastd_max_packet_size(ctx);
-		fastd_buffer buffer = fastd_buffer_alloc(max_len, 0);
+		fastd_buffer buffer = fastd_buffer_alloc(max_len, 0, 0);
 
-		ssize_t len = read(ctx->tunfd, buffer.base, max_len);
+		ssize_t len = read(ctx->tunfd, buffer.data, max_len);
 		if (len < 0)
 			exit_errno(ctx, "read");
 
-		uint8_t *src_addr = get_source_address(ctx, buffer.base);
-		uint8_t *dest_addr = get_dest_address(ctx, buffer.base);
+		uint8_t *src_addr = get_source_address(ctx, buffer.data);
+		uint8_t *dest_addr = get_dest_address(ctx, buffer.data);
 
 		pr_debug(ctx, "A packet with length %u is to be sent from %02x:%02x:%02x:%02x:%02x:%02x to %02x:%02x:%02x:%02x:%02x:%02x",
 			 (unsigned)len, src_addr[0], src_addr[1], src_addr[2], src_addr[3], src_addr[4], src_addr[5],
@@ -347,8 +345,8 @@ static void handle_input(fastd_context *ctx) {
 		fastd_peer *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
 			if (peer->state == STATE_ESTABLISHED) {
-				fastd_buffer send_buffer = fastd_buffer_alloc(len, 0);
-				memcpy(send_buffer.base, buffer.base, len);
+				fastd_buffer send_buffer = fastd_buffer_alloc(len, 0, 0);
+				memcpy(send_buffer.data, buffer.data, len);
 				ctx->conf->method->method_send(ctx, peer, send_buffer);
 			}
 		}
@@ -357,13 +355,13 @@ static void handle_input(fastd_context *ctx) {
 	}
 	if (fds[1].revents & POLLIN) {
 		size_t max_len = ctx->conf->method->method_max_packet_size(ctx);
-		fastd_buffer buffer = fastd_buffer_alloc(max_len, 0);
+		fastd_buffer buffer = fastd_buffer_alloc(max_len, 0, 0);
 
 		uint8_t packet_type;
 
 		struct iovec iov[2] = {
 			{ .iov_base = &packet_type, .iov_len = 1 },
-			{ .iov_base = buffer.base, .iov_len = max_len }
+			{ .iov_base = buffer.data, .iov_len = max_len }
 		};
 		struct sockaddr_in recvaddr;
 			

@@ -33,8 +33,7 @@ static size_t null_max_packet_size(fastd_context *ctx) {
 }
 
 static void null_init(fastd_context *ctx, fastd_peer *peer) {
-	fastd_buffer buffer = { .base = NULL, .len = 0, .free = NULL, .free_p = NULL };
-	fastd_task_put_send(ctx, peer, buffer);
+	fastd_task_put_send(ctx, peer, fastd_buffer_alloc(0, 0, 0));
 }
 
 static void null_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
