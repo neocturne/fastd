@@ -237,6 +237,8 @@ static void init_peers(fastd_context *ctx) {
 	}
 }
 
+
+
 static void* get_source_address(const fastd_context *ctx, void *buffer) {
 	switch (ctx->conf->protocol) {
 	case PROTOCOL_ETHERNET:
@@ -375,21 +377,29 @@ static void handle_input(fastd_context *ctx) {
 		if (len < 0)
 			pr_warn(ctx, "recvfrom: %s", strerror(errno));
 
-		// TODO get correct peer
-		fastd_peer *peer = ctx->peers;
+		fastd_peer *peer;
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (recvaddr.sin_addr.s_addr == peer->address && recvaddr.sin_port == peer->port)
+				break;
+		}
 
+		if (peer) {
+			switch (packet_type) {
+			case 0:
+				buffer.len = len - 1;
+				ctx->conf->method->method_handle_recv(ctx, peer, buffer);
+				break;
 
-		switch (packet_type) {
-		case 0:
-			buffer.len = len - 1;
-			ctx->conf->method->method_handle_recv(ctx, peer, buffer);
-			break;
+			case 1:
+				fastd_handshake_handle(ctx, peer, buffer);
+				break;
 
-		case 1:
-			fastd_handshake_handle(ctx, peer, buffer);
-			break;
-
-		default:
+			default:
+				fastd_buffer_free(buffer);
+			}
+		}
+		else {
+			pr_debug(ctx, "received packet from unknown peer");
 			fastd_buffer_free(buffer);
 		}
 	}
