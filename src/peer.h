@@ -25,57 +25,23 @@
 */
 
 
-#ifndef _FASTD_TASK_H_
-#define _FASTD_TASK_H_
+#ifndef _FASTD_PEER_H_
+#define _FASTD_PEER_H_
 
 #include "fastd.h"
 
-#include <sys/uio.h>
 
+const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer);
+const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
 
-typedef enum _fastd_task_type {
-	TASK_SEND,
-	TASK_HANDLE_RECV,
-	TASK_HANDSHAKE,
-} fastd_task_type;
+fastd_peer* fastd_peer_init(fastd_context *ctx, fastd_peer_config *conf);
+void fastd_peer_free(fastd_context *ctx, fastd_peer *peer);
 
-typedef struct _fastd_task_send {
-	fastd_task_type type;
-	fastd_peer *peer;
-	uint8_t packet_type;
-	fastd_buffer buffer;
-} fastd_task_send;
-
-typedef struct _fastd_task_handle_recv {
-	fastd_task_type type;
-	fastd_peer *peer;
-	uint8_t packet_type;
-	fastd_buffer buffer;
-} fastd_task_handle_recv;
-
-typedef struct _fastd_task_handshake {
-	fastd_task_type type;
-	fastd_peer *peer;
-} fastd_task_handshake;
-
-typedef union _fastd_task {
-	fastd_task_type type;
-	fastd_task_send send;
-	fastd_task_handle_recv handle_recv;
-	fastd_task_handshake handshake;
-} fastd_task;
-
-
-fastd_task* fastd_task_get(fastd_context *ctx);
-static inline int fastd_task_timeout(fastd_context *ctx) {	
-	return fastd_queue_timeout(&ctx->task_queue);
+static inline int fastd_eth_addr_is_unicast(const fastd_eth_addr *addr) {
+	return ((addr->data[0] & 1) == 0);
 }
 
-void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+void fastd_peer_add_eth_addr(fastd_context *ctx, fastd_peer *peer, const fastd_eth_addr *addr);
+fastd_peer* fastd_peer_find_by_eth_addr(fastd_context *ctx, const fastd_eth_addr *addr);
 
-void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-
-void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout);
-
-#endif /* _FASTD_TASK_H_ */
+#endif /* _FASTD_PEER_H_ */

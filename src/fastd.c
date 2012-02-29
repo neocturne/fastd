@@ -27,6 +27,7 @@
 
 #include "fastd.h"
 #include "handshake.h"
+#include "peer.h"
 #include "task.h"
 
 #include <arpa/inet.h>
@@ -234,40 +235,9 @@ static void init_peers(fastd_context *ctx) {
 	fastd_peer **current_peer = &ctx->peers;
 	fastd_peer_config *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
-		*current_peer = malloc(sizeof(fastd_peer));
-		(*current_peer)->next = NULL;
-		(*current_peer)->config = peer_conf;
-		(*current_peer)->address = peer_conf->address;
-		(*current_peer)->port = peer_conf->port;
-		(*current_peer)->state = STATE_WAIT;
-		(*current_peer)->last_req_id = 0;
-		(*current_peer)->addresses = NULL;
-
-		fastd_task_schedule_handshake(ctx, *current_peer, 0);
+		*current_peer = fastd_peer_init(ctx, peer_conf);
 
 		current_peer = &(*current_peer)->next;
-	}
-}
-
-static void* get_source_address(const fastd_context *ctx, void *buffer) {
-	switch (ctx->conf->protocol) {
-	case PROTOCOL_ETHERNET:
-		return &((struct ethhdr*)buffer)->h_source;
-	case PROTOCOL_IP:
-		return NULL;
-	default:
-		exit_bug(ctx, "invalid protocol");
-	}
-}
-
-static void* get_dest_address(const fastd_context *ctx, void *buffer) {
-	switch (ctx->conf->protocol) {
-	case PROTOCOL_ETHERNET:
-		return &((struct ethhdr*)buffer)->h_dest;
-	case PROTOCOL_IP:
-		return NULL;
-	default:
-		exit_bug(ctx, "invalid protocol");
 	}
 }
 
@@ -303,7 +273,13 @@ static void handle_tasks(fastd_context *ctx) {
 			break;
 
 		case TASK_HANDLE_RECV:
-			// TODO Handle source address
+			if (ctx->conf->protocol == PROTOCOL_ETHERNET) {
+				const fastd_eth_addr *src_addr = fastd_get_source_address(ctx, task->handle_recv.buffer);
+
+				if (fastd_eth_addr_is_unicast(src_addr))
+					fastd_peer_add_eth_addr(ctx, task->handle_recv.peer, src_addr);
+			}
+
 			write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
 			fastd_buffer_free(task->handle_recv.buffer);
 			break;
@@ -345,25 +321,37 @@ static void handle_input(fastd_context *ctx) {
 		if (len < 0)
 			exit_errno(ctx, "read");
 
-		/*uint8_t *src_addr = get_source_address(ctx, buffer.data);
-		uint8_t *dest_addr = get_dest_address(ctx, buffer.data);
+		fastd_peer *peer = NULL;
 
-		pr_debug(ctx, "A packet with length %u is to be sent from %02x:%02x:%02x:%02x:%02x:%02x to %02x:%02x:%02x:%02x:%02x:%02x",
-			 (unsigned)len, src_addr[0], src_addr[1], src_addr[2], src_addr[3], src_addr[4], src_addr[5],
-			 dest_addr[0], dest_addr[1], dest_addr[2], dest_addr[3], dest_addr[4], dest_addr[5]);*/
+		if (ctx->conf->protocol == PROTOCOL_ETHERNET) {
+			const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, buffer);
+			if (fastd_eth_addr_is_unicast(dest_addr)) {
+				peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
-		// TODO find correct peer
+				if (peer == NULL) {
+					fastd_buffer_free(buffer);
+					return;
+				}
 
-		fastd_peer *peer;
-		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (peer->state == STATE_ESTABLISHED) {
-				fastd_buffer send_buffer = fastd_buffer_alloc(len, 0, 0);
-				memcpy(send_buffer.data, buffer.data, len);
-				ctx->conf->method->method_send(ctx, peer, send_buffer);
+				if (peer->state == STATE_ESTABLISHED) {
+					ctx->conf->method->method_send(ctx, peer, buffer);
+				}
+				else {
+					fastd_buffer_free(buffer);
+				}
 			}
 		}
+		if (peer == NULL) {
+			for (peer = ctx->peers; peer; peer = peer->next) {
+				if (peer->state == STATE_ESTABLISHED) {
+					fastd_buffer send_buffer = fastd_buffer_alloc(len, 0, 0);
+					memcpy(send_buffer.data, buffer.data, len);
+					ctx->conf->method->method_send(ctx, peer, send_buffer);
+				}
+			}
 
-		fastd_buffer_free(buffer);
+			fastd_buffer_free(buffer);
+		}
 	}
 	if (fds[1].revents & POLLIN) {
 		size_t max_len = ctx->conf->method->method_max_packet_size(ctx);

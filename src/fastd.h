@@ -73,6 +73,10 @@ typedef enum _fastd_peer_state {
 	STATE_ESTABLISHED,
 } fastd_peer_state;
 
+typedef struct _fastd_eth_addr {
+	uint8_t data[ETH_ALEN];
+} fastd_eth_addr;
+
 typedef struct _fastd_peer {
 	struct _fastd_peer *next;
 
@@ -83,9 +87,12 @@ typedef struct _fastd_peer {
 
 	fastd_peer_state state;
 	uint8_t last_req_id;
-
-	void **addresses;
 } fastd_peer;
+
+typedef struct _fastd_peer_eth_addr {
+	fastd_eth_addr addr;
+	fastd_peer *peer;
+} fastd_peer_eth_addr;
 
 typedef struct _fastd_context fastd_context;
 
@@ -124,6 +131,10 @@ struct _fastd_context {
 
 	int tunfd;
 	int sockfd;
+
+	size_t eth_addr_size;
+	size_t n_eth_addr;
+	fastd_peer_eth_addr *eth_addr;
 };
 
 
@@ -151,7 +162,6 @@ static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, siz
 static inline void fastd_buffer_free(fastd_buffer buffer) {
 	free(buffer.base);
 }
-
 
 static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
 	switch (ctx->conf->protocol) {
