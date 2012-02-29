@@ -58,7 +58,19 @@ static void init_tuntap(fastd_context *ctx) {
 	if (ctx->conf->ifname)
 		strncpy(ifr.ifr_name, ctx->conf->ifname, IF_NAMESIZE-1);
 
-	ifr.ifr_flags = IFF_TAP;
+	switch (ctx->conf->protocol) {
+	case PROTOCOL_ETHERNET:
+		ifr.ifr_flags = IFF_TAP;
+		break;
+
+	case PROTOCOL_IP:
+		ifr.ifr_flags = IFF_TUN;
+		break;
+
+	default:
+		exit_bug(ctx, "invalid protocol");
+	}
+
 	ifr.ifr_flags |= IFF_NO_PI;
 	if (ioctl(ctx->tunfd, TUNSETIFF, (void *)&ifr) < 0)
 		exit_errno(ctx, "TUNSETIFF ioctl failed");
@@ -100,12 +112,12 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 	fastd_peer_config **current_peer = &conf->peers;
 
 	static const struct option long_options[] = {
-		{"dev",      required_argument, 0, 'i'},
-		{"bind",     required_argument, 0, 'b'},
-		{"mtu",      required_argument, 0, 'M'},
-		{"protocol", required_argument, 0, 'P'},
-		{"method",   required_argument, 0, 'm'},
-		{"peer",     required_argument, 0, 'p'},
+		{"interface", required_argument, 0, 'i'},
+		{"bind",      required_argument, 0, 'b'},
+		{"mtu",       required_argument, 0, 'M'},
+		{"protocol",  required_argument, 0, 'P'},
+		{"method",    required_argument, 0, 'm'},
+		{"peer",      required_argument, 0, 'p'},
 		{0, 0, 0, 0}
 	};
 
@@ -213,8 +225,8 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 		}
 	}
 
-	if (!conf->peers) {
-		exit_error(ctx, "no peers have been configured");
+	if (conf->protocol == PROTOCOL_IP && (!conf->peers || conf->peers->next)) {
+		exit_error(ctx, "for protocol `ip' exactly one peer must be configured");
 	}
 }
 
@@ -333,12 +345,12 @@ static void handle_input(fastd_context *ctx) {
 		if (len < 0)
 			exit_errno(ctx, "read");
 
-		uint8_t *src_addr = get_source_address(ctx, buffer.data);
+		/*uint8_t *src_addr = get_source_address(ctx, buffer.data);
 		uint8_t *dest_addr = get_dest_address(ctx, buffer.data);
 
 		pr_debug(ctx, "A packet with length %u is to be sent from %02x:%02x:%02x:%02x:%02x:%02x to %02x:%02x:%02x:%02x:%02x:%02x",
 			 (unsigned)len, src_addr[0], src_addr[1], src_addr[2], src_addr[3], src_addr[4], src_addr[5],
-			 dest_addr[0], dest_addr[1], dest_addr[2], dest_addr[3], dest_addr[4], dest_addr[5]);
+			 dest_addr[0], dest_addr[1], dest_addr[2], dest_addr[3], dest_addr[4], dest_addr[5]);*/
 
 		// TODO find correct peer
 
