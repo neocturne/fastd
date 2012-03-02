@@ -101,7 +101,7 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 			pr_info(ctx, "Handshake successful.");
 			pr_info(ctx, "Connection established.");
 			peer->state = STATE_ESTABLISHED;
-			ctx->conf->method->method_init(ctx, peer);
+			ctx->conf->method->init(ctx, peer);
 			break;
 
 		default:

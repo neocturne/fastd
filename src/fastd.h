@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <linux/if_ether.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -47,6 +48,11 @@ typedef enum _fastd_loglevel {
 	LOG_INFO,
 	LOG_DEBUG,
 } fastd_loglevel;
+
+typedef enum _fastd_packet_type {
+	PACKET_DATA = 0,
+	PACKET_HANDSHAKE,
+} fastd_packet_type;
 
 typedef struct _fastd_buffer {
 	void *base;
@@ -71,6 +77,8 @@ typedef struct _fastd_peer_config {
 typedef enum _fastd_peer_state {
 	STATE_WAIT,
 	STATE_ESTABLISHED,
+	STATE_TEMP,
+	STATE_TEMP_ESTABLISHED,
 } fastd_peer_state;
 
 typedef struct _fastd_eth_addr {
@@ -94,20 +102,23 @@ typedef struct _fastd_peer_eth_addr {
 	fastd_peer *peer;
 } fastd_peer_eth_addr;
 
+typedef struct _fastd_config fastd_config;
 typedef struct _fastd_context fastd_context;
 
 typedef struct _fastd_method {
 	const char *name;
 
-	size_t (*method_max_packet_size)(fastd_context *ctx);
+	bool (*check_config)(fastd_context *ctx, const fastd_config *conf);
 
-	void (*method_init)(fastd_context *ctx, fastd_peer *peer);
+	size_t (*max_packet_size)(fastd_context *ctx);
 
-	void (*method_handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-	void (*method_send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+	void (*init)(fastd_context *ctx, fastd_peer *peer);
+
+	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 } fastd_method;
 
-typedef struct _fastd_config {
+struct _fastd_config {
 	fastd_loglevel loglevel;
 
 	char *ifname;
@@ -120,8 +131,9 @@ typedef struct _fastd_config {
 
 	fastd_method *method;
 
+	unsigned n_floating;
 	fastd_peer_config *peers;
-} fastd_config;
+};
 
 struct _fastd_context {
 	const fastd_config *conf;

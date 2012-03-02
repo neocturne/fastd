@@ -42,14 +42,14 @@ typedef enum _fastd_task_type {
 typedef struct _fastd_task_send {
 	fastd_task_type type;
 	fastd_peer *peer;
-	uint8_t packet_type;
+	fastd_packet_type packet_type;
 	fastd_buffer buffer;
 } fastd_task_send;
 
 typedef struct _fastd_task_handle_recv {
 	fastd_task_type type;
 	fastd_peer *peer;
-	uint8_t packet_type;
+	fastd_packet_type packet_type;
 	fastd_buffer buffer;
 } fastd_task_handle_recv;
 

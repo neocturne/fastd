@@ -26,7 +26,17 @@
 
 #include "fastd.h"
 #include "task.h"
+#include "peer.h"
 
+
+static bool null_check_config(fastd_context *ctx, const fastd_config *conf) {
+	if (conf->n_floating > 1) {
+		pr_error(ctx, "with method `null' use can't define more than one floating peer");
+		return false;
+	}
+
+	return true;
+}
 
 static size_t null_max_packet_size(fastd_context *ctx) {
 	return fastd_max_packet_size(ctx);
@@ -37,9 +47,24 @@ static void null_init(fastd_context *ctx, fastd_peer *peer) {
 }
 
 static void null_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	if (peer->state != STATE_ESTABLISHED) {
+	if (!fastd_peer_is_established(peer)) {
 		pr_info(ctx, "Connection established.");
-		peer->state = STATE_ESTABLISHED;
+		fastd_peer_set_established(ctx, peer);
+	}
+
+	if (fastd_peer_is_temporary(peer)) {
+		fastd_peer *perm_peer;
+		for (perm_peer = ctx->peers; perm_peer; perm_peer = perm_peer->next) {
+			if (fastd_peer_is_floating(perm_peer))
+				break;
+		}
+
+		if (!perm_peer) {
+			fastd_buffer_free(buffer);
+			return;
+		}
+
+		peer = fastd_peer_merge(ctx, perm_peer, peer);
 	}
 	
 	if (buffer.len)
@@ -55,8 +80,12 @@ static void null_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer)
 
 const fastd_method fastd_method_null = {
 	.name = "null",
-	.method_max_packet_size = null_max_packet_size,
-	.method_init = null_init,
-	.method_handle_recv = null_handle_recv,
-	.method_send = null_send,
+
+	.check_config = null_check_config,
+
+	.max_packet_size = null_max_packet_size,
+
+	.init = null_init,
+	.handle_recv = null_handle_recv,
+	.send = null_send,
 };

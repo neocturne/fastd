@@ -34,10 +34,40 @@
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer);
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
 
-fastd_peer* fastd_peer_init(fastd_context *ctx, fastd_peer_config *conf);
-void fastd_peer_free(fastd_context *ctx, fastd_peer *peer);
+fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
+fastd_peer* fastd_peer_add_temp(fastd_context *ctx, in_addr_t address, in_port_t port);
+fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer);
+void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer);
 
-static inline int fastd_eth_addr_is_unicast(const fastd_eth_addr *addr) {
+
+static inline bool fastd_peer_is_floating(fastd_peer *peer) {
+	return (peer->config && !peer->config->address);
+}
+
+static inline bool fastd_peer_is_temporary(fastd_peer *peer) {
+	return (peer->state == STATE_TEMP || peer->state == STATE_TEMP_ESTABLISHED);
+}
+
+static inline bool fastd_peer_is_established(fastd_peer *peer) {
+	return (peer->state == STATE_ESTABLISHED || peer->state == STATE_TEMP_ESTABLISHED);
+}
+
+static inline void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
+	switch(peer->state) {
+	case STATE_WAIT:
+		peer->state = STATE_ESTABLISHED;
+		break;
+
+	case STATE_TEMP:
+		peer->state = STATE_TEMP_ESTABLISHED;
+		break;
+
+	default:
+		pr_warn(ctx, "tried to set an already established connection to established");
+	}
+}
+
+static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr *addr) {
 	return ((addr->data[0] & 1) == 0);
 }
 

@@ -45,11 +45,11 @@ static void fastd_task_put_send_type(fastd_context *ctx, fastd_peer *peer, uint8
 }
 
 void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_put_send_type(ctx, peer, 1, buffer);
+	fastd_task_put_send_type(ctx, peer, PACKET_HANDSHAKE, buffer);
 }
 
 void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_put_send_type(ctx, peer, 0, buffer);
+	fastd_task_put_send_type(ctx, peer, PACKET_DATA, buffer);
 }
 
 void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {

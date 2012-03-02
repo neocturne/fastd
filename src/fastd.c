@@ -130,6 +130,9 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 	char *endptr;
 	char *addrstr;
 
+
+	conf->n_floating = 0;
+
 	while ((c = getopt_long (argc, argv, "i:b:M:P:m:p:", long_options, &option_index)) != -1) {
 		switch(c) {
 		case 'i':
@@ -145,7 +148,10 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 				addrstr = optarg;
 			}
 
-			if (inet_pton(AF_INET, addrstr, &addr) != 1) {
+			if (strcmp(addrstr, "any") == 0) {
+				addr.s_addr = htonl(INADDR_ANY);
+			}
+			else if (inet_pton(AF_INET, addrstr, &addr) != 1) {
 				exit_error(ctx, "invalid bind address `%s'", addrstr);
 			}
 
@@ -196,7 +202,10 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 				addrstr = optarg;
 			}
 
-			if (inet_pton(AF_INET, addrstr, &addr) != 1) {
+			if (strcmp(addrstr, "any") == 0 || strcmp(addrstr, "float") == 0) {
+				addr.s_addr = htonl(INADDR_ANY);
+			}
+			else if (inet_pton(AF_INET, addrstr, &addr) != 1) {
 				exit_error(ctx, "invalid bind address `%s'", addrstr);
 			}
 
@@ -214,6 +223,9 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 				(*current_peer)->port = htons(1337); // Default port
 			}
 
+			if (!(*current_peer)->address)
+				conf->n_floating++;
+
 			current_peer = &(*current_peer)->next;
 
 			break;
@@ -226,19 +238,23 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 		}
 	}
 
+	bool ok = true;
 	if (conf->protocol == PROTOCOL_IP && (!conf->peers || conf->peers->next)) {
-		exit_error(ctx, "for protocol `ip' exactly one peer must be configured");
+		pr_error(ctx, "for protocol `ip' exactly one peer must be configured");
+		ok = false;
 	}
+
+	if (ok)
+		ok = conf->method->check_config(ctx, conf);
+
+	if (!ok)
+		exit_error(ctx, "config error");
 }
 
 static void init_peers(fastd_context *ctx) {
-	fastd_peer **current_peer = &ctx->peers;
 	fastd_peer_config *peer_conf;
-	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
-		*current_peer = fastd_peer_init(ctx, peer_conf);
-
-		current_peer = &(*current_peer)->next;
-	}
+	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next)
+		fastd_peer_add(ctx, peer_conf);
 }
 
 static void handle_tasks(fastd_context *ctx) {
@@ -285,13 +301,14 @@ static void handle_tasks(fastd_context *ctx) {
 			break;
 
 		case TASK_HANDSHAKE:
-			if (task->handshake.peer->state != STATE_WAIT)
+			if (task->handshake.peer->state != STATE_WAIT && task->handshake.peer->state != STATE_TEMP)
 				break;
 
 			pr_debug(ctx, "Sending handshake...");
 			fastd_handshake_send(ctx, task->handshake.peer);
 
-			fastd_task_schedule_handshake(ctx, task->handshake.peer, 20000);
+			if (task->handshake.peer->state == STATE_WAIT)
+				fastd_task_schedule_handshake(ctx, task->handshake.peer, 20000);
 			break;
 
 		default:
@@ -334,7 +351,7 @@ static void handle_input(fastd_context *ctx) {
 				}
 
 				if (peer->state == STATE_ESTABLISHED) {
-					ctx->conf->method->method_send(ctx, peer, buffer);
+					ctx->conf->method->send(ctx, peer, buffer);
 				}
 				else {
 					fastd_buffer_free(buffer);
@@ -346,7 +363,7 @@ static void handle_input(fastd_context *ctx) {
 				if (peer->state == STATE_ESTABLISHED) {
 					fastd_buffer send_buffer = fastd_buffer_alloc(len, 0, 0);
 					memcpy(send_buffer.data, buffer.data, len);
-					ctx->conf->method->method_send(ctx, peer, send_buffer);
+					ctx->conf->method->send(ctx, peer, send_buffer);
 				}
 			}
 
@@ -354,7 +371,7 @@ static void handle_input(fastd_context *ctx) {
 		}
 	}
 	if (fds[1].revents & POLLIN) {
-		size_t max_len = ctx->conf->method->method_max_packet_size(ctx);
+		size_t max_len = ctx->conf->method->max_packet_size(ctx);
 		fastd_buffer buffer = fastd_buffer_alloc(max_len, 0, 0);
 
 		uint8_t packet_type;
@@ -385,12 +402,12 @@ static void handle_input(fastd_context *ctx) {
 
 		if (peer) {
 			switch (packet_type) {
-			case 0:
+			case PACKET_DATA:
 				buffer.len = len - 1;
-				ctx->conf->method->method_handle_recv(ctx, peer, buffer);
+				ctx->conf->method->handle_recv(ctx, peer, buffer);
 				break;
 
-			case 1:
+			case PACKET_HANDSHAKE:
 				fastd_handshake_handle(ctx, peer, buffer);
 				break;
 
@@ -398,7 +415,25 @@ static void handle_input(fastd_context *ctx) {
 				fastd_buffer_free(buffer);
 			}
 		}
-		else {
+		else if(ctx->conf->n_floating) {
+			switch (packet_type) {
+			case PACKET_DATA:
+				fastd_buffer_free(buffer);
+
+				peer = fastd_peer_add_temp(ctx, recvaddr.sin_addr.s_addr, recvaddr.sin_port);
+				fastd_task_schedule_handshake(ctx, peer, 0);
+				break;
+
+			case PACKET_HANDSHAKE:
+				peer = fastd_peer_add_temp(ctx, recvaddr.sin_addr.s_addr, recvaddr.sin_port);
+				fastd_handshake_handle(ctx, peer, buffer);
+				break;
+
+			default:
+				fastd_buffer_free(buffer);
+			}
+		}
+		else  {
 			pr_debug(ctx, "received packet from unknown peer");
 			fastd_buffer_free(buffer);
 		}

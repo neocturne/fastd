@@ -28,6 +28,8 @@
 #include "peer.h"
 #include "task.h"
 
+#include <arpa/inet.h>
+
 
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
 	switch (ctx->conf->protocol) {
@@ -47,23 +49,69 @@ const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buf
 	}
 }
 
-fastd_peer* fastd_peer_init(fastd_context *ctx, fastd_peer_config *peer_conf) {
+static fastd_peer* add_peer(fastd_context *ctx) {
 	fastd_peer *peer = malloc(sizeof(fastd_peer));
 
-	peer->next = NULL;
+	peer->next = ctx->peers;
+	peer->last_req_id = 0;
+
+	ctx->peers = peer;
+
+	return peer;
+}
+
+fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
+	fastd_peer *peer = add_peer(ctx);
 
 	peer->config = peer_conf;
 	peer->address = peer_conf->address;
 	peer->port = peer_conf->port;
 	peer->state = STATE_WAIT;
-	peer->last_req_id = 0;
 
-	fastd_task_schedule_handshake(ctx, peer, 0);
+	pr_debug(ctx, "added peer %s:%u", inet_ntoa((struct in_addr){ .s_addr = peer->address }), ntohs(peer->port));
+
+	if (peer->address)
+		fastd_task_schedule_handshake(ctx, peer, 0);
 
 	return peer;
 }
 
-void fastd_peer_free(fastd_context *ctx, fastd_peer *peer) {
+fastd_peer* fastd_peer_add_temp(fastd_context *ctx, in_addr_t address, in_port_t port) {
+	fastd_peer *peer = add_peer(ctx);
+
+	if (!ctx->conf->n_floating)
+		exit_bug(ctx, "tried to add a temporary peer with no floating remotes defined");
+
+	peer->config = NULL;
+	peer->address = address;
+	peer->port = port;
+	peer->state = STATE_TEMP;
+
+	pr_debug(ctx, "added peer %s:%u (temporary)", inet_ntoa((struct in_addr){ .s_addr = peer->address }), ntohs(peer->port));
+
+	return peer;
+}
+
+fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer) {
+	pr_debug(ctx, "merging peers");
+
+	perm_peer->address = temp_peer->address;
+	perm_peer->port = temp_peer->port;
+	perm_peer->state = fastd_peer_is_established(temp_peer) ? STATE_ESTABLISHED : STATE_WAIT;
+
+	int i;
+	for (i = 0; i < ctx->n_eth_addr; i++) {
+		if (ctx->eth_addr[i].peer == temp_peer) {
+			ctx->eth_addr[i].peer = perm_peer;
+		}
+	}
+
+	fastd_peer_delete(ctx, temp_peer);
+
+	return perm_peer;
+}
+
+void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
 	int i, deleted = 0;
 
 	for (i = 0; i < ctx->n_eth_addr; i++) {
@@ -76,6 +124,14 @@ void fastd_peer_free(fastd_context *ctx, fastd_peer *peer) {
 	}
 
 	ctx->n_eth_addr -= deleted;
+
+	fastd_peer **cur_peer;
+	for (cur_peer = &ctx->peers; *cur_peer; cur_peer = &(*cur_peer)->next) {
+		if ((*cur_peer) == peer) {
+			*cur_peer = peer->next;
+			break;
+		}
+	}
 
 	free(peer);
 }
