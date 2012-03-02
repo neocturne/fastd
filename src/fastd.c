@@ -260,7 +260,7 @@ static void init_peers(fastd_context *ctx) {
 static void handle_tasks(fastd_context *ctx) {
 	fastd_task *task;
 	while ((task = fastd_task_get(ctx)) != NULL) {
-		switch (task->type) {
+		switch (task->any.type) {
 		case TASK_SEND:
 			if (task->send.peer) {
 				struct msghdr msg;

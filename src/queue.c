@@ -87,3 +87,17 @@ int fastd_queue_timeout(fastd_queue *queue) {
 	else
 		return (int)diff_msec;
 }
+
+void fastd_queue_filter(fastd_queue *queue, bool (*pred)(void*, void*), void *extra) {
+	fastd_queue_entry **entry;
+	for (entry = &queue->head; *entry; ) {
+		if (!pred((*entry)->data, extra)) {
+			fastd_queue_entry *cur = *entry;
+			*entry = cur->next;
+			free(cur);
+		}
+		else {
+			entry = &(*entry)->next;
+		}
+	}
+}

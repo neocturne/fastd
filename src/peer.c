@@ -133,6 +133,8 @@ void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
 		}
 	}
 
+	fastd_task_delete_peer(ctx, peer);
+
 	free(peer);
 }
 

@@ -70,3 +70,32 @@ void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int tim
 
 	fastd_queue_put(&ctx->task_queue, task, timeout);
 }
+
+static bool delete_task(void *data, void *extra) {
+	fastd_task *task = data;
+	fastd_peer *peer = extra;
+
+	if (task->any.peer != peer)
+		return true;
+
+	switch (task->any.type) {
+	case TASK_SEND:
+		fastd_buffer_free(task->send.buffer);
+		break;
+
+	case TASK_HANDLE_RECV:
+		fastd_buffer_free(task->handle_recv.buffer);
+		break;
+
+	case TASK_HANDSHAKE:
+		break;
+	}
+
+	free(task);
+
+	return false;
+}
+
+void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer) {
+	fastd_queue_filter(&ctx->task_queue, delete_task, peer);
+}

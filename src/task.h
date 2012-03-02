@@ -39,6 +39,11 @@ typedef enum _fastd_task_type {
 	TASK_HANDSHAKE,
 } fastd_task_type;
 
+typedef struct _fastd_task_any {
+	fastd_task_type type;
+	fastd_peer *peer;
+} fastd_task_any;
+
 typedef struct _fastd_task_send {
 	fastd_task_type type;
 	fastd_peer *peer;
@@ -59,7 +64,7 @@ typedef struct _fastd_task_handshake {
 } fastd_task_handshake;
 
 typedef union _fastd_task {
-	fastd_task_type type;
+	fastd_task_any any;
 	fastd_task_send send;
 	fastd_task_handle_recv handle_recv;
 	fastd_task_handshake handshake;
@@ -77,5 +82,7 @@ void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buff
 void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
 void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout);
+
+void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer);
 
 #endif /* _FASTD_TASK_H_ */
