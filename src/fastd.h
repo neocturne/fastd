@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/uio.h>
+#include <sys/socket.h>
 
 
 typedef enum _fastd_loglevel {
@@ -67,11 +68,16 @@ typedef enum _fastd_protocol {
 	PROTOCOL_IP,
 } fastd_protocol;
 
+typedef union _fastd_peer_address {
+	struct sockaddr sa;
+	struct sockaddr_in in;
+	struct sockaddr_in6 in6;
+} fastd_peer_address;
+
 typedef struct _fastd_peer_config {
 	struct _fastd_peer_config *next;
 
-	in_addr_t address;
-	in_port_t port;
+	fastd_peer_address address;
 } fastd_peer_config;
 
 typedef enum _fastd_peer_state {
@@ -90,8 +96,7 @@ typedef struct _fastd_peer {
 
 	const fastd_peer_config *config;
 
-	in_addr_t address;
-	in_port_t port;
+	fastd_peer_address address;
 
 	fastd_peer_state state;
 	uint8_t last_req_id;
@@ -123,8 +128,8 @@ struct _fastd_config {
 
 	char *ifname;
 
-	in_addr_t bind_address;
-	in_port_t bind_port;
+	struct sockaddr_in bind_addr_in;
+	struct sockaddr_in6 bind_addr_in6;
 
 	uint16_t mtu;
 	fastd_protocol protocol;
@@ -143,6 +148,7 @@ struct _fastd_context {
 
 	int tunfd;
 	int sockfd;
+	int sock6fd;
 
 	size_t eth_addr_size;
 	size_t n_eth_addr;
@@ -150,19 +156,25 @@ struct _fastd_context {
 };
 
 
-#define pr_log(context, level, prefix, args...) if ((context)->conf == NULL || (level) <= (context)->conf->loglevel) \
+#define pr_log(ctx, level, prefix, args...) if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) \
 		do { fputs(prefix, stderr); fprintf(stderr, args); fputs("\n", stderr); } while(0)
 
-#define pr_fatal(context, args...) pr_log(context, LOG_FATAL, "Fatal: ", args)
-#define pr_error(context, args...) pr_log(context, LOG_ERROR, "Error: ", args)
-#define pr_warn(context, args...) pr_log(context, LOG_WARN, "Warning: ", args)
-#define pr_info(context, args...) pr_log(context, LOG_INFO, "", args)
-#define pr_debug(context, args...) pr_log(context, LOG_DEBUG, "DEBUG: ", args)
+#define is_error(ctx) ((ctx)->conf == NULL || LOG_ERROR <= (ctx)->conf->loglevel)
+#define is_warn(ctx) ((ctx)->conf == NULL || LOG_WARN <= (ctx)->conf->loglevel)
+#define is_info(ctx) ((ctx)->conf == NULL || LOG_INFO <= (ctx)->conf->loglevel)
+#define is_debug(ctx) ((ctx)->conf == NULL || LOG_DEBUG <= (ctx)->conf->loglevel)
 
-#define exit_fatal(context, args...) do { pr_fatal(context, args); abort(); } while(0)
-#define exit_bug(context, message) exit_fatal(context, "BUG: %s", message)
-#define exit_error(context, args...) do { pr_error(context, args); exit(1); } while(0)
-#define exit_errno(context, message) exit_error(context, "%s: %s", message, strerror(errno))
+#define pr_fatal(ctx, args...) pr_log(ctx, LOG_FATAL, "Fatal: ", args)
+#define pr_error(ctx, args...) pr_log(ctx, LOG_ERROR, "Error: ", args)
+#define pr_warn(ctx, args...) pr_log(ctx, LOG_WARN, "Warning: ", args)
+#define pr_info(ctx, args...) pr_log(ctx, LOG_INFO, "", args)
+#define pr_debug(ctx, args...) pr_log(ctx, LOG_DEBUG, "DEBUG: ", args)
+
+#define warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
+#define exit_fatal(ctx, args...) do { pr_fatal(ctx, args); abort(); } while(0)
+#define exit_bug(ctx, message) exit_fatal(ctx, "BUG: %s", message)
+#define exit_error(ctx, args...) do { pr_error(ctx, args); exit(1); } while(0)
+#define exit_errno(ctx, message) exit_error(ctx, "%s: %s", message, strerror(errno))
 
 
 static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, size_t tail_space) {

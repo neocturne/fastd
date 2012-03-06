@@ -35,13 +35,30 @@ const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_b
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
 
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
-fastd_peer* fastd_peer_add_temp(fastd_context *ctx, in_addr_t address, in_port_t port);
+fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *address);
 fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer);
 void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer);
 
 
+static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config) {
+	switch (config->address.sa.sa_family) {
+	case AF_UNSPEC:
+		return true;
+
+	case AF_INET:
+		return !config->address.in.sin_addr.s_addr;
+
+	case AF_INET6:
+		return IN6_IS_ADDR_UNSPECIFIED(&config->address.in6.sin6_addr);
+
+	default:
+		/* What is this? I don't even... */
+		return false;
+	}
+}
+
 static inline bool fastd_peer_is_floating(fastd_peer *peer) {
-	return (peer->config && !peer->config->address);
+	return (peer->config && fastd_peer_config_is_floating(peer->config));
 }
 
 static inline bool fastd_peer_is_temporary(fastd_peer *peer) {

@@ -65,29 +65,65 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 
 	peer->config = peer_conf;
 	peer->address = peer_conf->address;
-	peer->port = peer_conf->port;
 	peer->state = STATE_WAIT;
 
-	pr_debug(ctx, "added peer %s:%u", inet_ntoa((struct in_addr){ .s_addr = peer->address }), ntohs(peer->port));
+	if (is_debug(ctx)) {
+		char buf[INET6_ADDRSTRLEN] = "";
 
-	if (peer->address)
+		switch (peer->address.sa.sa_family) {
+		case AF_UNSPEC:
+			pr_debug(ctx, "added peer <floating>");
+			break;
+
+		case AF_INET:
+			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf)))
+				pr_debug(ctx, "added peer %s:%u", buf, ntohs(peer->address.in.sin_port));
+			break;
+
+		case AF_INET6:
+			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf)))
+				pr_debug(ctx, "added peer [%s]:%u", buf, ntohs(peer->address.in6.sin6_port));
+			break;
+
+		default:
+			exit_bug(ctx, "unsupported address family");
+		}
+	}
+
+	if (!fastd_peer_is_floating(peer))
 		fastd_task_schedule_handshake(ctx, peer, 0);
 
 	return peer;
 }
 
-fastd_peer* fastd_peer_add_temp(fastd_context *ctx, in_addr_t address, in_port_t port) {
+fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *address) {
 	fastd_peer *peer = add_peer(ctx);
 
 	if (!ctx->conf->n_floating)
 		exit_bug(ctx, "tried to add a temporary peer with no floating remotes defined");
 
 	peer->config = NULL;
-	peer->address = address;
-	peer->port = port;
+	peer->address = *address;
 	peer->state = STATE_TEMP;
 
-	pr_debug(ctx, "added peer %s:%u (temporary)", inet_ntoa((struct in_addr){ .s_addr = peer->address }), ntohs(peer->port));
+	if (is_debug(ctx)) {
+		char buf[INET6_ADDRSTRLEN] = "";
+
+		switch (peer->address.sa.sa_family) {
+		case AF_INET:
+			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf)))
+				pr_debug(ctx, "added peer %s:%u (temporary)", buf, ntohs(peer->address.in.sin_port));
+			break;
+
+		case AF_INET6:
+			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf)))
+				pr_debug(ctx, "added peer [%s]:%u (temporary)", buf, ntohs(peer->address.in6.sin6_port));
+			break;
+
+		default:
+			exit_bug(ctx, "unsupported address family");
+		}
+	}
 
 	return peer;
 }
@@ -96,7 +132,6 @@ fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_pe
 	pr_debug(ctx, "merging peers");
 
 	perm_peer->address = temp_peer->address;
-	perm_peer->port = temp_peer->port;
 	perm_peer->state = fastd_peer_is_established(temp_peer) ? STATE_ESTABLISHED : STATE_WAIT;
 
 	int i;
