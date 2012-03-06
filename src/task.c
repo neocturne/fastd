@@ -30,7 +30,7 @@
 
 
 fastd_task* fastd_task_get(fastd_context *ctx) {
-	return fastd_queue_get(&ctx->task_queue);
+	return fastd_queue_get(ctx, &ctx->task_queue);
 }
 
 static void fastd_task_put_send_type(fastd_context *ctx, fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
@@ -41,7 +41,7 @@ static void fastd_task_put_send_type(fastd_context *ctx, fastd_peer *peer, uint8
 	task->packet_type = packet_type;
 	task->buffer = buffer;
 
-	fastd_queue_put(&ctx->task_queue, task, 0);
+	fastd_queue_put(ctx, &ctx->task_queue, task, 0);
 }
 
 void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
@@ -59,7 +59,7 @@ void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buff
 	task->peer = peer;
 	task->buffer = buffer;
 
-	fastd_queue_put(&ctx->task_queue, task, 0);
+	fastd_queue_put(ctx, &ctx->task_queue, task, 0);
 }
 
 void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout) {
@@ -68,7 +68,7 @@ void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int tim
 	task->type = TASK_HANDSHAKE;
 	task->peer = peer;
 
-	fastd_queue_put(&ctx->task_queue, task, timeout);
+	fastd_queue_put(ctx, &ctx->task_queue, task, timeout);
 }
 
 static bool delete_task(void *data, void *extra) {
@@ -97,5 +97,5 @@ static bool delete_task(void *data, void *extra) {
 }
 
 void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer) {
-	fastd_queue_filter(&ctx->task_queue, delete_task, peer);
+	fastd_queue_filter(ctx, &ctx->task_queue, delete_task, peer);
 }

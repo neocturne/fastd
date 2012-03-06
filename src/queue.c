@@ -26,6 +26,7 @@
 
 
 #include "queue.h"
+#include "fastd.h"
 
 #include <stdint.h>
 
@@ -35,14 +36,12 @@ static inline int after(const struct timespec *tp1, const struct timespec *tp2) 
 		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
 }
 
-void fastd_queue_put(fastd_queue *queue, void *data, int timeout) {
+void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, void *data, int timeout) {
 	fastd_queue_entry *entry = malloc(sizeof(fastd_queue_entry));
 	entry->data = data;
-	entry->timeout = (struct timespec){ 0, 0 };
+	entry->timeout = ctx->now;
 
 	if (timeout) {
-		clock_gettime(CLOCK_MONOTONIC, &entry->timeout);
-
 		entry->timeout.tv_sec += timeout/1000;
 		entry->timeout.tv_nsec += (timeout%1000)*1e6;
 
@@ -62,8 +61,8 @@ void fastd_queue_put(fastd_queue *queue, void *data, int timeout) {
 	}
 }
 
-void* fastd_queue_get(fastd_queue *queue) {
-	if (!queue->head || fastd_queue_timeout(queue) > 0)
+void* fastd_queue_get(fastd_context *ctx, fastd_queue *queue) {
+	if (!queue->head || fastd_queue_timeout(ctx, queue) > 0)
 		return NULL;
 
 	fastd_queue_entry *entry = queue->head;
@@ -74,21 +73,18 @@ void* fastd_queue_get(fastd_queue *queue) {
 	return data;
 }
 
-int fastd_queue_timeout(fastd_queue *queue) {
+int fastd_queue_timeout(fastd_context *ctx, fastd_queue *queue) {
 	if (!queue->head)
 		return -1;
 
-	struct timespec tp;
-	clock_gettime(CLOCK_MONOTONIC, &tp);
-
-	int64_t diff_msec = ((int64_t)(queue->head->timeout.tv_sec-tp.tv_sec))*1000 + (queue->head->timeout.tv_nsec-tp.tv_nsec)/1e6;
+	int64_t diff_msec = ((int64_t)(queue->head->timeout.tv_sec-ctx->now.tv_sec))*1000 + (queue->head->timeout.tv_nsec-ctx->now.tv_nsec)/1e6;
 	if (diff_msec < 0)
 		return 0;
 	else
 		return (int)diff_msec;
 }
 
-void fastd_queue_filter(fastd_queue *queue, bool (*pred)(void*, void*), void *extra) {
+void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(void*, void*), void *extra) {
 	fastd_queue_entry **entry;
 	for (entry = &queue->head; *entry; ) {
 		if (!pred((*entry)->data, extra)) {

@@ -24,63 +24,48 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
-#ifndef _FASTD_PACKET_H_
-#define _FASTD_PACKET_H_
-
-#include <asm/byteorder.h>
-#include <stdint.h>
-
-
-typedef enum _fastd_packet_type {
-	PACKET_UNKNOWN = 0,
-	PACKET_HANDSHAKE,
-	PACKET_DATA,
-} fastd_packet_type;
-
-typedef enum _fastd_reply_code {
-	REPLY_SUCCESS = 0,
-} fastd_reply_code;
+/*
+  types.h
+  
+  Basic enums and typedefs for common types
+*/
 
 
-#if defined(__LITTLE_ENDIAN_BITFIELD)
-#define FASTD_PACKET_COMMON \
-	unsigned req_id : 6; \
-	unsigned cp     : 1; \
-	unsigned reply  : 1; \
-	uint8_t rsv
-#elif defined (__BIG_ENDIAN_BITFIELD)
-#define FASTD_PACKET_COMMON \
-	unsigned reply  : 1; \
-	unsigned cp     : 1; \
-	unsigned req_id : 6; \
-	uint8_t rsv
-#else
-#error "Bitfield endianess not defined."
-#endif
+#ifndef _FASTD_TYPES_H_
+#define _FASTD_TYPES_H_
+
+typedef enum _fastd_loglevel {
+	LOG_FATAL = 0,
+	LOG_ERROR,
+	LOG_WARN,
+	LOG_INFO,
+	LOG_DEBUG,
+} fastd_loglevel;
+
+typedef enum _fastd_protocol {
+	PROTOCOL_ETHERNET,
+	PROTOCOL_IP,
+} fastd_protocol;
+
+typedef enum _fastd_peer_state {
+	STATE_WAIT,
+	STATE_ESTABLISHED,
+	STATE_TEMP,
+	STATE_TEMP_ESTABLISHED,
+} fastd_peer_state;
 
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_any {
-	FASTD_PACKET_COMMON;
-} fastd_packet_any;
+typedef struct _fastd_buffer fastd_buffer;
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_request {
-	FASTD_PACKET_COMMON;
-	uint8_t flags;
-	uint8_t proto;
-	uint8_t method_len;
-	char    method_name[];
-} fastd_packet_request;
+typedef union _fastd_peer_address fastd_peer_address;
+typedef struct _fastd_peer_config fastd_peer_config;
+typedef struct _fastd_eth_addr fastd_eth_addr;
+typedef struct _fastd_peer fastd_peer;
+typedef struct _fastd_peer_eth_addr fastd_peer_eth_addr;
 
-typedef struct __attribute__ ((__packed__)) _fastd_packet_reply {
-	FASTD_PACKET_COMMON;
-	uint8_t reply_code;
-} fastd_packet_reply;
+typedef struct _fastd_config fastd_config;
+typedef struct _fastd_context fastd_context;
 
-typedef union _fastd_packet {
-	fastd_packet_any any;
-	fastd_packet_request request;
-	fastd_packet_reply reply;
-} fastd_packet;
+typedef struct _fastd_method fastd_method;
 
-#endif /* _FASTD_PACKET_H_ */
+#endif /* _FASTD_TYPES_H_ */

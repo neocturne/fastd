@@ -27,6 +27,7 @@
 
 #include "handshake.h"
 #include "packet.h"
+#include "peer.h"
 #include "task.h"
 
 #include <string.h>

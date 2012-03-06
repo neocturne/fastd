@@ -31,6 +31,39 @@
 #include "fastd.h"
 
 
+union _fastd_peer_address {
+	struct sockaddr sa;
+	struct sockaddr_in in;
+	struct sockaddr_in6 in6;
+};
+
+struct _fastd_peer {
+	fastd_peer *next;
+
+	const fastd_peer_config *config;
+
+	fastd_peer_address address;
+
+	fastd_peer_state state;
+	uint8_t last_req_id;
+};
+
+struct _fastd_peer_config {
+	fastd_peer_config *next;
+
+	fastd_peer_address address;
+};
+
+struct _fastd_eth_addr {
+	uint8_t data[ETH_ALEN];
+};
+
+struct _fastd_peer_eth_addr {
+	fastd_eth_addr addr;
+	fastd_peer *peer;
+};
+
+
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer);
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
 

@@ -317,7 +317,8 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 		}
 	}
 
-	if (conf->bind_addr_in.sin_family == AF_UNSPEC && conf->bind_addr_in6.sin6_family == AF_UNSPEC) {
+	if (conf->n_floating && conf->bind_addr_in.sin_family == AF_UNSPEC
+	    && conf->bind_addr_in6.sin6_family == AF_UNSPEC) {
 		conf->bind_addr_in.sin_family = AF_INET;
 		conf->bind_addr_in6.sin6_family = AF_INET6;
 	}
@@ -345,6 +346,10 @@ static void init_peers(fastd_context *ctx) {
 	fastd_peer_config *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next)
 		fastd_peer_add(ctx, peer_conf);
+}
+
+static void update_time(fastd_context *ctx) {
+	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
 static void handle_tasks(fastd_context *ctx) {
@@ -565,6 +570,8 @@ static void handle_input(fastd_context *ctx) {
 	if (ret < 0)
 		exit_errno(ctx, "poll");
 
+	update_time(ctx);
+
 	if (fds[0].revents & POLLIN)
 		handle_tun(ctx);
 	if (fds[1].revents & POLLIN)
@@ -581,6 +588,8 @@ int main(int argc, char *argv[]) {
 	fastd_config conf;
 	configure(&ctx, &conf, argc, argv);
 	ctx.conf = &conf;
+
+	update_time(&ctx);
 
 	init_peers(&ctx);
 

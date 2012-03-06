@@ -28,6 +28,7 @@
 #ifndef _FASTD_FASTD_H_
 #define _FASTD_FASTD_H_
 
+#include "types.h"
 #include "queue.h"
 
 #include <errno.h>
@@ -40,77 +41,18 @@
 #include <string.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
+#include <time.h>
 
 
-typedef enum _fastd_loglevel {
-	LOG_FATAL = 0,
-	LOG_ERROR,
-	LOG_WARN,
-	LOG_INFO,
-	LOG_DEBUG,
-} fastd_loglevel;
-
-typedef enum _fastd_packet_type {
-	PACKET_DATA = 0,
-	PACKET_HANDSHAKE,
-} fastd_packet_type;
-
-typedef struct _fastd_buffer {
+struct _fastd_buffer {
 	void *base;
 	size_t base_len;
 
 	void *data;
 	size_t len;
-} fastd_buffer;
+};
 
-typedef enum _fastd_protocol {
-	PROTOCOL_ETHERNET,
-	PROTOCOL_IP,
-} fastd_protocol;
-
-typedef union _fastd_peer_address {
-	struct sockaddr sa;
-	struct sockaddr_in in;
-	struct sockaddr_in6 in6;
-} fastd_peer_address;
-
-typedef struct _fastd_peer_config {
-	struct _fastd_peer_config *next;
-
-	fastd_peer_address address;
-} fastd_peer_config;
-
-typedef enum _fastd_peer_state {
-	STATE_WAIT,
-	STATE_ESTABLISHED,
-	STATE_TEMP,
-	STATE_TEMP_ESTABLISHED,
-} fastd_peer_state;
-
-typedef struct _fastd_eth_addr {
-	uint8_t data[ETH_ALEN];
-} fastd_eth_addr;
-
-typedef struct _fastd_peer {
-	struct _fastd_peer *next;
-
-	const fastd_peer_config *config;
-
-	fastd_peer_address address;
-
-	fastd_peer_state state;
-	uint8_t last_req_id;
-} fastd_peer;
-
-typedef struct _fastd_peer_eth_addr {
-	fastd_eth_addr addr;
-	fastd_peer *peer;
-} fastd_peer_eth_addr;
-
-typedef struct _fastd_config fastd_config;
-typedef struct _fastd_context fastd_context;
-
-typedef struct _fastd_method {
+struct _fastd_method {
 	const char *name;
 
 	bool (*check_config)(fastd_context *ctx, const fastd_config *conf);
@@ -121,7 +63,7 @@ typedef struct _fastd_method {
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-} fastd_method;
+};
 
 struct _fastd_config {
 	fastd_loglevel loglevel;
@@ -142,6 +84,8 @@ struct _fastd_config {
 
 struct _fastd_context {
 	const fastd_config *conf;
+
+	struct timespec now;
 
 	fastd_peer *peers;
 	fastd_queue task_queue;

@@ -29,6 +29,7 @@
 #define _FASTD_TASK_H_
 
 #include "fastd.h"
+#include "packet.h"
 
 #include <sys/uio.h>
 
@@ -73,7 +74,7 @@ typedef union _fastd_task {
 
 fastd_task* fastd_task_get(fastd_context *ctx);
 static inline int fastd_task_timeout(fastd_context *ctx) {	
-	return fastd_queue_timeout(&ctx->task_queue);
+	return fastd_queue_timeout(ctx, &ctx->task_queue);
 }
 
 void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
