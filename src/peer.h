@@ -41,20 +41,7 @@ void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer);
 
 
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config) {
-	switch (config->address.sa.sa_family) {
-	case AF_UNSPEC:
-		return true;
-
-	case AF_INET:
-		return !config->address.in.sin_addr.s_addr;
-
-	case AF_INET6:
-		return IN6_IS_ADDR_UNSPECIFIED(&config->address.in6.sin6_addr);
-
-	default:
-		/* What is this? I don't even... */
-		return false;
-	}
+	return (config->address.sa.sa_family == AF_UNSPEC);
 }
 
 static inline bool fastd_peer_is_floating(fastd_peer *peer) {
