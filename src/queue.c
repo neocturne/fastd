@@ -31,14 +31,17 @@
 #include <stdint.h>
 
 
-static inline int after(const struct timespec *tp1, const struct timespec *tp2) {
+/* returns (tp1 - tp2) in milliseconds  */
+static inline int timespec_diff(const struct timespec *tp1, const struct timespec *tp2) {
+	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
+}
+
+static inline bool after(const struct timespec *tp1, const struct timespec *tp2) {
 	return (tp1->tv_sec > tp2->tv_sec ||
 		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
 }
 
-void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, void *data, int timeout) {
-	fastd_queue_entry *entry = malloc(sizeof(fastd_queue_entry));
-	entry->data = data;
+void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *entry, int timeout) {
 	entry->timeout = ctx->now;
 
 	if (timeout) {
@@ -61,39 +64,35 @@ void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, void *data, int tim
 	}
 }
 
-void* fastd_queue_get(fastd_context *ctx, fastd_queue *queue) {
+fastd_queue_entry* fastd_queue_get(fastd_context *ctx, fastd_queue *queue) {
 	if (!queue->head || fastd_queue_timeout(ctx, queue) > 0)
 		return NULL;
 
 	fastd_queue_entry *entry = queue->head;
 	queue->head = entry->next;
 
-	void *data = entry->data;
-	free(entry);
-	return data;
+	return entry;
 }
 
 int fastd_queue_timeout(fastd_context *ctx, fastd_queue *queue) {
 	if (!queue->head)
 		return -1;
 
-	int64_t diff_msec = ((int64_t)(queue->head->timeout.tv_sec-ctx->now.tv_sec))*1000 + (queue->head->timeout.tv_nsec-ctx->now.tv_nsec)/1e6;
+	int diff_msec = timespec_diff(&queue->head->timeout, &ctx->now);
 	if (diff_msec < 0)
 		return 0;
 	else
-		return (int)diff_msec;
+		return diff_msec;
 }
 
-void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(void*, void*), void *extra) {
-	fastd_queue_entry **entry;
-	for (entry = &queue->head; *entry; ) {
-		if (!pred((*entry)->data, extra)) {
-			fastd_queue_entry *cur = *entry;
-			*entry = cur->next;
-			free(cur);
-		}
-		else {
+void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fastd_queue_entry*, void*), void *extra) {
+	fastd_queue_entry **entry, *next;
+	for (entry = &queue->head; *entry;) {
+		next = (*entry)->next;
+
+		if (!pred(*entry, extra))
+			*entry = next;
+		else
 			entry = &(*entry)->next;
-		}
 	}
 }

@@ -355,22 +355,22 @@ static void update_time(fastd_context *ctx) {
 static void handle_tasks(fastd_context *ctx) {
 	fastd_task *task;
 	while ((task = fastd_task_get(ctx)) != NULL) {
-		switch (task->any.type) {
+		switch (task->type) {
 		case TASK_SEND:
-			if (task->send.peer) {
+			if (task->peer) {
 				int sockfd;
 				struct msghdr msg;
 				memset(&msg, 0, sizeof(msg));
 
-				switch (task->send.peer->address.sa.sa_family) {
+				switch (task->peer->address.sa.sa_family) {
 				case AF_INET:
-					msg.msg_name = &task->send.peer->address.in;
+					msg.msg_name = &task->peer->address.in;
 					msg.msg_namelen = sizeof(struct sockaddr_in);
 					sockfd = ctx->sockfd;
 					break;
 
 				case AF_INET6:
-					msg.msg_name = &task->send.peer->address.in6;
+					msg.msg_name = &task->peer->address.in6;
 					msg.msg_namelen = sizeof(struct sockaddr_in6);
 					sockfd = ctx->sock6fd;
 					break;
@@ -398,7 +398,7 @@ static void handle_tasks(fastd_context *ctx) {
 				const fastd_eth_addr *src_addr = fastd_get_source_address(ctx, task->handle_recv.buffer);
 
 				if (fastd_eth_addr_is_unicast(src_addr))
-					fastd_peer_add_eth_addr(ctx, task->handle_recv.peer, src_addr);
+					fastd_peer_add_eth_addr(ctx, task->peer, src_addr);
 			}
 
 			write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
@@ -406,14 +406,14 @@ static void handle_tasks(fastd_context *ctx) {
 			break;
 
 		case TASK_HANDSHAKE:
-			if (task->handshake.peer->state != STATE_WAIT && task->handshake.peer->state != STATE_TEMP)
+			if (task->peer->state != STATE_WAIT && task->peer->state != STATE_TEMP)
 				break;
 
 			pr_debug(ctx, "Sending handshake...");
-			fastd_handshake_send(ctx, task->handshake.peer);
+			fastd_handshake_send(ctx, task->peer);
 
-			if (task->handshake.peer->state == STATE_WAIT)
-				fastd_task_schedule_handshake(ctx, task->handshake.peer, 20000);
+			if (task->peer->state == STATE_WAIT)
+				fastd_task_schedule_handshake(ctx, task->peer, 20000);
 			break;
 
 		default:

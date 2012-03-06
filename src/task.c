@@ -26,22 +26,21 @@
 
 
 #include "task.h"
-#include "queue.h"
 
 
 fastd_task* fastd_task_get(fastd_context *ctx) {
-	return fastd_queue_get(ctx, &ctx->task_queue);
+	return container_of(fastd_queue_get(ctx, &ctx->task_queue), fastd_task, entry);
 }
 
 static void fastd_task_put_send_type(fastd_context *ctx, fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
-	fastd_task_send *task = malloc(sizeof(fastd_task_send));
+	fastd_task *task = malloc(sizeof(fastd_task));
 
 	task->type = TASK_SEND;
 	task->peer = peer;
-	task->packet_type = packet_type;
-	task->buffer = buffer;
+	task->send.packet_type = packet_type;
+	task->send.buffer = buffer;
 
-	fastd_queue_put(ctx, &ctx->task_queue, task, 0);
+	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, 0);
 }
 
 void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
@@ -53,32 +52,32 @@ void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buff
 }
 
 void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_handle_recv *task = malloc(sizeof(fastd_task_handle_recv));
+	fastd_task *task = malloc(sizeof(fastd_task));
 
 	task->type = TASK_HANDLE_RECV;
 	task->peer = peer;
-	task->buffer = buffer;
+	task->handle_recv.buffer = buffer;
 
-	fastd_queue_put(ctx, &ctx->task_queue, task, 0);
+	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, 0);
 }
 
 void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout) {
-	fastd_task_handshake *task = malloc(sizeof(fastd_task_handshake));
+	fastd_task *task = malloc(sizeof(fastd_task));
 
 	task->type = TASK_HANDSHAKE;
 	task->peer = peer;
 
-	fastd_queue_put(ctx, &ctx->task_queue, task, timeout);
+	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, timeout);
 }
 
-static bool delete_task(void *data, void *extra) {
-	fastd_task *task = data;
+static bool delete_task(fastd_queue_entry *data, void *extra) {
+	fastd_task *task = container_of(data, fastd_task, entry);
 	fastd_peer *peer = extra;
 
-	if (task->any.peer != peer)
+	if (task->peer != peer)
 		return true;
 
-	switch (task->any.type) {
+	switch (task->type) {
 	case TASK_SEND:
 		fastd_buffer_free(task->send.buffer);
 		break;

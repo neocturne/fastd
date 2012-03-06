@@ -121,6 +121,11 @@ struct _fastd_context {
 #define exit_errno(ctx, message) exit_error(ctx, "%s: %s", message, strerror(errno))
 
 
+#define container_of(ptr, type, member) ({                      \
+        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+        (type *)( (char *)__mptr - offsetof(type,member) );})
+
+
 static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
 	uint8_t *ptr = malloc(head_space+len);

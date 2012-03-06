@@ -39,7 +39,6 @@ typedef struct _fastd_queue_entry fastd_queue_entry;
 
 struct _fastd_queue_entry {
 	fastd_queue_entry *next;
-	void *data;
 	struct timespec timeout;
 };
 
@@ -48,9 +47,9 @@ typedef struct _fastd_queue {
 } fastd_queue;
 
 
-void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, void *data, int timeout);
-void* fastd_queue_get(fastd_context *ctx, fastd_queue *queue);
+void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *entry, int timeout);
+fastd_queue_entry* fastd_queue_get(fastd_context *ctx, fastd_queue *queue);
 int fastd_queue_timeout(fastd_context *ctx, fastd_queue *queue);
-void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(void*, void*), void *extra);
+void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fastd_queue_entry*, void*), void *extra);
 
 #endif /* _FASTD_QUEUE_H_ */
