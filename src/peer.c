@@ -83,21 +83,17 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 	if (is_debug(ctx)) {
-		char buf[INET6_ADDRSTRLEN] = "";
-
 		switch (peer->address.sa.sa_family) {
 		case AF_UNSPEC:
 			pr_debug(ctx, "resetting peer <floating>");
 			break;
 
 		case AF_INET:
-			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "resetting peer %s:%u", buf, ntohs(peer->address.in.sin_port));
+			pr_debug(ctx, "resetting peer %I:%u", &peer->address.in.sin_addr, ntohs(peer->address.in.sin_port));
 			break;
 
 		case AF_INET6:
-			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "resetting peer [%s]:%u", buf, ntohs(peer->address.in6.sin6_port));
+			pr_debug(ctx, "resetting peer [%lI]:%u", &peer->address.in6.sin6_addr, ntohs(peer->address.in6.sin6_port));
 			break;
 
 		default:
@@ -125,33 +121,11 @@ static fastd_peer* add_peer(fastd_context *ctx) {
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	fastd_peer *peer = add_peer(ctx);
 
-
 	peer->config = peer_conf;
 
 	setup_peer(ctx, peer);
 
-	if (is_debug(ctx)) {
-		char buf[INET6_ADDRSTRLEN] = "";
-
-		switch (peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			pr_debug(ctx, "adding peer <floating>");
-			break;
-
-		case AF_INET:
-			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "adding peer %s:%u", buf, ntohs(peer->address.in.sin_port));
-			break;
-
-		case AF_INET6:
-			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "adding peer [%s]:%u", buf, ntohs(peer->address.in6.sin6_port));
-			break;
-
-		default:
-			exit_bug(ctx, "unsupported address family");
-		}
-	}
+	pr_debug(ctx, "adding peer %P", peer);
 
 	return peer;
 }
@@ -167,75 +141,13 @@ fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *ad
 	peer->state = STATE_TEMP;
 	peer->seen = ctx->now;
 
-	if (is_debug(ctx)) {
-		char buf[INET6_ADDRSTRLEN] = "";
-
-		switch (peer->address.sa.sa_family) {
-		case AF_INET:
-			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "adding peer %s:%u (temporary)", buf, ntohs(peer->address.in.sin_port));
-			break;
-
-		case AF_INET6:
-			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "adding peer [%s]:%u (temporary)", buf, ntohs(peer->address.in6.sin6_port));
-			break;
-
-		default:
-			exit_bug(ctx, "unsupported address family");
-		}
-	}
+	pr_debug(ctx, "adding peer %P (temporary)", peer);
 
 	return peer;
 }
 
 fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer) {
-	if (is_debug(ctx)) {
-		char buf[INET6_ADDRSTRLEN];
-		char *str_perm = NULL, *str_temp = NULL;
-
-		switch (perm_peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			str_perm = strdup("<floating>");
-			break;
-
-		case AF_INET:
-			if (inet_ntop(AF_INET, &perm_peer->address.in.sin_addr, buf, sizeof(buf)))
-				asprintf(&str_perm, "%s:%u", buf, ntohs(perm_peer->address.in.sin_port));
-			break;
-
-		case AF_INET6:
-			if (inet_ntop(AF_INET6, &perm_peer->address.in6.sin6_addr, buf, sizeof(buf)))
-				asprintf(&str_perm, "[%s]:%u", buf, ntohs(perm_peer->address.in.sin_port));
-			break;
-
-		default:
-			exit_bug(ctx, "unsupported address family");
-		}
-
-		switch (temp_peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			str_temp = strdup("<floating>");
-			break;
-
-		case AF_INET:
-			if (inet_ntop(AF_INET, &temp_peer->address.in.sin_addr, buf, sizeof(buf)))
-				asprintf(&str_temp, "%s:%u", buf, ntohs(temp_peer->address.in.sin_port));
-			break;
-
-		case AF_INET6:
-			if (inet_ntop(AF_INET6, &temp_peer->address.in6.sin6_addr, buf, sizeof(buf)))
-				asprintf(&str_temp, "[%s]:%u", buf, ntohs(temp_peer->address.in.sin_port));
-			break;
-
-		default:
-			exit_bug(ctx, "unsupported address family");
-		}
-
-		pr_debug(ctx, "merging peer %s into %s", str_temp, str_perm);
-		free(str_temp);
-		free(str_perm);
-	}
+	pr_debug(ctx, "merging peer %P into %P", temp_peer, perm_peer);
 
 	perm_peer->address = temp_peer->address;
 	perm_peer->state = fastd_peer_is_established(temp_peer) ? STATE_ESTABLISHED : STATE_WAIT;
@@ -254,28 +166,7 @@ fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_pe
 }
 
 void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
-	if (is_debug(ctx)) {
-		char buf[INET6_ADDRSTRLEN];
-
-		switch (peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			pr_debug(ctx, "deleting peer <floating>");
-			break;
-
-		case AF_INET:
-			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "deleting peer %s:%u%s", buf, ntohs(peer->address.in.sin_port), fastd_peer_is_temporary(peer) ? " (temporary)" : "");
-			break;
-
-		case AF_INET6:
-			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf)))
-				pr_debug(ctx, "deleting peer [%s]:%u%s", buf, ntohs(peer->address.in6.sin6_port), fastd_peer_is_temporary(peer) ? " (temporary)" : "");
-			break;
-
-		default:
-			exit_bug(ctx, "unsupported address family");
-		}
-	}
+	pr_debug(ctx, "deleting peer %P", peer);
 
 	reset_peer(ctx, peer);
 
@@ -339,8 +230,7 @@ void fastd_peer_eth_addr_add(fastd_context *ctx, fastd_peer *peer, const fastd_e
 	
 	ctx->eth_addr[min] = (fastd_peer_eth_addr){ *addr, peer, ctx->now };
 
-	pr_debug(ctx, "Learned new MAC address %02x:%02x:%02x:%02x:%02x:%02x",
-		 addr->data[0], addr->data[1], addr->data[2], addr->data[3], addr->data[4], addr->data[5]);
+	pr_debug(ctx, "Learned new MAC address %E", addr);
 }
 
 void fastd_peer_eth_addr_cleanup(fastd_context *ctx) {
@@ -349,10 +239,8 @@ void fastd_peer_eth_addr_cleanup(fastd_context *ctx) {
 	for (i = 0; i < ctx->n_eth_addr; i++) {
 		if (timespec_diff(&ctx->now, &ctx->eth_addr[i].seen) > ctx->conf->eth_addr_stale_time*1000) {
 			deleted++;
-			pr_debug(ctx, "MAC address %02x:%02x:%02x:%02x:%02x:%02x not seen for more than %u seconds, removing",
-				 ctx->eth_addr[i].addr.data[0], ctx->eth_addr[i].addr.data[1], ctx->eth_addr[i].addr.data[2],
-				 ctx->eth_addr[i].addr.data[3], ctx->eth_addr[i].addr.data[4], ctx->eth_addr[i].addr.data[5],
-				 ctx->conf->eth_addr_stale_time);
+			pr_debug(ctx, "MAC address %E not seen for more than %u seconds, removing",
+				 &ctx->eth_addr[i].addr, ctx->conf->eth_addr_stale_time);
 		}
 		else if (deleted) {
 			ctx->eth_addr[i-deleted] = ctx->eth_addr[i];

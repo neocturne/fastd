@@ -24,9 +24,14 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#define _GNU_SOURCE
+
 #include "fastd.h"
 #include "task.h"
 #include "peer.h"
+
+#include <arpa/inet.h>
+
 
 
 static bool null_check_config(fastd_context *ctx, const fastd_config *conf) {
@@ -40,6 +45,35 @@ static bool null_check_config(fastd_context *ctx, const fastd_config *conf) {
 
 static size_t null_max_packet_size(fastd_context *ctx) {
 	return fastd_max_packet_size(ctx);
+}
+
+static char* null_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
+	char addr_buf[INET6_ADDRSTRLEN] = "";
+	char *ret;
+
+	switch (peer->address.sa.sa_family) {
+	case AF_UNSPEC:
+		return strdup("<floating>");
+
+	case AF_INET:
+		if (inet_ntop(AF_INET, &peer->address.in.sin_addr, addr_buf, sizeof(addr_buf))) {
+			if (asprintf(&ret, "%s:%u", addr_buf, ntohs(peer->address.in.sin_port)) > 0)
+				return ret;
+		}
+		break;
+
+	case AF_INET6:
+		if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
+			if (asprintf(&ret, "[%s]:%u", addr_buf, ntohs(peer->address.in6.sin6_port)) > 0)
+				return ret;
+		}
+		break;
+
+	default:
+		exit_bug(ctx, "unsupported address family");
+	}
+
+	return NULL;
 }
 
 static void null_init(fastd_context *ctx, fastd_peer *peer) {
@@ -84,6 +118,8 @@ const fastd_method fastd_method_null = {
 	.check_config = null_check_config,
 
 	.max_packet_size = null_max_packet_size,
+
+	.peer_str = null_peer_str,
 
 	.init = null_init,
 	.handle_recv = null_handle_recv,

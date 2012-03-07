@@ -59,6 +59,8 @@ struct _fastd_method {
 
 	size_t (*max_packet_size)(fastd_context *ctx);
 
+	char* (*peer_str)(const fastd_context *ctx, const fastd_peer *peer);
+
 	void (*init)(fastd_context *ctx, fastd_peer *peer);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
@@ -104,8 +106,10 @@ struct _fastd_context {
 };
 
 
+void fastd_printf(const fastd_context *ctx, const char *format, ...);
+
 #define pr_log(ctx, level, prefix, args...) if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) \
-		do { fputs(prefix, stderr); fprintf(stderr, args); fputs("\n", stderr); } while(0)
+		do { fputs(prefix, stderr); fastd_printf(ctx, args); fputs("\n", stderr); } while(0)
 
 #define is_error(ctx) ((ctx)->conf == NULL || LOG_ERROR <= (ctx)->conf->loglevel)
 #define is_warn(ctx) ((ctx)->conf == NULL || LOG_WARN <= (ctx)->conf->loglevel)
