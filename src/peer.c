@@ -225,7 +225,7 @@ void fastd_peer_eth_addr_add(fastd_context *ctx, fastd_peer *peer, const fastd_e
 	}
 
 	int i;
-	for (i = ctx->n_eth_addr-1; i > min+1; i--)
+	for (i = ctx->n_eth_addr-1; i > min; i--)
 		ctx->eth_addr[i] = ctx->eth_addr[i-1];
 	
 	ctx->eth_addr[min] = (fastd_peer_eth_addr){ *addr, peer, ctx->now };
