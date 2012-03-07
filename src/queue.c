@@ -31,11 +31,6 @@
 #include <stdint.h>
 
 
-/* returns (tp1 - tp2) in milliseconds  */
-static inline int timespec_diff(const struct timespec *tp1, const struct timespec *tp2) {
-	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
-}
-
 static inline bool after(const struct timespec *tp1, const struct timespec *tp2) {
 	return (tp1->tv_sec > tp2->tv_sec ||
 		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));

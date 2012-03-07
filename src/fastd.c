@@ -36,7 +36,6 @@
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <poll.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -122,6 +121,11 @@ static void init_socket(fastd_context *ctx) {
 
 static void default_config(fastd_config *conf) {
 	conf->loglevel = LOG_DEBUG;
+
+	conf->peer_stale_time = 300;
+	conf->peer_stale_time_temp = 30;
+	conf->eth_addr_stale_time = 300;
+
 	conf->ifname = NULL;
 
 	memset(&conf->bind_addr_in, 0, sizeof(struct sockaddr_in));
@@ -398,7 +402,7 @@ static void handle_tasks(fastd_context *ctx) {
 				const fastd_eth_addr *src_addr = fastd_get_source_address(ctx, task->handle_recv.buffer);
 
 				if (fastd_eth_addr_is_unicast(src_addr))
-					fastd_peer_add_eth_addr(ctx, task->peer, src_addr);
+					fastd_peer_eth_addr_add(ctx, task->peer, src_addr);
 			}
 
 			write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
@@ -522,10 +526,12 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	if (peer) {
 		switch (packet_type) {
 		case PACKET_DATA:
+			peer->seen = ctx->now;
 			ctx->conf->method->handle_recv(ctx, peer, buffer);
 			break;
 
 		case PACKET_HANDSHAKE:
+			peer->seen = ctx->now;
 			fastd_handshake_handle(ctx, peer, buffer);
 			break;
 
@@ -566,7 +572,12 @@ static void handle_input(fastd_context *ctx) {
 	fds[2].fd = ctx->sock6fd;
 	fds[2].events = POLLIN;
 
-	int ret = poll(fds, 3, fastd_task_timeout(ctx));
+	int timeout = fastd_task_timeout(ctx);
+
+	if (timeout < 0 || timeout > 60000)
+		timeout = 60000; /* call maintenance at least once a minute */
+
+	int ret = poll(fds, 3, timeout);
 	if (ret < 0)
 		exit_errno(ctx, "poll");
 
@@ -578,6 +589,29 @@ static void handle_input(fastd_context *ctx) {
 		handle_socket(ctx, ctx->sockfd);
 	if (fds[2].revents & POLLIN)
 		handle_socket(ctx, ctx->sock6fd);
+}
+
+static void cleanup_peers(fastd_context *ctx) {
+	fastd_peer *peer, *next;
+
+	for (peer = ctx->peers; peer; peer = next) {
+		next = peer->next;
+
+		if (fastd_peer_is_temporary(peer)) {
+			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time_temp*1000)
+				fastd_peer_delete(ctx, peer);
+		}
+		else if (fastd_peer_is_established(peer)) {
+			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000)
+				fastd_peer_reset(ctx, peer);
+		}
+	}
+}
+
+static void maintenance(fastd_context *ctx) {
+	cleanup_peers(ctx);
+
+	fastd_peer_eth_addr_cleanup(ctx);
 }
 
 
@@ -599,6 +633,8 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		handle_tasks(&ctx);
 		handle_input(&ctx);
+
+		maintenance(&ctx);
 	}
 
 	return 0;

@@ -68,6 +68,10 @@ struct _fastd_method {
 struct _fastd_config {
 	fastd_loglevel loglevel;
 
+	unsigned peer_stale_time;
+	unsigned peer_stale_time_temp;
+	unsigned eth_addr_stale_time;
+
 	char *ifname;
 
 	struct sockaddr_in bind_addr_in;
@@ -145,6 +149,11 @@ static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
 	default:
 		exit_bug(ctx, "invalid protocol");
 	}
+}
+
+/* returns (tp1 - tp2) in milliseconds  */
+static inline int timespec_diff(const struct timespec *tp1, const struct timespec *tp2) {
+	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
 }
 
 #endif /* _FASTD_FASTD_H_ */
