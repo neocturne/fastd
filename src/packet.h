@@ -55,7 +55,7 @@ typedef enum _fastd_reply_code {
 } fastd_reply_code;
 
 
-typedef struct _fastd_packet {
+typedef struct __attribute__ ((__packed__)) _fastd_packet {
 #if defined(__LITTLE_ENDIAN_BITFIELD)
 	unsigned req_id : 6;
 	unsigned cp     : 1;
