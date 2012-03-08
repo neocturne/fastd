@@ -30,8 +30,6 @@
 #include "peer.h"
 #include "task.h"
 
-#include <arpa/inet.h>
-
 
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
 	switch (ctx->conf->protocol) {
@@ -70,7 +68,7 @@ static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 
 static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (fastd_peer_is_temporary(peer)) {
-		exit_fatal(ctx, "tried to reset temporary peer");
+		exit_fatal(ctx, "tried to setup temporary peer");
 	}
 
 	peer->address = peer->config->address;
@@ -82,24 +80,7 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 }
 
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
-	if (is_debug(ctx)) {
-		switch (peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			pr_debug(ctx, "resetting peer <floating>");
-			break;
-
-		case AF_INET:
-			pr_debug(ctx, "resetting peer %I:%u", &peer->address.in.sin_addr, ntohs(peer->address.in.sin_port));
-			break;
-
-		case AF_INET6:
-			pr_debug(ctx, "resetting peer [%lI]:%u", &peer->address.in6.sin6_addr, ntohs(peer->address.in6.sin6_port));
-			break;
-
-		default:
-			exit_bug(ctx, "unsupported address family");
-		}
-	}
+	pr_debug(ctx, "resetting peer %P", peer);
 
 	reset_peer(ctx, peer);
 	setup_peer(ctx, peer);
