@@ -30,6 +30,8 @@
 #include "peer.h"
 #include "task.h"
 
+#include <config.h>
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -44,6 +46,10 @@
 
 
 extern fastd_method fastd_method_null;
+
+#ifdef WITH_CFXP
+extern fastd_method fastd_method_curve25519_fhmqvc_xsalsa20_poly1305;
+#endif
 
 
 static void init_tuntap(fastd_context *ctx) {
