@@ -141,7 +141,7 @@ fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *ad
 	peer->state = STATE_TEMP;
 	peer->seen = ctx->now;
 
-	pr_debug(ctx, "adding peer %P (temporary)", peer);
+	pr_debug(ctx, "adding peer %P", peer);
 
 	return peer;
 }
@@ -230,7 +230,7 @@ void fastd_peer_eth_addr_add(fastd_context *ctx, fastd_peer *peer, const fastd_e
 	
 	ctx->eth_addr[min] = (fastd_peer_eth_addr){ *addr, peer, ctx->now };
 
-	pr_debug(ctx, "Learned new MAC address %E", addr);
+	pr_debug(ctx, "Learned new MAC address %E on peer %P", addr, peer);
 }
 
 void fastd_peer_eth_addr_cleanup(fastd_context *ctx) {

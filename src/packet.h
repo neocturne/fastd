@@ -38,49 +38,38 @@ typedef enum _fastd_packet_type {
 	PACKET_DATA,
 } fastd_packet_type;
 
+typedef enum _fastd_handshake_record_type {
+	RECORD_REPLY_CODE = 0,
+	RECORD_ERROR_DETAIL,
+	RECORD_FLAGS,
+	RECORD_PROTOCOL,
+	RECORD_METHOD_NAME,
+	RECORD_MAX,
+} fastd_handshake_record_type;
+
 typedef enum _fastd_reply_code {
 	REPLY_SUCCESS = 0,
+	REPLY_MANDATORY_MISSING,
+	REPLY_UNACCEPTABLE_VALUE,
+	REPLY_MAX,
 } fastd_reply_code;
 
 
+typedef struct _fastd_packet {
 #if defined(__LITTLE_ENDIAN_BITFIELD)
-#define FASTD_PACKET_COMMON \
-	unsigned req_id : 6; \
-	unsigned cp     : 1; \
-	unsigned reply  : 1; \
-	uint8_t rsv
+	unsigned req_id : 6;
+	unsigned cp     : 1;
+	unsigned reply  : 1;
 #elif defined (__BIG_ENDIAN_BITFIELD)
-#define FASTD_PACKET_COMMON \
-	unsigned reply  : 1; \
-	unsigned cp     : 1; \
-	unsigned req_id : 6; \
-	uint8_t rsv
+	unsigned reply  : 1;
+	unsigned cp     : 1;
+	unsigned req_id : 6;
 #else
 #error "Bitfield endianess not defined."
 #endif
 
-
-typedef struct __attribute__ ((__packed__)) _fastd_packet_any {
-	FASTD_PACKET_COMMON;
-} fastd_packet_any;
-
-typedef struct __attribute__ ((__packed__)) _fastd_packet_request {
-	FASTD_PACKET_COMMON;
-	uint8_t flags;
-	uint8_t proto;
-	uint8_t method_len;
-	char    method_name[];
-} fastd_packet_request;
-
-typedef struct __attribute__ ((__packed__)) _fastd_packet_reply {
-	FASTD_PACKET_COMMON;
-	uint8_t reply_code;
-} fastd_packet_reply;
-
-typedef union _fastd_packet {
-	fastd_packet_any any;
-	fastd_packet_request request;
-	fastd_packet_reply reply;
+	uint16_t rsv;
+	uint8_t tlv_data[];
 } fastd_packet;
 
 #endif /* _FASTD_PACKET_H_ */

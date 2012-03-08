@@ -33,80 +33,189 @@
 #include <string.h>
 
 
+static const char const *RECORD_TYPES[RECORD_MAX] = {
+	"reply code",
+	"error detail",
+	"flags",
+	"protocol",
+	"method name",
+};
+
+static const char const *REPLY_TYPES[REPLY_MAX] = {
+	"success",
+	"mandatory field missing",
+	"unacceptable value",
+};
+
+
+static inline void handshake_add(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, size_t len, const void *data) {
+	if ((uint8_t*)buffer->data + buffer->len + 2 + len > (uint8_t*)buffer->base + buffer->base_len)
+		exit_bug(ctx, "not enough buffer allocated for handshake");
+
+	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
+
+	dst[0] = type;
+	dst[1] = len;
+	memcpy(dst+2, data, len);
+
+	buffer->len += 2 + len;
+}
+
 void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer) {
 	size_t method_len = strlen(ctx->conf->method->name);
-	size_t len = sizeof(fastd_packet_request)+method_len;
-	fastd_buffer buffer = fastd_buffer_alloc(len, 0, 0);
-	fastd_packet_request *request = buffer.data;
+	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
+						 2+1 +           /* protocol */
+						 2+method_len    /* method name */
+						 );
+	fastd_packet *request = buffer.data;
 
 	request->reply = 0;
 	request->cp = 0;
 	request->req_id = ++peer->last_req_id;
 	request->rsv = 0;
-	request->flags = 0;
-	request->proto = ctx->conf->protocol;
-	request->method_len = method_len;
-	strncpy(request->method_name, ctx->conf->method->name, method_len);
+
+	uint8_t protocol = ctx->conf->protocol;
+	handshake_add(ctx, &buffer, RECORD_PROTOCOL, 1, &protocol);
+
+	handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, ctx->conf->method->name);
 
 	fastd_task_put_send_handshake(ctx, peer, buffer);
 }
 
+
+
 void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	if (buffer.len < sizeof(fastd_packet_any))
+	if (buffer.len < sizeof(fastd_packet)) {
+		pr_warn(ctx, "received an invalid handshake from %P", peer);
 		goto end_free;
+	}
 
 	fastd_packet *packet = buffer.base;
 
-	if (!packet->any.reply && !packet->any.cp) {
-		if (buffer.len < sizeof(fastd_packet_request))
-			goto end_free;
+	size_t lengths[RECORD_MAX];
+	void *records[RECORD_MAX] = { 0 };
 
-		if (buffer.len < sizeof(fastd_packet_request) + packet->request.method_len)
-			goto end_free;
+	uint8_t *ptr = packet->tlv_data;
+	while (true) {
+		if (ptr+2 > (uint8_t*)buffer.data + buffer.len)
+			break;
 
-		if (packet->request.flags)
-			goto end_free; // TODO
+		uint8_t type = ptr[0];
+		uint8_t len = ptr[1];
 
-		if (packet->request.proto != ctx->conf->protocol)
-			goto end_free; // TODO
+		if (ptr+2+len > (uint8_t*)buffer.data + buffer.len)
+			break;
 
-		if (packet->request.method_len != strlen(ctx->conf->method->name) ||
-		    strncmp(packet->request.method_name, ctx->conf->method->name, packet->request.method_len))
-			goto end_free; // TODO
+		lengths[type] = len;
+		records[type] = ptr+2;
 
-		fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet_reply), 0, 0);
-		fastd_packet_reply *reply = reply_buffer.data;
+		ptr += 2+len;
+	}
+
+	if (!packet->reply) {
+		fastd_buffer reply_buffer;
+		fastd_packet *reply;
+
+		uint8_t reply_code = REPLY_SUCCESS;
+		uint8_t error_detail = 0;
+
+		if (!records[RECORD_PROTOCOL]) {
+			reply_code = REPLY_MANDATORY_MISSING;
+			error_detail = RECORD_PROTOCOL;
+			goto send_reply;
+		}
+
+		if (lengths[RECORD_PROTOCOL] != 1 || *(uint8_t*)records[RECORD_PROTOCOL] != ctx->conf->protocol) {
+			reply_code = REPLY_UNACCEPTABLE_VALUE;
+			error_detail = RECORD_PROTOCOL;
+			goto send_reply;
+		}
+
+		if (!records[RECORD_METHOD_NAME]) {
+			reply_code = REPLY_MANDATORY_MISSING;
+			error_detail = RECORD_METHOD_NAME;
+			goto send_reply;
+		}
+
+		if (lengths[RECORD_METHOD_NAME] != strlen(ctx->conf->method->name)
+		    || strncmp((char*)records[RECORD_METHOD_NAME], ctx->conf->method->name, lengths[RECORD_METHOD_NAME])) {
+			reply_code = REPLY_UNACCEPTABLE_VALUE;
+			error_detail = RECORD_METHOD_NAME;
+			goto send_reply;
+		}
+
+	send_reply:
+		reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0, 6 /* enough space for reply code and error detail */);
+		reply = reply_buffer.data;
 
 		reply->reply = 1;
-		reply->cp = 0;
-		reply->req_id = packet->request.req_id;
+		reply->cp = packet->cp;
+		reply->req_id = packet->req_id;
 		reply->rsv = 0;
-		reply->reply_code = REPLY_SUCCESS;
+
+		handshake_add(ctx, &reply_buffer, RECORD_REPLY_CODE, 1, &reply_code);
+
+		if (reply_code)
+			handshake_add(ctx, &reply_buffer, RECORD_ERROR_DETAIL, 1, &error_detail);
 
 		fastd_task_put_send_handshake(ctx, peer, reply_buffer);
 	}
-	else if (packet->any.reply) {
-		if (buffer.len < sizeof(fastd_packet_reply))
-			goto end_free;
-
-		if (!packet->reply.cp) {
-			if (packet->reply.req_id != peer->last_req_id)
+	else {
+		if (!packet->cp) {
+			if (packet->req_id != peer->last_req_id) {
+				pr_warn(ctx, "received handshake reply with request ID %u from %P while %u was expected", packet->req_id, peer, peer->last_req_id);
 				goto end_free;
+			}
 		}
 		else {
-			goto end_free; // TODO
+			goto end_free; /* TODO */
 		}
 
-		switch (packet->reply.reply_code) {
+		if (!records[RECORD_REPLY_CODE] || lengths[RECORD_REPLY_CODE] != 1) {
+			pr_warn(ctx, "received handshake reply without reply code from %P", peer);
+			goto end_free;
+		}
+
+		uint8_t reply_code = *(uint8_t*)records[RECORD_REPLY_CODE];
+		uint8_t error_detail;
+		const char *error_field_str;
+
+		switch (reply_code) {
 		case REPLY_SUCCESS:
-			pr_info(ctx, "Handshake successful.");
-			pr_info(ctx, "Connection established.");
-			peer->state = STATE_ESTABLISHED;
+			pr_info(ctx, "Handshake with %P successful.", peer);
+			fastd_peer_set_established(ctx, peer);
 			ctx->conf->method->init(ctx, peer);
 			break;
 
 		default:
-			pr_warn(ctx, "Handshake failed with code %i.", packet->reply.reply_code);
+			if (reply_code >= REPLY_MAX) {
+				pr_warn(ctx, "Handshake with %P failed with unknown code %i", peer, reply_code);
+				break;
+			}
+
+			if (!records[RECORD_ERROR_DETAIL] || lengths[RECORD_ERROR_DETAIL] != 1) {
+				pr_warn(ctx, "Handshake with %P failed with code %s", peer, REPLY_TYPES[reply_code]);
+				break;
+			}
+
+			error_detail = *(uint8_t*)records[RECORD_ERROR_DETAIL];
+			if (error_detail >= RECORD_MAX)
+				error_field_str = "<unknown>";
+			else
+				error_field_str = RECORD_TYPES[error_detail];
+
+			switch (reply_code) {
+			case REPLY_MANDATORY_MISSING:
+				pr_warn(ctx, "Handshake with %P failed: mandatory field `%s' missing", peer, error_field_str);
+				break;
+
+			case REPLY_UNACCEPTABLE_VALUE:
+				pr_warn(ctx, "Handshake with %P failed: unacceptable value for field `%s'", peer, error_field_str);
+				break;
+
+			default: /* just to silence the warning */
+				break;
+			}
 		}
 	}
 

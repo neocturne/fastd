@@ -51,20 +51,24 @@ static char* null_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 	char *ret;
 
+	const char *temp = fastd_peer_is_temporary(peer) ? " (temporary)" : "";
+
 	switch (peer->address.sa.sa_family) {
 	case AF_UNSPEC:
-		return strdup("<floating>");
+		if (asprintf(&ret, "<floating>%s", temp) > 0)
+			return ret;
+		break;
 
 	case AF_INET:
 		if (inet_ntop(AF_INET, &peer->address.in.sin_addr, addr_buf, sizeof(addr_buf))) {
-			if (asprintf(&ret, "%s:%u", addr_buf, ntohs(peer->address.in.sin_port)) > 0)
+			if (asprintf(&ret, "%s:%u%s", addr_buf, ntohs(peer->address.in.sin_port), temp) > 0)
 				return ret;
 		}
 		break;
 
 	case AF_INET6:
 		if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
-			if (asprintf(&ret, "[%s]:%u", addr_buf, ntohs(peer->address.in6.sin6_port)) > 0)
+			if (asprintf(&ret, "[%s]:%u%s", addr_buf, ntohs(peer->address.in6.sin6_port), temp) > 0)
 				return ret;
 		}
 		break;
@@ -82,7 +86,6 @@ static void null_init(fastd_context *ctx, fastd_peer *peer) {
 
 static void null_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	if (!fastd_peer_is_established(peer)) {
-		pr_info(ctx, "Connection established.");
 		fastd_peer_set_established(ctx, peer);
 	}
 

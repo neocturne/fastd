@@ -596,7 +596,7 @@ static void handle_tasks(fastd_context *ctx) {
 			if (task->peer->state != STATE_WAIT && task->peer->state != STATE_TEMP)
 				break;
 
-			pr_debug(ctx, "Sending handshake...");
+			pr_debug(ctx, "Sending handshake to %P...", task->peer);
 			fastd_handshake_send(ctx, task->peer);
 
 			if (task->peer->state == STATE_WAIT)

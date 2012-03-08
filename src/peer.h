@@ -81,15 +81,15 @@ static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config
 	return (config->address.sa.sa_family == AF_UNSPEC);
 }
 
-static inline bool fastd_peer_is_floating(fastd_peer *peer) {
+static inline bool fastd_peer_is_floating(const fastd_peer *peer) {
 	return (peer->config && fastd_peer_config_is_floating(peer->config));
 }
 
-static inline bool fastd_peer_is_temporary(fastd_peer *peer) {
+static inline bool fastd_peer_is_temporary(const fastd_peer *peer) {
 	return (peer->state == STATE_TEMP || peer->state == STATE_TEMP_ESTABLISHED);
 }
 
-static inline bool fastd_peer_is_established(fastd_peer *peer) {
+static inline bool fastd_peer_is_established(const fastd_peer *peer) {
 	return (peer->state == STATE_ESTABLISHED || peer->state == STATE_TEMP_ESTABLISHED);
 }
 
@@ -105,7 +105,10 @@ static inline void fastd_peer_set_established(fastd_context *ctx, fastd_peer *pe
 
 	default:
 		pr_warn(ctx, "tried to set an already established connection to established");
+		return;
 	}
+
+	pr_info(ctx, "Connection with %P established.", peer);
 }
 
 static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr *addr) {
