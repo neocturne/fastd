@@ -56,10 +56,6 @@ struct _fastd_peer_config {
 	fastd_peer_address address;
 };
 
-struct _fastd_eth_addr {
-	uint8_t data[ETH_ALEN];
-};
-
 struct _fastd_peer_eth_addr {
 	fastd_eth_addr addr;
 	fastd_peer *peer;

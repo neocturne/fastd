@@ -24,6 +24,7 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+
 #define _GNU_SOURCE
 
 #include "fastd.h"
@@ -34,7 +35,7 @@
 
 
 
-static bool null_check_config(fastd_context *ctx, const fastd_config *conf) {
+static bool method_check_config(fastd_context *ctx, const fastd_config *conf) {
 	if (conf->n_floating > 1) {
 		pr_error(ctx, "with method `null' use can't define more than one floating peer");
 		return false;
@@ -43,11 +44,11 @@ static bool null_check_config(fastd_context *ctx, const fastd_config *conf) {
 	return true;
 }
 
-static size_t null_max_packet_size(fastd_context *ctx) {
+static size_t method_max_packet_size(fastd_context *ctx) {
 	return fastd_max_packet_size(ctx);
 }
 
-static char* null_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
+static char* method_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 	char *ret;
 
@@ -80,11 +81,11 @@ static char* null_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	return NULL;
 }
 
-static void null_init(fastd_context *ctx, fastd_peer *peer) {
+static void method_init(fastd_context *ctx, fastd_peer *peer) {
 	fastd_task_put_send(ctx, peer, fastd_buffer_alloc(0, 0, 0));
 }
 
-static void null_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+static void method_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	if (!fastd_peer_is_established(peer)) {
 		fastd_peer_set_established(ctx, peer);
 	}
@@ -110,7 +111,7 @@ static void null_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer 
 		fastd_buffer_free(buffer);
 }
 
-static void null_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+static void method_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	fastd_task_put_send(ctx, peer, buffer);
 }
 
@@ -118,13 +119,13 @@ static void null_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer)
 const fastd_method fastd_method_null = {
 	.name = "null",
 
-	.check_config = null_check_config,
+	.check_config = method_check_config,
 
-	.max_packet_size = null_max_packet_size,
+	.max_packet_size = method_max_packet_size,
 
-	.peer_str = null_peer_str,
+	.peer_str = method_peer_str,
 
-	.init = null_init,
-	.handle_recv = null_handle_recv,
-	.send = null_send,
+	.init = method_init,
+	.handle_recv = method_handle_recv,
+	.send = method_send,
 };

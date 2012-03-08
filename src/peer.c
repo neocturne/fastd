@@ -63,7 +63,6 @@ static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 	ctx->n_eth_addr -= deleted;
 
 	fastd_task_delete_peer(ctx, peer);
-
 }
 
 static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {

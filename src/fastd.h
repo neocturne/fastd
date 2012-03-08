@@ -52,6 +52,10 @@ struct _fastd_buffer {
 	size_t len;
 };
 
+struct _fastd_eth_addr {
+	uint8_t data[ETH_ALEN];
+};
+
 struct _fastd_method {
 	const char *name;
 
