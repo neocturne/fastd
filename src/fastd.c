@@ -47,8 +47,8 @@
 
 extern fastd_method fastd_method_null;
 
-#ifdef WITH_CFXP
-extern fastd_method fastd_method_curve25519_fhmqvc_xsalsa20_poly1305;
+#ifdef WITH_METHOD_ECFXP
+extern fastd_method fastd_method_ec25519_fhmqvc_xsalsa20_poly1305;
 #endif
 
 
@@ -255,6 +255,10 @@ static void configure(fastd_context *ctx, fastd_config *conf, int argc, char *ar
 		case 'm':
 			if (!strcmp(optarg, "null"))
 				conf->method = &fastd_method_null;
+#ifdef WITH_METHOD_ECFXP
+			if (!strcmp(optarg, "ecfxp"))
+				conf->method = &fastd_method_ec25519_fhmqvc_xsalsa20_poly1305;
+#endif
 			else
 				exit_error(ctx, "invalid method `%s'", optarg);
 			break;

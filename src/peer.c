@@ -50,6 +50,9 @@ const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buf
 }
 
 static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
+	ctx->conf->method->free_peer_private(ctx, peer);
+	peer->method_private = NULL;
+
 	int i, deleted = 0;
 	for (i = 0; i < ctx->n_eth_addr; i++) {
 		if (ctx->eth_addr[i].peer == peer) {
@@ -92,6 +95,7 @@ static fastd_peer* add_peer(fastd_context *ctx) {
 
 	peer->next = ctx->peers;
 	peer->last_req_id = 0;
+	peer->method_private = NULL;
 
 	ctx->peers = peer;
 

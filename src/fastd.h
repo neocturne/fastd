@@ -69,6 +69,8 @@ struct _fastd_method {
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+
+	void (*free_peer_private)(fastd_context *ctx, fastd_peer *peer);
 };
 
 struct _fastd_config {

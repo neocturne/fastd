@@ -28,6 +28,6 @@
 #ifndef _FASTD_CONFIG_H_
 #define _FASTD_CONFIG_H_
 
-#cmakedefine WITH_CFXP
+#cmakedefine WITH_METHOD_ECFXP
 
 #endif /* _FASTD_CONFIG_H_ */

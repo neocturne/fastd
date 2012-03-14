@@ -48,6 +48,8 @@ struct _fastd_peer {
 	uint8_t last_req_id;
 
 	struct timespec seen;
+
+	void *method_private;
 };
 
 struct _fastd_peer_config {
@@ -103,8 +105,6 @@ static inline void fastd_peer_set_established(fastd_context *ctx, fastd_peer *pe
 		pr_warn(ctx, "tried to set an already established connection to established");
 		return;
 	}
-
-	pr_info(ctx, "Connection with %P established.", peer);
 }
 
 static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr *addr) {

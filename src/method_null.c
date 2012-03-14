@@ -81,11 +81,15 @@ static char* method_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 }
 
 static void method_init(fastd_context *ctx, fastd_peer *peer) {
+	pr_info(ctx, "Connection with %P established.", peer);
+
 	fastd_task_put_send(ctx, peer, fastd_buffer_alloc(0, 0, 0));
 }
 
 static void method_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	if (!fastd_peer_is_established(peer)) {
+		pr_info(ctx, "Connection with %P established.", peer);
+
 		fastd_peer_set_established(ctx, peer);
 	}
 
@@ -114,6 +118,9 @@ static void method_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffe
 	fastd_task_put_send(ctx, peer, buffer);
 }
 
+static void method_free_peer_private(fastd_context *ctx, fastd_peer *peer) {
+}
+
 
 const fastd_method fastd_method_null = {
 	.name = "null",
@@ -127,4 +134,6 @@ const fastd_method fastd_method_null = {
 	.init = method_init,
 	.handle_recv = method_handle_recv,
 	.send = method_send,
+
+	.free_peer_private = method_free_peer_private,
 };

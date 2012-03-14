@@ -32,7 +32,15 @@
 
 #include <arpa/inet.h>
 
+#include <libuecc/ecc.h>
 #include <crypto_secretbox_xsalsa20poly1305.h>
+
+
+typedef struct _method_peer_config {
+} method_peer_config;
+
+typedef struct _method_peer_state {
+} method_peer_state;
 
 
 static bool method_check_config(fastd_context *ctx, const fastd_config *conf) {
@@ -77,6 +85,7 @@ static char* method_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 }
 
 static void method_init(fastd_context *ctx, fastd_peer *peer) {
+	pr_info(ctx, "Initializing session with %P...", peer);
 }
 
 static void method_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
@@ -87,8 +96,12 @@ static void method_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffe
 	fastd_buffer_free(buffer);
 }
 
-const fastd_method fastd_method_curve25519_fhmqvc_xsalsa20_poly1305 = {
-	.name = "curve25519-fhmqvc-xsalsa20-poly1305",
+static void method_free_peer_private(fastd_context *ctx, fastd_peer *peer) {
+}
+
+
+const fastd_method fastd_method_ec25519_fhmqvc_xsalsa20_poly1305 = {
+	.name = "ec25519-fhmqvc-xsalsa20-poly1305",
 
 	.check_config = method_check_config,
 
@@ -99,4 +112,6 @@ const fastd_method fastd_method_curve25519_fhmqvc_xsalsa20_poly1305 = {
 	.init = method_init,
 	.handle_recv = method_handle_recv,
 	.send = method_send,
+
+	.free_peer_private = method_free_peer_private,
 };
