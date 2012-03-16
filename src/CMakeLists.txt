@@ -10,5 +10,5 @@ endif(WITH_METHOD_ECFXP)
 
 include_directories(${FASTD_INCLUDES})
 
-add_executable(fastd fastd.c handshake.c peer.c printf.c queue.c task.c ${METHODS})
+add_executable(fastd fastd.c configure.c handshake.c peer.c printf.c queue.c task.c ${METHODS})
 target_link_libraries(fastd rt ${FASTD_LIBS})

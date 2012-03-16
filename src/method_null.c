@@ -34,6 +34,10 @@
 #include <arpa/inet.h>
 
 
+static bool method_handle_config(fastd_context *ctx, const fastd_config *conf, const char *option) {
+	return false;
+}
+
 static bool method_check_config(fastd_context *ctx, const fastd_config *conf) {
 	if (conf->n_floating > 1) {
 		pr_error(ctx, "with method `null' use can't define more than one floating peer");
@@ -125,6 +129,7 @@ static void method_free_peer_private(fastd_context *ctx, fastd_peer *peer) {
 const fastd_method fastd_method_null = {
 	.name = "null",
 
+	.handle_config = method_handle_config,
 	.check_config = method_check_config,
 
 	.max_packet_size = method_max_packet_size,

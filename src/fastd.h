@@ -59,6 +59,7 @@ struct _fastd_eth_addr {
 struct _fastd_method {
 	const char *name;
 
+	bool (*handle_config)(fastd_context *ctx, const fastd_config *conf, const char *option);
 	bool (*check_config)(fastd_context *ctx, const fastd_config *conf);
 
 	size_t (*max_packet_size)(fastd_context *ctx);
@@ -80,7 +81,7 @@ struct _fastd_config {
 	unsigned peer_stale_time_temp;
 	unsigned eth_addr_stale_time;
 
-	char *ifname;
+	const char *ifname;
 
 	struct sockaddr_in bind_addr_in;
 	struct sockaddr_in6 bind_addr_in6;
@@ -113,6 +114,7 @@ struct _fastd_context {
 
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
+void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 
 #define pr_log(ctx, level, prefix, args...) if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) \
 		do { fputs(prefix, stderr); fastd_printf(ctx, args); fputs("\n", stderr); } while(0)

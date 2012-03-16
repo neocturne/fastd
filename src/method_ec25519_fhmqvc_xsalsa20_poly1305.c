@@ -36,12 +36,22 @@
 #include <crypto_secretbox_xsalsa20poly1305.h>
 
 
+typedef struct _method_config {
+	ecc_secret_key_256 secret_key;
+} method_config;
+
 typedef struct _method_peer_config {
+	ecc_public_key_256 public_key;
 } method_peer_config;
 
 typedef struct _method_peer_state {
 } method_peer_state;
 
+
+static bool method_handle_config(fastd_context *ctx, const fastd_config *conf, const char *option) {
+	printf("Unknown option: %s\n", option);
+	return false;
+}
 
 static bool method_check_config(fastd_context *ctx, const fastd_config *conf) {
 	return true;
@@ -103,6 +113,7 @@ static void method_free_peer_private(fastd_context *ctx, fastd_peer *peer) {
 const fastd_method fastd_method_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.name = "ec25519-fhmqvc-xsalsa20-poly1305",
 
+	.handle_config = method_handle_config,
 	.check_config = method_check_config,
 
 	.max_packet_size = method_max_packet_size,
