@@ -87,7 +87,7 @@ struct _fastd_config {
 	struct sockaddr_in6 bind_addr_in6;
 
 	uint16_t mtu;
-	fastd_protocol protocol;
+	fastd_mode mode;
 
 	fastd_method *method;
 
@@ -153,13 +153,13 @@ static inline void fastd_buffer_free(fastd_buffer buffer) {
 }
 
 static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
-	switch (ctx->conf->protocol) {
-	case PROTOCOL_ETHERNET:
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
 		return ctx->conf->mtu+ETH_HLEN;
-	case PROTOCOL_IP:
+	case MODE_TUN:
 		return ctx->conf->mtu;
 	default:
-		exit_bug(ctx, "invalid protocol");
+		exit_bug(ctx, "invalid mode");
 	}
 }
 

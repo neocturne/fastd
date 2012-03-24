@@ -42,7 +42,7 @@ typedef enum _fastd_handshake_record_type {
 	RECORD_REPLY_CODE = 0,
 	RECORD_ERROR_DETAIL,
 	RECORD_FLAGS,
-	RECORD_PROTOCOL,
+	RECORD_MODE,
 	RECORD_METHOD_NAME,
 	RECORD_MAX,
 } fastd_handshake_record_type;

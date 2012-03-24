@@ -42,10 +42,10 @@ typedef enum _fastd_loglevel {
 	LOG_DEBUG,
 } fastd_loglevel;
 
-typedef enum _fastd_protocol {
-	PROTOCOL_ETHERNET,
-	PROTOCOL_IP,
-} fastd_protocol;
+typedef enum _fastd_mode {
+	MODE_TAP,
+	MODE_TUN,
+} fastd_mode;
 
 typedef enum _fastd_peer_state {
 	STATE_WAIT,

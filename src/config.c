@@ -27,6 +27,8 @@
 
 #include "fastd.h"
 #include "peer.h"
+#include <config.ll.h>
+#include <config.yy.h>
 
 #include <config.h>
 
@@ -52,16 +54,16 @@ static void default_config(fastd_config *conf) {
 
 	memset(&conf->bind_addr_in, 0, sizeof(struct sockaddr_in));
 	conf->bind_addr_in.sin_family = AF_UNSPEC;
-	conf->bind_addr_in.sin_port = htons(1337);
+	conf->bind_addr_in.sin_port = 0;
 	conf->bind_addr_in.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	memset(&conf->bind_addr_in6, 0, sizeof(struct sockaddr_in6));
 	conf->bind_addr_in6.sin6_family = AF_UNSPEC;
-	conf->bind_addr_in6.sin6_port = htons(1337);
+	conf->bind_addr_in6.sin6_port = 0;
 	conf->bind_addr_in6.sin6_addr = in6addr_any;
 
 	conf->mtu = 1500;
-	conf->protocol = PROTOCOL_ETHERNET;
+	conf->mode = MODE_TAP;
 	conf->method = &fastd_method_null;
 	conf->peers = NULL;
 }
@@ -83,6 +85,21 @@ static bool config_match(const char *opt, ...) {
 	va_end(ap);
 
 	return match;
+}
+
+static void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename) {
+	yyscan_t scanner;
+	FILE *file;
+
+	file = fopen(filename, "r");
+	fastd_config_lex_init(&scanner);
+
+	fastd_config_set_in(file, scanner);
+
+	fastd_config_parse(ctx, conf, scanner);
+
+	fastd_config_lex_destroy(scanner);
+	fclose(file);
 }
 
 #define IF_OPTION(args...) if(config_match(argv[i], args, NULL) && (++i))
@@ -114,6 +131,11 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 
 	while (i < argc) {
+		IF_OPTION_ARG("-c", "--config") {
+			fastd_read_config(ctx, conf, arg);
+			continue;
+		}
+
 		IF_OPTION_ARG("-i", "--interface") {
 			conf->ifname = arg;
 			continue;
@@ -180,18 +202,18 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			continue;
 		}
 
-		IF_OPTION_ARG("-P", "--protocol") {
-			if (!strcmp(arg, "ethernet"))
-				conf->protocol = PROTOCOL_ETHERNET;
-			else if (!strcmp(arg, "ip"))
-				conf->protocol = PROTOCOL_IP;
+		IF_OPTION_ARG("-m", "--mode") {
+			if (!strcmp(arg, "tap"))
+				conf->mode = MODE_TAP;
+			else if (!strcmp(arg, "tun"))
+				conf->mode = MODE_TUN;
 			else
-				exit_error(ctx, "invalid protocol `%s'", arg);
+				exit_error(ctx, "invalid mode `%s'", arg);
 			continue;
 		}
 
 
-		IF_OPTION_ARG("-m", "--method") {
+		IF_OPTION_ARG("-P", "--protocol") {
 			if (!strcmp(arg, "null"))
 				conf->method = &fastd_method_null;
 #ifdef WITH_METHOD_ECFXP
@@ -199,7 +221,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 				conf->method = &fastd_method_ec25519_fhmqvc_xsalsa20_poly1305;
 #endif
 			else
-				exit_error(ctx, "invalid method `%s'", arg);
+				exit_error(ctx, "invalid protocol `%s'", arg);
 			continue;
 		}
 
@@ -281,8 +303,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 	}
 
 	bool ok = true;
-	if (conf->protocol == PROTOCOL_IP && (!conf->peers || conf->peers->next)) {
-		pr_error(ctx, "for protocol `ip' exactly one peer must be configured");
+	if (conf->mode == MODE_TUN && (!conf->peers || conf->peers->next)) {
+		pr_error(ctx, "for tun mode exactly one peer must be configured");
 		ok = false;
 	}
 

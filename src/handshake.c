@@ -74,8 +74,8 @@ void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer) {
 	request->req_id = ++peer->last_req_id;
 	request->rsv = 0;
 
-	uint8_t protocol = ctx->conf->protocol;
-	handshake_add(ctx, &buffer, RECORD_PROTOCOL, 1, &protocol);
+	uint8_t mode = ctx->conf->mode;
+	handshake_add(ctx, &buffer, RECORD_MODE, 1, &mode);
 
 	handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, ctx->conf->method->name);
 
@@ -119,15 +119,15 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		uint8_t reply_code = REPLY_SUCCESS;
 		uint8_t error_detail = 0;
 
-		if (!records[RECORD_PROTOCOL]) {
+		if (!records[RECORD_MODE]) {
 			reply_code = REPLY_MANDATORY_MISSING;
-			error_detail = RECORD_PROTOCOL;
+			error_detail = RECORD_MODE;
 			goto send_reply;
 		}
 
-		if (lengths[RECORD_PROTOCOL] != 1 || *(uint8_t*)records[RECORD_PROTOCOL] != ctx->conf->protocol) {
+		if (lengths[RECORD_MODE] != 1 || *(uint8_t*)records[RECORD_MODE] != ctx->conf->mode) {
 			reply_code = REPLY_UNACCEPTABLE_VALUE;
-			error_detail = RECORD_PROTOCOL;
+			error_detail = RECORD_MODE;
 			goto send_reply;
 		}
 

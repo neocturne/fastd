@@ -32,20 +32,20 @@
 
 
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
-	switch (ctx->conf->protocol) {
-	case PROTOCOL_ETHERNET:
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
 		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_source;
 	default:
-		exit_bug(ctx, "invalid protocol");
+		exit_bug(ctx, "invalid mode");
 	}
 }
 
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer) {
-	switch (ctx->conf->protocol) {
-	case PROTOCOL_ETHERNET:
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
 		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_dest;
 	default:
-		exit_bug(ctx, "invalid protocol");
+		exit_bug(ctx, "invalid mode");
 	}
 }
 

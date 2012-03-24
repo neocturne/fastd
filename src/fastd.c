@@ -53,17 +53,17 @@ static void init_tuntap(fastd_context *ctx) {
 	if (ctx->conf->ifname)
 		strncpy(ifr.ifr_name, ctx->conf->ifname, IF_NAMESIZE-1);
 
-	switch (ctx->conf->protocol) {
-	case PROTOCOL_ETHERNET:
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
 		ifr.ifr_flags = IFF_TAP;
 		break;
 
-	case PROTOCOL_IP:
+	case MODE_TUN:
 		ifr.ifr_flags = IFF_TUN;
 		break;
 
 	default:
-		exit_bug(ctx, "invalid protocol");
+		exit_bug(ctx, "invalid mode");
 	}
 
 	ifr.ifr_flags |= IFF_NO_PI;
@@ -166,7 +166,7 @@ static void handle_tasks(fastd_context *ctx) {
 			break;
 
 		case TASK_HANDLE_RECV:
-			if (ctx->conf->protocol == PROTOCOL_ETHERNET) {
+			if (ctx->conf->mode == MODE_TAP) {
 				const fastd_eth_addr *src_addr = fastd_get_source_address(ctx, task->handle_recv.buffer);
 
 				if (fastd_eth_addr_is_unicast(src_addr))
@@ -208,7 +208,7 @@ static void handle_tun(fastd_context *ctx) {
 
 	fastd_peer *peer = NULL;
 
-	if (ctx->conf->protocol == PROTOCOL_ETHERNET) {
+	if (ctx->conf->mode == MODE_TAP) {
 		const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, buffer);
 		if (fastd_eth_addr_is_unicast(dest_addr)) {
 			peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
