@@ -107,7 +107,7 @@ protocol:	maybe_string {
 			if (!strcmp($1, "null"))
 				conf->protocol = &fastd_protocol_null;
 #ifdef WITH_PROTOCOL_ECFXP
-			if (!strcmp($1, "ecfxp"))
+			else if (!strcmp($1, "ecfxp"))
 				conf->protocol = &fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 #endif
 			else
