@@ -130,7 +130,7 @@ peer_conf:	peer_conf peer_statement
 	|
 	;
 
-peer_statement: TOK_ADDRESS peer_address
+peer_statement: TOK_ADDRESS peer_address ';'
 	;
 
 peer_address:	TOK_ADDR maybe_port_default {
