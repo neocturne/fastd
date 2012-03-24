@@ -4,11 +4,7 @@
 %option reentrant
 
 %top {
-	 #define YY_DECL int fastd_config_lex(YYSTYPE *yylval_param, fastd_context *ctx, void *yyscanner)
-
-	 #include <fastd.h>
 	 #include <config.yy.h>
-	 YY_DECL;
 }
 
 %x STRING
@@ -26,8 +22,10 @@ peer		{ yylval->str = yytext; return TOK_PEER; }
 address		{ yylval->str = yytext; return TOK_ADDRESS; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
-			if (!inet_pton(AF_INET, yytext, &yylval->addr))
-				exit_error(ctx, "config error: invalid address");
+			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
+				yylval->str = "invalid address";
+				return TOK_ERROR;
+			}
 
 			return TOK_ADDR;
 		}
@@ -48,12 +46,17 @@ tun		{ yylval->str = yytext; return TOK_TUN; }
 
 \[		BEGIN(ADDR6);
 <ADDR6>[^\]]+		{
-				if (!inet_pton(AF_INET6, yytext, &yylval->addr6))
-					exit_error(ctx, "config error: invalid address");
+				if (!inet_pton(AF_INET6, yytext, &yylval->addr6)) {
+					yylval->str = "invalid address";
+					return TOK_ERROR;
+				}
 
 				return TOK_ADDR6;
 			}
 <ADDR6>\]		BEGIN(INITIAL);
 
-<INITIAL,STRING,ADDR6>.		exit_error(ctx, "config error: invalid character");
+<INITIAL,STRING,ADDR6>.	{
+				yylval->str = "invalid character";
+				return TOK_ERROR;
+			}
 %%

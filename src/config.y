@@ -1,6 +1,5 @@
 %define api.pure
 %name-prefix "fastd_config_"
-%lex-param {fastd_context *ctx}
 %lex-param {yyscan_t scanner}
 %parse-param {fastd_context *ctx}
 %parse-param {fastd_config *conf}
@@ -16,6 +15,8 @@
 	struct in_addr addr;
 	struct in6_addr addr6;
 }
+
+%token <str> TOK_ERROR;
 
 %token <num> TOK_INTEGER
 %token <str> TOK_STRING
@@ -52,7 +53,7 @@
 }
 
 %code provides {
-	 #include <fastd.h>
+	#include <fastd.h>
 	int fastd_config_parse (fastd_context *ctx, fastd_config *conf, void *scanner);
 }
 
