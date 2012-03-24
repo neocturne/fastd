@@ -65,6 +65,7 @@ static void default_config(fastd_config *conf) {
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
 	conf->protocol = &fastd_protocol_null;
+	conf->secret = NULL;
 	conf->peers = NULL;
 }
 
@@ -90,16 +91,22 @@ static bool config_match(const char *opt, ...) {
 static void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename) {
 	yyscan_t scanner;
 	FILE *file;
+	bool use_stdin = !strcmp(filename, "-");
 
-	file = fopen(filename, "r");
+	if (use_stdin)
+		file = stdin;
+	else
+		file = fopen(filename, "r");
+
 	fastd_config_lex_init(&scanner);
-
 	fastd_config_set_in(file, scanner);
 
 	fastd_config_parse(ctx, conf, scanner);
 
 	fastd_config_lex_destroy(scanner);
-	fclose(file);
+
+	if (!use_stdin)
+		fclose(file);
 }
 
 #define IF_OPTION(args...) if(config_match(argv[i], args, NULL) && (++i))
@@ -131,7 +138,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 
 		IF_OPTION_ARG("-i", "--interface") {
-			conf->ifname = arg;
+			free(conf->ifname);
+			conf->ifname = strdup(arg);
 			continue;
 		}
 
@@ -160,7 +168,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 			if (charptr) {
 				l = strtol(charptr+1, &endptr, 10);
-				if (*endptr || l > 65535)
+				if (*endptr || l < 0 || l > 65535)
 					exit_error(ctx, "invalid bind port `%s'", charptr+1);
 			}
 			else {
@@ -255,7 +263,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 			if (charptr) {
 				l = strtol(charptr+1, &endptr, 10);
-				if (*endptr || l > 65535)
+				if (*endptr || l < 0 || l > 65535)
 					exit_error(ctx, "invalid peer port `%s'", charptr+1);
 			}
 			else {

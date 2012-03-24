@@ -56,6 +56,7 @@ struct _fastd_peer_config {
 	fastd_peer_config *next;
 
 	fastd_peer_address address;
+	char *key;
 };
 
 struct _fastd_peer_eth_addr {

@@ -29,6 +29,8 @@
 %token <str> TOK_PROTOCOL
 %token <str> TOK_PEER
 %token <str> TOK_ADDRESS
+%token <str> TOK_SECRET
+%token <str> TOK_KEY
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -73,10 +75,11 @@ statement:	TOK_INTERFACE interface ';'
 	|	TOK_MTU mtu ';'
 	|	TOK_MODE mode ';'
 	|	TOK_PROTOCOL protocol ';'
+	|	TOK_SECRET secret ';'
 	|	TOK_PEER peer '{' peer_conf '}'
 	;
 
-interface:	TOK_STRING	{ conf->ifname = strdup($1); }
+interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1); }
 	;
 
 bind:		TOK_ADDR maybe_port {
@@ -116,6 +119,9 @@ protocol:	maybe_string {
 }
 	;
 
+secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1); }
+	;
+
 peer:		maybe_string {
 			fastd_peer_config *current_peer = malloc(sizeof(fastd_peer_config));
 			current_peer->next = conf->peers;
@@ -132,6 +138,7 @@ peer_conf:	peer_conf peer_statement
 	;
 
 peer_statement: TOK_ADDRESS peer_address ';'
+	|	TOK_KEY peer_key ';'
 	;
 
 peer_address:	TOK_ADDR maybe_port_default {
@@ -145,6 +152,10 @@ peer_address:	TOK_ADDR maybe_port_default {
 			conf->peers->address.in6.sin6_port = $2;
 		}
 	;
+
+peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = strdup($1); }
+	;
+
 
 maybe_string:	TOK_STRING
 	|			{ $$[0] = '\0'; }

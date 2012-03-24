@@ -81,7 +81,7 @@ struct _fastd_config {
 	unsigned peer_stale_time_temp;
 	unsigned eth_addr_stale_time;
 
-	const char *ifname;
+	char *ifname;
 
 	struct sockaddr_in bind_addr_in;
 	struct sockaddr_in6 bind_addr_in6;
@@ -90,6 +90,7 @@ struct _fastd_config {
 	fastd_mode mode;
 
 	fastd_protocol *protocol;
+	char *secret;
 
 	fastd_peer_config *peers;
 
