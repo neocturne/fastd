@@ -36,10 +36,10 @@
 #include <stdarg.h>
 
 
-extern fastd_method fastd_method_null;
+extern fastd_protocol fastd_protocol_null;
 
-#ifdef WITH_METHOD_ECFXP
-extern fastd_method fastd_method_ec25519_fhmqvc_xsalsa20_poly1305;
+#ifdef WITH_PROTOCOL_ECFXP
+extern fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 #endif
 
 
@@ -64,7 +64,7 @@ static void default_config(fastd_config *conf) {
 
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
-	conf->method = &fastd_method_null;
+	conf->protocol = &fastd_protocol_null;
 	conf->peers = NULL;
 }
 
@@ -115,19 +115,13 @@ static void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]) {
 	default_config(conf);
 
-	fastd_peer_config **current_peer = &conf->peers;
-
+	fastd_peer_config *current_peer;
 	int i = 1;
 	const char *arg;
 	long l;
 	char *charptr;
 	char *endptr;
 	char *addrstr;
-
-	bool v4_peers = false, v6_peers = false;
-
-
-	conf->n_floating = 0;
 
 
 	while (i < argc) {
@@ -168,6 +162,9 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 				l = strtol(charptr+1, &endptr, 10);
 				if (*endptr || l > 65535)
 					exit_error(ctx, "invalid bind port `%s'", charptr+1);
+			}
+			else {
+				l = 0;
 			}
 
 			if (strcmp(addrstr, "any") == 0) {
@@ -215,10 +212,10 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 		IF_OPTION_ARG("-P", "--protocol") {
 			if (!strcmp(arg, "null"))
-				conf->method = &fastd_method_null;
-#ifdef WITH_METHOD_ECFXP
-			if (!strcmp(arg, "ecfxp"))
-				conf->method = &fastd_method_ec25519_fhmqvc_xsalsa20_poly1305;
+				conf->protocol = &fastd_protocol_null;
+#ifdef WITH_PROTOCOL_ECFXP
+			else if (!strcmp(arg, "ecfxp"))
+				conf->protocol = &fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 #endif
 			else
 				exit_error(ctx, "invalid protocol `%s'", arg);
@@ -226,13 +223,13 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 
 		IF_OPTION_ARG("-p", "--peer") {
-			*current_peer = malloc(sizeof(fastd_peer_config));
-			(*current_peer)->next = NULL;
+			current_peer = malloc(sizeof(fastd_peer_config));
+			current_peer->next = conf->peers;
+			conf->peers = current_peer;
 
-			memset(&(*current_peer)->address, 0, sizeof(fastd_peer_address));
+			memset(&current_peer->address, 0, sizeof(fastd_peer_address));
 			if (strcmp(arg, "float") == 0) {
-				(*current_peer)->address.sa.sa_family = AF_UNSPEC;
-				conf->n_floating++;
+				current_peer->address.sa.sa_family = AF_UNSPEC;
 				continue;
 			}
 
@@ -266,28 +263,46 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			}
 
 			if (arg[0] == '[') {
-				v6_peers = true;
-				(*current_peer)->address.in6.sin6_family = AF_INET6;
-				if (inet_pton(AF_INET6, addrstr, &(*current_peer)->address.in6.sin6_addr) != 1)
+				current_peer->address.in6.sin6_family = AF_INET6;
+				if (inet_pton(AF_INET6, addrstr, &current_peer->address.in6.sin6_addr) != 1)
 					exit_error(ctx, "invalid peer address `%s'", addrstr);
-				(*current_peer)->address.in6.sin6_port = htons(l);
+				current_peer->address.in6.sin6_port = htons(l);
 			}
 			else {
-				v4_peers = true;
-				(*current_peer)->address.in.sin_family = AF_INET;
-				if (inet_pton(AF_INET, addrstr, &(*current_peer)->address.in.sin_addr) != 1)
+				current_peer->address.in.sin_family = AF_INET;
+				if (inet_pton(AF_INET, addrstr, &current_peer->address.in.sin_addr) != 1)
 					exit_error(ctx, "invalid peer address `%s'", addrstr);
-				(*current_peer)->address.in.sin_port = htons(l);
+				current_peer->address.in.sin_port = htons(l);
 			}
 
 			free(addrstr);
-
-			current_peer = &(*current_peer)->next;
-
 			continue;
 		}
 
 		exit_error(ctx, "config error: unknown option `%s'", argv[i]);
+	}
+
+	conf->n_floating = 0;
+	conf->n_v4 = 0;
+	conf->n_v6 = 0;
+
+	for (current_peer = conf->peers; current_peer; current_peer = current_peer->next) {
+		switch (current_peer->address.sa.sa_family) {
+		case AF_UNSPEC:
+			conf->n_floating++;
+			break;
+
+		case AF_INET:
+			conf->n_v4++;
+			break;
+
+		case AF_INET6:
+			conf->n_v6++;
+			break;
+
+		default:
+			exit_bug(ctx, "invalid peer address family");
+		}
 	}
 
 	if (conf->n_floating && conf->bind_addr_in.sin_family == AF_UNSPEC
@@ -295,11 +310,12 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		conf->bind_addr_in.sin_family = AF_INET;
 		conf->bind_addr_in6.sin6_family = AF_INET6;
 	}
-	else if (v4_peers) {
-		conf->bind_addr_in.sin_family = AF_INET;
-	}
-	else if (v6_peers) {
-		conf->bind_addr_in6.sin6_family = AF_INET6;
+	else {
+		if (conf->n_v4)
+			conf->bind_addr_in.sin_family = AF_INET;
+
+		if (conf->n_v6)
+			conf->bind_addr_in6.sin6_family = AF_INET6;
 	}
 
 	bool ok = true;
@@ -309,7 +325,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 	}
 
 	if (ok)
-		ok = conf->method->check_config(ctx, conf);
+		ok = conf->protocol->check_config(ctx, conf);
 
 	if (!ok)
 		exit_error(ctx, "config error");

@@ -219,7 +219,7 @@ static void handle_tun(fastd_context *ctx) {
 			}
 
 			if (peer->state == STATE_ESTABLISHED) {
-				ctx->conf->method->send(ctx, peer, buffer);
+				ctx->conf->protocol->send(ctx, peer, buffer);
 			}
 			else {
 				fastd_buffer_free(buffer);
@@ -231,7 +231,7 @@ static void handle_tun(fastd_context *ctx) {
 			if (peer->state == STATE_ESTABLISHED) {
 				fastd_buffer send_buffer = fastd_buffer_alloc(len, 0, 0);
 				memcpy(send_buffer.data, buffer.data, len);
-				ctx->conf->method->send(ctx, peer, send_buffer);
+				ctx->conf->protocol->send(ctx, peer, send_buffer);
 			}
 		}
 
@@ -240,7 +240,7 @@ static void handle_tun(fastd_context *ctx) {
 }
 
 static void handle_socket(fastd_context *ctx, int sockfd) {
-	size_t max_len = ctx->conf->method->max_packet_size(ctx);
+	size_t max_len = ctx->conf->protocol->max_packet_size(ctx);
 	fastd_buffer buffer = fastd_buffer_alloc(max_len, 0, 0);
 
 	uint8_t packet_type;
@@ -295,7 +295,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 		switch (packet_type) {
 		case PACKET_DATA:
 			peer->seen = ctx->now;
-			ctx->conf->method->handle_recv(ctx, peer, buffer);
+			ctx->conf->protocol->handle_recv(ctx, peer, buffer);
 			break;
 
 		case PACKET_HANDSHAKE:

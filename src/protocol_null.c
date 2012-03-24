@@ -28,40 +28,30 @@
 #define _GNU_SOURCE
 
 #include "fastd.h"
+#include "task.h"
 #include "peer.h"
 
 #include <arpa/inet.h>
 
-#include <libuecc/ecc.h>
-#include <crypto_secretbox_xsalsa20poly1305.h>
 
-
-typedef struct _method_config {
-	ecc_secret_key_256 secret_key;
-} method_config;
-
-typedef struct _method_peer_config {
-	ecc_public_key_256 public_key;
-} method_peer_config;
-
-typedef struct _method_peer_state {
-} method_peer_state;
-
-
-static bool method_handle_config(fastd_context *ctx, const fastd_config *conf, const char *option) {
-	printf("Unknown option: %s\n", option);
+static bool protocol_handle_config(fastd_context *ctx, const fastd_config *conf, const char *option) {
 	return false;
 }
 
-static bool method_check_config(fastd_context *ctx, const fastd_config *conf) {
+static bool protocol_check_config(fastd_context *ctx, const fastd_config *conf) {
+	if (conf->n_floating > 1) {
+		pr_error(ctx, "with protocol `null' use can't define more than one floating peer");
+		return false;
+	}
+
 	return true;
 }
 
-static size_t method_max_packet_size(fastd_context *ctx) {
-	return (fastd_max_packet_size(ctx) - crypto_secretbox_xsalsa20poly1305_NONCEBYTES);
+static size_t protocol_max_packet_size(fastd_context *ctx) {
+	return fastd_max_packet_size(ctx);
 }
 
-static char* method_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
+static char* protocol_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 	char *ret;
 
@@ -94,35 +84,61 @@ static char* method_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	return NULL;
 }
 
-static void method_init(fastd_context *ctx, fastd_peer *peer) {
-	pr_info(ctx, "Initializing session with %P...", peer);
+static void protocol_init(fastd_context *ctx, fastd_peer *peer) {
+	pr_info(ctx, "Connection with %P established.", peer);
+
+	fastd_task_put_send(ctx, peer, fastd_buffer_alloc(0, 0, 0));
 }
 
-static void method_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_buffer_free(buffer);
+static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	if (!fastd_peer_is_established(peer)) {
+		pr_info(ctx, "Connection with %P established.", peer);
+
+		fastd_peer_set_established(ctx, peer);
+	}
+
+	if (fastd_peer_is_temporary(peer)) {
+		fastd_peer *perm_peer;
+		for (perm_peer = ctx->peers; perm_peer; perm_peer = perm_peer->next) {
+			if (fastd_peer_is_floating(perm_peer))
+				break;
+		}
+
+		if (!perm_peer) {
+			fastd_buffer_free(buffer);
+			return;
+		}
+
+		peer = fastd_peer_merge(ctx, perm_peer, peer);
+	}
+	
+	if (buffer.len)
+		fastd_task_put_handle_recv(ctx, peer, buffer);
+	else
+		fastd_buffer_free(buffer);
 }
 
-static void method_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_buffer_free(buffer);
+static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	fastd_task_put_send(ctx, peer, buffer);
 }
 
-static void method_free_peer_private(fastd_context *ctx, fastd_peer *peer) {
+static void protocol_free_peer_private(fastd_context *ctx, fastd_peer *peer) {
 }
 
 
-const fastd_method fastd_method_ec25519_fhmqvc_xsalsa20_poly1305 = {
-	.name = "ec25519-fhmqvc-xsalsa20-poly1305",
+const fastd_protocol fastd_protocol_null = {
+	.name = "null",
 
-	.handle_config = method_handle_config,
-	.check_config = method_check_config,
+	.handle_config = protocol_handle_config,
+	.check_config = protocol_check_config,
 
-	.max_packet_size = method_max_packet_size,
+	.max_packet_size = protocol_max_packet_size,
 
-	.peer_str = method_peer_str,
+	.peer_str = protocol_peer_str,
 
-	.init = method_init,
-	.handle_recv = method_handle_recv,
-	.send = method_send,
+	.init = protocol_init,
+	.handle_recv = protocol_handle_recv,
+	.send = protocol_send,
 
-	.free_peer_private = method_free_peer_private,
+	.free_peer_private = protocol_free_peer_private,
 };

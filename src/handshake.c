@@ -37,8 +37,8 @@ static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"reply code",
 	"error detail",
 	"flags",
-	"protocol",
-	"method name",
+	"mode",
+	"protocol name",
 };
 
 static const char const *REPLY_TYPES[REPLY_MAX] = {
@@ -62,10 +62,10 @@ static inline void handshake_add(fastd_context *ctx, fastd_buffer *buffer, fastd
 }
 
 void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer) {
-	size_t method_len = strlen(ctx->conf->method->name);
+	size_t protocol_len = strlen(ctx->conf->protocol->name);
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
-						 2+1 +           /* protocol */
-						 2+method_len    /* method name */
+						 2+1 +           /* mode */
+						 2+protocol_len  /* protocol name */
 						 );
 	fastd_packet *request = buffer.data;
 
@@ -77,7 +77,7 @@ void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer) {
 	uint8_t mode = ctx->conf->mode;
 	handshake_add(ctx, &buffer, RECORD_MODE, 1, &mode);
 
-	handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, ctx->conf->method->name);
+	handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
 
 	fastd_task_put_send_handshake(ctx, peer, buffer);
 }
@@ -131,16 +131,16 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 			goto send_reply;
 		}
 
-		if (!records[RECORD_METHOD_NAME]) {
+		if (!records[RECORD_PROTOCOL_NAME]) {
 			reply_code = REPLY_MANDATORY_MISSING;
-			error_detail = RECORD_METHOD_NAME;
+			error_detail = RECORD_PROTOCOL_NAME;
 			goto send_reply;
 		}
 
-		if (lengths[RECORD_METHOD_NAME] != strlen(ctx->conf->method->name)
-		    || strncmp((char*)records[RECORD_METHOD_NAME], ctx->conf->method->name, lengths[RECORD_METHOD_NAME])) {
+		if (lengths[RECORD_PROTOCOL_NAME] != strlen(ctx->conf->protocol->name)
+		    || strncmp((char*)records[RECORD_PROTOCOL_NAME], ctx->conf->protocol->name, lengths[RECORD_PROTOCOL_NAME])) {
 			reply_code = REPLY_UNACCEPTABLE_VALUE;
-			error_detail = RECORD_METHOD_NAME;
+			error_detail = RECORD_PROTOCOL_NAME;
 			goto send_reply;
 		}
 
@@ -184,7 +184,7 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		case REPLY_SUCCESS:
 			pr_info(ctx, "Handshake with %P successful.", peer);
 			fastd_peer_set_established(ctx, peer);
-			ctx->conf->method->init(ctx, peer);
+			ctx->conf->protocol->init(ctx, peer);
 			break;
 
 		default:

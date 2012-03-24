@@ -183,7 +183,7 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 				p = va_arg(ap, void*);
 
 				if (p) {
-					char* str = ctx->conf->method->peer_str(ctx, (fastd_peer*)p);
+					char* str = ctx->conf->protocol->peer_str(ctx, (fastd_peer*)p);
 					fprintf(stderr, "%s", str);
 					free(str);
 				}

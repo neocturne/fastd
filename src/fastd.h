@@ -56,7 +56,7 @@ struct _fastd_eth_addr {
 	uint8_t data[ETH_ALEN];
 };
 
-struct _fastd_method {
+struct _fastd_protocol {
 	const char *name;
 
 	bool (*handle_config)(fastd_context *ctx, const fastd_config *conf, const char *option);
@@ -89,10 +89,13 @@ struct _fastd_config {
 	uint16_t mtu;
 	fastd_mode mode;
 
-	fastd_method *method;
+	fastd_protocol *protocol;
+
+	fastd_peer_config *peers;
 
 	unsigned n_floating;
-	fastd_peer_config *peers;
+	unsigned n_v4;
+	unsigned n_v6;
 };
 
 struct _fastd_context {

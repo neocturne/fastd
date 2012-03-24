@@ -1,12 +1,12 @@
-set(METHODS method_null.c)
+set(PROTOCOLS protocol_null.c)
 set(FASTD_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR} ${FASTD_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set(FASTD_LIBS "")
 
-if(WITH_METHOD_ECFXP)
-  set(METHODS ${METHODS} method_ec25519_fhmqvc_xsalsa20_poly1305.c)
-  set(FASTD_INCLUDES ${FASTD_INCLUDES} ${UECC_INCLUDE_DIR} ${NACL_INCLUDE_DIR})
-  set(FASTD_LIBS ${FASTD_LIBS} ${UECC_LIBRARY} ${NACL_LIBRARY})
-endif(WITH_METHOD_ECFXP)
+if(WITH_PROTOCOL_ECFXP)
+  list(APPEND PROTOCOLS protocol_ec25519_fhmqvc_xsalsa20_poly1305.c)
+  list(APPEND FASTD_INCLUDES ${UECC_INCLUDE_DIR} ${NACL_INCLUDE_DIR})
+  list(APPEND FASTD_LIBS ${UECC_LIBRARY} ${NACL_LIBRARY})
+endif(WITH_PROTOCOL_ECFXP)
 
 include_directories(${FASTD_INCLUDES})
 
@@ -23,6 +23,6 @@ add_executable(fastd
   task.c
   ${FLEX_fastd_config_lex_OUTPUTS}
   ${BISON_fastd_config_parse_OUTPUTS}
-  ${METHODS}
+  ${PROTOCOLS}
 )
 target_link_libraries(fastd rt ${FASTD_LIBS})

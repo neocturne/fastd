@@ -66,6 +66,6 @@ typedef struct _fastd_peer_eth_addr fastd_peer_eth_addr;
 typedef struct _fastd_config fastd_config;
 typedef struct _fastd_context fastd_context;
 
-typedef struct _fastd_method fastd_method;
+typedef struct _fastd_protocol fastd_protocol;
 
 #endif /* _FASTD_TYPES_H_ */

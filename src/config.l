@@ -4,9 +4,11 @@
 %option reentrant
 
 %top {
+	 #define YY_DECL int fastd_config_lex(YYSTYPE *yylval_param, fastd_context *ctx, void *yyscanner)
+
 	 #include <fastd.h>
 	 #include <config.yy.h>
-	 #define YY_DECL int fastd_config_lex(YYSTYPE *yylval_param, fastd_context *ctx, void *yyscanner)
+	 YY_DECL;
 }
 
 %x STRING
@@ -21,6 +23,7 @@ mtu		{ yylval->str = yytext; return TOK_MTU; }
 mode		{ yylval->str = yytext; return TOK_MODE; }
 protocol	{ yylval->str = yytext; return TOK_PROTOCOL; }
 peer		{ yylval->str = yytext; return TOK_PEER; }
+address		{ yylval->str = yytext; return TOK_ADDRESS; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			if (!inet_pton(AF_INET, yytext, &yylval->addr))
@@ -30,7 +33,6 @@ peer		{ yylval->str = yytext; return TOK_PEER; }
 		}
 
 any		{ yylval->str = yytext; return TOK_ANY; }
-float		{ yylval->str = yytext; return TOK_FLOAT; }
 tap		{ yylval->str = yytext; return TOK_TAP; }
 tun		{ yylval->str = yytext; return TOK_TUN; }
 
