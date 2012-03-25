@@ -1,11 +1,11 @@
 %define api.pure
+%define api.push-pull push
 %name-prefix "fastd_config_"
-%lex-param {yyscan_t scanner}
 %parse-param {fastd_context *ctx}
 %parse-param {fastd_config *conf}
-%parse-param {yyscan_t scanner}
 
 %code requires {
+	#include <fastd.h>
 	#include <arpa/inet.h>
 }
 
@@ -15,8 +15,6 @@
 	struct in_addr addr;
 	struct in6_addr addr6;
 }
-
-%token <str> TOK_ERROR;
 
 %token <num> TOK_INTEGER
 %token <str> TOK_STRING
@@ -41,11 +39,10 @@
 
 %code {
 	#include <config.h>
-	#include <config.ll.h>
 	#include <stdint.h>
 	#include <peer.h>
 
-	void fastd_config_error(fastd_context *ctx, fastd_config *conf, yyscan_t scanner, char *s);
+	void fastd_config_error(fastd_context *ctx, fastd_config *conf, char *s);
 
 	extern fastd_protocol fastd_protocol_null;
 
@@ -54,10 +51,6 @@
 	#endif
 }
 
-%code provides {
-	#include <fastd.h>
-	int fastd_config_parse (fastd_context *ctx, fastd_config *conf, void *scanner);
-}
 
 %type <str> maybe_string
 
@@ -158,15 +151,15 @@ peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = strdup($1); }
 
 
 maybe_string:	TOK_STRING
-	|			{ $$[0] = '\0'; }
+	|			{ $$ = ""; }
 	;
 
 maybe_port:	':' port	{ $$ = $2; }
 	|			{ $$ = 0; }
 	;
 
-maybe_port_default:	':' port	{ $$ = $2; }
-	|				{ $$ = htons(1337); }
+maybe_port_default: ':' port	{ $$ = $2; }
+	|			{ $$ = htons(1337); }
 	;
 
 port:		TOK_INTEGER {
@@ -176,6 +169,6 @@ port:		TOK_INTEGER {
 		}
 	;
 %%
-void fastd_config_error(fastd_context *ctx, fastd_config *conf, yyscan_t scanner, char *s) {
+void fastd_config_error(fastd_context *ctx, fastd_config *conf, char *s) {
 	exit_error(ctx, "config error: %s", s);
 }

@@ -62,11 +62,13 @@ struct _fastd_protocol {
 	bool (*handle_config)(fastd_context *ctx, const fastd_config *conf, const char *option);
 	bool (*check_config)(fastd_context *ctx, const fastd_config *conf);
 
+	void (*init)(fastd_context *ctx);
+
 	size_t (*max_packet_size)(fastd_context *ctx);
 
 	char* (*peer_str)(const fastd_context *ctx, const fastd_peer *peer);
 
-	void (*init)(fastd_context *ctx, fastd_peer *peer);
+	void (*init_peer)(fastd_context *ctx, fastd_peer *peer);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
@@ -114,6 +116,8 @@ struct _fastd_context {
 	size_t eth_addr_size;
 	size_t n_eth_addr;
 	fastd_peer_eth_addr *eth_addr;
+
+	void *protocol_context;
 };
 
 

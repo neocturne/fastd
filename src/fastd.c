@@ -393,6 +393,8 @@ int main(int argc, char *argv[]) {
 
 	update_time(&ctx);
 
+	conf.protocol->init(&ctx);
+
 	init_peers(&ctx);
 
 	init_tuntap(&ctx);

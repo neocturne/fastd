@@ -1,4 +1,4 @@
-%option prefix="fastd_config_"
+%option prefix="fastd_config_yy"
 %option noyywrap
 %option bison-bridge
 %option reentrant
@@ -7,10 +7,11 @@
 	 #include <config.yy.h>
 }
 
-%x STRING
-%x ADDR6
+%s STRING
+%s ADDR6
 
 %%
+<INITIAL>{
 [0-9]+		{ yylval->num = atoi(yytext); return TOK_INTEGER; }
 
 interface	{ yylval->str = yytext; return TOK_INTERFACE; }
@@ -26,7 +27,7 @@ key		{ yylval->str = yytext; return TOK_KEY; }
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
 				yylval->str = "invalid address";
-				return TOK_ERROR;
+				return -1;
 			}
 
 			return TOK_ADDR;
@@ -38,27 +39,33 @@ tun		{ yylval->str = yytext; return TOK_TUN; }
 
 [A-Za-z_][A-Za-z0-9_]* { yylval->str = yytext; return TOK_IDENTIFIER; }
 
-[;:\{\}]	{ return *yytext; }
+[;:\{\}]	{ return yytext[0]; }
 
 [ \t\n]	;
+}
 
-\"		BEGIN(STRING);
+<INITIAL>\"\"	{ yylval->str = ""; return TOK_STRING; }
+<INITIAL>\"	BEGIN(STRING);
 <STRING>[^"]*	{ yylval->str = yytext; return TOK_STRING; }
 <STRING>\"	BEGIN(INITIAL);
 
-\[		BEGIN(ADDR6);
-<ADDR6>[^\]]+		{
-				if (!inet_pton(AF_INET6, yytext, &yylval->addr6)) {
-					yylval->str = "invalid address";
-					return TOK_ERROR;
-				}
-
-				return TOK_ADDR6;
+<INITIAL>\[	BEGIN(ADDR6);
+<ADDR6>[^\]]+	{
+			if (!inet_pton(AF_INET6, yytext, &yylval->addr6)) {
+				yylval->str = "invalid address";
+				return -1;
 			}
-<ADDR6>\]		BEGIN(INITIAL);
 
-<INITIAL,STRING,ADDR6>.	{
-				yylval->str = "invalid character";
-				return TOK_ERROR;
-			}
+			return TOK_ADDR6;
+		}
+<ADDR6>\]	BEGIN(INITIAL);
+
+. {
+			yylval->str = "invalid character";
+			return -1;
+		}
+
+<INITIAL><<EOF>> { return 0; }
+<STRING><<EOF>>	{ yylval->str = "unterminated string"; return -1; }
+<ADDR6><<EOF>>	{ yylval->str = "unterminated address"; return -1; }
 %%

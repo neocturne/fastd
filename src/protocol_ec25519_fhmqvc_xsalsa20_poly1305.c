@@ -36,9 +36,9 @@
 #include <crypto_secretbox_xsalsa20poly1305.h>
 
 
-typedef struct _protocol_config {
+typedef struct _protocol_context {
 	ecc_secret_key_256 secret_key;
-} protocol_config;
+} protocol_context;
 
 typedef struct _protocol_peer_config {
 	ecc_public_key_256 public_key;
@@ -48,13 +48,11 @@ typedef struct _protocol_peer_state {
 } protocol_peer_state;
 
 
-static bool protocol_handle_config(fastd_context *ctx, const fastd_config *conf, const char *option) {
-	printf("Unknown option: %s\n", option);
-	return false;
-}
-
 static bool protocol_check_config(fastd_context *ctx, const fastd_config *conf) {
 	return true;
+}
+
+static void protocol_init(fastd_context *ctx) {
 }
 
 static size_t protocol_max_packet_size(fastd_context *ctx) {
@@ -94,7 +92,7 @@ static char* protocol_peer_str(const fastd_context *ctx, const fastd_peer *peer)
 	return NULL;
 }
 
-static void protocol_init(fastd_context *ctx, fastd_peer *peer) {
+static void protocol_init_peer(fastd_context *ctx, fastd_peer *peer) {
 	pr_info(ctx, "Initializing session with %P...", peer);
 }
 
@@ -113,14 +111,15 @@ static void protocol_free_peer_private(fastd_context *ctx, fastd_peer *peer) {
 const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.name = "ec25519-fhmqvc-xsalsa20-poly1305",
 
-	.handle_config = protocol_handle_config,
 	.check_config = protocol_check_config,
+
+	.init = protocol_init,
 
 	.max_packet_size = protocol_max_packet_size,
 
 	.peer_str = protocol_peer_str,
 
-	.init = protocol_init,
+	.init_peer = protocol_init_peer,
 	.handle_recv = protocol_handle_recv,
 	.send = protocol_send,
 

@@ -90,6 +90,10 @@ static bool config_match(const char *opt, ...) {
 
 static void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename) {
 	yyscan_t scanner;
+	fastd_config_pstate *ps;
+	int token;
+	YYSTYPE token_val;
+
 	FILE *file;
 	bool use_stdin = !strcmp(filename, "-");
 
@@ -98,12 +102,20 @@ static void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char
 	else
 		file = fopen(filename, "r");
 
-	fastd_config_lex_init(&scanner);
-	fastd_config_set_in(file, scanner);
+	fastd_config_yylex_init(&scanner);
+	fastd_config_yyset_in(file, scanner);
 
-	fastd_config_parse(ctx, conf, scanner);
+	ps = fastd_config_pstate_new();
 
-	fastd_config_lex_destroy(scanner);
+	do {
+		token = fastd_config_yylex(&token_val, scanner);
+
+		if (token < 0)
+			exit_error(ctx, "config error: %s", token_val.str);
+	} while(fastd_config_push_parse(ps, token, &token_val, ctx, conf) == YYPUSH_MORE);
+
+	fastd_config_pstate_delete(ps);
+	fastd_config_yylex_destroy(scanner);
 
 	if (!use_stdin)
 		fclose(file);
