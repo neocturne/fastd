@@ -30,4 +30,6 @@
 
 #cmakedefine WITH_PROTOCOL_ECFXP
 
+#define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
+
 #endif /* _FASTD_CONFIG_H_ */

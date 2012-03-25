@@ -88,31 +88,32 @@ static bool config_match(const char *opt, ...) {
 	return match;
 }
 
-static void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename) {
-	yyscan_t scanner;
-	fastd_config_pstate *ps;
-	int token;
-	YYSTYPE token_val;
+void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, int depth) {
+	if (depth >= MAX_CONFIG_DEPTH)
+		exit_error(ctx, "maximum config include depth exceeded");
 
-	FILE *file;
 	bool use_stdin = !strcmp(filename, "-");
 
+	FILE *file;
 	if (use_stdin)
 		file = stdin;
 	else
 		file = fopen(filename, "r");
 
+	yyscan_t scanner;
 	fastd_config_yylex_init(&scanner);
 	fastd_config_yyset_in(file, scanner);
 
-	ps = fastd_config_pstate_new();
+	fastd_config_pstate *ps = fastd_config_pstate_new();
 
+	int token;
+	YYSTYPE token_val;
 	do {
 		token = fastd_config_yylex(&token_val, scanner);
 
 		if (token < 0)
 			exit_error(ctx, "config error: %s", token_val.str);
-	} while(fastd_config_push_parse(ps, token, &token_val, ctx, conf) == YYPUSH_MORE);
+	} while(fastd_config_push_parse(ps, token, &token_val, ctx, conf, depth+1) == YYPUSH_MORE);
 
 	fastd_config_pstate_delete(ps);
 	fastd_config_yylex_destroy(scanner);
@@ -145,7 +146,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 	while (i < argc) {
 		IF_OPTION_ARG("-c", "--config") {
-			fastd_read_config(ctx, conf, arg);
+			fastd_read_config(ctx, conf, arg, 0);
 			continue;
 		}
 

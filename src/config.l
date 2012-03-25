@@ -23,6 +23,7 @@ peer		{ yylval->str = yytext; return TOK_PEER; }
 address		{ yylval->str = yytext; return TOK_ADDRESS; }
 secret		{ yylval->str = yytext; return TOK_SECRET; }
 key		{ yylval->str = yytext; return TOK_KEY; }
+include		{ yylval->str = yytext; return TOK_INCLUDE; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {

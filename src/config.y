@@ -3,6 +3,7 @@
 %name-prefix "fastd_config_"
 %parse-param {fastd_context *ctx}
 %parse-param {fastd_config *conf}
+%parse-param {int depth}
 
 %code requires {
 	#include <fastd.h>
@@ -29,6 +30,7 @@
 %token <str> TOK_ADDRESS
 %token <str> TOK_SECRET
 %token <str> TOK_KEY
+%token <str> TOK_INCLUDE
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -42,7 +44,7 @@
 	#include <stdint.h>
 	#include <peer.h>
 
-	void fastd_config_error(fastd_context *ctx, fastd_config *conf, char *s);
+	void fastd_config_error(fastd_context *ctx, fastd_config *conf, int depth, char *s);
 
 	extern fastd_protocol fastd_protocol_null;
 
@@ -70,6 +72,7 @@ statement:	TOK_INTERFACE interface ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_PEER peer '{' peer_conf '}'
+	|	TOK_INCLUDE include ';'
 	;
 
 interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1); }
@@ -150,6 +153,10 @@ peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = strdup($1); }
 	;
 
 
+include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1, depth); }
+	;
+
+
 maybe_string:	TOK_STRING
 	|			{ $$ = ""; }
 	;
@@ -169,6 +176,6 @@ port:		TOK_INTEGER {
 		}
 	;
 %%
-void fastd_config_error(fastd_context *ctx, fastd_config *conf, char *s) {
+void fastd_config_error(fastd_context *ctx, fastd_config *conf, int depth, char *s) {
 	exit_error(ctx, "config error: %s", s);
 }

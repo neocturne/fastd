@@ -122,6 +122,8 @@ struct _fastd_context {
 
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
+
+void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, int depth);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 
 #define pr_log(ctx, level, prefix, args...) if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) \

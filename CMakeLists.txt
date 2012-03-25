@@ -15,6 +15,11 @@ endif(UECC_FOUND AND NACL_FOUND)
 
 set(WITH_PROTOCOL_ECFXP ${CRYPTO_FOUND} CACHE BOOL "Include ec25519-fhmqvc-xsalsa20-poly1305 protocol")
 
+set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
+
+# Ensure the value is numeric
+math(EXPR MAX_CONFIG_DEPTH_NUM ${MAX_CONFIG_DEPTH})
+
 if(WITH_PROTOCOL_ECFXP AND NOT CRYPTO_FOUND)
   MESSAGE(FATAL_ERROR "libuecc and NaCl are required for the ec25519-fhmqvc-xsalsa20-poly1305 protocol")
 endif(WITH_PROTOCOL_ECFXP AND NOT CRYPTO_FOUND)
