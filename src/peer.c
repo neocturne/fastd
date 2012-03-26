@@ -106,6 +106,7 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	fastd_peer *peer = add_peer(ctx);
 
 	peer->config = peer_conf;
+	peer->state = STATE_WAIT;
 
 	setup_peer(ctx, peer);
 

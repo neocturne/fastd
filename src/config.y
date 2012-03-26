@@ -127,6 +127,8 @@ peer:		maybe_string {
 
 			current_peer->enabled = true;
 			current_peer->address.sa.sa_family = AF_UNSPEC;
+			current_peer->key = NULL;
+			current_peer->protocol_config = NULL;
 		}
 	;
 

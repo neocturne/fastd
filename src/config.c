@@ -249,12 +249,14 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			conf->peers = current_peer;
 
 			current_peer->enabled = true;
+			current_peer->address.sa.sa_family = AF_UNSPEC;
+			current_peer->key = NULL;
+			current_peer->protocol_config = NULL;
+
 
 			memset(&current_peer->address, 0, sizeof(fastd_peer_address));
-			if (strcmp(arg, "float") == 0) {
-				current_peer->address.sa.sa_family = AF_UNSPEC;
+			if (strcmp(arg, "float") == 0)
 				continue;
-			}
 
 			if (arg[0] == '[') {
 				charptr = strchr(arg, ']');

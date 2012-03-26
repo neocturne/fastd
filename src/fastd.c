@@ -244,7 +244,6 @@ static void handle_tun(fastd_context *ctx) {
 static void handle_socket(fastd_context *ctx, int sockfd) {
 	size_t max_len = ctx->conf->protocol->max_packet_size(ctx);
 	fastd_buffer buffer = fastd_buffer_alloc(max_len, ctx->conf->protocol->min_decrypt_head_space(ctx), 0);
-
 	uint8_t packet_type;
 
 	struct iovec iov[2] = {
