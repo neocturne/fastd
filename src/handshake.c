@@ -90,7 +90,7 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		goto end_free;
 	}
 
-	fastd_packet *packet = buffer.base;
+	fastd_packet *packet = buffer.data;
 
 	size_t lengths[RECORD_MAX];
 	void *records[RECORD_MAX] = { 0 };
