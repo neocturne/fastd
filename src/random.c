@@ -24,52 +24,38 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
-  types.h
-  
-  Basic enums and typedefs for common types
-*/
+
+#include "fastd.h"
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 
-#ifndef _FASTD_TYPES_H_
-#define _FASTD_TYPES_H_
+void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure) {
+	int fd;
+	size_t read_bytes = 0;
 
-typedef enum _fastd_loglevel {
-	LOG_FATAL = 0,
-	LOG_ERROR,
-	LOG_WARN,
-	LOG_INFO,
-	LOG_DEBUG,
-} fastd_loglevel;
+	if (secure)
+		fd = open("/dev/random", O_RDONLY);
+	else
+		fd = open("/dev/urandom", O_RDONLY);
 
-typedef enum _fastd_mode {
-	MODE_TAP,
-	MODE_TUN,
-} fastd_mode;
+	if (fd < 0)
+		exit_errno(ctx, "unable to open random device");
 
-typedef enum _fastd_peer_state {
-	STATE_WAIT,
-	STATE_ESTABLISHED,
-	STATE_TEMP,
-	STATE_TEMP_ESTABLISHED,
-} fastd_peer_state;
+	while (read_bytes < len) {
+		ssize_t ret = read(fd, ((char*)buffer)+read_bytes, len-read_bytes);
 
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
 
-typedef struct _fastd_buffer fastd_buffer;
+			exit_errno(ctx, "unable to read from random device");
+		}
 
-typedef union _fastd_peer_address fastd_peer_address;
-typedef struct _fastd_peer_config fastd_peer_config;
-typedef struct _fastd_eth_addr fastd_eth_addr;
-typedef struct _fastd_peer fastd_peer;
-typedef struct _fastd_peer_eth_addr fastd_peer_eth_addr;
+		read_bytes += ret;
+	}
 
-typedef struct _fastd_config fastd_config;
-typedef struct _fastd_context fastd_context;
-
-typedef struct _fastd_protocol fastd_protocol;
-
-/* May be defined by the protocol however it likes */
-typedef struct _fastd_protocol_context fastd_protocol_context;
-typedef struct _fastd_protocol_peer_state fastd_protocol_peer_state;
-
-#endif /* _FASTD_TYPES_H_ */
+	close(fd);
+}

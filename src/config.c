@@ -345,9 +345,6 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		ok = false;
 	}
 
-	if (ok)
-		ok = conf->protocol->check_config(ctx, conf);
-
 	if (!ok)
 		exit_error(ctx, "config error");
 }

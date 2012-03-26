@@ -49,7 +49,7 @@ struct _fastd_peer {
 
 	struct timespec seen;
 
-	void *protocol_private;
+	fastd_protocol_peer_state *protocol_state;
 };
 
 struct _fastd_peer_config {

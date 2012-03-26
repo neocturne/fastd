@@ -20,6 +20,7 @@ add_executable(fastd
   peer.c
   printf.c
   queue.c
+  random.c
   task.c
   ${FLEX_fastd_config_lex_OUTPUTS}
   ${BISON_fastd_config_parse_OUTPUTS}

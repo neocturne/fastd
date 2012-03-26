@@ -59,9 +59,6 @@ struct _fastd_eth_addr {
 struct _fastd_protocol {
 	const char *name;
 
-	bool (*handle_config)(fastd_context *ctx, const fastd_config *conf, const char *option);
-	bool (*check_config)(fastd_context *ctx, const fastd_config *conf);
-
 	void (*init)(fastd_context *ctx);
 
 	size_t (*max_packet_size)(fastd_context *ctx);
@@ -73,7 +70,7 @@ struct _fastd_protocol {
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
-	void (*free_peer_private)(fastd_context *ctx, fastd_peer *peer);
+	void (*free_peer_state)(fastd_context *ctx, fastd_peer *peer);
 };
 
 struct _fastd_config {
@@ -117,7 +114,7 @@ struct _fastd_context {
 	size_t n_eth_addr;
 	fastd_peer_eth_addr *eth_addr;
 
-	void *protocol_context;
+	fastd_protocol_context *protocol_context;
 };
 
 
@@ -125,6 +122,8 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
 void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, int depth);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
+
+void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure);
 
 #define pr_log(ctx, level, prefix, args...) if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) \
 		do { fputs(prefix, stderr); fastd_printf(ctx, args); fputs("\n", stderr); } while(0)
