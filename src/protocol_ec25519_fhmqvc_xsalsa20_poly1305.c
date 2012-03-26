@@ -667,6 +667,9 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 }
 
 static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {
+	free_handshake(peer->protocol_state->initiating_handshake);
+	free_handshake(peer->protocol_state->accepting_handshake);
+
 	free(peer->protocol_state);
 }
 
