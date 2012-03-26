@@ -43,6 +43,10 @@ static size_t protocol_max_packet_size(fastd_context *ctx) {
 	return fastd_max_packet_size(ctx);
 }
 
+static size_t protocol_min_head_space(fastd_context *ctx) {
+	return 0;
+}
+
 static char* protocol_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 	char *ret;
@@ -124,6 +128,8 @@ const fastd_protocol fastd_protocol_null = {
 	.init = protocol_init,
 
 	.max_packet_size = protocol_max_packet_size,
+	.min_encrypt_head_space = protocol_min_head_space,
+	.min_decrypt_head_space = protocol_min_head_space,
 
 	.peer_str = protocol_peer_str,
 

@@ -58,6 +58,10 @@
 #error bug: HASHBYTES != SECRETKEYBYTES
 #endif
 
+#if crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES > NONCEBYTES
+#error bug: crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES > NONCEBYTES
+#endif
+
 
 struct _fastd_protocol_context {
 	ecc_secret_key_256 secret_key;
@@ -188,6 +192,14 @@ static void protocol_init(fastd_context *ctx) {
 
 static size_t protocol_max_packet_size(fastd_context *ctx) {
 	return (fastd_max_packet_size(ctx) - NONCEBYTES);
+}
+
+static size_t protocol_min_encrypt_head_space(fastd_context *ctx) {
+	return crypto_secretbox_xsalsa20poly1305_ZEROBYTES;
+}
+
+static size_t protocol_min_decrypt_head_space(fastd_context *ctx) {
+	return 0;
 }
 
 static char* protocol_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
@@ -574,6 +586,29 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 			pr_debug(ctx, "received unexpected non-handshake packet from %P", peer);
 			goto end;
 		}
+
+		if (!is_nonce_valid(buffer.data, peer->protocol_state->receive_nonce)) {
+			pr_debug(ctx, "received packet with invalid nonce from %P", peer);
+			goto end;
+		}
+
+		uint8_t nonce[NONCEBYTES];
+		memcpy(nonce, buffer.data, NONCEBYTES);
+
+		fastd_buffer_push_head(&buffer, NONCEBYTES-crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+		memset(buffer.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+
+		fastd_buffer recv_buffer = fastd_buffer_alloc(buffer.len, 0, 0);
+
+		if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, peer->protocol_state->shared_session_key) != 0) {
+			pr_debug(ctx, "varification failed for packet received from %P", peer);
+			goto end;
+		}
+
+		fastd_buffer_push_head(&recv_buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+		fastd_task_put_handle_recv(ctx, peer, recv_buffer);
+
+		memcpy(peer->protocol_state->receive_nonce, nonce, NONCEBYTES);
 	}
 
  end:
@@ -581,7 +616,26 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 }
 
 static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	if (!peer->protocol_state || peer->protocol_state->state != HANDSHAKE_STATE_ESTABLISHED) {
+		fastd_buffer_free(buffer);
+		return;
+	}
+
+	fastd_buffer_pull_head(&buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+	memset(buffer.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+
+	fastd_buffer send_buffer = fastd_buffer_alloc(buffer.len, NONCEBYTES-crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES, 0);
+
+	crypto_secretbox_xsalsa20poly1305(send_buffer.data, buffer.data, buffer.len, peer->protocol_state->send_nonce, peer->protocol_state->shared_session_key);
+
 	fastd_buffer_free(buffer);
+
+	fastd_buffer_pull_head(&send_buffer, NONCEBYTES-crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+	memcpy(send_buffer.data, peer->protocol_state->send_nonce, NONCEBYTES);
+
+	fastd_task_put_send(ctx, peer, send_buffer);
+
+	increment_nonce(peer->protocol_state->send_nonce);
 }
 
 static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {
@@ -595,6 +649,8 @@ const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.init = protocol_init,
 
 	.max_packet_size = protocol_max_packet_size,
+	.min_encrypt_head_space = protocol_min_encrypt_head_space,
+	.min_decrypt_head_space = protocol_min_decrypt_head_space,
 
 	.peer_str = protocol_peer_str,
 

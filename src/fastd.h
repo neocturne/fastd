@@ -62,6 +62,8 @@ struct _fastd_protocol {
 	void (*init)(fastd_context *ctx);
 
 	size_t (*max_packet_size)(fastd_context *ctx);
+	size_t (*min_encrypt_head_space)(fastd_context *ctx);
+	size_t (*min_decrypt_head_space)(fastd_context *ctx);
 
 	char* (*peer_str)(const fastd_context *ctx, const fastd_peer *peer);
 
@@ -159,6 +161,22 @@ static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, siz
 
 static inline void fastd_buffer_free(fastd_buffer buffer) {
 	free(buffer.base);
+}
+
+static inline void fastd_buffer_pull_head(fastd_buffer *buffer, size_t len) {
+	buffer->data -= len;
+	buffer->len += len;
+
+	if (buffer->data < buffer->base)
+		abort();
+}
+
+static inline void fastd_buffer_push_head(fastd_buffer *buffer, size_t len) {
+	if (buffer->len < len)
+		abort();
+
+	buffer->data += len;
+	buffer->len -= len;
 }
 
 static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
