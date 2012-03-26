@@ -125,6 +125,7 @@ peer:		maybe_string {
 
 			memset(&current_peer->address, 0, sizeof(fastd_peer_address));
 
+			current_peer->enabled = true;
 			current_peer->address.sa.sa_family = AF_UNSPEC;
 		}
 	;

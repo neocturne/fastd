@@ -55,8 +55,12 @@ struct _fastd_peer {
 struct _fastd_peer_config {
 	fastd_peer_config *next;
 
+	bool enabled;
+
 	fastd_peer_address address;
 	char *key;
+
+	fastd_protocol_peer_config *protocol_config;
 };
 
 struct _fastd_peer_eth_addr {
@@ -69,6 +73,7 @@ struct _fastd_peer_eth_addr {
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer);
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
 
+void fastd_peer_disable(fastd_context *ctx, fastd_peer *peer);
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
 fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *address);

@@ -248,6 +248,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			current_peer->next = conf->peers;
 			conf->peers = current_peer;
 
+			current_peer->enabled = true;
+
 			memset(&current_peer->address, 0, sizeof(fastd_peer_address));
 			if (strcmp(arg, "float") == 0) {
 				current_peer->address.sa.sa_family = AF_UNSPEC;
@@ -339,12 +341,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			conf->bind_addr_in6.sin6_family = AF_INET6;
 	}
 
-	bool ok = true;
-	if (conf->mode == MODE_TUN && (!conf->peers || conf->peers->next)) {
-		pr_error(ctx, "for tun mode exactly one peer must be configured");
-		ok = false;
-	}
+	if (conf->mode == MODE_TUN && (!conf->peers || conf->peers->next))
+		exit_error(ctx, "config error: for tun mode exactly one peer must be configured");
 
-	if (!ok)
-		exit_error(ctx, "config error");
+	conf->protocol->init(ctx, conf);
 }

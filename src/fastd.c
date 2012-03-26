@@ -116,8 +116,10 @@ static void init_socket(fastd_context *ctx) {
 
 static void init_peers(fastd_context *ctx) {
 	fastd_peer_config *peer_conf;
-	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next)
-		fastd_peer_add(ctx, peer_conf);
+	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
+		if (peer_conf->enabled)
+			fastd_peer_add(ctx, peer_conf);
+	}
 }
 
 static void update_time(fastd_context *ctx) {
@@ -392,8 +394,6 @@ int main(int argc, char *argv[]) {
 	ctx.conf = &conf;
 
 	update_time(&ctx);
-
-	conf.protocol->init(&ctx);
 
 	init_peers(&ctx);
 

@@ -69,7 +69,8 @@ typedef struct _fastd_context fastd_context;
 typedef struct _fastd_protocol fastd_protocol;
 
 /* May be defined by the protocol however it likes */
-typedef struct _fastd_protocol_context fastd_protocol_context;
+typedef struct _fastd_protocol_config fastd_protocol_config;
+typedef struct _fastd_protocol_peer_config fastd_protocol_peer_config;
 typedef struct _fastd_protocol_peer_state fastd_protocol_peer_state;
 
 #endif /* _FASTD_TYPES_H_ */

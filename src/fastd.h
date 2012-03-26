@@ -59,7 +59,7 @@ struct _fastd_eth_addr {
 struct _fastd_protocol {
 	const char *name;
 
-	void (*init)(fastd_context *ctx);
+	void (*init)(fastd_context *ctx, fastd_config *conf);
 
 	size_t (*max_packet_size)(fastd_context *ctx);
 	size_t (*min_encrypt_head_space)(fastd_context *ctx);
@@ -98,6 +98,8 @@ struct _fastd_config {
 	unsigned n_floating;
 	unsigned n_v4;
 	unsigned n_v6;
+
+	fastd_protocol_config *protocol_config;
 };
 
 struct _fastd_context {
@@ -115,8 +117,6 @@ struct _fastd_context {
 	size_t eth_addr_size;
 	size_t n_eth_addr;
 	fastd_peer_eth_addr *eth_addr;
-
-	fastd_protocol_context *protocol_context;
 };
 
 

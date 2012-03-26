@@ -34,7 +34,7 @@
 #include <arpa/inet.h>
 
 
-static void protocol_init(fastd_context *ctx) {
+static void protocol_init(fastd_context *ctx, fastd_config *conf) {
 	if (ctx->conf->n_floating > 1)
 		exit_error(ctx, "with protocol `null' use can't define more than one floating peer");
 }
