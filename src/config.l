@@ -9,6 +9,7 @@
 
 %s STRING
 %s ADDR6
+%s COMMENT
 
 %%
 <INITIAL>{
@@ -61,12 +62,21 @@ tun		{ yylval->str = yytext; return TOK_TUN; }
 		}
 <ADDR6>\]	BEGIN(INITIAL);
 
-. {
+<INITIAL>#.*	{}
+<INITIAL>\/\/.*	{}
+
+<INITIAL>\/\*	BEGIN(COMMENT);
+<COMMENT>\*\/	BEGIN(INITIAL);
+<COMMENT>.	{}
+<COMMENT>\n	{}
+
+.		{
 			yylval->str = "invalid character";
 			return -1;
 		}
 
 <INITIAL><<EOF>> { return 0; }
+<COMMENT><<EOF>> { yylval->str = "unterminated block comment"; return -1; }
 <STRING><<EOF>>	{ yylval->str = "unterminated string"; return -1; }
 <ADDR6><<EOF>>	{ yylval->str = "unterminated address"; return -1; }
 %%
