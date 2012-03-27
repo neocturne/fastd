@@ -50,7 +50,8 @@ static size_t protocol_min_head_space(fastd_context *ctx) {
 static void protocol_init_peer(fastd_context *ctx, fastd_peer *peer) {
 	pr_info(ctx, "Connection with %P established.", peer);
 
-	fastd_task_put_send(ctx, peer, fastd_buffer_alloc(0, 0, 0));
+	if (!fastd_peer_is_temporary(peer))
+		fastd_task_put_send(ctx, peer, fastd_buffer_alloc(0, 0, 0));
 }
 
 static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {

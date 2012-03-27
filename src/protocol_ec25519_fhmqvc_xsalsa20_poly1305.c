@@ -281,18 +281,21 @@ static void protocol_init_peer(fastd_context *ctx, fastd_peer *peer) {
 	}
 
 	create_peer_state(ctx, peer);
-	new_handshake(ctx, peer, true);
 
-	fastd_buffer buffer = fastd_buffer_alloc(sizeof(protocol_handshake_init_packet), 0, 0);
-	protocol_handshake_init_packet *packet = buffer.data;
+	if (!fastd_peer_is_temporary(peer)) {
+		new_handshake(ctx, peer, true);
 
-	memset(packet->common.noncepad, 0, NONCEBYTES);
-	packet->common.type = HANDSHAKE_PACKET_INIT;
-	memcpy(packet->common.sender_key, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->common.receipient_key, peer->config->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->handshake_key, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
+		fastd_buffer buffer = fastd_buffer_alloc(sizeof(protocol_handshake_init_packet), 0, 0);
+		protocol_handshake_init_packet *packet = buffer.data;
 
-	fastd_task_put_send(ctx, peer, buffer);
+		memset(packet->common.noncepad, 0, NONCEBYTES);
+		packet->common.type = HANDSHAKE_PACKET_INIT;
+		memcpy(packet->common.sender_key, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
+		memcpy(packet->common.receipient_key, peer->config->protocol_config->public_key.p, PUBLICKEYBYTES);
+		memcpy(packet->handshake_key, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
+
+		fastd_task_put_send(ctx, peer, buffer);
+	}
 }
 
 static void respond_handshake(fastd_context *ctx, fastd_peer *peer) {

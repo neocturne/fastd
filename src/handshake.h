@@ -31,6 +31,7 @@
 #include "fastd.h"
 
 void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer);
+void fastd_handshake_rehandshake(fastd_context *ctx, fastd_peer *peer);
 void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
 #endif /* _FASTD_HANDSHAKE_H_ */

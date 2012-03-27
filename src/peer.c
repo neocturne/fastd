@@ -60,7 +60,7 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	peer->seen = (struct timespec){0, 0};
 
 	if (!fastd_peer_is_floating(peer))
-		fastd_task_schedule_handshake(ctx, peer, 0);
+		fastd_task_schedule_handshake(ctx, peer, 0, false);
 }
 
 
