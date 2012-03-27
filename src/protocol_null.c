@@ -58,7 +58,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	if (!fastd_peer_is_established(peer)) {
 		pr_info(ctx, "Connection with %P established.", peer);
 
-		fastd_peer_set_established(ctx, peer);
+		fastd_peer_set_established(peer);
 	}
 
 	if (fastd_peer_is_temporary(peer)) {

@@ -211,7 +211,7 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		switch (reply_code) {
 		case REPLY_SUCCESS:
 			pr_info(ctx, "Handshake with %P successful.", peer);
-			fastd_peer_set_established(ctx, peer);
+			fastd_peer_set_established(peer);
 			ctx->conf->protocol->init_peer(ctx, peer);
 			break;
 

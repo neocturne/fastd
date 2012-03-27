@@ -134,9 +134,14 @@ fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *ad
 fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer) {
 	pr_debug(ctx, "merging peer %P into %P", temp_peer, perm_peer);
 
+	ctx->conf->protocol->free_peer_state(ctx, perm_peer);
+
 	perm_peer->address = temp_peer->address;
 	perm_peer->state = fastd_peer_is_established(temp_peer) ? STATE_ESTABLISHED : STATE_WAIT;
 	perm_peer->seen = temp_peer->seen;
+	perm_peer->protocol_state = temp_peer->protocol_state;
+
+	temp_peer->protocol_state = NULL;
 
 	int i;
 	for (i = 0; i < ctx->n_eth_addr; i++) {

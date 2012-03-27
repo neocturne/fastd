@@ -98,7 +98,7 @@ static inline bool fastd_peer_is_established(const fastd_peer *peer) {
 	return (peer->state == STATE_ESTABLISHED || peer->state == STATE_TEMP_ESTABLISHED);
 }
 
-static inline void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
+static inline void fastd_peer_set_established(fastd_peer *peer) {
 	switch(peer->state) {
 	case STATE_WAIT:
 		peer->state = STATE_ESTABLISHED;
@@ -109,7 +109,6 @@ static inline void fastd_peer_set_established(fastd_context *ctx, fastd_peer *pe
 		break;
 
 	default:
-		pr_warn(ctx, "tried to set an already established connection to established");
 		return;
 	}
 }
