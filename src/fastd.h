@@ -65,8 +65,6 @@ struct _fastd_protocol {
 	size_t (*min_encrypt_head_space)(fastd_context *ctx);
 	size_t (*min_decrypt_head_space)(fastd_context *ctx);
 
-	char* (*peer_str)(const fastd_context *ctx, const fastd_peer *peer);
-
 	void (*init_peer)(fastd_context *ctx, fastd_peer *peer);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);

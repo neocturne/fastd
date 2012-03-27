@@ -26,9 +26,39 @@
 
 
 #include "fastd.h"
+#include "peer.h"
 
 #include <arpa/inet.h>
 
+
+static void print_default_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
+	char addr_buf[INET6_ADDRSTRLEN] = "";
+	char pl = '<', pr = '>';
+
+	if (fastd_peer_is_temporary(peer)) {
+		pl = '{';
+		pr = '}';
+	}
+
+	switch (peer->address.sa.sa_family) {
+	case AF_UNSPEC:
+		fprintf(stderr, "%cfloating%c", pl, pr);
+		return;
+
+	case AF_INET:
+		if (inet_ntop(AF_INET, &peer->address.in.sin_addr, addr_buf, sizeof(addr_buf)))
+			fprintf(stderr, "%c%s:%u%c", pl, addr_buf, ntohs(peer->address.in.sin_port), pr);
+		return;
+
+	case AF_INET6:
+		if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, addr_buf, sizeof(addr_buf)))
+			fprintf(stderr, "%c[%s]:%u%c", pl, addr_buf, ntohs(peer->address.in6.sin6_port), pr);
+		break;
+
+	default:
+		exit_bug(ctx, "unsupported address family");
+	}
+}
 
 #pragma GCC diagnostic ignored "-Wformat-security"
 
@@ -51,6 +81,7 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 			bool finished = true;
 			char addr_buf[INET6_ADDRSTRLEN];
 			void *p;
+			fastd_peer *peer;
 			fastd_eth_addr *eth_addr;
 
 			switch (str[len]) {
@@ -180,12 +211,13 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 				break;
 
 			case 'P':
-				p = va_arg(ap, void*);
+				peer = va_arg(ap, void*);
 
-				if (p) {
-					char* str = ctx->conf->protocol->peer_str(ctx, (fastd_peer*)p);
-					fprintf(stderr, "%s", str);
-					free(str);
+				if (peer) {
+					if (peer->config && peer->config->name)
+						fprintf(stderr, "%s", peer->config->name);
+					else
+						print_default_peer_str(ctx, peer);
 				}
 				else {
 					fprintf(stderr, "(null)");

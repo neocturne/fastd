@@ -31,24 +31,6 @@
 #include "task.h"
 
 
-const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
-	switch (ctx->conf->mode) {
-	case MODE_TAP:
-		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_source;
-	default:
-		exit_bug(ctx, "invalid mode");
-	}
-}
-
-const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer) {
-	switch (ctx->conf->mode) {
-	case MODE_TAP:
-		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_dest;
-	default:
-		exit_bug(ctx, "invalid mode");
-	}
-}
-
 static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 	ctx->conf->protocol->free_peer_state(ctx, peer);
 	peer->protocol_state = NULL;
@@ -80,6 +62,24 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (!fastd_peer_is_floating(peer))
 		fastd_task_schedule_handshake(ctx, peer, 0);
 }
+
+
+fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf) {
+	fastd_peer_config *peer = malloc(sizeof(fastd_peer_config));
+	peer->enabled = true;
+
+	memset(&peer->address, 0, sizeof(fastd_peer_address));
+
+	peer->name = NULL;
+	peer->key = NULL;
+	peer->protocol_config = NULL;
+
+	peer->next = conf->peers;
+	conf->peers = peer;
+
+	return peer;
+}
+
 
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 	pr_debug(ctx, "resetting peer %P", peer);
@@ -164,6 +164,24 @@ void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
 	}
 
 	free(peer);
+}
+
+const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_source;
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
+}
+
+const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer) {
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_dest;
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
 }
 
 static inline int fastd_eth_addr_cmp(const fastd_eth_addr *addr1, const fastd_eth_addr *addr2) {

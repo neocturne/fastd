@@ -53,14 +53,7 @@ static void default_config(fastd_config *conf) {
 	conf->ifname = NULL;
 
 	memset(&conf->bind_addr_in, 0, sizeof(struct sockaddr_in));
-	conf->bind_addr_in.sin_family = AF_UNSPEC;
-	conf->bind_addr_in.sin_port = 0;
-	conf->bind_addr_in.sin_addr.s_addr = htonl(INADDR_ANY);
-
 	memset(&conf->bind_addr_in6, 0, sizeof(struct sockaddr_in6));
-	conf->bind_addr_in6.sin6_family = AF_UNSPEC;
-	conf->bind_addr_in6.sin6_port = 0;
-	conf->bind_addr_in6.sin6_addr = in6addr_any;
 
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
@@ -135,7 +128,7 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]) {
 	default_config(conf);
 
-	fastd_peer_config *current_peer;
+	fastd_peer_config *peer;
 	int i = 1;
 	const char *arg;
 	long l;
@@ -244,17 +237,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 
 		IF_OPTION_ARG("-p", "--peer") {
-			current_peer = malloc(sizeof(fastd_peer_config));
-			current_peer->next = conf->peers;
-			conf->peers = current_peer;
+			peer = fastd_peer_config_new(ctx, conf);
 
-			current_peer->enabled = true;
-			current_peer->address.sa.sa_family = AF_UNSPEC;
-			current_peer->key = NULL;
-			current_peer->protocol_config = NULL;
-
-
-			memset(&current_peer->address, 0, sizeof(fastd_peer_address));
 			if (strcmp(arg, "float") == 0)
 				continue;
 
@@ -288,16 +272,16 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			}
 
 			if (arg[0] == '[') {
-				current_peer->address.in6.sin6_family = AF_INET6;
-				if (inet_pton(AF_INET6, addrstr, &current_peer->address.in6.sin6_addr) != 1)
+				peer->address.in6.sin6_family = AF_INET6;
+				if (inet_pton(AF_INET6, addrstr, &peer->address.in6.sin6_addr) != 1)
 					exit_error(ctx, "invalid peer address `%s'", addrstr);
-				current_peer->address.in6.sin6_port = htons(l);
+				peer->address.in6.sin6_port = htons(l);
 			}
 			else {
-				current_peer->address.in.sin_family = AF_INET;
-				if (inet_pton(AF_INET, addrstr, &current_peer->address.in.sin_addr) != 1)
+				peer->address.in.sin_family = AF_INET;
+				if (inet_pton(AF_INET, addrstr, &peer->address.in.sin_addr) != 1)
 					exit_error(ctx, "invalid peer address `%s'", addrstr);
-				current_peer->address.in.sin_port = htons(l);
+				peer->address.in.sin_port = htons(l);
 			}
 
 			free(addrstr);
@@ -311,8 +295,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 	conf->n_v4 = 0;
 	conf->n_v6 = 0;
 
-	for (current_peer = conf->peers; current_peer; current_peer = current_peer->next) {
-		switch (current_peer->address.sa.sa_family) {
+	for (peer = conf->peers; peer; peer = peer->next) {
+		switch (peer->address.sa.sa_family) {
 		case AF_UNSPEC:
 			conf->n_floating++;
 			break;

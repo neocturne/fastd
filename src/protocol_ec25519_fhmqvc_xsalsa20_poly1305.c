@@ -234,39 +234,6 @@ static size_t protocol_min_decrypt_head_space(fastd_context *ctx) {
 	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
-static char* protocol_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
-	char addr_buf[INET6_ADDRSTRLEN] = "";
-	char *ret;
-
-	const char *temp = fastd_peer_is_temporary(peer) ? " (temporary)" : "";
-
-	switch (peer->address.sa.sa_family) {
-	case AF_UNSPEC:
-		if (asprintf(&ret, "<floating>%s", temp) > 0)
-			return ret;
-		break;
-
-	case AF_INET:
-		if (inet_ntop(AF_INET, &peer->address.in.sin_addr, addr_buf, sizeof(addr_buf))) {
-			if (asprintf(&ret, "%s:%u%s", addr_buf, ntohs(peer->address.in.sin_port), temp) > 0)
-				return ret;
-		}
-		break;
-
-	case AF_INET6:
-		if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
-			if (asprintf(&ret, "[%s]:%u%s", addr_buf, ntohs(peer->address.in6.sin6_port), temp) > 0)
-				return ret;
-		}
-		break;
-
-	default:
-		exit_bug(ctx, "unsupported address family");
-	}
-
-	return NULL;
-}
-
 static void create_peer_state(fastd_context *ctx, fastd_peer *peer) {
 	peer->protocol_state = malloc(sizeof(fastd_protocol_peer_state));
 
@@ -682,8 +649,6 @@ const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.max_packet_size = protocol_max_packet_size,
 	.min_encrypt_head_space = protocol_min_encrypt_head_space,
 	.min_decrypt_head_space = protocol_min_decrypt_head_space,
-
-	.peer_str = protocol_peer_str,
 
 	.init_peer = protocol_init_peer,
 	.handle_recv = protocol_handle_recv,

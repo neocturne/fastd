@@ -103,7 +103,7 @@ mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
 	|	TOK_TUN		{ conf->mode = MODE_TUN; }
 	;
 
-protocol:	maybe_string {
+protocol:	TOK_STRING {
 			if (!strcmp($1, "null"))
 				conf->protocol = &fastd_protocol_null;
 #ifdef WITH_PROTOCOL_ECFXP
@@ -119,16 +119,10 @@ secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1); }
 	;
 
 peer:		maybe_string {
-			fastd_peer_config *current_peer = malloc(sizeof(fastd_peer_config));
-			current_peer->next = conf->peers;
-			conf->peers = current_peer;
+			fastd_peer_config_new(ctx, conf);
 
-			memset(&current_peer->address, 0, sizeof(fastd_peer_address));
-
-			current_peer->enabled = true;
-			current_peer->address.sa.sa_family = AF_UNSPEC;
-			current_peer->key = NULL;
-			current_peer->protocol_config = NULL;
+			if ($1)
+				conf->peers->name = strdup($1);
 		}
 	;
 
@@ -161,7 +155,7 @@ include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1, depth); }
 
 
 maybe_string:	TOK_STRING
-	|			{ $$ = ""; }
+	|			{ $$ = NULL; }
 	;
 
 maybe_port:	':' port	{ $$ = $2; }
