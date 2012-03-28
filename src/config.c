@@ -24,6 +24,8 @@
 */
 
 
+#define _GNU_SOURCE
+
 #include "fastd.h"
 #include "peer.h"
 #include <config.ll.h>
@@ -32,6 +34,7 @@
 #include <config.h>
 
 #include <arpa/inet.h>
+#include <libgen.h>
 #include <stdarg.h>
 
 
@@ -97,6 +100,12 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	}
 
 
+	char *oldcwd = get_current_dir_name();
+	char *filename2 = strdup(filename);
+	char *dir = dirname(filename2);
+
+	chdir(dir);
+
 	yyscan_t scanner;
 	fastd_config_yylex_init(&scanner);
 	fastd_config_yyset_in(file, scanner);
@@ -120,6 +129,11 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 
 	fastd_config_pstate_delete(ps);
 	fastd_config_yylex_destroy(scanner);
+
+	chdir(oldcwd);
+
+	free(filename2);
+	free(oldcwd);
 
 	if (!use_stdin)
 		fclose(file);
