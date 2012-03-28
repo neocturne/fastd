@@ -336,6 +336,9 @@ static void respond_handshake(fastd_context *ctx, fastd_peer *peer) {
 	ecc_25519_add(&work, &workX, &work);
 	ecc_25519_scalarmult(&work, &s, &work);
 
+	if (ecc_25519_is_identity(&work))
+		return;
+
 	ecc_25519_store(&peer->protocol_state->accepting_handshake->sigma, &work);
 
 	memcpy(hashinput+4*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->sigma.p, PUBLICKEYBYTES);
@@ -418,6 +421,9 @@ static void finish_handshake(fastd_context *ctx, fastd_peer *peer, uint8_t t[HMA
 	ecc_25519_scalarmult(&work, &e, &work);
 	ecc_25519_add(&work, &workY, &work);
 	ecc_25519_scalarmult(&work, &s, &work);
+
+	if (ecc_25519_is_identity(&work))
+		return;
 
 	ecc_25519_store(&peer->protocol_state->initiating_handshake->sigma, &work);
 
