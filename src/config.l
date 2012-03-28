@@ -26,6 +26,9 @@ secret		{ return TOK_SECRET; }
 key		{ return TOK_KEY; }
 include		{ return TOK_INCLUDE; }
 as		{ return TOK_AS; }
+any		{ return TOK_ANY; }
+tap		{ return TOK_TAP; }
+tun		{ return TOK_TUN; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
@@ -36,19 +39,29 @@ as		{ return TOK_AS; }
 			return TOK_ADDR;
 		}
 
-any		{ yylval->str = yytext; return TOK_ANY; }
-tap		{ yylval->str = yytext; return TOK_TAP; }
-tun		{ yylval->str = yytext; return TOK_TUN; }
-
 [;:\{\}]	{ return yytext[0]; }
 
 [ \t\n]	;
 }
 
-<INITIAL>\"\"	{ yylval->str = strdup(""); return TOK_STRING; }
 <INITIAL>\"	BEGIN(STRING);
-<STRING>[^"]+	{ yylval->str = strdup(yytext); return TOK_STRING; }
-<STRING>\"	BEGIN(INITIAL);
+<STRING>[^"\\]*	yymore();
+<STRING>\\(.|\n) yymore();
+<STRING>\" {
+			int i, esc = 0;
+
+			for (i = 0; i < yyleng; i++) {
+				if (yytext[i] == '\\')
+					esc++;
+				else if(esc)
+					yytext[i-esc] = yytext[i];
+			}
+			yytext[yyleng-esc-1] = 0;
+			yylval->str = strdup(yytext);
+			BEGIN(INITIAL);
+			return TOK_STRING;
+
+		}
 
 <INITIAL>\[	BEGIN(ADDR6);
 <ADDR6>[^\]]+	{
