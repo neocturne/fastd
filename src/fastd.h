@@ -120,7 +120,7 @@ struct _fastd_context {
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
-void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, int depth);
+void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 
 void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure);

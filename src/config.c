@@ -81,17 +81,22 @@ static bool config_match(const char *opt, ...) {
 	return match;
 }
 
-void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, int depth) {
+void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error(ctx, "maximum config include depth exceeded");
 
 	bool use_stdin = !strcmp(filename, "-");
 
 	FILE *file;
-	if (use_stdin)
+	if (use_stdin) {
 		file = stdin;
-	else
+	}
+	else {
 		file = fopen(filename, "r");
+		if (!file)
+			exit_error(ctx, "can't open config file `%s': %s", filename, strerror(errno));
+	}
+
 
 	yyscan_t scanner;
 	fastd_config_yylex_init(&scanner);
@@ -101,12 +106,18 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 
 	int token;
 	YYSTYPE token_val;
-	do {
+
+	if (peer_config)
+		token = START_PEER_CONFIG;
+	else
+		token = START_CONFIG;
+
+	while(fastd_config_push_parse(ps, token, &token_val, ctx, conf, depth+1) == YYPUSH_MORE) {
 		token = fastd_config_yylex(&token_val, scanner);
 
 		if (token < 0)
 			exit_error(ctx, "config error: %s", token_val.str);
-	} while(fastd_config_push_parse(ps, token, &token_val, ctx, conf, depth+1) == YYPUSH_MORE);
+	}
 
 	fastd_config_pstate_delete(ps);
 	fastd_config_yylex_destroy(scanner);
@@ -139,7 +150,13 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 	while (i < argc) {
 		IF_OPTION_ARG("-c", "--config") {
-			fastd_read_config(ctx, conf, arg, 0);
+			fastd_read_config(ctx, conf, arg, false, 0);
+			continue;
+		}
+
+		IF_OPTION_ARG("--config-peer") {
+			fastd_peer_config_new(ctx, conf);
+			fastd_read_config(ctx, conf, arg, true, 0);
 			continue;
 		}
 

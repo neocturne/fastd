@@ -17,27 +17,30 @@
 	struct in6_addr addr6;
 }
 
+%token START_CONFIG
+%token START_PEER_CONFIG
+
 %token <num> TOK_INTEGER
 %token <str> TOK_STRING
-%token <str> TOK_IDENTIFIER
 
-%token <str> TOK_INTERFACE
-%token <str> TOK_BIND
-%token <str> TOK_MTU
-%token <str> TOK_MODE
-%token <str> TOK_PROTOCOL
-%token <str> TOK_PEER
-%token <str> TOK_ADDRESS
-%token <str> TOK_SECRET
-%token <str> TOK_KEY
-%token <str> TOK_INCLUDE
+%token TOK_INTERFACE
+%token TOK_BIND
+%token TOK_MTU
+%token TOK_MODE
+%token TOK_PROTOCOL
+%token TOK_PEER
+%token TOK_ADDRESS
+%token TOK_SECRET
+%token TOK_KEY
+%token TOK_INCLUDE
+%token TOK_AS
+%token TOK_ANY
+%token TOK_TAP
+%token TOK_TUN
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
 
-%token <str> TOK_ANY
-%token <str> TOK_TAP
-%token <str> TOK_TUN
 
 %code {
 	#include <config.h>
@@ -59,8 +62,13 @@
 %type <num> port
 %type <num> maybe_port
 %type <num> maybe_port_default
+%type <str> maybe_as
 
 %%
+start:		START_CONFIG config
+	|	START_PEER_CONFIG peer_conf
+	;
+
 config:		config statement
 	|
 	;
@@ -75,7 +83,7 @@ statement:	TOK_INTERFACE interface ';'
 	|	TOK_INCLUDE include ';'
 	;
 
-interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1); }
+interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = $1; }
 	;
 
 bind:		TOK_ADDR maybe_port {
@@ -112,17 +120,17 @@ protocol:	TOK_STRING {
 #endif
 			else
 				exit_error(ctx, "config error: invalid protocol `%s'", $1);
+
+			free($1);
 }
 	;
 
-secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1); }
+secret:		TOK_STRING	{ free(conf->secret); conf->secret = $1; }
 	;
 
 peer:		maybe_string {
 			fastd_peer_config_new(ctx, conf);
-
-			if ($1)
-				conf->peers->name = strdup($1);
+			conf->peers->name = $1;
 		}
 	;
 
@@ -132,6 +140,7 @@ peer_conf:	peer_conf peer_statement
 
 peer_statement: TOK_ADDRESS peer_address ';'
 	|	TOK_KEY peer_key ';'
+	|	TOK_INCLUDE peer_include  ';'
 	;
 
 peer_address:	TOK_ADDR maybe_port_default {
@@ -146,11 +155,21 @@ peer_address:	TOK_ADDR maybe_port_default {
 		}
 	;
 
-peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = strdup($1); }
+peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = $1; }
+	;
+
+peer_include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1, true, depth); free($1); }
 	;
 
 
-include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1, depth); }
+include:	TOK_PEER TOK_STRING maybe_as {
+			fastd_peer_config_new(ctx, conf);
+			conf->peers->name = $3;
+
+			fastd_read_config(ctx, conf, $2, true, depth);
+			free($2);
+		}
+	|	TOK_STRING	{ fastd_read_config(ctx, conf, $1, false, depth); free($1); }
 	;
 
 
@@ -164,6 +183,10 @@ maybe_port:	':' port	{ $$ = $2; }
 
 maybe_port_default: ':' port	{ $$ = $2; }
 	|			{ $$ = htons(1337); }
+	;
+
+maybe_as:	TOK_AS TOK_STRING { $$ = $2; }
+	|			{ $$ = NULL; }
 	;
 
 port:		TOK_INTEGER {

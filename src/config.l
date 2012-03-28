@@ -15,16 +15,17 @@
 <INITIAL>{
 [0-9]+		{ yylval->num = atoi(yytext); return TOK_INTEGER; }
 
-interface	{ yylval->str = yytext; return TOK_INTERFACE; }
-bind		{ yylval->str = yytext; return TOK_BIND; }
-mtu		{ yylval->str = yytext; return TOK_MTU; }
-mode		{ yylval->str = yytext; return TOK_MODE; }
-protocol	{ yylval->str = yytext; return TOK_PROTOCOL; }
-peer		{ yylval->str = yytext; return TOK_PEER; }
-address		{ yylval->str = yytext; return TOK_ADDRESS; }
-secret		{ yylval->str = yytext; return TOK_SECRET; }
-key		{ yylval->str = yytext; return TOK_KEY; }
-include		{ yylval->str = yytext; return TOK_INCLUDE; }
+interface	{ return TOK_INTERFACE; }
+bind		{ return TOK_BIND; }
+mtu		{ return TOK_MTU; }
+mode		{ return TOK_MODE; }
+protocol	{ return TOK_PROTOCOL; }
+peer		{ return TOK_PEER; }
+address		{ return TOK_ADDRESS; }
+secret		{ return TOK_SECRET; }
+key		{ return TOK_KEY; }
+include		{ return TOK_INCLUDE; }
+as		{ return TOK_AS; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
@@ -39,16 +40,14 @@ any		{ yylval->str = yytext; return TOK_ANY; }
 tap		{ yylval->str = yytext; return TOK_TAP; }
 tun		{ yylval->str = yytext; return TOK_TUN; }
 
-[A-Za-z_][A-Za-z0-9_]* { yylval->str = yytext; return TOK_IDENTIFIER; }
-
 [;:\{\}]	{ return yytext[0]; }
 
 [ \t\n]	;
 }
 
-<INITIAL>\"\"	{ yylval->str = ""; return TOK_STRING; }
+<INITIAL>\"\"	{ yylval->str = strdup(""); return TOK_STRING; }
 <INITIAL>\"	BEGIN(STRING);
-<STRING>[^"]*	{ yylval->str = yytext; return TOK_STRING; }
+<STRING>[^"]+	{ yylval->str = strdup(yytext); return TOK_STRING; }
 <STRING>\"	BEGIN(INITIAL);
 
 <INITIAL>\[	BEGIN(ADDR6);
@@ -62,13 +61,12 @@ tun		{ yylval->str = yytext; return TOK_TUN; }
 		}
 <ADDR6>\]	BEGIN(INITIAL);
 
-<INITIAL>#.*	{}
-<INITIAL>\/\/.*	{}
+<INITIAL>#.*	/* ignore */
+<INITIAL>\/\/.*	/* ignore */
 
 <INITIAL>\/\*	BEGIN(COMMENT);
 <COMMENT>\*\/	BEGIN(INITIAL);
-<COMMENT>.	{}
-<COMMENT>\n	{}
+<COMMENT>.|\n	/* ignore everything */
 
 .		{
 			yylval->str = "invalid character";
