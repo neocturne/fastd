@@ -377,7 +377,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 
 	pr_info(ctx, "Connection with %P established.", peer);
 
-	if (fastd_peer_is_temporary(peer)) {
+	if (peer_config != peer->config) {
 		fastd_peer *perm_peer;
 		for (perm_peer = ctx->peers; perm_peer; perm_peer = perm_peer->next) {
 			if (perm_peer->config == peer_config) {

@@ -63,6 +63,20 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 		fastd_task_schedule_handshake(ctx, peer, 0, false);
 }
 
+static void delete_peer(fastd_context *ctx, fastd_peer *peer) {
+	pr_debug(ctx, "deleting peer %P", peer);
+
+	fastd_peer **cur_peer;
+	for (cur_peer = &ctx->peers; *cur_peer; cur_peer = &(*cur_peer)->next) {
+		if ((*cur_peer) == peer) {
+			*cur_peer = peer->next;
+			break;
+		}
+	}
+
+	free(peer);
+}
+
 
 fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf) {
 	fastd_peer_config *peer = malloc(sizeof(fastd_peer_config));
@@ -85,7 +99,11 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 	pr_debug(ctx, "resetting peer %P", peer);
 
 	reset_peer(ctx, peer);
-	setup_peer(ctx, peer);
+
+	if (fastd_peer_is_temporary(peer))
+		delete_peer(ctx, peer);
+	else
+		setup_peer(ctx, peer);
 }
 
 
@@ -150,25 +168,9 @@ fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_pe
 		}
 	}
 
-	fastd_peer_delete(ctx, temp_peer);
+	fastd_peer_reset(ctx, temp_peer);
 
 	return perm_peer;
-}
-
-void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
-	pr_debug(ctx, "deleting peer %P", peer);
-
-	reset_peer(ctx, peer);
-
-	fastd_peer **cur_peer;
-	for (cur_peer = &ctx->peers; *cur_peer; cur_peer = &(*cur_peer)->next) {
-		if ((*cur_peer) == peer) {
-			*cur_peer = peer->next;
-			break;
-		}
-	}
-
-	free(peer);
 }
 
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {

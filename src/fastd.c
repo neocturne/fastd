@@ -370,7 +370,7 @@ static void cleanup_peers(fastd_context *ctx) {
 
 		if (fastd_peer_is_temporary(peer)) {
 			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time_temp*1000)
-				fastd_peer_delete(ctx, peer);
+				fastd_peer_reset(ctx, peer);
 		}
 		else if (fastd_peer_is_established(peer)) {
 			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000)
