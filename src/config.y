@@ -32,8 +32,11 @@
 %parse-param {int depth}
 
 %code requires {
+	#define _GNU_SOURCE
+
 	#include <fastd.h>
 	#include <arpa/inet.h>
+	#include <unistd.h>
 }
 
 %union {
@@ -63,6 +66,8 @@
 %token TOK_ANY
 %token TOK_TAP
 %token TOK_TUN
+%token TOK_ON
+%token TOK_UP
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -105,6 +110,7 @@ statement:	TOK_INTERFACE interface ';'
 	|	TOK_MODE mode ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_SECRET secret ';'
+	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_PEER peer '{' peer_conf '}'
 	|	TOK_INCLUDE include ';'
 	;
@@ -152,6 +158,15 @@ protocol:	TOK_STRING {
 	;
 
 secret:		TOK_STRING	{ free(conf->secret); conf->secret = $1; }
+	;
+
+on_up:		TOK_STRING	{
+			free(conf->on_up);
+			free(conf->on_up_dir);
+
+			conf->on_up = $1;
+			conf->on_up_dir = get_current_dir_name();
+		}
 	;
 
 peer:		maybe_string {

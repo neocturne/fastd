@@ -62,6 +62,9 @@ static void default_config(fastd_config *conf) {
 	conf->protocol = &fastd_protocol_null;
 	conf->secret = NULL;
 	conf->peers = NULL;
+
+	conf->on_up = NULL;
+	conf->on_up_dir = NULL;
 }
 
 static bool config_match(const char *opt, ...) {
@@ -316,6 +319,16 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			}
 
 			free(addrstr);
+			continue;
+		}
+
+		IF_OPTION_ARG("--on-up") {
+			free(conf->on_up);
+			free(conf->on_up_dir);
+
+			conf->on_up = strdup(arg);
+			conf->on_up_dir = get_current_dir_name();
+
 			continue;
 		}
 

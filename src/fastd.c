@@ -24,6 +24,8 @@
 */
 
 
+#define _GNU_SOURCE
+
 #include "fastd.h"
 #include "handshake.h"
 #include "peer.h"
@@ -69,6 +71,8 @@ static void init_tuntap(fastd_context *ctx) {
 	if (ioctl(ctx->tunfd, TUNSETIFF, (void *)&ifr) < 0)
 		exit_errno(ctx, "TUNSETIFF ioctl failed");
 
+	ctx->ifname = strdup(ifr.ifr_name);
+
 	pr_debug(ctx, "Tun/tap device initialized.");
 }
 
@@ -111,6 +115,24 @@ static void init_socket(fastd_context *ctx) {
 	else {
 		ctx->sock6fd = -1;
 	}
+}
+
+static void on_up(fastd_context *ctx) {
+	if (!ctx->conf->on_up)
+		return;
+
+	char *cwd = get_current_dir_name();
+	chdir(ctx->conf->on_up_dir);
+
+	setenv("INTERFACE", ctx->ifname, 1);
+	int ret = system(ctx->conf->on_up);
+
+	if (WIFSIGNALED(ret))
+		pr_error(ctx, "on-up command exited with signal %i", WTERMSIG(ret));
+	else if(ret)
+		pr_warn(ctx, "on-up command exited with status %i", WEXITSTATUS(ret));
+
+	chdir(cwd);
 }
 
 static void init_peers(fastd_context *ctx) {
@@ -399,6 +421,8 @@ int main(int argc, char *argv[]) {
 
 	init_tuntap(&ctx);
 	init_socket(&ctx);
+
+	on_up(&ctx);
 
 	while (1) {
 		handle_tasks(&ctx);

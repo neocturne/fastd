@@ -99,10 +99,15 @@ struct _fastd_config {
 	unsigned n_v6;
 
 	fastd_protocol_config *protocol_config;
+
+	char *on_up;
+	char *on_up_dir;
 };
 
 struct _fastd_context {
 	const fastd_config *conf;
+
+	char *ifname;
 
 	struct timespec now;
 
@@ -126,8 +131,11 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure);
 
-#define pr_log(ctx, level, prefix, args...) if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) \
-		do { fputs(prefix, stderr); fastd_printf(ctx, args); fputs("\n", stderr); } while(0)
+#define pr_log(ctx, level, prefix, args...) do { \
+		if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) { \
+			fputs(prefix, stderr); fastd_printf(ctx, args); fputs("\n", stderr); \
+		} \
+	} while(0)
 
 #define is_error(ctx) ((ctx)->conf == NULL || LOG_ERROR <= (ctx)->conf->loglevel)
 #define is_warn(ctx) ((ctx)->conf == NULL || LOG_WARN <= (ctx)->conf->loglevel)

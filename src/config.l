@@ -55,6 +55,8 @@ as		{ return TOK_AS; }
 any		{ return TOK_ANY; }
 tap		{ return TOK_TAP; }
 tun		{ return TOK_TUN; }
+on		{ return TOK_ON; }
+up		{ return TOK_UP; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
