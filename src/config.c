@@ -146,6 +146,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 	char *charptr;
 	char *endptr;
 	char *addrstr;
+	bool keygen = false;
 
 
 	while (i < argc) {
@@ -305,7 +306,18 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			continue;
 		}
 
+		IF_OPTION("--generate-key") {
+			keygen = true;
+			continue;
+		}
+
 		exit_error(ctx, "config error: unknown option `%s'", argv[i]);
+	}
+
+	if (keygen) {
+		ctx->conf = conf;
+		conf->protocol->generate_key(ctx);
+		exit(0);
 	}
 
 	conf->n_floating = 0;

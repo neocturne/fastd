@@ -691,6 +691,34 @@ static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {
 }
 
 
+static void hexdump(const char *desc, unsigned char d[32]) {
+	printf("%s", desc);
+
+	int i;
+	for (i = 0; i < 32; i++)
+		printf("%02x", d[i]);
+
+	printf("\n");
+}
+
+static void protocol_generate_key(fastd_context *ctx) {
+	ecc_secret_key_256 secret_key;
+	ecc_public_key_256 public_key;
+
+	pr_info(ctx, "Reading 32 bytes from /dev/random...");
+
+	fastd_random_bytes(ctx, secret_key.s, 32, true);
+	ecc_25519_secret_sanitize(&secret_key, &secret_key);
+
+	ecc_25519_work work;
+	ecc_25519_scalarmult_base(&work, &secret_key);
+	ecc_25519_store(&public_key, &work);
+
+	hexdump("Secret: ", secret_key.s);
+	hexdump("Public: ", public_key.p);
+}
+
+
 const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.name = "ec25519-fhmqvc-xsalsa20-poly1305",
 
@@ -705,4 +733,6 @@ const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.send = protocol_send,
 
 	.free_peer_state = protocol_free_peer_state,
+
+	.generate_key = protocol_generate_key,
 };

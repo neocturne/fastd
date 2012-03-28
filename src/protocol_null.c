@@ -89,6 +89,9 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {
 }
 
+static void protocol_generate_key(fastd_context *ctx) {
+	exit_error(ctx, "trying to generate key for `null' protocol");
+}
 
 const fastd_protocol fastd_protocol_null = {
 	.name = "null",
@@ -104,4 +107,6 @@ const fastd_protocol fastd_protocol_null = {
 	.send = protocol_send,
 
 	.free_peer_state = protocol_free_peer_state,
+
+	.generate_key = protocol_generate_key,
 };

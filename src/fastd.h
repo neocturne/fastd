@@ -71,6 +71,8 @@ struct _fastd_protocol {
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
 	void (*free_peer_state)(fastd_context *ctx, fastd_peer *peer);
+
+	void (*generate_key)(fastd_context *ctx);
 };
 
 struct _fastd_config {
