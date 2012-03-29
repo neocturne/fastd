@@ -125,6 +125,11 @@ static void on_up(fastd_context *ctx) {
 	chdir(ctx->conf->on_up_dir);
 
 	setenv("INTERFACE", ctx->ifname, 1);
+
+	char buf[6];
+	snprintf(buf, 6, "%u", ctx->conf->mtu);
+	setenv("MTU", buf, 1);
+
 	int ret = system(ctx->conf->on_up);
 
 	if (WIFSIGNALED(ret))
