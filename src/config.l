@@ -26,9 +26,13 @@
 
 %option prefix="fastd_config_yy"
 %option noyywrap
+%option nounput
+%option noinput
 %option bison-bridge
 %option bison-locations
 %option reentrant
+%option warn
+
 
 %top {
 	 #include <config.yy.h>
