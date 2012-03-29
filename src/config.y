@@ -70,6 +70,8 @@
 %token TOK_TUN
 %token TOK_ON
 %token TOK_UP
+%token TOK_PEERS
+%token TOK_FROM
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -211,6 +213,10 @@ include:	TOK_PEER TOK_STRING maybe_as {
 
 			fastd_read_config(ctx, conf, $2, true, depth);
 			free($2);
+		}
+	|	TOK_PEERS TOK_FROM TOK_STRING {
+			fastd_read_config_dir(ctx, conf, $3, depth);
+			free($3);
 		}
 	|	TOK_STRING	{ fastd_read_config(ctx, conf, $1, false, depth); free($1); }
 	;

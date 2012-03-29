@@ -66,6 +66,8 @@ tap		{ UPDATE_LOCATION; return TOK_TAP; }
 tun		{ UPDATE_LOCATION; return TOK_TUN; }
 on		{ UPDATE_LOCATION; return TOK_ON; }
 up		{ UPDATE_LOCATION; return TOK_UP; }
+peers		{ UPDATE_LOCATION; return TOK_PEERS; }
+from		{ UPDATE_LOCATION; return TOK_FROM; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

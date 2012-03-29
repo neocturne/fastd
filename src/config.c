@@ -34,8 +34,11 @@
 #include <config.h>
 
 #include <arpa/inet.h>
+#include <dirent.h>
 #include <libgen.h>
 #include <stdarg.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 
 extern fastd_protocol fastd_protocol_null;
@@ -86,6 +89,54 @@ static bool config_match(const char *opt, ...) {
 	return match;
 }
 
+void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *dir, int depth) {
+	if (depth >= MAX_CONFIG_DEPTH)
+		exit_error(ctx, "maximum config include depth exceeded");
+
+	char *oldcwd = get_current_dir_name();
+
+	if (chdir(dir))
+		exit_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
+
+	DIR *dirh = opendir(".");
+
+	if (!dirh)
+		exit_error(ctx, "opendir for `%s' failed: %s", dir, strerror(errno));
+
+	while (true) {
+		struct dirent entry, *result;
+		int ret;
+
+		ret = readdir_r(dirh, &entry, &result);
+		if (ret)
+			exit_error(ctx, "readdir_r: %s", strerror(ret));
+
+		if (!result)
+			break;
+		if (result->d_name[0] == '.')
+			continue;
+
+		struct stat statbuf;
+		if (stat(result->d_name, &statbuf)) {
+			pr_info(ctx, "ignoring file `%s': stat failed: %s", result->d_name, strerror(errno));
+			continue;
+		}
+		if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
+			pr_info(ctx, "ignoring file `%s': no regular file", result->d_name);
+			continue;
+		}
+
+		fastd_peer_config_new(ctx, conf);
+		conf->peers->name = strdup(result->d_name);
+		fastd_read_config(ctx, conf, result->d_name, true, depth);
+	}
+
+	closedir(dirh);
+
+	chdir(oldcwd);
+	free(oldcwd);
+}
+
 void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error(ctx, "maximum config include depth exceeded");
@@ -107,7 +158,8 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	char *filename2 = strdup(filename);
 	char *dir = dirname(filename2);
 
-	chdir(dir);
+	if (chdir(dir))
+		exit_error(ctx, "change from directory `%s' to `%s' failed", oldcwd, dir);
 
 	yyscan_t scanner;
 	fastd_config_yylex_init(&scanner);
@@ -175,6 +227,11 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		IF_OPTION_ARG("--config-peer") {
 			fastd_peer_config_new(ctx, conf);
 			fastd_read_config(ctx, conf, arg, true, 0);
+			continue;
+		}
+
+		IF_OPTION_ARG("--config-peer-dir") {
+			fastd_read_config_dir(ctx, conf, arg, 0);
 			continue;
 		}
 
