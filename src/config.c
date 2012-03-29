@@ -117,17 +117,18 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 
 	int token;
 	YYSTYPE token_val;
+	YYLTYPE loc = {1, 0, 1, 0};
 
 	if (peer_config)
 		token = START_PEER_CONFIG;
 	else
 		token = START_CONFIG;
 
-	while(fastd_config_push_parse(ps, token, &token_val, ctx, conf, depth+1) == YYPUSH_MORE) {
-		token = fastd_config_yylex(&token_val, scanner);
+	while(fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1) == YYPUSH_MORE) {
+		token = fastd_config_yylex(&token_val, &loc, scanner);
 
 		if (token < 0)
-			exit_error(ctx, "config error: %s", token_val.str);
+			exit_error(ctx, "config error: %s at %s:%i:%i", token_val.str, filename, loc.first_line, loc.first_column);
 	}
 
 	fastd_config_pstate_delete(ps);

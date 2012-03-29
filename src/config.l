@@ -27,6 +27,7 @@
 %option prefix="fastd_config_yy"
 %option noyywrap
 %option bison-bridge
+%option bison-locations
 %option reentrant
 
 %top {
@@ -38,27 +39,37 @@
 %s COMMENT
 
 %%
-<INITIAL>{
-[0-9]+		{ yylval->num = atoi(yytext); return TOK_INTEGER; }
+%{
+	#define UPDATE_LOCATION do { \
+			yylloc->first_line = yylloc->last_line; \
+			yylloc->first_column = yylloc->last_column+1; \
+			yylloc->last_column += yyleng; \
+		} while (0)
+%}
 
-interface	{ return TOK_INTERFACE; }
-bind		{ return TOK_BIND; }
-mtu		{ return TOK_MTU; }
-mode		{ return TOK_MODE; }
-protocol	{ return TOK_PROTOCOL; }
-peer		{ return TOK_PEER; }
-address		{ return TOK_ADDRESS; }
-secret		{ return TOK_SECRET; }
-key		{ return TOK_KEY; }
-include		{ return TOK_INCLUDE; }
-as		{ return TOK_AS; }
-any		{ return TOK_ANY; }
-tap		{ return TOK_TAP; }
-tun		{ return TOK_TUN; }
-on		{ return TOK_ON; }
-up		{ return TOK_UP; }
+<INITIAL>{
+[0-9]+		{ UPDATE_LOCATION; yylval->num = atoi(yytext); return TOK_INTEGER; }
+
+interface	{ UPDATE_LOCATION; return TOK_INTERFACE; }
+bind		{ UPDATE_LOCATION; return TOK_BIND; }
+mtu		{ UPDATE_LOCATION; return TOK_MTU; }
+mode		{ UPDATE_LOCATION; return TOK_MODE; }
+protocol	{ UPDATE_LOCATION; return TOK_PROTOCOL; }
+peer		{ UPDATE_LOCATION; return TOK_PEER; }
+address		{ UPDATE_LOCATION; return TOK_ADDRESS; }
+secret		{ UPDATE_LOCATION; return TOK_SECRET; }
+key		{ UPDATE_LOCATION; return TOK_KEY; }
+include		{ UPDATE_LOCATION; return TOK_INCLUDE; }
+as		{ UPDATE_LOCATION; return TOK_AS; }
+any		{ UPDATE_LOCATION; return TOK_ANY; }
+tap		{ UPDATE_LOCATION; return TOK_TAP; }
+tun		{ UPDATE_LOCATION; return TOK_TUN; }
+on		{ UPDATE_LOCATION; return TOK_ON; }
+up		{ UPDATE_LOCATION; return TOK_UP; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
+			UPDATE_LOCATION;
+
 			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
 				yylval->str = "invalid address";
 				return -1;
@@ -67,14 +78,17 @@ up		{ return TOK_UP; }
 			return TOK_ADDR;
 		}
 
-[;:\{\}]	{ return yytext[0]; }
+[;:\{\}]	{ UPDATE_LOCATION; return yytext[0]; }
 
-[ \t\n]	;
+[ \t]		{ yylloc->last_column++; }
+\n		{ yylloc->last_column = 0; yylloc->last_line++; }
 }
 
-<INITIAL>\"	BEGIN(STRING);
-<STRING>[^"\\]*	yymore();
-<STRING>\\(.|\n) yymore();
+<INITIAL>\"	{ UPDATE_LOCATION; BEGIN(STRING); }
+<STRING>[^"\\\n] { yylloc->last_column++; yymore(); }
+<STRING>\n	{ yylloc->last_line++; yylloc->last_column = 0; yymore(); }
+<STRING>\\.	{ yylloc->last_column+=2; yymore(); }
+<STRING>\\\n	{ yylloc->last_line++; yylloc->last_column = 0; yymore(); }
 <STRING>\" {
 			int i, esc = 0;
 
@@ -87,29 +101,32 @@ up		{ return TOK_UP; }
 			yytext[yyleng-esc-1] = 0;
 			yylval->str = strdup(yytext);
 			BEGIN(INITIAL);
+			yylloc->last_column++;
 			return TOK_STRING;
 
 		}
 
-<INITIAL>\[	BEGIN(ADDR6);
-<ADDR6>[^\]]+	{
+<INITIAL>\[	{ UPDATE_LOCATION; BEGIN(ADDR6); }
+<ADDR6>[0-9a-fA-F:]+	{
+			yylloc->last_column += yyleng;
 			if (!inet_pton(AF_INET6, yytext, &yylval->addr6)) {
 				yylval->str = "invalid address";
 				return -1;
 			}
-
-			return TOK_ADDR6;
 		}
-<ADDR6>\]	BEGIN(INITIAL);
+<ADDR6>\]	{ yylloc->last_column++; BEGIN(INITIAL); return TOK_ADDR6; }
 
-<INITIAL>#.*	/* ignore */
-<INITIAL>\/\/.*	/* ignore */
+<INITIAL>#.*	{ yylloc->last_column += yyleng; }
+<INITIAL>\/\/.*	{ yylloc->last_column += yyleng; }
 
-<INITIAL>\/\*	BEGIN(COMMENT);
-<COMMENT>\*\/	BEGIN(INITIAL);
-<COMMENT>.|\n	/* ignore everything */
+<INITIAL>\/\*	{ UPDATE_LOCATION; BEGIN(COMMENT); }
+<COMMENT>\*\/	{ yylloc->last_column += yyleng; BEGIN(INITIAL); }
+<COMMENT>.	{ yylloc->last_column++; }
+<COMMENT>\n	{ yylloc->last_line++; yylloc->last_column = 0; }
 
 .		{
+			yylloc->first_line = yylloc->last_line;
+			yylloc->first_column = yylloc->last_column+1;
 			yylval->str = "invalid character";
 			return -1;
 		}

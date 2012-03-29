@@ -27,8 +27,10 @@
 %define api.pure
 %define api.push-pull push
 %name-prefix "fastd_config_"
+%locations
 %parse-param {fastd_context *ctx}
 %parse-param {fastd_config *conf}
+%parse-param {const char *filename}
 %parse-param {int depth}
 
 %code requires {
@@ -78,7 +80,7 @@
 	#include <stdint.h>
 	#include <peer.h>
 
-	void fastd_config_error(fastd_context *ctx, fastd_config *conf, int depth, char *s);
+	void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s);
 
 	extern fastd_protocol fastd_protocol_null;
 
@@ -237,6 +239,6 @@ port:		TOK_INTEGER {
 		}
 	;
 %%
-void fastd_config_error(fastd_context *ctx, fastd_config *conf, int depth, char *s) {
-	exit_error(ctx, "config error: %s", s);
+void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s) {
+	exit_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
 }
