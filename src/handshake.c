@@ -47,7 +47,7 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 	"unacceptable value",
 };
 
-#define AS_UINT8(ptr) (*(uint8_t*)(ptr))
+#define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
 
 static inline void handshake_add(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, size_t len, const void *data) {
 	if ((uint8_t*)buffer->data + buffer->len + 2 + len > (uint8_t*)buffer->base + buffer->base_len)
@@ -75,37 +75,42 @@ static inline void handshake_add_uint8(fastd_context *ctx, fastd_buffer *buffer,
 	buffer->len += 3;
 }
 
-void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer) {
+fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size_t tail_space) {
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
 						 2*3 +           /* handshake type, mode */
-						 2+protocol_len  /* protocol name */
+						 2+protocol_len+ /* protocol name */
+						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
 
 	request->req_id = ++peer->last_req_id;
 	request->rsv = 0;
 
-	handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, HANDSHAKE_REQUEST);
+	handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, 1);
 	handshake_add_uint8(ctx, &buffer, RECORD_MODE, ctx->conf->mode);
 
 	handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
 
-	fastd_task_put_send_handshake(ctx, peer, buffer);
+	return buffer;
 }
 
-void fastd_handshake_rehandshake(fastd_context *ctx, fastd_peer *peer) {
-	size_t protocol_len = strlen(ctx->conf->protocol->name);
-	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0, 3 /* handshake type */);
+fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake, size_t tail_space) {
+	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
+						 2*3 +           /* handshake type, reply code */
+						 tail_space
+						 );
 	fastd_packet *request = buffer.data;
 
-	request->req_id = ++peer->last_req_id;
+	request->req_id = handshake->req_id;
 	request->rsv = 0;
 
-	handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, HANDSHAKE_REHANDSHAKE_REQUEST);
+	handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])+1);
+	handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
 
-	fastd_task_put_send_handshake(ctx, peer, buffer);
+	return buffer;
 }
+
 
 void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	if (buffer.len < sizeof(fastd_packet)) {
@@ -113,10 +118,10 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		goto end_free;
 	}
 
-	fastd_packet *packet = buffer.data;
+	fastd_handshake handshake;
+	memset(&handshake, 0, sizeof(handshake));
 
-	size_t lengths[RECORD_MAX];
-	void *records[RECORD_MAX] = { 0 };
+	fastd_packet *packet = buffer.data;
 
 	uint8_t *ptr = packet->tlv_data;
 	while (true) {
@@ -129,103 +134,94 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		if (ptr+2+len > (uint8_t*)buffer.data + buffer.len)
 			break;
 
-		lengths[type] = len;
-		records[type] = ptr+2;
+		handshake.records[type].length = len;
+		handshake.records[type].data = ptr+2;
 
 		ptr += 2+len;
 	}
 
-	if (!records[RECORD_HANDSHAKE_TYPE]) {
-		pr_warn(ctx, "received a handshake without type from %P", peer);
+	handshake.req_id = packet->req_id;
+
+	if (handshake.records[RECORD_HANDSHAKE_TYPE].length != 1)
 		goto end_free;
-	}
 
-	fastd_buffer reply_buffer;
-	fastd_packet *reply;
+	if (AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]) == 1) {
+		uint8_t reply_code = REPLY_SUCCESS;
+		uint8_t error_detail = 0;
 
-	uint8_t reply_code;
-	uint8_t error_detail;
-	const char *error_field_str;
-
-	switch (AS_UINT8(records[RECORD_HANDSHAKE_TYPE])) {
-	case HANDSHAKE_REQUEST:
-		reply_code = REPLY_SUCCESS;
-		error_detail = 0;
-
-		if (!records[RECORD_MODE]) {
+		if (!handshake.records[RECORD_MODE].data) {
 			reply_code = REPLY_MANDATORY_MISSING;
 			error_detail = RECORD_MODE;
 			goto send_reply;
 		}
 
-		if (lengths[RECORD_MODE] != 1 || AS_UINT8(records[RECORD_MODE]) != ctx->conf->mode) {
+		if (handshake.records[RECORD_MODE].length != 1 || AS_UINT8(handshake.records[RECORD_MODE]) != ctx->conf->mode) {
 			reply_code = REPLY_UNACCEPTABLE_VALUE;
 			error_detail = RECORD_MODE;
 			goto send_reply;
 		}
 
-		if (!records[RECORD_PROTOCOL_NAME]) {
+		if (!handshake.records[RECORD_PROTOCOL_NAME].data) {
 			reply_code = REPLY_MANDATORY_MISSING;
 			error_detail = RECORD_PROTOCOL_NAME;
 			goto send_reply;
 		}
 
-		if (lengths[RECORD_PROTOCOL_NAME] != strlen(ctx->conf->protocol->name)
-		    || strncmp((char*)records[RECORD_PROTOCOL_NAME], ctx->conf->protocol->name, lengths[RECORD_PROTOCOL_NAME])) {
+		if (handshake.records[RECORD_PROTOCOL_NAME].length != strlen(ctx->conf->protocol->name)
+		    || strncmp((char*)handshake.records[RECORD_PROTOCOL_NAME].data, ctx->conf->protocol->name, handshake.records[RECORD_PROTOCOL_NAME].length)) {
 			reply_code = REPLY_UNACCEPTABLE_VALUE;
 			error_detail = RECORD_PROTOCOL_NAME;
 			goto send_reply;
 		}
 
 	send_reply:
-		reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0, 3*3 /* enough space for handshake type, reply code and error detail */);
-		reply = reply_buffer.data;
+		if (reply_code) {
+			fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0, 3*3 /* enough space for handshake type, reply code and error detail */);
+			fastd_packet *reply = reply_buffer.data;
 
-		reply->req_id = packet->req_id;
-		reply->rsv = 0;
+			reply->req_id = packet->req_id;
+			reply->rsv = 0;
 
-		handshake_add_uint8(ctx, &reply_buffer, RECORD_HANDSHAKE_TYPE, HANDSHAKE_REPLY);
-		handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
-
-		if (reply_code)
+			handshake_add_uint8(ctx, &reply_buffer, RECORD_HANDSHAKE_TYPE, 2);
+			handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
 			handshake_add_uint8(ctx, &reply_buffer, RECORD_ERROR_DETAIL, error_detail);
-
-		fastd_task_put_send_handshake(ctx, peer, reply_buffer);
-
-		break;
-
-	case HANDSHAKE_REPLY:
-		if (packet->req_id != peer->last_req_id) {
-			pr_warn(ctx, "received handshake reply with request ID %u from %P while %u was expected", packet->req_id, peer, peer->last_req_id);
-			goto end_free;
+		}
+		else {
+			ctx->conf->protocol->handshake_handle(ctx, peer, &handshake);
+		}
+	}
+	else {
+		if ((AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]) & 1) == 0) {
+			if (packet->req_id != peer->last_req_id) {
+				pr_warn(ctx, "received handshake reply with request ID %u from %P while %u was expected", packet->req_id, peer, peer->last_req_id);
+				goto end_free;
+			}
 		}
 
-		if (!records[RECORD_REPLY_CODE] || lengths[RECORD_REPLY_CODE] != 1) {
+		if (handshake.records[RECORD_REPLY_CODE].length != 1) {
 			pr_warn(ctx, "received handshake reply without reply code from %P", peer);
 			goto end_free;
 		}
 
-		reply_code = AS_UINT8(records[RECORD_REPLY_CODE]);
+		uint8_t reply_code = AS_UINT8(handshake.records[RECORD_REPLY_CODE]);
 
-		switch (reply_code) {
-		case REPLY_SUCCESS:
-			pr_info(ctx, "Handshake with %P successful.", peer);
-			fastd_peer_set_established(peer);
-			ctx->conf->protocol->init_peer(ctx, peer);
-			break;
+		if (reply_code == REPLY_SUCCESS) {
+			ctx->conf->protocol->handshake_handle(ctx, peer, &handshake);
+		}
+		else {
+			const char *error_field_str;
 
-		default:
 			if (reply_code >= REPLY_MAX) {
 				pr_warn(ctx, "Handshake with %P failed with unknown code %i", peer, reply_code);
-				break;
+				goto end_free;
 			}
 
-			if (!records[RECORD_ERROR_DETAIL] || lengths[RECORD_ERROR_DETAIL] != 1) {
+			if (handshake.records[RECORD_ERROR_DETAIL].length != 1) {
 				pr_warn(ctx, "Handshake with %P failed with code %s", peer, REPLY_TYPES[reply_code]);
-				break;
+				goto end_free;
 			}
 
-			error_detail = AS_UINT8(records[RECORD_ERROR_DETAIL]);
+			uint8_t error_detail = AS_UINT8(handshake.records[RECORD_ERROR_DETAIL]);
 			if (error_detail >= RECORD_MAX)
 				error_field_str = "<unknown>";
 			else
@@ -244,14 +240,6 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 				break;
 			}
 		}
-		break;
-
-	case HANDSHAKE_REHANDSHAKE_REQUEST:
-		fastd_task_schedule_handshake(ctx, peer, 0, true);
-		break;
-
-	default:
-		pr_warn(ctx, "received a handshake with unknown type from %P", peer);
 	}
 
  end_free:

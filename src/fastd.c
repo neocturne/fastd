@@ -206,14 +206,14 @@ static void handle_tasks(fastd_context *ctx) {
 			break;
 
 		case TASK_HANDSHAKE:
-			if (task->peer->state != STATE_WAIT && task->peer->state != STATE_TEMP && !task->handshake.force)
+			if (task->peer->state != STATE_WAIT && task->peer->state != STATE_TEMP)
 				break;
 
 			pr_debug(ctx, "Sending handshake to %P...", task->peer);
-			fastd_handshake_send(ctx, task->peer);
+			ctx->conf->protocol->handshake_init(ctx, task->peer);
 
 			if (task->peer->state == STATE_WAIT)
-				fastd_task_schedule_handshake(ctx, task->peer, 20000, false);
+				fastd_task_schedule_handshake(ctx, task->peer, 20000);
 			break;
 
 		default:
@@ -321,12 +321,10 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	if (peer) {
 		switch (packet_type) {
 		case PACKET_DATA:
-			peer->seen = ctx->now;
 			ctx->conf->protocol->handle_recv(ctx, peer, buffer);
 			break;
 
 		case PACKET_HANDSHAKE:
-			peer->seen = ctx->now;
 			fastd_handshake_handle(ctx, peer, buffer);
 			break;
 
@@ -341,8 +339,6 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 
 			peer = fastd_peer_add_temp(ctx, (fastd_peer_address*)&recvaddr);
 			ctx->conf->protocol->handle_recv(ctx, peer, buffer);
-			pr_debug(ctx, "Requesting re-handshake from %P", peer);
-			fastd_handshake_rehandshake(ctx, peer);
 			break;
 
 		case PACKET_HANDSHAKE:

@@ -275,6 +275,13 @@ static void new_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_peer
 	ecc_25519_store(&(*handshake)->public_key, &work);
 }
 
+static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
+}
+
+static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
+}
+
+#if 0
 static void protocol_init_peer(fastd_context *ctx, fastd_peer *peer) {
 	pr_info(ctx, "Initializing session with %P...", peer);
 
@@ -303,6 +310,7 @@ static void protocol_init_peer(fastd_context *ctx, fastd_peer *peer) {
 
 	fastd_task_put_send(ctx, peer, buffer);
 }
+#endif
 
 static void respond_handshake(fastd_context *ctx, fastd_peer *peer) {
 	pr_info(ctx, "Responding protocol handshake with %P...", peer);
@@ -383,7 +391,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 		fastd_peer *perm_peer;
 		for (perm_peer = ctx->peers; perm_peer; perm_peer = perm_peer->next) {
 			if (perm_peer->config == peer_config) {
-				fastd_peer_merge(ctx, perm_peer, peer);
+				fastd_peer_set_established_merge(ctx, perm_peer, peer);
 				break;
 			}
 		}
@@ -552,7 +560,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 			new_handshake(ctx, peer, peer_config, false);
 			memcpy(peer->protocol_state->accepting_handshake->peer_key.p, packet->init.handshake_key, PUBLICKEYBYTES);
 
-			fastd_peer_set_established(peer);
+			fastd_peer_set_established(ctx, peer);
 			respond_handshake(ctx, peer);
 
 			break;
@@ -733,7 +741,9 @@ const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.min_encrypt_head_space = protocol_min_encrypt_head_space,
 	.min_decrypt_head_space = protocol_min_decrypt_head_space,
 
-	.init_peer = protocol_init_peer,
+	.handshake_init = protocol_handshake_init,
+	.handshake_handle = protocol_handshake_handle,
+
 	.handle_recv = protocol_handle_recv,
 	.send = protocol_send,
 

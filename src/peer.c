@@ -59,7 +59,7 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	peer->seen = (struct timespec){0, 0};
 
 	if (!fastd_peer_is_floating(peer))
-		fastd_task_schedule_handshake(ctx, peer, 0, false);
+		fastd_task_schedule_handshake(ctx, peer, 0);
 }
 
 static void delete_peer(fastd_context *ctx, fastd_peer *peer) {
@@ -148,13 +148,13 @@ fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *ad
 	return peer;
 }
 
-fastd_peer* fastd_peer_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer) {
+fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer) {
 	pr_debug(ctx, "merging peer %P into %P", temp_peer, perm_peer);
 
 	ctx->conf->protocol->free_peer_state(ctx, perm_peer);
 
 	perm_peer->address = temp_peer->address;
-	perm_peer->state = fastd_peer_is_established(temp_peer) ? STATE_ESTABLISHED : STATE_WAIT;
+	perm_peer->state = STATE_ESTABLISHED;
 	perm_peer->seen = temp_peer->seen;
 	perm_peer->protocol_state = temp_peer->protocol_state;
 

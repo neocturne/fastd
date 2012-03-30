@@ -64,7 +64,8 @@ struct _fastd_protocol {
 	size_t (*min_encrypt_head_space)(fastd_context *ctx);
 	size_t (*min_decrypt_head_space)(fastd_context *ctx);
 
-	void (*init_peer)(fastd_context *ctx, fastd_peer *peer);
+	void (*handshake_init)(fastd_context *ctx, fastd_peer *peer);
+	void (*handshake_handle)(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
@@ -122,7 +123,6 @@ struct _fastd_context {
 	size_t n_eth_addr;
 	fastd_peer_eth_addr *eth_addr;
 };
-
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
 

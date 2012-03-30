@@ -51,10 +51,6 @@ typedef struct _fastd_task_handle_recv {
 	fastd_buffer buffer;
 } fastd_task_handle_recv;
 
-typedef struct _fastd_task_handshake {
-	bool force;
-} fastd_task_handshake;
-
 typedef struct _fastd_task {
 	fastd_queue_entry entry;
 
@@ -64,7 +60,6 @@ typedef struct _fastd_task {
 	union  {
 		fastd_task_send send;
 		fastd_task_handle_recv handle_recv;
-		fastd_task_handshake handshake;
 	};
 } fastd_task;
 
@@ -81,7 +76,7 @@ void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_b
 void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
-void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout, bool force);
+void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout);
 
 void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer);
 

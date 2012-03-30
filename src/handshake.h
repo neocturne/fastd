@@ -28,9 +28,42 @@
 #define _FASTD_HANDSHAKE_H_
 
 #include "fastd.h"
+#include "packet.h"
 
-void fastd_handshake_send(fastd_context *ctx, fastd_peer *peer);
-void fastd_handshake_rehandshake(fastd_context *ctx, fastd_peer *peer);
+
+typedef enum _fastd_handshake_record_type {
+	RECORD_HANDSHAKE_TYPE = 0,
+	RECORD_REPLY_CODE,
+	RECORD_ERROR_DETAIL,
+	RECORD_FLAGS,
+	RECORD_MODE,
+	RECORD_PROTOCOL_NAME,
+	RECORD_MAX,
+} fastd_handshake_record_type;
+
+typedef enum _fastd_reply_code {
+	REPLY_SUCCESS = 0,
+	REPLY_MANDATORY_MISSING,
+	REPLY_UNACCEPTABLE_VALUE,
+	REPLY_MAX,
+} fastd_reply_code;
+
+
+typedef struct _fastd_handshake_record {
+	size_t length;
+	void *data;
+} fastd_handshake_record;
+
+struct _fastd_handshake {
+	uint8_t req_id;
+	fastd_handshake_record records[RECORD_MAX];
+};
+
+
+fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size_t tail_space);
+fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake, size_t tail_space);
+
 void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+
 
 #endif /* _FASTD_HANDSHAKE_H_ */

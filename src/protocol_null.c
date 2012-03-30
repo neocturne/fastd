@@ -29,8 +29,12 @@
 #include "fastd.h"
 #include "task.h"
 #include "peer.h"
+#include "handshake.h"
 
 #include <arpa/inet.h>
+
+
+#define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
 
 
 static void protocol_init(fastd_context *ctx, fastd_config *conf) {
@@ -46,20 +50,12 @@ static size_t protocol_min_head_space(fastd_context *ctx) {
 	return 0;
 }
 
-static void protocol_init_peer(fastd_context *ctx, fastd_peer *peer) {
-	pr_info(ctx, "Connection with %P established.", peer);
-
-	if (!fastd_peer_is_temporary(peer))
-		fastd_task_put_send(ctx, peer, fastd_buffer_alloc(0, 0, 0));
+static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
+	fastd_buffer buffer = fastd_handshake_new_init(ctx, peer, 0);
+	fastd_task_put_send_handshake(ctx, peer, buffer);
 }
 
-static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	if (!fastd_peer_is_established(peer)) {
-		pr_info(ctx, "Connection with %P established.", peer);
-
-		fastd_peer_set_established(peer);
-	}
-
+static void establish(fastd_context *ctx, fastd_peer *peer) {
 	if (fastd_peer_is_temporary(peer)) {
 		fastd_peer *perm_peer;
 		for (perm_peer = ctx->peers; perm_peer; perm_peer = perm_peer->next) {
@@ -68,17 +64,52 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		}
 
 		if (!perm_peer) {
-			fastd_buffer_free(buffer);
 			return;
 		}
 
-		peer = fastd_peer_merge(ctx, perm_peer, peer);
+		fastd_peer_set_established_merge(ctx, perm_peer, peer);
 	}
-	
-	if (buffer.len)
+	else {
+		fastd_peer_set_established(ctx, peer);
+	}
+}
+
+static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
+	fastd_buffer buffer;
+
+	switch(AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])) {
+	case 1:
+		buffer = fastd_handshake_new_reply(ctx, peer, handshake, 0);
+		fastd_task_put_send_handshake(ctx, peer, buffer);
+		break;
+
+	case 2:
+		peer->seen = ctx->now;
+		establish(ctx, peer);
+		buffer = fastd_handshake_new_reply(ctx, peer, handshake, 0);
+		fastd_task_put_send_handshake(ctx, peer, buffer);
+		break;
+
+	case 3:
+		peer->seen = ctx->now;
+		establish(ctx, peer);
+		break;
+
+	default:
+		pr_debug(ctx, "received handshake reply with unknown type %u", AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE]));
+		break;
+	}
+
+}
+
+static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	if (fastd_peer_is_established(peer) && buffer.len) {
+		peer->seen = ctx->now;
 		fastd_task_put_handle_recv(ctx, peer, buffer);
-	else
+	}
+	else {
 		fastd_buffer_free(buffer);
+	}
 }
 
 static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
@@ -101,7 +132,9 @@ const fastd_protocol fastd_protocol_null = {
 	.min_encrypt_head_space = protocol_min_head_space,
 	.min_decrypt_head_space = protocol_min_head_space,
 
-	.init_peer = protocol_init_peer,
+	.handshake_init = protocol_handshake_init,
+	.handshake_handle = protocol_handshake_handle,
+
 	.handle_recv = protocol_handle_recv,
 	.send = protocol_send,
 

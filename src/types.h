@@ -48,9 +48,8 @@ typedef enum _fastd_mode {
 
 typedef enum _fastd_peer_state {
 	STATE_WAIT,
-	STATE_ESTABLISHED,
 	STATE_TEMP,
-	STATE_TEMP_ESTABLISHED,
+	STATE_ESTABLISHED,
 } fastd_peer_state;
 
 
@@ -66,6 +65,8 @@ typedef struct _fastd_config fastd_config;
 typedef struct _fastd_context fastd_context;
 
 typedef struct _fastd_protocol fastd_protocol;
+
+typedef struct _fastd_handshake fastd_handshake;
 
 /* May be defined by the protocol however it likes */
 typedef struct _fastd_protocol_config fastd_protocol_config;

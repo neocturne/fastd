@@ -36,31 +36,6 @@ typedef enum _fastd_packet_type {
 	PACKET_DATA,
 } fastd_packet_type;
 
-typedef enum _fastd_handshake_record_type {
-	RECORD_HANDSHAKE_TYPE = 0,
-	RECORD_REPLY_CODE,
-	RECORD_ERROR_DETAIL,
-	RECORD_FLAGS,
-	RECORD_MODE,
-	RECORD_PROTOCOL_NAME,
-	RECORD_MAX,
-} fastd_handshake_record_type;
-
-typedef enum _fastd_handshake_type {
-	HANDSHAKE_REQUEST = 0,
-	HANDSHAKE_REPLY,
-	HANDSHAKE_REHANDSHAKE_REQUEST,
-	HANDSHAKE_MAX,
-} fastd_handshake_type;
-
-typedef enum _fastd_reply_code {
-	REPLY_SUCCESS = 0,
-	REPLY_MANDATORY_MISSING,
-	REPLY_UNACCEPTABLE_VALUE,
-	REPLY_MAX,
-} fastd_reply_code;
-
-
 typedef struct __attribute__ ((__packed__)) _fastd_packet {
 	uint8_t req_id;
 	uint16_t rsv;
