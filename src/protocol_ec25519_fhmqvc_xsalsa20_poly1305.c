@@ -27,6 +27,7 @@
 #define _GNU_SOURCE
 
 #include "fastd.h"
+#include "handshake.h"
 #include "peer.h"
 #include "task.h"
 
@@ -105,39 +106,12 @@ struct _fastd_protocol_peer_state {
 	protocol_handshake *accepting_handshake;
 };
 
-typedef enum _handshake_packet_type {
-	HANDSHAKE_PACKET_INIT = 0,
-	HANDSHAKE_PACKET_RESPONSE,
-	HANDSHAKE_PACKET_FINISH
-} handshake_packet_type;
 
-
-typedef struct __attribute__ ((__packed__)) _protocol_handshake_packet_common {
-	uint8_t noncepad[NONCEBYTES];
-	uint8_t type;
-
-	uint8_t sender_key[PUBLICKEYBYTES];
-	uint8_t receipient_key[PUBLICKEYBYTES];
-} protocol_handshake_packet_common;
-
-typedef struct __attribute__ ((__packed__)) _protocol_handshake_init_packet {
-	protocol_handshake_packet_common common;
-	uint8_t handshake_key[PUBLICKEYBYTES];
-} protocol_handshake_init_packet;
-
-typedef struct __attribute__ ((__packed__)) _protocol_handshake_response_finish_packet {
-	protocol_handshake_packet_common common;
-	uint8_t handshake_key[PUBLICKEYBYTES];
-	uint8_t handshake_key2[PUBLICKEYBYTES];
-	uint8_t t[HMACBYTES];
-} protocol_handshake_response_packet, protocol_handshake_finish_packet;
-
-typedef union _protocol_handshake_packet {
-	protocol_handshake_packet_common common;
-	protocol_handshake_init_packet init;
-	protocol_handshake_response_packet response;
-	protocol_handshake_finish_packet finish;
-} protocol_handshake_packet;
+#define RECORD_SENDER_KEY RECORD_PROTOCOL1
+#define RECORD_RECEIPIENT_KEY RECORD_PROTOCOL2
+#define RECORD_SENDER_HANDSHAKE_KEY RECORD_PROTOCOL3
+#define RECORD_RECEIPIENT_HANDSHAKE_KEY RECORD_PROTOCOL4
+#define RECORD_T RECORD_PROTOCOL5
 
 
 static inline bool read_key(uint8_t key[32], const char *hexkey) {
@@ -235,7 +209,10 @@ static size_t protocol_min_decrypt_head_space(fastd_context *ctx) {
 	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
-static void create_peer_state(fastd_context *ctx, fastd_peer *peer) {
+static void init_peer_state(fastd_context *ctx, fastd_peer *peer) {
+	if (peer->protocol_state)
+		return;
+
 	peer->protocol_state = malloc(sizeof(fastd_protocol_peer_state));
 
 	peer->protocol_state->old_session.valid = false;
@@ -251,7 +228,7 @@ static inline void free_handshake(protocol_handshake *handshake) {
 	}
 }
 
-static void new_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_peer_config *peer_config, bool initiate) {
+static protocol_handshake* new_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_peer_config *peer_config, bool initiate) {
 	protocol_handshake **handshake;
 
 	if (initiate)
@@ -273,50 +250,39 @@ static void new_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_peer
 	ecc_25519_work work;
 	ecc_25519_scalarmult_base(&work, &(*handshake)->secret_key);
 	ecc_25519_store(&(*handshake)->public_key, &work);
+
+	return *handshake;
 }
 
 static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
+	init_peer_state(ctx, peer);
+
+	fastd_buffer buffer = fastd_handshake_new_init(ctx, peer, 3*(2+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
+
+	protocol_handshake *handshake = new_handshake(ctx, peer, peer->config, true);
+
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
+
+	if (handshake->peer_config)
+		fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, handshake->peer_config->protocol_config->public_key.p);
+	else
+		pr_debug(ctx, "sending handshake to unknown peer %P", peer);
+
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake->public_key.p);
+
+	fastd_task_put_send_handshake(ctx, peer, buffer);
 }
 
-static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
+static inline bool has_field(const fastd_handshake *handshake, uint8_t type, size_t length) {
+	return (handshake->records[type].length == length);
 }
 
-#if 0
-static void protocol_init_peer(fastd_context *ctx, fastd_peer *peer) {
-	pr_info(ctx, "Initializing session with %P...", peer);
-
-	if (peer->protocol_state) {
-		pr_warn(ctx, "trying to reinitialize session with %P", peer);
-		return;
-	}
-
-	if (fastd_peer_is_temporary(peer)) {
-		pr_warn(ctx, "trying to initialize session for temporary peer %P", peer);
-		return;
-	}
-
-	create_peer_state(ctx, peer);
-
-	new_handshake(ctx, peer, peer->config, true);
-
-	fastd_buffer buffer = fastd_buffer_alloc(sizeof(protocol_handshake_init_packet), 0, 0);
-	protocol_handshake_init_packet *packet = buffer.data;
-
-	memset(packet->common.noncepad, 0, NONCEBYTES);
-	packet->common.type = HANDSHAKE_PACKET_INIT;
-	memcpy(packet->common.sender_key, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->common.receipient_key, peer->protocol_state->initiating_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->handshake_key, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
-
-	fastd_task_put_send(ctx, peer, buffer);
-}
-#endif
-
-static void respond_handshake(fastd_context *ctx, fastd_peer *peer) {
-	pr_info(ctx, "Responding protocol handshake with %P...", peer);
+static void respond_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
+	pr_info(ctx, "Responding handshake with %P...", peer);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
+	uint8_t hmacbuf[HMACBYTES];
 
 	memcpy(hashinput, peer->protocol_state->accepting_handshake->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->peer_key.p, PUBLICKEYBYTES);
@@ -355,25 +321,36 @@ static void respond_handshake(fastd_context *ctx, fastd_peer *peer) {
 	memcpy(hashinput, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->public_key.p, PUBLICKEYBYTES);
 
-	fastd_buffer buffer = fastd_buffer_alloc(sizeof(protocol_handshake_response_packet), 0, 0);
-	protocol_handshake_response_packet *packet = buffer.data;
+	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->shared_handshake_key);
 
-	memset(packet->common.noncepad, 0, NONCEBYTES);
-	packet->common.type = HANDSHAKE_PACKET_RESPONSE;
-	memcpy(packet->common.sender_key, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->common.receipient_key, peer->protocol_state->accepting_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->handshake_key, peer->protocol_state->accepting_handshake->peer_key.p, PUBLICKEYBYTES);
-	memcpy(packet->handshake_key2, peer->protocol_state->accepting_handshake->public_key.p, PUBLICKEYBYTES);
+	fastd_buffer buffer = fastd_handshake_new_reply(ctx, peer, handshake, 4*(2+PUBLICKEYBYTES) + 2+HMACBYTES);
 
-	crypto_auth_hmacsha256(packet->t, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->shared_handshake_key);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->peer_config->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->peer_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
 
-	fastd_task_put_send(ctx, peer, buffer);
+	fastd_task_put_send_handshake(ctx, peer, buffer);
 
 	peer->protocol_state->accepting_handshake->state = HANDSHAKE_STATE_RESPONSE;
 }
 
-static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_config *peer_config, bool initiator) {
+static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_config *peer_config, bool initiator,
+		      const ecc_public_key_256 *A, const ecc_public_key_256 *B, const ecc_public_key_256 *X,
+		      const ecc_public_key_256 *Y, const ecc_public_key_256 *sigma) {
 	int i;
+	uint8_t hashinput[5*PUBLICKEYBYTES];
+
+	if (peer->protocol_state->session.valid)
+		peer->protocol_state->old_session = peer->protocol_state->session;
+
+	memcpy(hashinput, X->p, PUBLICKEYBYTES);
+	memcpy(hashinput+PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
+	memcpy(hashinput+2*PUBLICKEYBYTES, A->p, PUBLICKEYBYTES);
+	memcpy(hashinput+3*PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
+	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
+	crypto_hash_sha256(peer->protocol_state->session.key, hashinput, 5*PUBLICKEYBYTES);
 
 	peer->protocol_state->session.valid = true;
 	peer->protocol_state->session.since = ctx->now;
@@ -385,7 +362,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 		peer->protocol_state->session.receive_nonce[i] = 0;
 	}
 
-	pr_info(ctx, "Connection with %P established.", peer);
+	peer->seen = ctx->now;
 
 	if (peer_config != peer->config) {
 		fastd_peer *perm_peer;
@@ -396,13 +373,17 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 			}
 		}
 	}
+	else {
+		fastd_peer_set_established(ctx, peer);
+	}
 }
 
-static void finish_handshake(fastd_context *ctx, fastd_peer *peer, uint8_t t[HMACBYTES]) {
+static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
 	pr_info(ctx, "Finishing protocol handshake with %P...", peer);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
+	uint8_t hmacbuf[HMACBYTES];
 
 	memcpy(hashinput, peer->protocol_state->initiating_handshake->peer_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
@@ -441,68 +422,55 @@ static void finish_handshake(fastd_context *ctx, fastd_peer *peer, uint8_t t[HMA
 	memcpy(hashinput, peer->protocol_state->initiating_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->peer_key.p, PUBLICKEYBYTES);
 
-	if(crypto_auth_hmacsha256_verify(t, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->shared_handshake_key) != 0) {
+	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->shared_handshake_key) != 0) {
 		pr_warn(ctx, "received invalid protocol handshake response from %P", peer);
 		return;
 	}
 
 	memcpy(hashinput, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
+	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->shared_handshake_key);
 
-	fastd_buffer buffer = fastd_buffer_alloc(sizeof(protocol_handshake_finish_packet), 0, 0);
-	protocol_handshake_finish_packet *packet = buffer.data;
+	fastd_buffer buffer = fastd_handshake_new_reply(ctx, peer, handshake, 4*(2+PUBLICKEYBYTES) + 2+HMACBYTES);
 
-	memset(packet->common.noncepad, 0, NONCEBYTES);
-	packet->common.type = HANDSHAKE_PACKET_FINISH;
-	memcpy(packet->common.sender_key, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->common.receipient_key, peer->protocol_state->initiating_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(packet->handshake_key, peer->protocol_state->initiating_handshake->peer_key.p, PUBLICKEYBYTES);
-	memcpy(packet->handshake_key2, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->peer_config->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->peer_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
 
-	crypto_auth_hmacsha256(packet->t, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->shared_handshake_key);
+	fastd_task_put_send_handshake(ctx, peer, buffer);
 
-	fastd_task_put_send(ctx, peer, buffer);
-
-	if (peer->protocol_state->session.valid)
-		peer->protocol_state->old_session = peer->protocol_state->session;
-
-	memcpy(hashinput, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->peer_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+4*PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->sigma.p, PUBLICKEYBYTES);
-	crypto_hash_sha256(peer->protocol_state->session.key, hashinput, 5*PUBLICKEYBYTES);
-
-	establish(ctx, peer, peer->protocol_state->initiating_handshake->peer_config, true);
+	establish(ctx, peer, peer->protocol_state->initiating_handshake->peer_config, true,
+		  &peer->protocol_state->initiating_handshake->public_key,
+		  &peer->protocol_state->initiating_handshake->peer_key,
+		  &ctx->conf->protocol_config->public_key,
+		  &peer->protocol_state->initiating_handshake->peer_config->protocol_config->public_key,
+		  &peer->protocol_state->initiating_handshake->sigma);
 }
 
-static void handle_finish_handshake(fastd_context *ctx, fastd_peer *peer, uint8_t t[HMACBYTES]) {
-	uint8_t hashinput[5*PUBLICKEYBYTES];
+static void handle_finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
+	uint8_t hashinput[2*PUBLICKEYBYTES];
 
 	memcpy(hashinput, peer->protocol_state->accepting_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->peer_key.p, PUBLICKEYBYTES);
 
-	if(crypto_auth_hmacsha256_verify(t, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->shared_handshake_key) != 0) {
+	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->shared_handshake_key) != 0) {
 		pr_warn(ctx, "received invalid protocol handshake finish from %P", peer);
 		return;
 	}
 
-	if (peer->protocol_state->session.valid)
-		peer->protocol_state->old_session = peer->protocol_state->session;
-
-	memcpy(hashinput, peer->protocol_state->accepting_handshake->peer_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+4*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->sigma.p, PUBLICKEYBYTES);
-	crypto_hash_sha256(peer->protocol_state->session.key, hashinput, 5*PUBLICKEYBYTES);
-
-	establish(ctx, peer, peer->protocol_state->accepting_handshake->peer_config, false);
+	establish(ctx, peer, peer->protocol_state->accepting_handshake->peer_config, false,
+		  &peer->protocol_state->accepting_handshake->peer_key,
+		  &peer->protocol_state->accepting_handshake->public_key,
+		  &peer->protocol_state->accepting_handshake->peer_config->protocol_config->public_key,
+		  &ctx->conf->protocol_config->public_key,
+		  &peer->protocol_state->accepting_handshake->sigma);
 }
 
-static inline const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd_peer *peer, const protocol_handshake_packet *packet) {
+static inline const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd_peer *peer, const unsigned char key[32]) {
 	if (peer->config) {
-		if (memcmp(peer->config->protocol_config->public_key.p, packet->common.sender_key, PUBLICKEYBYTES) == 0)
+		if (memcmp(peer->config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0)
 			return peer->config;
 	}
 
@@ -512,7 +480,7 @@ static inline const fastd_peer_config* match_sender_key(fastd_context *ctx, cons
 			if (!fastd_peer_config_is_floating(config))
 				continue;
 
-		if (memcmp(config->protocol_config->public_key.p, packet->common.sender_key, PUBLICKEYBYTES) == 0)
+		if (memcmp(config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0)
 			return config;
 		}
 	}
@@ -520,148 +488,136 @@ static inline const fastd_peer_config* match_sender_key(fastd_context *ctx, cons
 	return NULL;
 }
 
+static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
+	init_peer_state(ctx, peer);
+
+	if (!has_field(handshake, RECORD_SENDER_KEY, PUBLICKEYBYTES)) {
+		pr_debug(ctx, "received handshake without sender key from %P", peer);
+		return;
+	}
+
+	const fastd_peer_config *peer_config = match_sender_key(ctx, peer, handshake->records[RECORD_SENDER_KEY].data);
+
+	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
+		pr_debug(ctx, "received handshake reply without receipient key from %P", peer);
+		return;
+	}
+	else if(has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
+		if (memcmp(ctx->conf->protocol_config->public_key.p, handshake->records[RECORD_RECEIPIENT_KEY].data, PUBLICKEYBYTES) != 0) {
+			pr_debug(ctx, "received protocol handshake with wrong receipient key from %P", peer);
+			return;
+		}
+	}
+
+	if (!has_field(handshake, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
+		pr_debug(ctx, "received handshake without sender handshake key from %P", peer);
+		return;
+	}
+
+	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
+		pr_debug(ctx, "received handshake reply without receipient handshake key from %P", peer);
+		return;
+	}
+
+	if (handshake->type > 1 && !has_field(handshake, RECORD_T, HMACBYTES)) {
+		pr_debug(ctx, "received handshake reply without HMAC from %P", peer);
+		return;
+	}
+
+	switch(handshake->type) {
+	case 1:
+		new_handshake(ctx, peer, peer_config, false);
+		memcpy(peer->protocol_state->accepting_handshake->peer_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
+		respond_handshake(ctx, peer, handshake);
+		break;
+
+	case 2:
+		if (!peer->protocol_state->initiating_handshake || peer->protocol_state->initiating_handshake->state != HANDSHAKE_STATE_INIT) {
+			pr_debug(ctx, "received unexpected handshake response from %P", peer);
+			return;
+		}
+
+		if (peer->protocol_state->initiating_handshake->peer_config != peer_config) {
+			pr_debug(ctx, "received handshake response with wrong sender key from %P", peer);
+			return;
+		}
+
+		if (memcmp(peer->protocol_state->initiating_handshake->public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) != 0) {
+			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P", peer);
+			return;
+		}
+
+		pr_debug(ctx, "received handshake response from %P", peer);
+		memcpy(peer->protocol_state->initiating_handshake->peer_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
+
+		finish_handshake(ctx, peer, handshake);
+		break;
+
+	case 3:
+		if (!peer->protocol_state->accepting_handshake || peer->protocol_state->accepting_handshake->state != HANDSHAKE_STATE_RESPONSE) {
+			pr_debug(ctx, "received unexpected protocol handshake finish from %P", peer);
+			return;
+		}
+
+		if (peer->protocol_state->accepting_handshake->peer_config != peer_config) {
+			pr_debug(ctx, "received protocol handshake finish with wrong sender key from %P", peer);
+			return;
+		}
+
+		if (memcmp(peer->protocol_state->accepting_handshake->public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) != 0) {
+			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P", peer);
+			return;
+		}
+
+		if (memcmp(peer->protocol_state->accepting_handshake->peer_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES) != 0) {
+			pr_debug(ctx, "received handshake response with unexpected sender handshake key from %P", peer);
+			return;
+		}
+
+		handle_finish_handshake(ctx, peer, handshake);
+		break;
+
+	default:
+		pr_debug(ctx, "received handshake reply with unknown type %u", handshake->type);
+	}
+}
+
 static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	if (!fastd_peer_is_established(peer))
+		goto end;
+
 	if (buffer.len < NONCEBYTES)
 		goto end;
 
-	/* protocol handshake */
-	if (is_nonce_zero(buffer.data)) {
-		if (buffer.len < sizeof(protocol_handshake_packet_common)) {
-			pr_debug(ctx, "received short protocol handshake from %P", peer);
-			goto end;
-		}
-
-		protocol_handshake_packet *packet = buffer.data;
-
-		if (!peer->protocol_state)
-			create_peer_state(ctx, peer);
-
-		if (memcmp(ctx->conf->protocol_config->public_key.p, packet->common.receipient_key, PUBLICKEYBYTES) != 0) {
-			pr_debug(ctx, "received protocol handshake with wrong receipient key from %P", peer);
-			goto end;
-		}
-
-		const fastd_peer_config *peer_config = match_sender_key(ctx, peer, packet);
-
-		switch (packet->common.type) {
-		case HANDSHAKE_PACKET_INIT:
-			if (buffer.len < sizeof(protocol_handshake_init_packet)) {
-				pr_debug(ctx, "received short protocol handshake init from %P", peer);
-				goto end;
-			}
-
-			if (!peer_config) {
-				pr_debug(ctx, "received protocol handshake init with wrong sender key from %P", peer);
-				goto end;
-			}
-
-			pr_debug(ctx, "received protocol handshake init from %P", peer);
-
-			new_handshake(ctx, peer, peer_config, false);
-			memcpy(peer->protocol_state->accepting_handshake->peer_key.p, packet->init.handshake_key, PUBLICKEYBYTES);
-
-			fastd_peer_set_established(ctx, peer);
-			respond_handshake(ctx, peer);
-
-			break;
-
-		case HANDSHAKE_PACKET_RESPONSE:
-			if (buffer.len < sizeof(protocol_handshake_response_packet)) {
-				pr_debug(ctx, "received short protocol handshake response from %P", peer);
-				goto end;
-			}
-
-			if (!peer->protocol_state->initiating_handshake || peer->protocol_state->initiating_handshake->state != HANDSHAKE_STATE_INIT) {
-				pr_debug(ctx, "received unexpected protocol handshake response from %P", peer);
-				goto end;
-			}
-
-			if (peer->protocol_state->initiating_handshake->peer_config != peer_config) {
-				pr_debug(ctx, "received protocol handshake response with wrong sender key from %P", peer);
-				goto end;
-			}
-
-			if (memcmp(peer->protocol_state->initiating_handshake->public_key.p, packet->response.handshake_key, PUBLICKEYBYTES) != 0) {
-				pr_debug(ctx, "received protocol handshake response with unexpected handshake key from %P", peer);
-				goto end;
-			}
-
-			pr_debug(ctx, "received protocol handshake response from %P", peer);
-			memcpy(peer->protocol_state->initiating_handshake->peer_key.p, packet->response.handshake_key2, PUBLICKEYBYTES);
-
-			finish_handshake(ctx, peer, packet->response.t);
-
-			break;
-
-		case HANDSHAKE_PACKET_FINISH:
-			if (buffer.len < sizeof(protocol_handshake_finish_packet)) {
-				pr_debug(ctx, "received short protocol handshake finish from %P", peer);
-				goto end;
-			}
-
-			if (!peer->protocol_state->accepting_handshake || peer->protocol_state->accepting_handshake->state != HANDSHAKE_STATE_RESPONSE) {
-				pr_debug(ctx, "received unexpected protocol handshake finish from %P", peer);
-				goto end;
-			}
-
-			if (peer->protocol_state->accepting_handshake->peer_config != peer_config) {
-				pr_debug(ctx, "received protocol handshake finish with wrong sender key from %P", peer);
-				goto end;
-			}
-
-			if (memcmp(peer->protocol_state->accepting_handshake->public_key.p, packet->finish.handshake_key, PUBLICKEYBYTES) != 0) {
-				pr_debug(ctx, "received protocol handshake finish with unexpected handshake key from %P", peer);
-				goto end;
-			}
-
-			if (memcmp(peer->protocol_state->accepting_handshake->peer_key.p, packet->finish.handshake_key2, PUBLICKEYBYTES) != 0) {
-				pr_debug(ctx, "received protocol handshake finish with unexpected peer handshake key from %P", peer);
-				goto end;
-			}
-
-
-
-			pr_debug(ctx, "received protocol handshake finish from %P", peer);
-
-			handle_finish_handshake(ctx, peer, packet->finish.t);
-			break;
-
-		default:
-			pr_debug(ctx, "received protocol handshake with invalid type from %P", peer);
-			goto end;
-		}
+	if (!peer->protocol_state || !peer->protocol_state->session.valid) {
+		pr_debug(ctx, "received unexpected packet from %P", peer);
+		goto end;
 	}
-	else {
-		if (!peer->protocol_state || !peer->protocol_state->session.valid) {
-			pr_debug(ctx, "received unexpected non-handshake packet from %P", peer);
-			goto end;
-		}
 
-		if (!is_nonce_valid(buffer.data, peer->protocol_state->session.receive_nonce)) {
-			pr_debug(ctx, "received packet with invalid nonce from %P", peer);
-			goto end;
-		}
-
-		uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
-		memcpy(nonce, buffer.data, NONCEBYTES);
-		memset(nonce+NONCEBYTES, 0, crypto_secretbox_xsalsa20poly1305_NONCEBYTES-NONCEBYTES);
-
-		fastd_buffer_pull_head(&buffer, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
-		memset(buffer.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
-
-		fastd_buffer recv_buffer = fastd_buffer_alloc(buffer.len, 0, 0);
-
-		if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, peer->protocol_state->session.key) != 0) {
-			pr_debug(ctx, "verification failed for packet received from %P", peer);
-			fastd_buffer_free(recv_buffer);
-			goto end;
-		}
-
-		fastd_buffer_push_head(&recv_buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
-		fastd_task_put_handle_recv(ctx, peer, recv_buffer);
-
-		memcpy(peer->protocol_state->session.receive_nonce, nonce, NONCEBYTES);
+	if (!is_nonce_valid(buffer.data, peer->protocol_state->session.receive_nonce)) {
+		pr_debug(ctx, "received packet with invalid nonce from %P", peer);
+		goto end;
 	}
+
+	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
+	memcpy(nonce, buffer.data, NONCEBYTES);
+	memset(nonce+NONCEBYTES, 0, crypto_secretbox_xsalsa20poly1305_NONCEBYTES-NONCEBYTES);
+
+	fastd_buffer_pull_head(&buffer, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
+	memset(buffer.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+
+	fastd_buffer recv_buffer = fastd_buffer_alloc(buffer.len, 0, 0);
+
+	if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, peer->protocol_state->session.key) != 0) {
+		pr_debug(ctx, "verification failed for packet received from %P", peer);
+		fastd_buffer_free(recv_buffer);
+		goto end;
+	}
+
+	fastd_buffer_push_head(&recv_buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+	fastd_task_put_handle_recv(ctx, peer, recv_buffer);
+
+	memcpy(peer->protocol_state->session.receive_nonce, nonce, NONCEBYTES);
 
  end:
 	fastd_buffer_free(buffer);

@@ -39,6 +39,11 @@ static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"flags",
 	"mode",
 	"protocol name",
+	"(protocol specific 1)",
+	"(protocol specific 2)",
+	"(protocol specific 3)",
+	"(protocol specific 4)",
+	"(protocol specific 5)",
 };
 
 static const char const *REPLY_TYPES[REPLY_MAX] = {
@@ -49,31 +54,6 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 
 #define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
 
-static inline void handshake_add(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, size_t len, const void *data) {
-	if ((uint8_t*)buffer->data + buffer->len + 2 + len > (uint8_t*)buffer->base + buffer->base_len)
-		exit_bug(ctx, "not enough buffer allocated for handshake");
-
-	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
-
-	dst[0] = type;
-	dst[1] = len;
-	memcpy(dst+2, data, len);
-
-	buffer->len += 2 + len;
-}
-
-static inline void handshake_add_uint8(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, uint8_t value) {
-	if ((uint8_t*)buffer->data + buffer->len + 3 > (uint8_t*)buffer->base + buffer->base_len)
-		exit_bug(ctx, "not enough buffer allocated for handshake");
-
-	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
-
-	dst[0] = type;
-	dst[1] = 1;
-	dst[2] = value;
-
-	buffer->len += 3;
-}
 
 fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size_t tail_space) {
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
@@ -87,10 +67,10 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size
 	request->req_id = ++peer->last_req_id;
 	request->rsv = 0;
 
-	handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, 1);
-	handshake_add_uint8(ctx, &buffer, RECORD_MODE, ctx->conf->mode);
+	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, 1);
+	fastd_handshake_add_uint8(ctx, &buffer, RECORD_MODE, ctx->conf->mode);
 
-	handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
+	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
 
 	return buffer;
 }
@@ -105,8 +85,8 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, con
 	request->req_id = handshake->req_id;
 	request->rsv = 0;
 
-	handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])+1);
-	handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
+	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])+1);
+	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
 
 	return buffer;
 }
@@ -145,7 +125,9 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 	if (handshake.records[RECORD_HANDSHAKE_TYPE].length != 1)
 		goto end_free;
 
-	if (AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]) == 1) {
+	handshake.type = AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]);
+
+	if (handshake.type == 1) {
 		uint8_t reply_code = REPLY_SUCCESS;
 		uint8_t error_detail = 0;
 
@@ -182,16 +164,16 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 			reply->req_id = packet->req_id;
 			reply->rsv = 0;
 
-			handshake_add_uint8(ctx, &reply_buffer, RECORD_HANDSHAKE_TYPE, 2);
-			handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
-			handshake_add_uint8(ctx, &reply_buffer, RECORD_ERROR_DETAIL, error_detail);
+			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_HANDSHAKE_TYPE, 2);
+			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
+			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_ERROR_DETAIL, error_detail);
 		}
 		else {
 			ctx->conf->protocol->handshake_handle(ctx, peer, &handshake);
 		}
 	}
 	else {
-		if ((AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]) & 1) == 0) {
+		if ((handshake.type & 1) == 0) {
 			if (packet->req_id != peer->last_req_id) {
 				pr_warn(ctx, "received handshake reply with request ID %u from %P while %u was expected", packet->req_id, peer, peer->last_req_id);
 				goto end_free;

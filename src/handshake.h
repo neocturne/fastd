@@ -28,7 +28,6 @@
 #define _FASTD_HANDSHAKE_H_
 
 #include "fastd.h"
-#include "packet.h"
 
 
 typedef enum _fastd_handshake_record_type {
@@ -38,6 +37,11 @@ typedef enum _fastd_handshake_record_type {
 	RECORD_FLAGS,
 	RECORD_MODE,
 	RECORD_PROTOCOL_NAME,
+	RECORD_PROTOCOL1,
+	RECORD_PROTOCOL2,
+	RECORD_PROTOCOL3,
+	RECORD_PROTOCOL4,
+	RECORD_PROTOCOL5,
 	RECORD_MAX,
 } fastd_handshake_record_type;
 
@@ -56,6 +60,7 @@ typedef struct _fastd_handshake_record {
 
 struct _fastd_handshake {
 	uint8_t req_id;
+	uint8_t type;
 	fastd_handshake_record records[RECORD_MAX];
 };
 
@@ -64,6 +69,33 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size
 fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake, size_t tail_space);
 
 void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+
+
+static inline void fastd_handshake_add(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, size_t len, const void *data) {
+	if ((uint8_t*)buffer->data + buffer->len + 2 + len > (uint8_t*)buffer->base + buffer->base_len)
+		exit_bug(ctx, "not enough buffer allocated for handshake");
+
+	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
+
+	dst[0] = type;
+	dst[1] = len;
+	memcpy(dst+2, data, len);
+
+	buffer->len += 2 + len;
+}
+
+static inline void fastd_handshake_add_uint8(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, uint8_t value) {
+	if ((uint8_t*)buffer->data + buffer->len + 3 > (uint8_t*)buffer->base + buffer->base_len)
+		exit_bug(ctx, "not enough buffer allocated for handshake");
+
+	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
+
+	dst[0] = type;
+	dst[1] = 1;
+	dst[2] = value;
+
+	buffer->len += 3;
+}
 
 
 #endif /* _FASTD_HANDSHAKE_H_ */

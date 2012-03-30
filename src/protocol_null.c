@@ -34,9 +34,6 @@
 #include <arpa/inet.h>
 
 
-#define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
-
-
 static void protocol_init(fastd_context *ctx, fastd_config *conf) {
 	if (conf->n_floating > 1)
 		exit_error(ctx, "with protocol `null' use can't define more than one floating peer");
@@ -56,6 +53,8 @@ static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
 }
 
 static void establish(fastd_context *ctx, fastd_peer *peer) {
+	peer->seen = ctx->now;
+
 	if (fastd_peer_is_temporary(peer)) {
 		fastd_peer *perm_peer;
 		for (perm_peer = ctx->peers; perm_peer; perm_peer = perm_peer->next) {
@@ -77,27 +76,24 @@ static void establish(fastd_context *ctx, fastd_peer *peer) {
 static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
 	fastd_buffer buffer;
 
-	switch(AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])) {
+	switch(handshake->type) {
 	case 1:
 		buffer = fastd_handshake_new_reply(ctx, peer, handshake, 0);
 		fastd_task_put_send_handshake(ctx, peer, buffer);
 		break;
 
 	case 2:
-		peer->seen = ctx->now;
 		establish(ctx, peer);
 		buffer = fastd_handshake_new_reply(ctx, peer, handshake, 0);
 		fastd_task_put_send_handshake(ctx, peer, buffer);
 		break;
 
 	case 3:
-		peer->seen = ctx->now;
 		establish(ctx, peer);
 		break;
 
 	default:
-		pr_debug(ctx, "received handshake reply with unknown type %u", AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE]));
-		break;
+		pr_debug(ctx, "received handshake reply with unknown type %u", handshake->type);
 	}
 
 }
