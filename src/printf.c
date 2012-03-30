@@ -30,7 +30,7 @@
 #include <arpa/inet.h>
 
 
-static void print_default_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
+static void print_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 	char pl = '<', pr = '>';
 
@@ -39,23 +39,28 @@ static void print_default_peer_str(const fastd_context *ctx, const fastd_peer *p
 		pr = '}';
 	}
 
-	switch (peer->address.sa.sa_family) {
-	case AF_UNSPEC:
-		fprintf(stderr, "%cfloating%c", pl, pr);
-		return;
+	if (peer->config && peer->config->name) {
+		fprintf(stderr, "%c%s%c", pl, peer->config->name, pr);
+	}
+	else {
+		switch (peer->address.sa.sa_family) {
+		case AF_UNSPEC:
+			fprintf(stderr, "%cfloating%c", pl, pr);
+			return;
 
-	case AF_INET:
-		if (inet_ntop(AF_INET, &peer->address.in.sin_addr, addr_buf, sizeof(addr_buf)))
-			fprintf(stderr, "%c%s:%u%c", pl, addr_buf, ntohs(peer->address.in.sin_port), pr);
-		return;
+		case AF_INET:
+			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, addr_buf, sizeof(addr_buf)))
+				fprintf(stderr, "%c%s:%u%c", pl, addr_buf, ntohs(peer->address.in.sin_port), pr);
+			return;
 
-	case AF_INET6:
-		if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, addr_buf, sizeof(addr_buf)))
-			fprintf(stderr, "%c[%s]:%u%c", pl, addr_buf, ntohs(peer->address.in6.sin6_port), pr);
-		break;
+		case AF_INET6:
+			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, addr_buf, sizeof(addr_buf)))
+				fprintf(stderr, "%c[%s]:%u%c", pl, addr_buf, ntohs(peer->address.in6.sin6_port), pr);
+			break;
 
-	default:
-		exit_bug(ctx, "unsupported address family");
+		default:
+			exit_bug(ctx, "unsupported address family");
+		}
 	}
 }
 
@@ -212,15 +217,10 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 			case 'P':
 				peer = va_arg(ap, void*);
 
-				if (peer) {
-					if (peer->config && peer->config->name)
-						fprintf(stderr, "%s", peer->config->name);
-					else
-						print_default_peer_str(ctx, peer);
-				}
-				else {
+				if (peer)
+					print_peer_str(ctx, peer);
+				else
 					fprintf(stderr, "(null)");
-				}
 				break;
 
 			default:
