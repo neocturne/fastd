@@ -111,6 +111,10 @@ static inline void fastd_peer_set_established(fastd_context *ctx, fastd_peer *pe
 	}
 }
 
+static inline void fastd_peer_seen(fastd_context *ctx, fastd_peer *peer) {
+	peer->seen = ctx->now;
+}
+
 static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr *addr) {
 	return ((addr->data[0] & 1) == 0);
 }

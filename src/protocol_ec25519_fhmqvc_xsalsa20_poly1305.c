@@ -362,7 +362,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 		peer->protocol_state->session.receive_nonce[i] = 0;
 	}
 
-	peer->seen = ctx->now;
+	fastd_peer_seen(ctx, peer);
 
 	if (peer_config != peer->config) {
 		fastd_peer *perm_peer;
@@ -613,6 +613,8 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		fastd_buffer_free(recv_buffer);
 		goto end;
 	}
+
+	fastd_peer_seen(ctx, peer);
 
 	fastd_buffer_push_head(&recv_buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	fastd_task_put_handle_recv(ctx, peer, recv_buffer);

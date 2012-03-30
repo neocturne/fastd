@@ -53,7 +53,7 @@ static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
 }
 
 static void establish(fastd_context *ctx, fastd_peer *peer) {
-	peer->seen = ctx->now;
+	fastd_peer_seen(ctx, peer);
 
 	if (fastd_peer_is_temporary(peer)) {
 		fastd_peer *perm_peer;
@@ -100,7 +100,7 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 
 static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	if (fastd_peer_is_established(peer) && buffer.len) {
-		peer->seen = ctx->now;
+		fastd_peer_seen(ctx, peer);
 		fastd_task_put_handle_recv(ctx, peer, buffer);
 	}
 	else {
