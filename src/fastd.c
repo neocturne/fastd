@@ -138,6 +138,7 @@ static void on_up(fastd_context *ctx) {
 		pr_warn(ctx, "on-up command exited with status %i", WEXITSTATUS(ret));
 
 	chdir(cwd);
+	free(cwd);
 }
 
 static void init_peers(fastd_context *ctx) {
