@@ -30,11 +30,6 @@
 #include <stdint.h>
 
 
-static inline bool after(const struct timespec *tp1, const struct timespec *tp2) {
-	return (tp1->tv_sec > tp2->tv_sec ||
-		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
-}
-
 void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *entry, int timeout) {
 	entry->timeout = ctx->now;
 
@@ -50,7 +45,7 @@ void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *
 
 	fastd_queue_entry **current;
 	for (current = &queue->head;; current = &(*current)->next) {
-		if (!(*current) || after(&(*current)->timeout, &entry->timeout)) {
+		if (!(*current) || timespec_after(&(*current)->timeout, &entry->timeout)) {
 			entry->next = *current;
 			*current = entry;
 			break;

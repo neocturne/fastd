@@ -92,6 +92,7 @@ struct _fastd_config {
 
 	fastd_protocol *protocol;
 	char *secret;
+	unsigned rekey;
 
 	fastd_peer_config *peers;
 
@@ -196,6 +197,11 @@ static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
+}
+
+static inline bool timespec_after(const struct timespec *tp1, const struct timespec *tp2) {
+	return (tp1->tv_sec > tp2->tv_sec ||
+		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
 }
 
 /* returns (tp1 - tp2) in milliseconds  */

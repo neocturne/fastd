@@ -90,9 +90,8 @@ typedef struct _protocol_handshake {
 } protocol_handshake;
 
 typedef struct _protocol_session {
-	bool valid;
+	struct timespec valid_till;
 	uint8_t key[HASHBYTES];
-	struct timespec since;
 
 	uint8_t send_nonce[NONCEBYTES];
 	uint8_t receive_nonce[NONCEBYTES];
@@ -146,6 +145,10 @@ static inline void increment_nonce(uint8_t nonce[NONCEBYTES]) {
 				break;
 		}
 	}
+}
+
+static inline bool is_session_valid(fastd_context *ctx, protocol_session *session) {
+	return timespec_after(&session->valid_till, &ctx->now);
 }
 
 static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t old_nonce[NONCEBYTES]) {
@@ -214,11 +217,7 @@ static void init_peer_state(fastd_context *ctx, fastd_peer *peer) {
 		return;
 
 	peer->protocol_state = malloc(sizeof(fastd_protocol_peer_state));
-
-	peer->protocol_state->old_session.valid = false;
-	peer->protocol_state->session.valid = false;
-	peer->protocol_state->initiating_handshake = NULL;
-	peer->protocol_state->accepting_handshake = NULL;
+	memset(peer->protocol_state, 0, sizeof(fastd_protocol_peer_state));
 }
 
 static inline void free_handshake(protocol_handshake *handshake) {
@@ -342,7 +341,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	int i;
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 
-	if (peer->protocol_state->session.valid)
+	if (is_session_valid(ctx, &peer->protocol_state->session))
 		peer->protocol_state->old_session = peer->protocol_state->session;
 
 	memcpy(hashinput, X->p, PUBLICKEYBYTES);
@@ -352,8 +351,8 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
 	crypto_hash_sha256(peer->protocol_state->session.key, hashinput, 5*PUBLICKEYBYTES);
 
-	peer->protocol_state->session.valid = true;
-	peer->protocol_state->session.since = ctx->now;
+	peer->protocol_state->session.valid_till = ctx->now;
+	peer->protocol_state->session.valid_till.tv_sec += ctx->conf->rekey;
 
 	peer->protocol_state->session.send_nonce[0] = initiator ? 3 : 2;
 	peer->protocol_state->session.receive_nonce[0] = initiator ? 0 : 1;
@@ -589,7 +588,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	if (buffer.len < NONCEBYTES)
 		goto end;
 
-	if (!peer->protocol_state || !peer->protocol_state->session.valid) {
+	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session)) {
 		pr_debug(ctx, "received unexpected packet from %P", peer);
 		goto end;
 	}
@@ -626,7 +625,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 }
 
 static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	if (!peer->protocol_state || !peer->protocol_state->session.valid) {
+	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session)) {
 		fastd_buffer_free(buffer);
 		return;
 	}
