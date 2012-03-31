@@ -335,8 +335,6 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	else if(ctx->conf->n_floating) {
 		switch (packet_type) {
 		case PACKET_DATA:
-			fastd_buffer_free(buffer);
-
 			peer = fastd_peer_add_temp(ctx, (fastd_peer_address*)&recvaddr);
 			ctx->conf->protocol->handle_recv(ctx, peer, buffer);
 			break;
