@@ -153,6 +153,10 @@ static inline bool is_session_valid(fastd_context *ctx, protocol_session *sessio
 	return timespec_after(&session->valid_till, &ctx->now);
 }
 
+static inline bool is_session_zero(fastd_context *ctx, protocol_session *session) {
+	return (session->valid_till.tv_sec == 0);
+}
+
 static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
 	protocol_session *session = &peer->protocol_state->session;
 
@@ -355,7 +359,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 
 	pr_info(ctx, "Session with %P established", peer);
 
-	if (is_session_valid(ctx, &peer->protocol_state->session))
+	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session))
 		peer->protocol_state->old_session = peer->protocol_state->session;
 
 	memcpy(hashinput, X->p, PUBLICKEYBYTES);
@@ -661,7 +665,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		}
 
 		if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, session->key) == 0) {
-			if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
+			if (!is_session_zero(ctx, &peer->protocol_state->old_session)) {
 				pr_debug(ctx, "invalidating old session with %P", peer);
 				memset(&peer->protocol_state->old_session, 0, sizeof(protocol_session));
 			}
