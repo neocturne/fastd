@@ -92,7 +92,7 @@ struct _fastd_config {
 
 	fastd_protocol *protocol;
 	char *secret;
-	unsigned rekey;
+	unsigned key_valid;
 
 	fastd_peer_config *peers;
 

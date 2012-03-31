@@ -352,7 +352,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	crypto_hash_sha256(peer->protocol_state->session.key, hashinput, 5*PUBLICKEYBYTES);
 
 	peer->protocol_state->session.valid_till = ctx->now;
-	peer->protocol_state->session.valid_till.tv_sec += ctx->conf->rekey;
+	peer->protocol_state->session.valid_till.tv_sec += ctx->conf->key_valid;
 
 	peer->protocol_state->session.send_nonce[0] = initiator ? 3 : 2;
 	peer->protocol_state->session.receive_nonce[0] = initiator ? 0 : 1;

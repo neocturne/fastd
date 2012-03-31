@@ -65,7 +65,7 @@ static void default_config(fastd_config *conf) {
 
 	conf->protocol = &fastd_protocol_null;
 	conf->secret = NULL;
-	conf->rekey = 3600;
+	conf->key_valid = 3600;
 
 	conf->peers = NULL;
 

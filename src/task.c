@@ -69,11 +69,20 @@ void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int tim
 	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, timeout);
 }
 
+typedef struct _delete_task_extra {
+	fastd_peer *peer;
+	bool handshake_only;
+} delete_task_extra;
+
 static bool delete_task(fastd_queue_entry *data, void *extra) {
+	delete_task_extra *e = extra;
 	fastd_task *task = container_of(data, fastd_task, entry);
-	fastd_peer *peer = extra;
+	fastd_peer *peer = e->peer;
 
 	if (task->peer != peer)
+		return true;
+
+	if (e->handshake_only && task->type != TASK_HANDSHAKE)
 		return true;
 
 	switch (task->type) {
@@ -95,5 +104,11 @@ static bool delete_task(fastd_queue_entry *data, void *extra) {
 }
 
 void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer) {
-	fastd_queue_filter(ctx, &ctx->task_queue, delete_task, peer);
+	delete_task_extra extra = {peer, false};
+	fastd_queue_filter(ctx, &ctx->task_queue, delete_task, &extra);
+}
+
+void fastd_task_delete_peer_handshakes(fastd_context *ctx, fastd_peer *peer) {
+	delete_task_extra extra = {peer, true};
+	fastd_queue_filter(ctx, &ctx->task_queue, delete_task, &extra);
 }

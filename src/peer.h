@@ -96,20 +96,7 @@ static inline bool fastd_peer_is_established(const fastd_peer *peer) {
 	return (peer->state == STATE_ESTABLISHED);
 }
 
-static inline void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
-	switch(peer->state) {
-	case STATE_WAIT:
-		pr_info(ctx, "Connection with %P established.", peer);
-		peer->state = STATE_ESTABLISHED;
-		break;
-
-	case STATE_TEMP:
-		exit_bug(ctx, "tried to set a temporary connection to established");
-
-	default:
-		return;
-	}
-}
+void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer);
 
 static inline void fastd_peer_seen(fastd_context *ctx, fastd_peer *peer) {
 	peer->seen = ctx->now;

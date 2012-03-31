@@ -192,6 +192,24 @@ const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buf
 	}
 }
 
+void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
+	fastd_task_delete_peer_handshakes(ctx, peer);
+
+	switch(peer->state) {
+	case STATE_WAIT:
+		pr_info(ctx, "Connection with %P established.", peer);
+		peer->state = STATE_ESTABLISHED;
+		break;
+
+	case STATE_TEMP:
+		exit_bug(ctx, "tried to set a temporary connection to established");
+
+	default:
+		return;
+	}
+}
+
+
 static inline int fastd_eth_addr_cmp(const fastd_eth_addr *addr1, const fastd_eth_addr *addr2) {
 	return memcmp(addr1->data, addr2->data, ETH_ALEN);
 }

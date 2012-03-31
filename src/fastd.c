@@ -213,8 +213,7 @@ static void handle_tasks(fastd_context *ctx) {
 			pr_debug(ctx, "Sending handshake to %P...", task->peer);
 			ctx->conf->protocol->handshake_init(ctx, task->peer);
 
-			if (task->peer->state == STATE_WAIT)
-				fastd_task_schedule_handshake(ctx, task->peer, 20000);
+			fastd_task_schedule_handshake(ctx, task->peer, 20000);
 			break;
 
 		default:

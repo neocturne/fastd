@@ -79,5 +79,6 @@ void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buff
 void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout);
 
 void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer);
+void fastd_task_delete_peer_handshakes(fastd_context *ctx, fastd_peer *peer);
 
 #endif /* _FASTD_TASK_H_ */
