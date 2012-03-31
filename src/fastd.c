@@ -287,8 +287,11 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	msg.msg_iovlen = 2;
 
 	ssize_t len = recvmsg(sockfd, &msg, 0);
-	if (len < 0)
+	if (len < 0) {
 		pr_warn(ctx, "recvfrom: %s", strerror(errno));
+		fastd_buffer_free(buffer);
+		return;
+	}
 
 	buffer.len = len - 1;
 
