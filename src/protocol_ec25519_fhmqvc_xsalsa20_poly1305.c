@@ -91,6 +91,8 @@ typedef struct _protocol_handshake {
 
 typedef struct _protocol_session {
 	struct timespec valid_till;
+	struct timespec refresh_after;
+	bool refreshing;
 	uint8_t key[HASHBYTES];
 
 	uint8_t send_nonce[NONCEBYTES];
@@ -149,6 +151,16 @@ static inline void increment_nonce(uint8_t nonce[NONCEBYTES]) {
 
 static inline bool is_session_valid(fastd_context *ctx, protocol_session *session) {
 	return timespec_after(&session->valid_till, &ctx->now);
+}
+
+static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
+	protocol_session *session = &peer->protocol_state->session;
+
+	if (!session->refreshing && timespec_after(&ctx->now, &session->refresh_after)) {
+		pr_debug(ctx, "refreshing session with %P", peer);
+		session->refreshing = true;
+		fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 0, 10000));
+	}
 }
 
 static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t old_nonce[NONCEBYTES]) {
@@ -341,6 +353,8 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	int i;
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 
+	pr_info(ctx, "Session with %P established", peer);
+
 	if (is_session_valid(ctx, &peer->protocol_state->session))
 		peer->protocol_state->old_session = peer->protocol_state->session;
 
@@ -353,6 +367,10 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 
 	peer->protocol_state->session.valid_till = ctx->now;
 	peer->protocol_state->session.valid_till.tv_sec += ctx->conf->key_valid;
+
+	peer->protocol_state->session.refresh_after = ctx->now;
+	peer->protocol_state->session.refresh_after.tv_sec += ctx->conf->key_refresh;
+	peer->protocol_state->session.refreshing = false;
 
 	peer->protocol_state->session.send_nonce[0] = initiator ? 3 : 2;
 	peer->protocol_state->session.receive_nonce[0] = initiator ? 0 : 1;
@@ -377,8 +395,12 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	}
 }
 
+static inline bool is_session_initiator(const protocol_session *session) {
+	return (session->send_nonce[0] & 1);
+}
+
 static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
-	pr_info(ctx, "Finishing protocol handshake with %P...", peer);
+	pr_info(ctx, "Finishing handshake with %P...", peer);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
@@ -449,6 +471,8 @@ static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_h
 }
 
 static void handle_finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
+	pr_info(ctx, "Handling handshake finish with %P...", peer);
+
 	uint8_t hashinput[2*PUBLICKEYBYTES];
 
 	memcpy(hashinput, peer->protocol_state->accepting_handshake->peer_config->protocol_config->public_key.p, PUBLICKEYBYTES);
@@ -593,10 +617,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		goto end;
 	}
 
-	if (!is_nonce_valid(buffer.data, peer->protocol_state->session.receive_nonce)) {
-		pr_debug(ctx, "received packet with invalid nonce from %P", peer);
-		goto end;
-	}
+	check_session_refresh(ctx, peer);
 
 	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
 	memcpy(nonce, buffer.data, NONCEBYTES);
@@ -607,10 +628,37 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 
 	fastd_buffer recv_buffer = fastd_buffer_alloc(buffer.len, 0, 0);
 
-	if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, peer->protocol_state->session.key) != 0) {
-		pr_debug(ctx, "verification failed for packet received from %P", peer);
-		fastd_buffer_free(recv_buffer);
-		goto end;
+	protocol_session *session = NULL;
+
+	if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
+		if (is_nonce_valid(nonce, peer->protocol_state->old_session.receive_nonce)) {
+			if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, peer->protocol_state->old_session.key) == 0) {
+				pr_debug(ctx, "received packet for old session from %P", peer);
+				session = &peer->protocol_state->old_session;
+			}
+		}
+	}
+
+	if (!session) {
+		session = &peer->protocol_state->session;
+
+		if (!is_nonce_valid(nonce, session->receive_nonce)) {
+			pr_debug(ctx, "received packet with invalid nonce from %P", peer);
+
+			goto end;
+		}
+
+		if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, session->key) == 0) {
+			if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
+				pr_debug(ctx, "invalidating old session with %P", peer);
+				memset(&peer->protocol_state->old_session, 0, sizeof(protocol_session));
+			}
+		}
+		else {
+			pr_debug(ctx, "verification failed for packet received from %P", peer);
+			fastd_buffer_free(recv_buffer);
+			goto end;
+		}
 	}
 
 	fastd_peer_seen(ctx, peer);
@@ -618,7 +666,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	fastd_buffer_push_head(&recv_buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	fastd_task_put_handle_recv(ctx, peer, recv_buffer);
 
-	memcpy(peer->protocol_state->session.receive_nonce, nonce, NONCEBYTES);
+	memcpy(session->receive_nonce, nonce, NONCEBYTES);
 
  end:
 	fastd_buffer_free(buffer);
@@ -630,25 +678,36 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 		return;
 	}
 
+	check_session_refresh(ctx, peer);
+
+	protocol_session *session;
+	if (is_session_initiator(&peer->protocol_state->session) && is_session_valid(ctx, &peer->protocol_state->old_session)) {
+		pr_debug(ctx, "sending packet for old session to %P", peer);
+		session = &peer->protocol_state->old_session;
+	}
+	else {
+		session = &peer->protocol_state->session;
+	}
+
 	fastd_buffer_pull_head(&buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	memset(buffer.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	fastd_buffer send_buffer = fastd_buffer_alloc(buffer.len, 0, 0);
 
 	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
-	memcpy(nonce, peer->protocol_state->session.send_nonce, NONCEBYTES);
+	memcpy(nonce, session->send_nonce, NONCEBYTES);
 	memset(nonce+NONCEBYTES, 0, crypto_secretbox_xsalsa20poly1305_NONCEBYTES-NONCEBYTES);
 
-	crypto_secretbox_xsalsa20poly1305(send_buffer.data, buffer.data, buffer.len, nonce, peer->protocol_state->session.key);
+	crypto_secretbox_xsalsa20poly1305(send_buffer.data, buffer.data, buffer.len, nonce, session->key);
 
 	fastd_buffer_free(buffer);
 
 	fastd_buffer_push_head(&send_buffer, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
-	memcpy(send_buffer.data, peer->protocol_state->session.send_nonce, NONCEBYTES);
+	memcpy(send_buffer.data, session->send_nonce, NONCEBYTES);
 
 	fastd_task_put_send(ctx, peer, send_buffer);
 
-	increment_nonce(peer->protocol_state->session.send_nonce);
+	increment_nonce(session->send_nonce);
 }
 
 static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {

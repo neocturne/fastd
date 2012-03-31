@@ -65,7 +65,8 @@ static void default_config(fastd_config *conf) {
 
 	conf->protocol = &fastd_protocol_null;
 	conf->secret = NULL;
-	conf->key_valid = 3600;
+	conf->key_valid = 3600;		/* 60 minutes */
+	conf->key_refresh = 3300;	/* 55 minutes */
 
 	conf->peers = NULL;
 

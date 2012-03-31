@@ -207,13 +207,13 @@ static void handle_tasks(fastd_context *ctx) {
 			break;
 
 		case TASK_HANDSHAKE:
-			if (task->peer->state != STATE_WAIT && task->peer->state != STATE_TEMP)
-				break;
-
 			pr_debug(ctx, "Sending handshake to %P...", task->peer);
 			ctx->conf->protocol->handshake_init(ctx, task->peer);
 
-			fastd_task_schedule_handshake(ctx, task->peer, 20000);
+			if (fastd_peer_is_established(task->peer))
+				fastd_task_schedule_handshake(ctx, task->peer, fastd_rand(ctx, 10000, 20000));
+			else
+				fastd_task_schedule_handshake(ctx, task->peer, 20000);
 			break;
 
 		default:
@@ -411,6 +411,8 @@ static void maintenance(fastd_context *ctx) {
 int main(int argc, char *argv[]) {
 	fastd_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
+
+	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
 
 	fastd_config conf;
 	fastd_configure(&ctx, &conf, argc, argv);

@@ -153,6 +153,8 @@ fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *per
 
 	ctx->conf->protocol->free_peer_state(ctx, perm_peer);
 
+	fastd_task_delete_peer_handshakes(ctx, perm_peer);
+
 	perm_peer->address = temp_peer->address;
 	perm_peer->state = STATE_ESTABLISHED;
 	perm_peer->seen = temp_peer->seen;
@@ -174,24 +176,6 @@ fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *per
 	return perm_peer;
 }
 
-const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
-	switch (ctx->conf->mode) {
-	case MODE_TAP:
-		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_source;
-	default:
-		exit_bug(ctx, "invalid mode");
-	}
-}
-
-const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer) {
-	switch (ctx->conf->mode) {
-	case MODE_TAP:
-		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_dest;
-	default:
-		exit_bug(ctx, "invalid mode");
-	}
-}
-
 void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
 	fastd_task_delete_peer_handshakes(ctx, peer);
 
@@ -209,6 +193,23 @@ void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
 	}
 }
 
+const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_source;
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
+}
+
+const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer) {
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_dest;
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
+}
 
 static inline int fastd_eth_addr_cmp(const fastd_eth_addr *addr1, const fastd_eth_addr *addr2) {
 	return memcmp(addr1->data, addr2->data, ETH_ALEN);

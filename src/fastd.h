@@ -93,6 +93,7 @@ struct _fastd_config {
 	fastd_protocol *protocol;
 	char *secret;
 	unsigned key_valid;
+	unsigned key_refresh;
 
 	fastd_peer_config *peers;
 
@@ -123,6 +124,8 @@ struct _fastd_context {
 	size_t eth_addr_size;
 	size_t n_eth_addr;
 	fastd_peer_eth_addr *eth_addr;
+
+	unsigned int randseed;
 };
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
@@ -132,6 +135,11 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 
 void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure);
+
+static inline int fastd_rand(fastd_context *ctx, int min, int max) {
+	unsigned int r = (unsigned int)rand_r(&ctx->randseed);
+	return (r%(max-min) + min);
+}
 
 #define pr_log(ctx, level, prefix, args...) do { \
 		if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) { \
