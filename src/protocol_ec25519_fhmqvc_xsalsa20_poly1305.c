@@ -561,8 +561,13 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 		}
 
 		if (peer->protocol_state->initiating_handshake->peer_config != peer_config) {
-			pr_debug(ctx, "received handshake response with wrong sender key from %P", peer);
-			return;
+			if (peer->protocol_state->initiating_handshake->peer_config) {
+				pr_debug(ctx, "received handshake response with wrong sender key from %P", peer);
+				return;
+			}
+			else {
+				peer->protocol_state->initiating_handshake->peer_config = peer_config;
+			}
 		}
 
 		if (memcmp(peer->protocol_state->initiating_handshake->public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) != 0) {
@@ -606,14 +611,21 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 }
 
 static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	if (!fastd_peer_is_established(peer))
+	if (!fastd_peer_is_established(peer)) {
+		pr_debug(ctx, "received unexpected packet from %P", peer);
+
+		if (fastd_peer_is_temporary(peer)) {
+			pr_debug(ctx, "sending handshake to temporary peer %P", peer);
+			fastd_task_schedule_handshake(ctx, peer, 0);
+		}
+
 		goto end;
+	}
 
 	if (buffer.len < NONCEBYTES)
 		goto end;
 
 	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session)) {
-		pr_debug(ctx, "received unexpected packet from %P", peer);
 		goto end;
 	}
 
@@ -644,7 +656,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 
 		if (!is_nonce_valid(nonce, session->receive_nonce)) {
 			pr_debug(ctx, "received packet with invalid nonce from %P", peer);
-
+			fastd_buffer_free(recv_buffer);
 			goto end;
 		}
 

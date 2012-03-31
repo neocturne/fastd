@@ -85,3 +85,13 @@ void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fas
 			entry = &(*entry)->next;
 	}
 }
+
+bool fastd_queue_has_entry(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fastd_queue_entry*, void*), void *extra) {
+	fastd_queue_entry *entry;
+	for (entry = queue->head; entry; entry = entry->next) {
+		if (pred(entry, extra))
+			return true;
+	}
+
+	return false;
+}

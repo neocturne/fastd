@@ -60,13 +60,51 @@ void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buff
 	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, 0);
 }
 
+static bool is_handshake(fastd_queue_entry *data, void *extra) {
+	fastd_task *task = container_of(data, fastd_task, entry);
+	fastd_peer *peer = extra;
+
+	if (task->peer != peer)
+		return true;
+
+	return (task->type == TASK_HANDSHAKE);
+}
+
 void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout) {
+	if (fastd_queue_has_entry(ctx, &ctx->task_queue, is_handshake, peer)) {
+		pr_debug(ctx, "not sending a handshake to %P, there still is one queued", peer);
+		return;
+	}
+
 	fastd_task *task = malloc(sizeof(fastd_task));
 
 	task->type = TASK_HANDSHAKE;
 	task->peer = peer;
 
 	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, timeout);
+}
+
+typedef struct _replace_peer_extra {
+	fastd_peer *old_peer;
+	fastd_peer *new_peer;
+} replace_peer_extra;
+
+
+static bool replace_peer(fastd_queue_entry *data, void *extra) {
+	replace_peer_extra *e = extra;
+	fastd_task *task = container_of(data, fastd_task, entry);
+	fastd_peer *old_peer = e->old_peer;
+	fastd_peer *new_peer = e->new_peer;
+
+	if (task->peer == old_peer)
+		task->peer = new_peer;
+
+	return true;
+}
+
+void fastd_task_replace_peer(fastd_context *ctx, fastd_peer *old_peer, fastd_peer *new_peer) {
+	replace_peer_extra extra = {old_peer, new_peer};
+	fastd_queue_filter(ctx, &ctx->task_queue, replace_peer, &extra);
 }
 
 typedef struct _delete_task_extra {

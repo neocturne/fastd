@@ -169,6 +169,8 @@ fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *per
 		}
 	}
 
+	fastd_task_replace_peer(ctx, temp_peer, perm_peer);
+
 	fastd_peer_reset(ctx, temp_peer);
 
 	pr_info(ctx, "Connection with %P established.", perm_peer);

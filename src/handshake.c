@@ -122,8 +122,10 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 
 	handshake.req_id = packet->req_id;
 
-	if (handshake.records[RECORD_HANDSHAKE_TYPE].length != 1)
+	if (handshake.records[RECORD_HANDSHAKE_TYPE].length != 1) {
+		pr_debug(ctx, "received handshake without handshake type from %P", peer);
 		goto end_free;
+	}
 
 	handshake.type = AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]);
 
