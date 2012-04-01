@@ -76,6 +76,8 @@ void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int tim
 		return;
 	}
 
+	pr_debug(ctx, "scheduling handshake with %P", peer);
+
 	fastd_task *task = malloc(sizeof(fastd_task));
 
 	task->type = TASK_HANDSHAKE;

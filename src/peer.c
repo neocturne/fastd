@@ -153,8 +153,6 @@ fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *per
 
 	ctx->conf->protocol->free_peer_state(ctx, perm_peer);
 
-	fastd_task_delete_peer_handshakes(ctx, perm_peer);
-
 	perm_peer->address = temp_peer->address;
 	perm_peer->state = STATE_ESTABLISHED;
 	perm_peer->seen = temp_peer->seen;
@@ -170,6 +168,7 @@ fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *per
 	}
 
 	fastd_task_replace_peer(ctx, temp_peer, perm_peer);
+	fastd_task_delete_peer_handshakes(ctx, perm_peer);
 
 	fastd_peer_reset(ctx, temp_peer);
 
