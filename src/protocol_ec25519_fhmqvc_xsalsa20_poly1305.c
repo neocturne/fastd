@@ -298,7 +298,7 @@ static inline bool has_field(const fastd_handshake *handshake, uint8_t type, siz
 }
 
 static void respond_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
-	pr_info(ctx, "Responding handshake with %P...", peer);
+	pr_debug(ctx, "responding handshake with %P...", peer);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
@@ -362,7 +362,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	int i;
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 
-	pr_info(ctx, "Session with %P established", peer);
+	pr_verbose(ctx, "New session with %P established.", peer);
 
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session))
 		peer->protocol_state->old_session = peer->protocol_state->session;
@@ -423,7 +423,7 @@ static inline bool is_session_initiator(const protocol_session *session) {
 }
 
 static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
-	pr_info(ctx, "Finishing handshake with %P...", peer);
+	pr_debug(ctx, "finishing handshake with %P...", peer);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
@@ -494,7 +494,7 @@ static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_h
 }
 
 static void handle_finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
-	pr_info(ctx, "Handling handshake finish with %P...", peer);
+	pr_debug(ctx, "handling handshake finish with %P...", peer);
 
 	uint8_t hashinput[2*PUBLICKEYBYTES];
 

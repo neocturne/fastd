@@ -38,6 +38,7 @@ typedef enum _fastd_loglevel {
 	LOG_ERROR,
 	LOG_WARN,
 	LOG_INFO,
+	LOG_VERBOSE,
 	LOG_DEBUG,
 } fastd_loglevel;
 

@@ -151,12 +151,14 @@ static inline int fastd_rand(fastd_context *ctx, int min, int max) {
 #define is_error(ctx) ((ctx)->conf == NULL || LOG_ERROR <= (ctx)->conf->loglevel)
 #define is_warn(ctx) ((ctx)->conf == NULL || LOG_WARN <= (ctx)->conf->loglevel)
 #define is_info(ctx) ((ctx)->conf == NULL || LOG_INFO <= (ctx)->conf->loglevel)
+#define is_verbose(ctx) ((ctx)->conf == NULL || LOG_VERBOSE <= (ctx)->conf->loglevel)
 #define is_debug(ctx) ((ctx)->conf == NULL || LOG_DEBUG <= (ctx)->conf->loglevel)
 
 #define pr_fatal(ctx, args...) pr_log(ctx, LOG_FATAL, "Fatal: ", args)
 #define pr_error(ctx, args...) pr_log(ctx, LOG_ERROR, "Error: ", args)
 #define pr_warn(ctx, args...) pr_log(ctx, LOG_WARN, "Warning: ", args)
-#define pr_info(ctx, args...) pr_log(ctx, LOG_INFO, "", args)
+#define pr_info(ctx, args...) pr_log(ctx, LOG_INFO, "Info: ", args)
+#define pr_verbose(ctx, args...) pr_log(ctx, LOG_INFO, "Verbose: ", args)
 #define pr_debug(ctx, args...) pr_log(ctx, LOG_DEBUG, "DEBUG: ", args)
 
 #define warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
