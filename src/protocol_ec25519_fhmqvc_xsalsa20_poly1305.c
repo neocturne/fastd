@@ -383,6 +383,15 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 		peer->protocol_state->session.receive_nonce[i] = 0;
 	}
 
+	if (initiator) {
+		free_handshake(peer->protocol_state->initiating_handshake);
+		peer->protocol_state->initiating_handshake = NULL;
+	}
+	else {
+		free_handshake(peer->protocol_state->accepting_handshake);
+		peer->protocol_state->accepting_handshake = NULL;
+	}
+
 	fastd_peer_seen(ctx, peer);
 
 	if (peer_config != peer->config) {
