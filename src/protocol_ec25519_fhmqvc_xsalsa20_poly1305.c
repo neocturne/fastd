@@ -528,6 +528,16 @@ static inline const fastd_peer_config* match_sender_key(fastd_context *ctx, cons
 	return NULL;
 }
 
+static void kill_handshakes(fastd_context *ctx, fastd_peer *peer) {
+	pr_debug(ctx, "there is a handshake conflict, retrying in a moment...");
+
+	free_handshake(peer->protocol_state->initiating_handshake);
+	peer->protocol_state->initiating_handshake = NULL;
+
+	free_handshake(peer->protocol_state->accepting_handshake);
+	peer->protocol_state->accepting_handshake = NULL;
+}
+
 static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
 	init_peer_state(ctx, peer);
 
@@ -566,6 +576,11 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 
 	switch(handshake->type) {
 	case 1:
+		if (peer->protocol_state->initiating_handshake) {
+			kill_handshakes(ctx, peer);
+			return;
+		}
+
 		new_handshake(ctx, peer, peer_config, false);
 		memcpy(peer->protocol_state->accepting_handshake->peer_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 		respond_handshake(ctx, peer, handshake);
@@ -593,6 +608,12 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 		}
 
 		pr_debug(ctx, "received handshake response from %P", peer);
+
+		if (peer->protocol_state->accepting_handshake) {
+			kill_handshakes(ctx, peer);
+			return;
+		}
+
 		memcpy(peer->protocol_state->initiating_handshake->peer_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 
 		finish_handshake(ctx, peer, handshake);
@@ -616,6 +637,13 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 
 		if (memcmp(peer->protocol_state->accepting_handshake->peer_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES) != 0) {
 			pr_debug(ctx, "received handshake response with unexpected sender handshake key from %P", peer);
+			return;
+		}
+
+		pr_debug(ctx, "received handshake finish from %P", peer);
+
+		if (peer->protocol_state->initiating_handshake) {
+			kill_handshakes(ctx, peer);
 			return;
 		}
 
