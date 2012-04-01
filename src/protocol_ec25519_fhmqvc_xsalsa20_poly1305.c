@@ -222,7 +222,7 @@ static void protocol_init(fastd_context *ctx, fastd_config *conf) {
 }
 
 static size_t protocol_max_packet_size(fastd_context *ctx) {
-	return (fastd_max_packet_size(ctx) + NONCEBYTES);
+	return (fastd_max_packet_size(ctx) + NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 }
 
 static size_t protocol_min_encrypt_head_space(fastd_context *ctx) {
