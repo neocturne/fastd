@@ -90,6 +90,8 @@ typedef struct _protocol_handshake {
 } protocol_handshake;
 
 typedef struct _protocol_session {
+	bool handshakes_cleaned;
+
 	struct timespec valid_till;
 	struct timespec refresh_after;
 	bool refreshing;
@@ -368,6 +370,8 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	memcpy(hashinput+3*PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
 	crypto_hash_sha256(peer->protocol_state->session.key, hashinput, 5*PUBLICKEYBYTES);
+
+	peer->protocol_state->session.handshakes_cleaned = false;
 
 	peer->protocol_state->session.valid_till = ctx->now;
 	peer->protocol_state->session.valid_till.tv_sec += ctx->conf->key_valid;
@@ -674,6 +678,12 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		}
 
 		if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, session->key) == 0) {
+			if (!session->handshakes_cleaned) {
+				pr_debug(ctx, "cleaning left handshakes with %P", peer);
+				fastd_peer_clean_handshakes(ctx, peer);
+				session->handshakes_cleaned = true;
+			}
+
 			if (!is_session_zero(ctx, &peer->protocol_state->old_session)) {
 				pr_debug(ctx, "invalidating old session with %P", peer);
 				memset(&peer->protocol_state->old_session, 0, sizeof(protocol_session));

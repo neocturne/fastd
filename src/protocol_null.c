@@ -100,6 +100,9 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 
 static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
 	if (fastd_peer_is_established(peer) && buffer.len) {
+		/* this could be optimized a bit */
+		fastd_peer_clean_handshakes(ctx, peer);
+
 		fastd_peer_seen(ctx, peer);
 		fastd_task_put_handle_recv(ctx, peer, buffer);
 	}

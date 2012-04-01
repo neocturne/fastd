@@ -75,6 +75,7 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
 fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *address);
+void fastd_peer_clean_handshakes(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer);
 void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer);
 
