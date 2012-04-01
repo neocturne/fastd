@@ -148,10 +148,6 @@ fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *ad
 	return peer;
 }
 
-void fastd_peer_clean_handshakes(fastd_context *ctx, fastd_peer *peer) {
-	fastd_task_delete_peer_handshakes(ctx, peer);
-}
-
 fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer) {
 	pr_debug(ctx, "merging peer %P into %P", temp_peer, perm_peer);
 

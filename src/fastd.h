@@ -79,6 +79,7 @@ struct _fastd_protocol {
 struct _fastd_config {
 	fastd_loglevel loglevel;
 
+	unsigned keepalive_interval;
 	unsigned peer_stale_time;
 	unsigned peer_stale_time_temp;
 	unsigned eth_addr_stale_time;

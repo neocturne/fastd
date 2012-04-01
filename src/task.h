@@ -37,6 +37,7 @@ typedef enum _fastd_task_type {
 	TASK_SEND,
 	TASK_HANDLE_RECV,
 	TASK_HANDSHAKE,
+	TASK_KEEPALIVE,
 } fastd_task_type;
 
 typedef struct _fastd_task_any {
@@ -77,9 +78,11 @@ void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buff
 void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
 void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout);
+void fastd_task_schedule_keepalive(fastd_context *ctx, fastd_peer *peer, int timeout);
 
 void fastd_task_replace_peer(fastd_context *ctx, fastd_peer *old_peer, fastd_peer *new_peer);
 void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer);
 void fastd_task_delete_peer_handshakes(fastd_context *ctx, fastd_peer *peer);
+void fastd_task_delete_peer_keepalives(fastd_context *ctx, fastd_peer *peer);
 
 #endif /* _FASTD_TASK_H_ */

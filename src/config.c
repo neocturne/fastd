@@ -51,6 +51,7 @@ extern fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 static void default_config(fastd_config *conf) {
 	conf->loglevel = LOG_INFO;
 
+	conf->keepalive_interval = 60;
 	conf->peer_stale_time = 300;
 	conf->peer_stale_time_temp = 30;
 	conf->eth_addr_stale_time = 300;

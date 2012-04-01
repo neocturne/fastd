@@ -207,13 +207,18 @@ static void handle_tasks(fastd_context *ctx) {
 			break;
 
 		case TASK_HANDSHAKE:
-			pr_debug(ctx, "Sending handshake to %P...", task->peer);
+			pr_debug(ctx, "sending handshake to %P...", task->peer);
 			ctx->conf->protocol->handshake_init(ctx, task->peer);
 
 			if (fastd_peer_is_established(task->peer))
 				fastd_task_schedule_handshake(ctx, task->peer, fastd_rand(ctx, 10000, 20000));
 			else
 				fastd_task_schedule_handshake(ctx, task->peer, 20000);
+			break;
+
+		case TASK_KEEPALIVE:
+			pr_debug(ctx, "sending keepalive to %P", task->peer);
+			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(0, ctx->conf->protocol->min_encrypt_head_space(ctx), 0));
 			break;
 
 		default:

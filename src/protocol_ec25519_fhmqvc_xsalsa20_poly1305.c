@@ -414,6 +414,8 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 		fastd_peer_set_established(ctx, peer);
 	}
 
+	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
+
 	if (!initiator)
 		protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
 }
@@ -712,7 +714,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, session->key) == 0) {
 			if (!session->handshakes_cleaned) {
 				pr_debug(ctx, "cleaning left handshakes with %P", peer);
-				fastd_peer_clean_handshakes(ctx, peer);
+				fastd_task_delete_peer_handshakes(ctx, peer);
 				session->handshakes_cleaned = true;
 			}
 
@@ -784,6 +786,9 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 	fastd_task_put_send(ctx, peer, send_buffer);
 
 	increment_nonce(session->send_nonce);
+
+	fastd_task_delete_peer_keepalives(ctx, peer);
+	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
 }
 
 static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {
