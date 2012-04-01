@@ -28,6 +28,7 @@
 #include "peer.h"
 
 #include <arpa/inet.h>
+#include <stdarg.h>
 
 
 static void print_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
