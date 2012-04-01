@@ -674,8 +674,6 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		goto end;
 	}
 
-	check_session_refresh(ctx, peer);
-
 	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
 	memcpy(nonce, buffer.data, NONCEBYTES);
 	memset(nonce+NONCEBYTES, 0, crypto_secretbox_xsalsa20poly1305_NONCEBYTES-NONCEBYTES);
@@ -716,6 +714,8 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 				pr_debug(ctx, "invalidating old session with %P", peer);
 				memset(&peer->protocol_state->old_session, 0, sizeof(protocol_session));
 			}
+
+			check_session_refresh(ctx, peer);
 		}
 		else {
 			pr_debug(ctx, "verification failed for packet received from %P", peer);
