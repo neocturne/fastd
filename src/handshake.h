@@ -42,6 +42,7 @@ typedef enum _fastd_handshake_record_type {
 	RECORD_PROTOCOL3,
 	RECORD_PROTOCOL4,
 	RECORD_PROTOCOL5,
+	RECORD_MTU,
 	RECORD_MAX,
 } fastd_handshake_record_type;
 
@@ -99,6 +100,22 @@ static inline void fastd_handshake_add_uint8(fastd_context *ctx, fastd_buffer *b
 	dst[4] = value;
 
 	buffer->len += 5;
+}
+
+static inline void fastd_handshake_add_uint16(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, uint16_t value) {
+	if ((uint8_t*)buffer->data + buffer->len + 6 > (uint8_t*)buffer->base + buffer->base_len)
+		exit_bug(ctx, "not enough buffer allocated for handshake");
+
+	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
+
+	dst[0] = type;
+	dst[1] = type >> 8;
+	dst[2] = 2;
+	dst[3] = 0;
+	dst[4] = value;
+	dst[5] = value >> 8;
+
+	buffer->len += 6;
 }
 
 

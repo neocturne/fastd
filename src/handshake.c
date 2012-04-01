@@ -44,6 +44,7 @@ static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"(protocol specific 3)",
 	"(protocol specific 4)",
 	"(protocol specific 5)",
+	"MTU",
 };
 
 static const char const *REPLY_TYPES[REPLY_MAX] = {
@@ -53,13 +54,15 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 };
 
 #define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
+#define AS_UINT16(ptr) ((*(uint8_t*)(ptr).data) + (*((uint8_t*)(ptr).data+1) << 8))
 
 
 fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size_t tail_space) {
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
-						 2*5 +           /* handshake type, mode */
-						 4+protocol_len+ /* protocol name */
+						 2*5 +            /* handshake type, mode */
+						 6 +		  /* MTU */
+						 4+protocol_len + /* protocol name */
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -69,6 +72,7 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size
 
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, 1);
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_MODE, ctx->conf->mode);
+	fastd_handshake_add_uint16(ctx, &buffer, RECORD_MTU, ctx->conf->mtu);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
 
@@ -76,8 +80,15 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size
 }
 
 fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake, size_t tail_space) {
+	bool first = (AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE]) == 1);
+	size_t mtu_size = 0;
+
+	if (first)
+		mtu_size = 6;
+
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
 						 2*5 +           /* handshake type, reply code */
+						 mtu_size +
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -87,6 +98,9 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, con
 
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])+1);
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
+
+	if (first)
+		fastd_handshake_add_uint16(ctx, &buffer, RECORD_MTU, ctx->conf->mtu);
 
 	return buffer;
 }
@@ -128,6 +142,13 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 	}
 
 	handshake.type = AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]);
+
+	if (handshake.records[RECORD_MTU].length == 2) {
+		if (AS_UINT16(handshake.records[RECORD_MTU]) != ctx->conf->mtu) {
+			pr_warn(ctx, "MTU configuration differs with peer %P: local MTU is %u, remote MTU is %u",
+				 peer, ctx->conf->mtu, AS_UINT16(handshake.records[RECORD_MTU]));
+		}
+	}
 
 	if (handshake.type == 1) {
 		uint8_t reply_code = REPLY_SUCCESS;
