@@ -117,6 +117,9 @@ struct _fastd_protocol_peer_state {
 #define RECORD_T RECORD_PROTOCOL5
 
 
+static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+
+
 static inline bool read_key(uint8_t key[32], const char *hexkey) {
 	if ((strlen(hexkey) != 64) || (strspn(hexkey, "0123456789abcdefABCDEF") != 64))
 		return false;
@@ -402,7 +405,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 		fastd_peer *perm_peer;
 		for (perm_peer = ctx->peers; perm_peer; perm_peer = perm_peer->next) {
 			if (perm_peer->config == peer_config) {
-				fastd_peer_set_established_merge(ctx, perm_peer, peer);
+				peer = fastd_peer_set_established_merge(ctx, perm_peer, peer);
 				break;
 			}
 		}
@@ -410,6 +413,9 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	else {
 		fastd_peer_set_established(ctx, peer);
 	}
+
+	if (!initiator)
+		protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
 }
 
 static inline bool is_session_initiator(const protocol_session *session) {
@@ -713,6 +719,9 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 			if (!is_session_zero(ctx, &peer->protocol_state->old_session)) {
 				pr_debug(ctx, "invalidating old session with %P", peer);
 				memset(&peer->protocol_state->old_session, 0, sizeof(protocol_session));
+
+				if (is_session_initiator(session))
+					protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
 			}
 
 			check_session_refresh(ctx, peer);
@@ -727,7 +736,11 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	fastd_peer_seen(ctx, peer);
 
 	fastd_buffer_push_head(&recv_buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
-	fastd_task_put_handle_recv(ctx, peer, recv_buffer);
+
+	if (recv_buffer.len)
+		fastd_task_put_handle_recv(ctx, peer, recv_buffer);
+	else
+		fastd_buffer_free(recv_buffer);
 
 	memcpy(session->receive_nonce, nonce, NONCEBYTES);
 
