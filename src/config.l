@@ -72,6 +72,14 @@ on		{ UPDATE_LOCATION; return TOK_ON; }
 up		{ UPDATE_LOCATION; return TOK_UP; }
 peers		{ UPDATE_LOCATION; return TOK_PEERS; }
 from		{ UPDATE_LOCATION; return TOK_FROM; }
+log		{ UPDATE_LOCATION; return TOK_LOG; }
+level 		{ UPDATE_LOCATION; return TOK_LEVEL; }
+fatal		{ UPDATE_LOCATION; return TOK_FATAL; }
+error		{ UPDATE_LOCATION; return TOK_ERROR; }
+warn		{ UPDATE_LOCATION; return TOK_WARN; }
+info		{ UPDATE_LOCATION; return TOK_INFO; }
+verbose		{ UPDATE_LOCATION; return TOK_VERBOSE; }
+debug		{ UPDATE_LOCATION; return TOK_DEBUG; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

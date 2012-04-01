@@ -49,7 +49,7 @@ extern fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 
 
 static void default_config(fastd_config *conf) {
-	conf->loglevel = LOG_DEBUG;
+	conf->loglevel = LOG_INFO;
 
 	conf->peer_stale_time = 300;
 	conf->peer_stale_time_temp = 30;
@@ -223,6 +223,24 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 
 	while (i < argc) {
+		IF_OPTION_ARG("--log-level") {
+			if (!strcmp(arg, "fatal"))
+				conf->loglevel = LOG_FATAL;
+			else if (!strcmp(arg, "error"))
+				conf->loglevel = LOG_ERROR;
+			else if (!strcmp(arg, "warn"))
+				conf->loglevel = LOG_WARN;
+			else if (!strcmp(arg, "info"))
+				conf->loglevel = LOG_INFO;
+			else if (!strcmp(arg, "verbose"))
+				conf->loglevel = LOG_VERBOSE;
+			else if (!strcmp(arg, "debug"))
+				conf->loglevel = LOG_DEBUG;
+			else
+				exit_error(ctx, "invalid mode `%s'", arg);
+			continue;
+		}
+
 		IF_OPTION_ARG("-c", "--config") {
 			fastd_read_config(ctx, conf, arg, false, 0);
 			continue;

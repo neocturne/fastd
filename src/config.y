@@ -72,6 +72,14 @@
 %token TOK_UP
 %token TOK_PEERS
 %token TOK_FROM
+%token TOK_LOG
+%token TOK_LEVEL
+%token TOK_FATAL
+%token TOK_ERROR
+%token TOK_WARN
+%token TOK_INFO
+%token TOK_VERBOSE
+%token TOK_DEBUG
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -107,7 +115,8 @@ config:		config statement
 	|
 	;
 
-statement:	TOK_INTERFACE interface ';'
+statement:	TOK_LOG log ';'
+	| 	TOK_INTERFACE interface ';'
 	| 	TOK_BIND bind ';'
 	|	TOK_MTU mtu ';'
 	|	TOK_MODE mode ';'
@@ -116,6 +125,17 @@ statement:	TOK_INTERFACE interface ';'
 	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_PEER peer '{' peer_conf '}'
 	|	TOK_INCLUDE include ';'
+	;
+
+log:		TOK_LEVEL log_level
+	;
+
+log_level:	TOK_FATAL	{ conf->loglevel = LOG_FATAL; }
+	|	TOK_ERROR	{ conf->loglevel = LOG_ERROR; }
+	|	TOK_WARN	{ conf->loglevel = LOG_WARN; }
+	|	TOK_INFO	{ conf->loglevel = LOG_INFO; }
+	|	TOK_VERBOSE	{ conf->loglevel = LOG_VERBOSE; }
+	|	TOK_DEBUG	{ conf->loglevel = LOG_DEBUG; }
 	;
 
 interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = $1; }

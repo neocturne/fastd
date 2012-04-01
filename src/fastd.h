@@ -158,7 +158,7 @@ static inline int fastd_rand(fastd_context *ctx, int min, int max) {
 #define pr_error(ctx, args...) pr_log(ctx, LOG_ERROR, "Error: ", args)
 #define pr_warn(ctx, args...) pr_log(ctx, LOG_WARN, "Warning: ", args)
 #define pr_info(ctx, args...) pr_log(ctx, LOG_INFO, "Info: ", args)
-#define pr_verbose(ctx, args...) pr_log(ctx, LOG_INFO, "Verbose: ", args)
+#define pr_verbose(ctx, args...) pr_log(ctx, LOG_VERBOSE, "Verbose: ", args)
 #define pr_debug(ctx, args...) pr_log(ctx, LOG_DEBUG, "DEBUG: ", args)
 
 #define warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
