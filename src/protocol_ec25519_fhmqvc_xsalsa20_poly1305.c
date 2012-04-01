@@ -390,14 +390,11 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 		peer->protocol_state->session.receive_nonce[i] = 0;
 	}
 
-	if (initiator) {
-		free_handshake(peer->protocol_state->initiating_handshake);
-		peer->protocol_state->initiating_handshake = NULL;
-	}
-	else {
-		free_handshake(peer->protocol_state->accepting_handshake);
-		peer->protocol_state->accepting_handshake = NULL;
-	}
+	free_handshake(peer->protocol_state->initiating_handshake);
+	peer->protocol_state->initiating_handshake = NULL;
+
+	free_handshake(peer->protocol_state->accepting_handshake);
+	peer->protocol_state->accepting_handshake = NULL;
 
 	fastd_peer_seen(ctx, peer);
 
@@ -584,11 +581,6 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 
 	switch(handshake->type) {
 	case 1:
-		if (peer->protocol_state->initiating_handshake) {
-			kill_handshakes(ctx, peer);
-			return;
-		}
-
 		new_handshake(ctx, peer, peer_config, false);
 		memcpy(peer->protocol_state->accepting_handshake->peer_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 		respond_handshake(ctx, peer, handshake);
@@ -650,7 +642,7 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 
 		pr_debug(ctx, "received handshake finish from %P", peer);
 
-		if (peer->protocol_state->initiating_handshake) {
+		if (peer->protocol_state->initiating_handshake && peer->protocol_state->initiating_handshake->state != HANDSHAKE_STATE_INIT) {
 			kill_handshakes(ctx, peer);
 			return;
 		}
@@ -716,14 +708,14 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 				pr_debug(ctx, "cleaning left handshakes with %P", peer);
 				fastd_task_delete_peer_handshakes(ctx, peer);
 				session->handshakes_cleaned = true;
+
+				if (is_session_initiator(session))
+					protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
 			}
 
 			if (!is_session_zero(ctx, &peer->protocol_state->old_session)) {
 				pr_debug(ctx, "invalidating old session with %P", peer);
 				memset(&peer->protocol_state->old_session, 0, sizeof(protocol_session));
-
-				if (is_session_initiator(session))
-					protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
 			}
 
 			check_session_refresh(ctx, peer);
