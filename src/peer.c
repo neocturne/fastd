@@ -143,7 +143,7 @@ fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *ad
 	peer->state = STATE_TEMP;
 	peer->seen = ctx->now;
 
-	pr_debug(ctx, "adding peer %P", peer);
+	pr_debug(ctx, "added peer %P", peer);
 
 	return peer;
 }

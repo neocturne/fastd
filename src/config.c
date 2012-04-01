@@ -340,32 +340,23 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 			if (arg[0] == '[') {
 				charptr = strchr(arg, ']');
-				if (!charptr || (charptr[1] != ':' && charptr[1] != '\0'))
+				if (!charptr || (charptr[1] != ':'))
 					exit_error(ctx, "invalid peer address `%s'", arg);
 
 				addrstr = strndup(arg+1, charptr-arg-1);
-
-				if (charptr[1] == ':')
-					charptr++;
-				else
-					charptr = NULL;
+				charptr++;
 			}
 			else {
 				charptr = strchr(arg, ':');
-				if (charptr)
-					addrstr = strndup(arg, charptr-arg);
-				else
-					addrstr = strdup(arg);
+				if (!charptr)
+					exit_error(ctx, "invalid peer address `%s'", arg);
+
+				addrstr = strndup(arg, charptr-arg);
 			}
 
-			if (charptr) {
-				l = strtol(charptr+1, &endptr, 10);
-				if (*endptr || l < 0 || l > 65535)
-					exit_error(ctx, "invalid peer port `%s'", charptr+1);
-			}
-			else {
-				l = 1337; /* default port */
-			}
+			l = strtol(charptr+1, &endptr, 10);
+			if (*endptr || l < 0 || l > 65535)
+				exit_error(ctx, "invalid peer port `%s'", charptr+1);
 
 			if (arg[0] == '[') {
 				peer->address.in6.sin6_family = AF_INET6;

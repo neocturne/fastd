@@ -96,7 +96,6 @@
 
 %type <num> port
 %type <num> maybe_port
-%type <num> maybe_port_default
 %type <str> maybe_as
 
 %%
@@ -188,15 +187,15 @@ peer_statement: TOK_ADDRESS peer_address ';'
 	|	TOK_INCLUDE peer_include  ';'
 	;
 
-peer_address:	TOK_ADDR maybe_port_default {
+peer_address:	TOK_ADDR ':' port {
 			conf->peers->address.in.sin_family = AF_INET;
 			conf->peers->address.in.sin_addr = $1;
-			conf->peers->address.in.sin_port = $2;
+			conf->peers->address.in.sin_port = $3;
 		}
-	|	TOK_ADDR6 maybe_port_default {
+	|	TOK_ADDR6 ':' port {
 			conf->peers->address.in6.sin6_family = AF_INET6;
 			conf->peers->address.in6.sin6_addr = $1;
-			conf->peers->address.in6.sin6_port = $2;
+			conf->peers->address.in6.sin6_port = $3;
 		}
 	;
 
@@ -228,10 +227,6 @@ maybe_string:	TOK_STRING
 
 maybe_port:	':' port	{ $$ = $2; }
 	|			{ $$ = 0; }
-	;
-
-maybe_port_default: ':' port	{ $$ = $2; }
-	|			{ $$ = htons(1337); }
 	;
 
 maybe_as:	TOK_AS TOK_STRING { $$ = $2; }
