@@ -58,8 +58,8 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size_t tail_space) {
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
-						 2*3 +           /* handshake type, mode */
-						 2+protocol_len+ /* protocol name */
+						 2*5 +           /* handshake type, mode */
+						 4+protocol_len+ /* protocol name */
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -77,7 +77,7 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size
 
 fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake, size_t tail_space) {
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
-						 2*3 +           /* handshake type, reply code */
+						 2*5 +           /* handshake type, reply code */
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -105,19 +105,19 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 
 	uint8_t *ptr = packet->tlv_data;
 	while (true) {
-		if (ptr+2 > (uint8_t*)buffer.data + buffer.len)
+		if (ptr+4 > (uint8_t*)buffer.data + buffer.len)
 			break;
 
-		uint8_t type = ptr[0];
-		uint8_t len = ptr[1];
+		uint16_t type = ptr[0] + (ptr[1] << 8);
+		uint16_t len = ptr[2] + (ptr[3] << 8);
 
-		if (ptr+2+len > (uint8_t*)buffer.data + buffer.len)
+		if (ptr+4+len > (uint8_t*)buffer.data + buffer.len)
 			break;
 
 		handshake.records[type].length = len;
-		handshake.records[type].data = ptr+2;
+		handshake.records[type].data = ptr+4;
 
-		ptr += 2+len;
+		ptr += 4+len;
 	}
 
 	handshake.req_id = packet->req_id;
@@ -160,7 +160,7 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 
 	send_reply:
 		if (reply_code) {
-			fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0, 3*3 /* enough space for handshake type, reply code and error detail */);
+			fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
 			fastd_packet *reply = reply_buffer.data;
 
 			reply->req_id = packet->req_id;

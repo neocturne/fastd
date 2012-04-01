@@ -277,7 +277,7 @@ static protocol_handshake* new_handshake(fastd_context *ctx, fastd_peer *peer, c
 static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
 	init_peer_state(ctx, peer);
 
-	fastd_buffer buffer = fastd_handshake_new_init(ctx, peer, 3*(2+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
+	fastd_buffer buffer = fastd_handshake_new_init(ctx, peer, 3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
 
 	protocol_handshake *handshake = new_handshake(ctx, peer, peer->config, true);
 
@@ -343,7 +343,7 @@ static void respond_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_
 
 	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->shared_handshake_key);
 
-	fastd_buffer buffer = fastd_handshake_new_reply(ctx, peer, handshake, 4*(2+PUBLICKEYBYTES) + 2+HMACBYTES);
+	fastd_buffer buffer = fastd_handshake_new_reply(ctx, peer, handshake, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->peer_config->protocol_config->public_key.p);
@@ -475,7 +475,7 @@ static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_h
 	memcpy(hashinput+PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->public_key.p, PUBLICKEYBYTES);
 	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->shared_handshake_key);
 
-	fastd_buffer buffer = fastd_handshake_new_reply(ctx, peer, handshake, 4*(2+PUBLICKEYBYTES) + 2+HMACBYTES);
+	fastd_buffer buffer = fastd_handshake_new_reply(ctx, peer, handshake, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->peer_config->protocol_config->public_key.p);
