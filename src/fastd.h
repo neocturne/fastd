@@ -144,7 +144,19 @@ static inline int fastd_rand(fastd_context *ctx, int min, int max) {
 
 #define pr_log(ctx, level, prefix, args...) do { \
 		if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) { \
-			fputs(prefix, stderr); fastd_printf(ctx, args); fputs("\n", stderr); \
+			char timestr[100]; \
+			time_t t; \
+			struct tm tm; \
+			\
+			t = time(NULL); \
+			if (localtime_r(&t, &tm) != NULL) { \
+				if (strftime(timestr, sizeof(timestr), "%F %T %z --- ", &tm) > 0) \
+					fputs(timestr, stderr); \
+			} \
+			\
+			fputs(prefix, stderr); \
+			fastd_printf(ctx, args); \
+			fputs("\n", stderr); \
 		} \
 	} while(0)
 

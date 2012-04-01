@@ -195,10 +195,10 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 
 				if (p) {
 					if (inet_ntop(flag_l ? AF_INET6 : AF_INET, p, addr_buf, sizeof(addr_buf)))
-						fprintf(stderr, "%s", addr_buf);
+						fputs(addr_buf, stderr);
 				}
 				else {
-					fprintf(stderr, "(null)");
+					fputs("(null)", stderr);
 				}
 				break;
 
@@ -211,7 +211,7 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 						eth_addr->data[3], eth_addr->data[4], eth_addr->data[5]);
 				}
 				else {
-					fprintf(stderr, "(null)");
+					fputs("(null)", stderr);
 				}
 				break;
 
@@ -221,7 +221,7 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 				if (peer)
 					print_peer_str(ctx, peer);
 				else
-					fprintf(stderr, "(null)");
+					fputs("(null)", stderr);
 				break;
 
 			default:
