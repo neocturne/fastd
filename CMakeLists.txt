@@ -3,7 +3,7 @@ project(FASTD C)
 
 set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR})
 
-find_package(BISON REQUIRED)
+find_package(BISON 2.5 REQUIRED)
 find_package(FLEX REQUIRED)
 
 find_package(UECC)
