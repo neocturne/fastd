@@ -148,10 +148,8 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error(ctx, "maximum config include depth exceeded");
 
-	bool use_stdin = !strcmp(filename, "-");
-
 	FILE *file;
-	if (use_stdin) {
+	if (!filename) {
 		file = stdin;
 	}
 	else {
@@ -162,11 +160,17 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 
 
 	char *oldcwd = get_current_dir_name();
-	char *filename2 = strdup(filename);
-	char *dir = dirname(filename2);
 
-	if (chdir(dir))
-		exit_error(ctx, "change from directory `%s' to `%s' failed", oldcwd, dir);
+	char *filename2 = NULL;
+	char *dir = NULL;
+
+	if (filename) {
+		filename2 = strdup(filename);
+		dir = dirname(filename2);
+
+		if (chdir(dir))
+			exit_error(ctx, "change from directory `%s' to `%s' failed", oldcwd, dir);
+	}
 
 	yyscan_t scanner;
 	fastd_config_yylex_init(&scanner);
@@ -207,7 +211,7 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	free(filename2);
 	free(oldcwd);
 
-	if (!use_stdin)
+	if (filename)
 		fclose(file);
 }
 
@@ -254,7 +258,10 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 
 		IF_OPTION_ARG("-c", "--config") {
-			fastd_read_config(ctx, conf, arg, false, 0);
+			if (!strcmp(arg, "-"))
+				fastd_read_config(ctx, conf, NULL, false, 0);
+			else
+				fastd_read_config(ctx, conf, arg, false, 0);
 			continue;
 		}
 
