@@ -65,7 +65,7 @@ static bool is_handshake(fastd_queue_entry *data, void *extra) {
 	fastd_peer *peer = extra;
 
 	if (task->peer != peer)
-		return true;
+		return false;
 
 	return (task->type == TASK_HANDSHAKE);
 }
@@ -91,7 +91,7 @@ static bool is_keepalive(fastd_queue_entry *data, void *extra) {
 	fastd_peer *peer = extra;
 
 	if (task->peer != peer)
-		return true;
+		return false;
 
 	return (task->type == TASK_KEEPALIVE);
 }
