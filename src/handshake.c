@@ -128,8 +128,10 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		if (ptr+4+len > (uint8_t*)buffer.data + buffer.len)
 			break;
 
-		handshake.records[type].length = len;
-		handshake.records[type].data = ptr+4;
+		if (type < RECORD_MAX) {
+			handshake.records[type].length = len;
+			handshake.records[type].data = ptr+4;
+		}
 
 		ptr += 4+len;
 	}
