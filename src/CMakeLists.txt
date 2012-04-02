@@ -27,3 +27,5 @@ add_executable(fastd
   ${PROTOCOLS}
 )
 target_link_libraries(fastd rt ${FASTD_LIBS})
+
+install(TARGETS fastd RUNTIME DESTINATION sbin)
