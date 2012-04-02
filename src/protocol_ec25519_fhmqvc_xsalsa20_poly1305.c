@@ -154,21 +154,25 @@ static inline void increment_nonce(uint8_t nonce[NONCEBYTES]) {
 	}
 }
 
-static inline bool is_session_valid(fastd_context *ctx, protocol_session *session) {
+static inline bool is_session_valid(fastd_context *ctx, const protocol_session *session) {
 	return timespec_after(&session->valid_till, &ctx->now);
 }
 
-static inline bool is_session_zero(fastd_context *ctx, protocol_session *session) {
+static inline bool is_session_zero(fastd_context *ctx, const protocol_session *session) {
 	return (session->valid_till.tv_sec == 0);
+}
+
+static inline bool is_session_initiator(const protocol_session *session) {
+	return (session->send_nonce[0] & 1);
 }
 
 static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
 	protocol_session *session = &peer->protocol_state->session;
 
-	if (!session->refreshing && timespec_after(&ctx->now, &session->refresh_after)) {
+	if (is_session_initiator(session) && !session->refreshing && timespec_after(&ctx->now, &session->refresh_after)) {
 		pr_debug(ctx, "refreshing session with %P", peer);
 		session->refreshing = true;
-		fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 0, 10000));
+		fastd_task_schedule_handshake(ctx, peer, 0);
 	}
 }
 
@@ -415,10 +419,6 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 
 	if (!initiator)
 		protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
-}
-
-static inline bool is_session_initiator(const protocol_session *session) {
-	return (session->send_nonce[0] & 1);
 }
 
 static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
