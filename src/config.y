@@ -44,6 +44,7 @@
 %union {
 	int num;
 	char* str;
+	bool boolean;
 	struct in_addr addr;
 	struct in6_addr addr6;
 }
@@ -80,6 +81,9 @@
 %token TOK_INFO
 %token TOK_VERBOSE
 %token TOK_DEBUG
+%token TOK_PEER_TO_PEER
+%token TOK_YES
+%token TOK_NO
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -103,6 +107,7 @@
 %type <str> maybe_string
 
 %type <num> port
+%type <boolean> boolean
 %type <num> maybe_port
 %type <str> maybe_as
 
@@ -124,6 +129,7 @@ statement:	TOK_LOG log ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_PEER peer '{' peer_conf '}'
+	|	TOK_PEER_TO_PEER peer_to_peer ';'
 	|	TOK_INCLUDE include ';'
 	;
 
@@ -226,6 +232,10 @@ peer_include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1, true, depth); free($
 	;
 
 
+peer_to_peer:	boolean		{ conf->peer_to_peer = $1; }
+	;
+
+
 include:	TOK_PEER TOK_STRING maybe_as {
 			fastd_peer_config_new(ctx, conf);
 			conf->peers->name = $3;
@@ -251,6 +261,10 @@ maybe_port:	':' port	{ $$ = $2; }
 
 maybe_as:	TOK_AS TOK_STRING { $$ = $2; }
 	|			{ $$ = NULL; }
+	;
+
+boolean:	TOK_YES		{ $$ = true; }
+	|	TOK_NO		{ $$ = false; }
 	;
 
 port:		TOK_INTEGER {

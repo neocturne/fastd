@@ -203,7 +203,36 @@ static void handle_tasks(fastd_context *ctx) {
 			}
 
 			write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
-			fastd_buffer_free(task->handle_recv.buffer);
+
+			if (ctx->conf->mode == MODE_TAP && ctx->conf->peer_to_peer) {
+				const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, task->handle_recv.buffer);
+
+				if (fastd_eth_addr_is_unicast(dest_addr)) {
+					fastd_peer *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
+
+					if (dest_peer && dest_peer != task->peer && dest_peer->state == STATE_ESTABLISHED) {
+						ctx->conf->protocol->send(ctx, dest_peer, task->handle_recv.buffer);
+					}
+					else {
+						fastd_buffer_free(task->handle_recv.buffer);
+					}
+				}
+				else {
+					fastd_peer *dest_peer;
+					for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
+						if (dest_peer != task->peer && dest_peer->state == STATE_ESTABLISHED) {
+							fastd_buffer send_buffer = fastd_buffer_alloc(task->handle_recv.buffer.len, ctx->conf->protocol->min_encrypt_head_space(ctx), 0);
+							memcpy(send_buffer.data, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
+							ctx->conf->protocol->send(ctx, dest_peer, send_buffer);
+						}
+					}
+
+					fastd_buffer_free(task->handle_recv.buffer);
+				}
+			}
+			else {
+				fastd_buffer_free(task->handle_recv.buffer);
+			}
 			break;
 
 		case TASK_HANDSHAKE:

@@ -64,6 +64,8 @@ static void default_config(fastd_config *conf) {
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
 
+	conf->peer_to_peer = false;
+
 	conf->protocol = &fastd_protocol_null;
 	conf->secret = NULL;
 	conf->key_valid = 3600;		/* 60 minutes */
@@ -391,6 +393,11 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			}
 
 			free(addrstr);
+			continue;
+		}
+
+		IF_OPTION("--peer-to-peer") {
+			conf->peer_to_peer = true;
 			continue;
 		}
 

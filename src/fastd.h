@@ -92,6 +92,8 @@ struct _fastd_config {
 	uint16_t mtu;
 	fastd_mode mode;
 
+	bool peer_to_peer;
+
 	fastd_protocol *protocol;
 	char *secret;
 	unsigned key_valid;
