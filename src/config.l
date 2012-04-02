@@ -88,7 +88,7 @@ no		{ UPDATE_LOCATION; return TOK_NO; }
 			UPDATE_LOCATION;
 
 			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
-				yylval->str = "invalid address";
+				yylval->error = "invalid address";
 				return -1;
 			}
 
@@ -116,7 +116,7 @@ no		{ UPDATE_LOCATION; return TOK_NO; }
 					yytext[i-esc] = yytext[i];
 			}
 			yytext[yyleng-esc-1] = 0;
-			yylval->str = strdup(yytext);
+			yylval->str = fastd_config_str_dup(yytext);
 			BEGIN(INITIAL);
 			yylloc->last_column++;
 			return TOK_STRING;
@@ -127,7 +127,7 @@ no		{ UPDATE_LOCATION; return TOK_NO; }
 <ADDR6>[0-9a-fA-F:]+	{
 			yylloc->last_column += yyleng;
 			if (!inet_pton(AF_INET6, yytext, &yylval->addr6)) {
-				yylval->str = "invalid address";
+				yylval->error = "invalid address";
 				return -1;
 			}
 		}
@@ -144,12 +144,12 @@ no		{ UPDATE_LOCATION; return TOK_NO; }
 .		{
 			yylloc->first_line = yylloc->last_line;
 			yylloc->first_column = yylloc->last_column+1;
-			yylval->str = "invalid character";
+			yylval->error = "invalid character";
 			return -1;
 		}
 
 <INITIAL><<EOF>> { return 0; }
-<COMMENT><<EOF>> { yylval->str = "unterminated block comment"; return -1; }
-<STRING><<EOF>>	{ yylval->str = "unterminated string"; return -1; }
-<ADDR6><<EOF>>	{ yylval->str = "unterminated address"; return -1; }
+<COMMENT><<EOF>> { yylval->error = "unterminated block comment"; return -1; }
+<STRING><<EOF>>	{ yylval->error = "unterminated string"; return -1; }
+<ADDR6><<EOF>>	{ yylval->error = "unterminated address"; return -1; }
 %%

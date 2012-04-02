@@ -43,7 +43,8 @@
 
 %union {
 	int num;
-	char* str;
+	fastd_config_str *str;
+	char *error;
 	bool boolean;
 	struct in_addr addr;
 	struct in6_addr addr6;
@@ -144,7 +145,7 @@ log_level:	TOK_FATAL	{ conf->loglevel = LOG_FATAL; }
 	|	TOK_DEBUG	{ conf->loglevel = LOG_DEBUG; }
 	;
 
-interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = $1; }
+interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
 	;
 
 bind:		TOK_ADDR maybe_port {
@@ -173,34 +174,32 @@ mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
 	;
 
 protocol:	TOK_STRING {
-			if (!strcmp($1, "null"))
+			if (!strcmp($1->str, "null"))
 				conf->protocol = &fastd_protocol_null;
 #ifdef WITH_PROTOCOL_ECFXP
-			else if (!strcmp($1, "ecfxp"))
+			else if (!strcmp($1->str, "ecfxp"))
 				conf->protocol = &fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 #endif
 			else
-				exit_error(ctx, "config error: invalid protocol `%s'", $1);
-
-			free($1);
+				exit_error(ctx, "config error: invalid protocol `%s'", $1->str);
 }
 	;
 
-secret:		TOK_STRING	{ free(conf->secret); conf->secret = $1; }
+secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1->str); }
 	;
 
 on_up:		TOK_STRING	{
 			free(conf->on_up);
 			free(conf->on_up_dir);
 
-			conf->on_up = $1;
+			conf->on_up = strdup($1->str);
 			conf->on_up_dir = get_current_dir_name();
 		}
 	;
 
 peer:		maybe_string {
 			fastd_peer_config_new(ctx, conf);
-			conf->peers->name = $1;
+			conf->peers->name = strdup($1->str);
 		}
 	;
 
@@ -225,10 +224,10 @@ peer_address:	TOK_ADDR ':' port {
 		}
 	;
 
-peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = $1; }
+peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = strdup($1->str); }
 	;
 
-peer_include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1, true, depth); free($1); }
+peer_include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1->str, true, depth); }
 	;
 
 
@@ -238,16 +237,14 @@ peer_to_peer:	boolean		{ conf->peer_to_peer = $1; }
 
 include:	TOK_PEER TOK_STRING maybe_as {
 			fastd_peer_config_new(ctx, conf);
-			conf->peers->name = $3;
+			conf->peers->name = strdup($3->str);
 
-			fastd_read_config(ctx, conf, $2, true, depth);
-			free($2);
+			fastd_read_config(ctx, conf, $2->str, true, depth);
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
-			fastd_read_config_dir(ctx, conf, $3, depth);
-			free($3);
+			fastd_read_config_dir(ctx, conf, $3->str, depth);
 		}
-	|	TOK_STRING	{ fastd_read_config(ctx, conf, $1, false, depth); free($1); }
+	|	TOK_STRING	{ fastd_read_config(ctx, conf, $1->str, false, depth); }
 	;
 
 
@@ -269,7 +266,7 @@ boolean:	TOK_YES		{ $$ = true; }
 
 port:		TOK_INTEGER {
 			if ($1 < 0 || $1 > 65635)
-				exit_error(ctx, "invalid port %i", $1);
+				exit_error(ctx, "config error: invalid port %i", $1);
 			$$ = htons($1);
 		}
 	;

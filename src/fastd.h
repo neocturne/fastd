@@ -132,6 +132,11 @@ struct _fastd_context {
 	unsigned int randseed;
 };
 
+struct _fastd_config_str {
+	fastd_config_str *next;
+	char str[];
+};
+
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
 void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *dir, int depth);
@@ -222,6 +227,22 @@ static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
 		return ctx->conf->mtu;
 	default:
 		exit_bug(ctx, "invalid mode");
+	}
+}
+
+static inline fastd_config_str* fastd_config_str_dup(const char *str) {
+	fastd_config_str *ret = malloc(sizeof(fastd_config_str) + strlen(str) + 1);
+	ret->next = NULL;
+	strcpy(ret->str, str);
+
+	return ret;
+}
+
+static inline void fastd_config_str_free(fastd_config_str *str) {
+	while(str) {
+		fastd_config_str *next = str->next;
+		free(str);
+		str = next;
 	}
 }
 

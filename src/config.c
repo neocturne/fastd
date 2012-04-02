@@ -183,12 +183,21 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	else
 		token = START_CONFIG;
 
+	fastd_config_str *strings = NULL;
+
 	while(fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1) == YYPUSH_MORE) {
 		token = fastd_config_yylex(&token_val, &loc, scanner);
 
 		if (token < 0)
-			exit_error(ctx, "config error: %s at %s:%i:%i", token_val.str, filename, loc.first_line, loc.first_column);
+			exit_error(ctx, "config error: %s at %s:%i:%i", token_val.error, filename, loc.first_line, loc.first_column);
+
+		if (token == TOK_STRING) {
+			token_val.str->next = strings;
+			strings = token_val.str;
+		}
 	}
+
+	fastd_config_str_free(strings);
 
 	fastd_config_pstate_delete(ps);
 	fastd_config_yylex_destroy(scanner);
