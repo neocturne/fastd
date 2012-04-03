@@ -98,7 +98,6 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf) {
 	fastd_peer_config *peer = conf->peers, *next = peer->next;
 
-	free(peer->config_source_dir);
 	free(peer->name);
 	free(peer->key);
 	free(peer);

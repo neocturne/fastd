@@ -137,7 +137,7 @@ void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *d
 
 				fastd_peer_config_new(ctx, conf);
 				conf->peers->name = strdup(result->d_name);
-				conf->peers->config_source_dir = strdup(dir);
+				conf->peers->config_source_dir = conf->peer_dirs->str;
 
 				if (!fastd_read_config(ctx, conf, result->d_name, true, depth)) {
 					pr_warn(ctx, "peer config `%s' will be ignored", result->d_name);
