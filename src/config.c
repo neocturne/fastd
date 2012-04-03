@@ -135,7 +135,11 @@ void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *d
 
 		fastd_peer_config_new(ctx, conf);
 		conf->peers->name = strdup(result->d_name);
-		fastd_read_config(ctx, conf, result->d_name, true, depth);
+
+		if (!fastd_read_config(ctx, conf, result->d_name, true, depth)) {
+			pr_warn(ctx, "peer config %s will be ignored", result->d_name);
+			fastd_peer_config_delete(ctx, conf);
+		}
 	}
 
 	closedir(dirh);
@@ -144,39 +148,46 @@ void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *d
 	free(oldcwd);
 }
 
-void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth) {
+bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error(ctx, "maximum config include depth exceeded");
 
+	bool ret = true;
+	char *oldcwd = get_current_dir_name();
+	char *filename2 = NULL;
+	char *dir = NULL;
 	FILE *file;
+	yyscan_t scanner;
+	fastd_config_pstate *ps;
+	fastd_config_str *strings = NULL;
+
+	fastd_config_yylex_init(&scanner);
+	ps = fastd_config_pstate_new();
+
 	if (!filename) {
 		file = stdin;
 	}
 	else {
 		file = fopen(filename, "r");
-		if (!file)
-			exit_error(ctx, "can't open config file `%s': %s", filename, strerror(errno));
+		if (!file) {
+			pr_error(ctx, "can't open config file `%s': %s", filename, strerror(errno));
+			ret = false;
+			goto end_free;
+		}
 	}
 
-
-	char *oldcwd = get_current_dir_name();
-
-	char *filename2 = NULL;
-	char *dir = NULL;
+	fastd_config_yyset_in(file, scanner);
 
 	if (filename) {
 		filename2 = strdup(filename);
 		dir = dirname(filename2);
 
-		if (chdir(dir))
-			exit_error(ctx, "change from directory `%s' to `%s' failed", oldcwd, dir);
+		if (chdir(dir)) {
+			pr_error(ctx, "change from directory `%s' to `%s' failed", oldcwd, dir);
+			ret = false;
+			goto end_free;
+		}
 	}
-
-	yyscan_t scanner;
-	fastd_config_yylex_init(&scanner);
-	fastd_config_yyset_in(file, scanner);
-
-	fastd_config_pstate *ps = fastd_config_pstate_new();
 
 	int token;
 	YYSTYPE token_val;
@@ -187,20 +198,29 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	else
 		token = START_CONFIG;
 
-	fastd_config_str *strings = NULL;
+	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1);
 
-	while(fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1) == YYPUSH_MORE) {
+	while(parse_ret == YYPUSH_MORE) {
 		token = fastd_config_yylex(&token_val, &loc, scanner);
 
-		if (token < 0)
-			exit_error(ctx, "config error: %s at %s:%i:%i", token_val.error, filename, loc.first_line, loc.first_column);
+		if (token < 0) {
+			pr_error(ctx, "config error: %s at %s:%i:%i", token_val.error, filename, loc.first_line, loc.first_column);
+			ret = false;
+			goto end_free;
+		}
 
 		if (token == TOK_STRING) {
 			token_val.str->next = strings;
 			strings = token_val.str;
 		}
+
+		parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1);
 	}
 
+	if (parse_ret)
+		ret = false;
+
+ end_free:
 	fastd_config_str_free(strings);
 
 	fastd_config_pstate_delete(ps);
@@ -211,8 +231,10 @@ void fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	free(filename2);
 	free(oldcwd);
 
-	if (filename)
+	if (filename && file)
 		fclose(file);
+
+	return ret;
 }
 
 #define IF_OPTION(args...) if(config_match(argv[i], args, NULL) && (++i))
@@ -258,16 +280,20 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 
 		IF_OPTION_ARG("-c", "--config") {
+			const char *filename = arg;
 			if (!strcmp(arg, "-"))
-				fastd_read_config(ctx, conf, NULL, false, 0);
-			else
-				fastd_read_config(ctx, conf, arg, false, 0);
+				filename = NULL;
+
+			if (!fastd_read_config(ctx, conf, filename, false, 0))
+				exit(1);
 			continue;
 		}
 
 		IF_OPTION_ARG("--config-peer") {
 			fastd_peer_config_new(ctx, conf);
-			fastd_read_config(ctx, conf, arg, true, 0);
+
+			if(!fastd_read_config(ctx, conf, arg, true, 0))
+				exit(1);
 			continue;
 		}
 

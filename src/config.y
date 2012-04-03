@@ -174,14 +174,18 @@ mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
 	;
 
 protocol:	TOK_STRING {
-			if (!strcmp($1->str, "null"))
+			if (!strcmp($1->str, "null")) {
 				conf->protocol = &fastd_protocol_null;
+			}
 #ifdef WITH_PROTOCOL_ECFXP
-			else if (!strcmp($1->str, "ecfxp"))
+			else if (!strcmp($1->str, "ecfxp")) {
 				conf->protocol = &fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
+			}
 #endif
-			else
-				exit_error(ctx, "config error: invalid protocol `%s'", $1->str);
+			else {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid protocol");
+				YYERROR;
+			}
 }
 	;
 
@@ -227,7 +231,10 @@ peer_address:	TOK_ADDR ':' port {
 peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = strdup($1->str); }
 	;
 
-peer_include:	TOK_STRING	{ fastd_read_config(ctx, conf, $1->str, true, depth); }
+peer_include:	TOK_STRING	{
+					if (!fastd_read_config(ctx, conf, $1->str, true, depth))
+						YYERROR;
+				}
 	;
 
 
@@ -239,12 +246,16 @@ include:	TOK_PEER TOK_STRING maybe_as {
 			fastd_peer_config_new(ctx, conf);
 			conf->peers->name = strdup($3->str);
 
-			fastd_read_config(ctx, conf, $2->str, true, depth);
+			if (!fastd_read_config(ctx, conf, $2->str, true, depth))
+				YYERROR;
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
 			fastd_read_config_dir(ctx, conf, $3->str, depth);
 		}
-	|	TOK_STRING	{ fastd_read_config(ctx, conf, $1->str, false, depth); }
+	|	TOK_STRING {
+			if (!fastd_read_config(ctx, conf, $1->str, false, depth))
+				YYERROR;
+		}
 	;
 
 
@@ -265,12 +276,14 @@ boolean:	TOK_YES		{ $$ = true; }
 	;
 
 port:		TOK_INTEGER {
-			if ($1 < 0 || $1 > 65635)
-				exit_error(ctx, "config error: invalid port %i", $1);
+			if ($1 < 0 || $1 > 65635) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid port");
+				YYERROR;
+			}
 			$$ = htons($1);
 		}
 	;
 %%
 void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s) {
-	exit_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
+	pr_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
 }

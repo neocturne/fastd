@@ -71,6 +71,7 @@ struct _fastd_peer_eth_addr {
 
 
 fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf);
+void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf);
 
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);

@@ -93,6 +93,15 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 	return peer;
 }
 
+void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf) {
+	fastd_peer_config *peer = conf->peers, *next = peer->next;
+
+	free(peer->name);
+	free(peer->key);
+	free(peer);
+
+	conf->peers = next;
+}
 
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 	pr_debug(ctx, "resetting peer %P", peer);
