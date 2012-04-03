@@ -54,6 +54,8 @@ struct _fastd_peer {
 struct _fastd_peer_config {
 	fastd_peer_config *next;
 
+	char *config_source_dir;
+
 	bool enabled;
 	char *name;
 
