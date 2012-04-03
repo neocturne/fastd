@@ -69,7 +69,7 @@ typedef struct _fastd_protocol fastd_protocol;
 
 typedef struct _fastd_handshake fastd_handshake;
 
-typedef struct _fastd_config_str fastd_config_str;
+typedef struct _fastd_string_stack fastd_string_stack;
 
 /* May be defined by the protocol however it likes */
 typedef struct _fastd_protocol_config fastd_protocol_config;

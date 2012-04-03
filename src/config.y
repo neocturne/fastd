@@ -43,7 +43,7 @@
 
 %union {
 	int num;
-	fastd_config_str *str;
+	fastd_string_stack *str;
 	char *error;
 	bool boolean;
 	struct in_addr addr;

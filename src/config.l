@@ -116,7 +116,7 @@ no		{ UPDATE_LOCATION; return TOK_NO; }
 					yytext[i-esc] = yytext[i];
 			}
 			yytext[yyleng-esc-1] = 0;
-			yylval->str = fastd_config_str_dup(yytext);
+			yylval->str = fastd_string_stack_dup(yytext);
 			BEGIN(INITIAL);
 			yylloc->last_column++;
 			return TOK_STRING;

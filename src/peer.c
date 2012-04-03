@@ -118,7 +118,6 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 }
 
 
-
 static fastd_peer* add_peer(fastd_context *ctx) {
 	fastd_peer *peer = malloc(sizeof(fastd_peer));
 

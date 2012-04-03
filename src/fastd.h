@@ -99,6 +99,7 @@ struct _fastd_config {
 	unsigned key_valid;
 	unsigned key_refresh;
 
+	fastd_string_stack *peer_dirs;
 	fastd_peer_config *peers;
 
 	unsigned n_floating;
@@ -132,8 +133,8 @@ struct _fastd_context {
 	unsigned int randseed;
 };
 
-struct _fastd_config_str {
-	fastd_config_str *next;
+struct _fastd_string_stack {
+	fastd_string_stack *next;
 	char str[];
 };
 
@@ -230,17 +231,25 @@ static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
 	}
 }
 
-static inline fastd_config_str* fastd_config_str_dup(const char *str) {
-	fastd_config_str *ret = malloc(sizeof(fastd_config_str) + strlen(str) + 1);
+static inline fastd_string_stack* fastd_string_stack_dup(const char *str) {
+	fastd_string_stack *ret = malloc(sizeof(fastd_string_stack) + strlen(str) + 1);
 	ret->next = NULL;
 	strcpy(ret->str, str);
 
 	return ret;
 }
 
-static inline void fastd_config_str_free(fastd_config_str *str) {
+static inline fastd_string_stack* fastd_string_stack_push(fastd_string_stack *stack, const char *str) {
+	fastd_string_stack *ret = malloc(sizeof(fastd_string_stack) + strlen(str) + 1);
+	ret->next = stack;
+	strcpy(ret->str, str);
+
+	return ret;
+}
+
+static inline void fastd_string_stack_free(fastd_string_stack *str) {
 	while(str) {
-		fastd_config_str *next = str->next;
+		fastd_string_stack *next = str->next;
 		free(str);
 		str = next;
 	}

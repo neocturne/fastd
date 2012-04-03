@@ -102,51 +102,61 @@ void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *d
 
 	char *oldcwd = get_current_dir_name();
 
-	if (chdir(dir))
-		exit_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
+	if (!chdir(dir)) {
+		char *newdir = get_current_dir_name();
+		conf->peer_dirs = fastd_string_stack_push(conf->peer_dirs, newdir);
+		free(newdir);
 
-	DIR *dirh = opendir(".");
+		DIR *dirh = opendir(".");
 
-	if (!dirh)
-		exit_error(ctx, "opendir for `%s' failed: %s", dir, strerror(errno));
+		if (dirh) {
+			while (true) {
+				struct dirent entry, *result;
+				int ret;
 
-	while (true) {
-		struct dirent entry, *result;
-		int ret;
+				ret = readdir_r(dirh, &entry, &result);
+				if (ret) {
+					pr_error(ctx, "readdir_r: %s", strerror(ret));
+					break;
+				}
 
-		ret = readdir_r(dirh, &entry, &result);
-		if (ret)
-			exit_error(ctx, "readdir_r: %s", strerror(ret));
+				if (!result)
+					break;
+				if (result->d_name[0] == '.')
+					continue;
 
-		if (!result)
-			break;
-		if (result->d_name[0] == '.')
-			continue;
+				struct stat statbuf;
+				if (stat(result->d_name, &statbuf)) {
+					pr_warn(ctx, "ignoring file `%s': stat failed: %s", result->d_name, strerror(errno));
+					continue;
+				}
+				if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
+					pr_info(ctx, "ignoring file `%s': no regular file", result->d_name);
+					continue;
+				}
 
-		struct stat statbuf;
-		if (stat(result->d_name, &statbuf)) {
-			pr_info(ctx, "ignoring file `%s': stat failed: %s", result->d_name, strerror(errno));
-			continue;
+				fastd_peer_config_new(ctx, conf);
+				conf->peers->name = strdup(result->d_name);
+				conf->peers->config_source_dir = strdup(dir);
+
+				if (!fastd_read_config(ctx, conf, result->d_name, true, depth)) {
+					pr_warn(ctx, "peer config `%s' will be ignored", result->d_name);
+					fastd_peer_config_delete(ctx, conf);
+				}
+			}
+
+			closedir(dirh);
 		}
-		if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
-			pr_info(ctx, "ignoring file `%s': no regular file", result->d_name);
-			continue;
+		else {
+			pr_error(ctx, "opendir for `%s' failed: %s", dir, strerror(errno));
 		}
 
-		fastd_peer_config_new(ctx, conf);
-		conf->peers->name = strdup(result->d_name);
-		conf->peers->config_source_dir = strdup(dir);
-
-		if (!fastd_read_config(ctx, conf, result->d_name, true, depth)) {
-			pr_warn(ctx, "peer config %s will be ignored", result->d_name);
-			fastd_peer_config_delete(ctx, conf);
-		}
+		chdir(oldcwd);
+		free(oldcwd);
 	}
-
-	closedir(dirh);
-
-	chdir(oldcwd);
-	free(oldcwd);
+	else {
+		pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
+	}
 }
 
 bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth) {
@@ -160,7 +170,7 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	FILE *file;
 	yyscan_t scanner;
 	fastd_config_pstate *ps;
-	fastd_config_str *strings = NULL;
+	fastd_string_stack *strings = NULL;
 
 	fastd_config_yylex_init(&scanner);
 	ps = fastd_config_pstate_new();
@@ -222,7 +232,7 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 		ret = false;
 
  end_free:
-	fastd_config_str_free(strings);
+	fastd_string_stack_free(strings);
 
 	fastd_config_pstate_delete(ps);
 	fastd_config_yylex_destroy(scanner);
@@ -491,8 +501,12 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 	}
 
-	if (conf->mode == MODE_TUN && (!conf->peers || conf->peers->next))
-		exit_error(ctx, "config error: for tun mode exactly one peer must be configured");
+	if (conf->mode == MODE_TUN) {
+		if (!conf->peers || conf->peers->next)
+			exit_error(ctx, "config error: for tun mode exactly one peer must be configured");
+		if (conf->peer_dirs)
+			exit_error(ctx, "config error: for tun mode peer directories can't be used");
+	}
 
 	conf->protocol->init(ctx, conf);
 }

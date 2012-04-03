@@ -81,10 +81,10 @@ static void init_socket(fastd_context *ctx) {
 	struct sockaddr_in6 addr_in6 = ctx->conf->bind_addr_in6;
 
 	if (addr_in.sin_family == AF_UNSPEC && addr_in6.sin6_family == AF_UNSPEC) {
-		if (ctx->conf->n_floating || ctx->conf->n_v4)
+		if (ctx->conf->n_floating || ctx->conf->peer_dirs || ctx->conf->n_v4)
 			addr_in.sin_family = AF_INET;
 
-		if (ctx->conf->n_floating || ctx->conf->n_v6)
+		if (ctx->conf->n_floating || ctx->conf->peer_dirs || ctx->conf->n_v6)
 			addr_in6.sin6_family = AF_INET6;
 	}
 
