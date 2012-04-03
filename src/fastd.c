@@ -77,13 +77,30 @@ static void init_tuntap(fastd_context *ctx) {
 }
 
 static void init_socket(fastd_context *ctx) {
-	if (ctx->conf->bind_addr_in.sin_family == AF_INET) {
+	struct sockaddr_in addr_in = ctx->conf->bind_addr_in;
+	struct sockaddr_in6 addr_in6 = ctx->conf->bind_addr_in6;
+
+	if (addr_in.sin_family == AF_UNSPEC && addr_in6.sin6_family == AF_UNSPEC) {
+		if (ctx->conf->n_floating || ctx->conf->n_v4)
+			addr_in.sin_family = AF_INET;
+
+		if (ctx->conf->n_floating || ctx->conf->n_v6)
+			addr_in6.sin6_family = AF_INET6;
+	}
+
+	if (addr_in.sin_family == AF_UNSPEC && ctx->conf->n_v4)
+		pr_warn(ctx, "there are IPv4 peers defined, but bind is explicitly set to IPv6");
+
+	if (addr_in6.sin6_family == AF_UNSPEC && ctx->conf->n_v6)
+		pr_warn(ctx, "there are IPv6 peers defined, but bind is explicitly set to IPv4");
+
+	if (addr_in.sin_family == AF_INET) {
 		pr_debug(ctx, "Initializing IPv4 socket...");
 
 		if ((ctx->sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
 			exit_errno(ctx, "socket");
 
-		if (bind(ctx->sockfd, (struct sockaddr*)&ctx->conf->bind_addr_in, sizeof(struct sockaddr_in)))
+		if (bind(ctx->sockfd, (struct sockaddr*)&addr_in, sizeof(struct sockaddr_in)))
 			exit_errno(ctx, "bind");
 
 		pr_debug(ctx, "IPv4 socket initialized.");
@@ -92,7 +109,7 @@ static void init_socket(fastd_context *ctx) {
 		ctx->sockfd = -1;
 	}
 
-	if (ctx->conf->bind_addr_in6.sin6_family == AF_INET6) {
+	if (addr_in6.sin6_family == AF_INET6) {
 		pr_debug(ctx, "Initializing IPv6 socket...");
 
 		if ((ctx->sock6fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
@@ -106,7 +123,7 @@ static void init_socket(fastd_context *ctx) {
 			if (setsockopt(ctx->sock6fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val)))
 				exit_errno(ctx, "setsockopt");
 
-			if (bind(ctx->sock6fd, (struct sockaddr*)&ctx->conf->bind_addr_in6, sizeof(struct sockaddr_in6)))
+			if (bind(ctx->sock6fd, (struct sockaddr*)&addr_in6, sizeof(struct sockaddr_in6)))
 				exit_errno(ctx, "bind");
 
 			pr_debug(ctx, "IPv6 socket initialized.");

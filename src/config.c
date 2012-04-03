@@ -491,19 +491,6 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 	}
 
-	if (conf->n_floating && conf->bind_addr_in.sin_family == AF_UNSPEC
-	    && conf->bind_addr_in6.sin6_family == AF_UNSPEC) {
-		conf->bind_addr_in.sin_family = AF_INET;
-		conf->bind_addr_in6.sin6_family = AF_INET6;
-	}
-	else {
-		if (conf->n_v4)
-			conf->bind_addr_in.sin_family = AF_INET;
-
-		if (conf->n_v6)
-			conf->bind_addr_in6.sin6_family = AF_INET6;
-	}
-
 	if (conf->mode == MODE_TUN && (!conf->peers || conf->peers->next))
 		exit_error(ctx, "config error: for tun mode exactly one peer must be configured");
 
