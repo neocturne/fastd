@@ -191,22 +191,28 @@ static void on_up(fastd_context *ctx) {
 		return;
 
 	char *cwd = get_current_dir_name();
-	chdir(ctx->conf->on_up_dir);
 
-	setenv("INTERFACE", ctx->ifname, 1);
+	if (!chdir(ctx->conf->on_up_dir)) {
+		setenv("INTERFACE", ctx->ifname, 1);
 
-	char buf[6];
-	snprintf(buf, 6, "%u", ctx->conf->mtu);
-	setenv("MTU", buf, 1);
+		char buf[6];
+		snprintf(buf, 6, "%u", ctx->conf->mtu);
+		setenv("MTU", buf, 1);
 
-	int ret = system(ctx->conf->on_up);
+		int ret = system(ctx->conf->on_up);
 
-	if (WIFSIGNALED(ret))
-		pr_error(ctx, "on-up command exited with signal %i", WTERMSIG(ret));
-	else if(ret)
-		pr_warn(ctx, "on-up command exited with status %i", WEXITSTATUS(ret));
+		if (WIFSIGNALED(ret))
+			pr_error(ctx, "on-up command exited with signal %i", WTERMSIG(ret));
+		else if(ret)
+			pr_warn(ctx, "on-up command exited with status %i", WEXITSTATUS(ret));
 
-	chdir(cwd);
+		if (chdir(cwd))
+			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
+	}
+	else {
+		pr_error(ctx, "can't chdir to `%s': %s", ctx->conf->on_up_dir, strerror(errno));
+	}
+
 	free(cwd);
 }
 
@@ -215,22 +221,28 @@ static void on_down(fastd_context *ctx) {
 		return;
 
 	char *cwd = get_current_dir_name();
-	chdir(ctx->conf->on_down_dir);
 
-	setenv("INTERFACE", ctx->ifname, 1);
+	if(!chdir(ctx->conf->on_down_dir)) {
+		setenv("INTERFACE", ctx->ifname, 1);
 
-	char buf[6];
-	snprintf(buf, 6, "%u", ctx->conf->mtu);
-	setenv("MTU", buf, 1);
+		char buf[6];
+		snprintf(buf, 6, "%u", ctx->conf->mtu);
+		setenv("MTU", buf, 1);
 
-	int ret = system(ctx->conf->on_down);
+		int ret = system(ctx->conf->on_down);
 
-	if (WIFSIGNALED(ret))
-		pr_error(ctx, "on-down command exited with signal %i", WTERMSIG(ret));
-	else if(ret)
-		pr_warn(ctx, "on-down command exited with status %i", WEXITSTATUS(ret));
+		if (WIFSIGNALED(ret))
+			pr_error(ctx, "on-down command exited with signal %i", WTERMSIG(ret));
+		else if(ret)
+			pr_warn(ctx, "on-down command exited with status %i", WEXITSTATUS(ret));
 
-	chdir(cwd);
+		if (chdir(cwd))
+			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
+	}
+	else {
+		pr_error(ctx, "can't chdir to `%s': %s", ctx->conf->on_down_dir, strerror(errno));
+	}
+
 	free(cwd);
 }
 
@@ -306,7 +318,8 @@ static void handle_tasks(fastd_context *ctx) {
 					fastd_peer_eth_addr_add(ctx, task->peer, src_addr);
 			}
 
-			write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
+			if (write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len) < 0)
+				warn_errno(ctx, "write");
 
 			if (ctx->conf->mode == MODE_TAP && ctx->conf->peer_to_peer) {
 				const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, task->handle_recv.buffer);

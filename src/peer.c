@@ -38,51 +38,57 @@ static void on_establish(fastd_context *ctx, fastd_peer *peer) {
 		return;
 
 	char *cwd = get_current_dir_name();
-	chdir(ctx->conf->on_establish_dir);
 
-	setenv("INTERFACE", ctx->ifname, 1);
+	if(!chdir(ctx->conf->on_establish_dir)) {
+		setenv("INTERFACE", ctx->ifname, 1);
 
-	char buf[INET6_ADDRSTRLEN];
-	snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
-	setenv("MTU", buf, 1);
+		char buf[INET6_ADDRSTRLEN];
+		snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
+		setenv("MTU", buf, 1);
 
-	if (peer->config && peer->config->name)
-		setenv("PEER_NAME", peer->config->name, 1);
-	else
-		unsetenv("PEER_NAME");
+		if (peer->config && peer->config->name)
+			setenv("PEER_NAME", peer->config->name, 1);
+		else
+			unsetenv("PEER_NAME");
 
-	switch(peer->address.sa.sa_family) {
-	case AF_INET:
-		inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf));
-		setenv("PEER_ADDRESS", buf, 1);
+		switch(peer->address.sa.sa_family) {
+		case AF_INET:
+			inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf));
+			setenv("PEER_ADDRESS", buf, 1);
 
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in.sin_port));
-		setenv("PEER_PORT", buf, 1);
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in.sin_port));
+			setenv("PEER_PORT", buf, 1);
 
-		break;
+			break;
 
-	case AF_INET6:
-		inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf));
-		setenv("PEER_ADDRESS", buf, 1);
+		case AF_INET6:
+			inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf));
+			setenv("PEER_ADDRESS", buf, 1);
 
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in6.sin6_port));
-		setenv("PEER_PORT", buf, 1);
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in6.sin6_port));
+			setenv("PEER_PORT", buf, 1);
 
-		break;
+			break;
 
-	default:
-		unsetenv("PEER_ADDRESS");
-		unsetenv("PEER_PORT");
+		default:
+			unsetenv("PEER_ADDRESS");
+			unsetenv("PEER_PORT");
+		}
+
+		int ret = system(ctx->conf->on_establish);
+
+		if (WIFSIGNALED(ret))
+			pr_error(ctx, "on-establish command exited with signal %i", WTERMSIG(ret));
+		else if(ret)
+			pr_warn(ctx, "on-establish command exited with status %i", WEXITSTATUS(ret));
+
+		if(chdir(cwd))
+			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
+	}
+	else {
+		pr_error(ctx, "can't chdir to `%s': %s", ctx->conf->on_establish_dir, strerror(errno));
 	}
 
-	int ret = system(ctx->conf->on_establish);
-
-	if (WIFSIGNALED(ret))
-		pr_error(ctx, "on-establish command exited with signal %i", WTERMSIG(ret));
-	else if(ret)
-		pr_warn(ctx, "on-establish command exited with status %i", WEXITSTATUS(ret));
-
-	chdir(cwd);
 	free(cwd);
 }
 
@@ -91,51 +97,57 @@ static void on_disestablish(fastd_context *ctx, fastd_peer *peer) {
 		return;
 
 	char *cwd = get_current_dir_name();
-	chdir(ctx->conf->on_disestablish_dir);
 
-	setenv("INTERFACE", ctx->ifname, 1);
+	if(!chdir(ctx->conf->on_disestablish_dir)) {
+		setenv("INTERFACE", ctx->ifname, 1);
 
-	char buf[INET6_ADDRSTRLEN];
-	snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
-	setenv("MTU", buf, 1);
+		char buf[INET6_ADDRSTRLEN];
+		snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
+		setenv("MTU", buf, 1);
 
-	if (peer->config && peer->config->name)
-		setenv("PEER_NAME", peer->config->name, 1);
-	else
-		unsetenv("PEER_NAME");
+		if (peer->config && peer->config->name)
+			setenv("PEER_NAME", peer->config->name, 1);
+		else
+			unsetenv("PEER_NAME");
 
-	switch(peer->address.sa.sa_family) {
-	case AF_INET:
-		inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf));
-		setenv("PEER_ADDRESS", buf, 1);
+		switch(peer->address.sa.sa_family) {
+		case AF_INET:
+			inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf));
+			setenv("PEER_ADDRESS", buf, 1);
 
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in.sin_port));
-		setenv("PEER_PORT", buf, 1);
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in.sin_port));
+			setenv("PEER_PORT", buf, 1);
 
-		break;
+			break;
 
-	case AF_INET6:
-		inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf));
-		setenv("PEER_ADDRESS", buf, 1);
+		case AF_INET6:
+			inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf));
+			setenv("PEER_ADDRESS", buf, 1);
 
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in6.sin6_port));
-		setenv("PEER_PORT", buf, 1);
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in6.sin6_port));
+			setenv("PEER_PORT", buf, 1);
 
-		break;
+			break;
 
-	default:
-		unsetenv("PEER_ADDRESS");
-		unsetenv("PEER_PORT");
+		default:
+			unsetenv("PEER_ADDRESS");
+			unsetenv("PEER_PORT");
+		}
+
+		int ret = system(ctx->conf->on_disestablish);
+
+		if (WIFSIGNALED(ret))
+			pr_error(ctx, "on-disestablish command exited with signal %i", WTERMSIG(ret));
+		else if(ret)
+			pr_warn(ctx, "on-disestablish command exited with status %i", WEXITSTATUS(ret));
+
+		if(chdir(cwd))
+			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
+	}
+	else {
+		pr_error(ctx, "can't chdir to `%s': %s", ctx->conf->on_disestablish_dir, strerror(errno));
 	}
 
-	int ret = system(ctx->conf->on_disestablish);
-
-	if (WIFSIGNALED(ret))
-		pr_error(ctx, "on-disestablish command exited with signal %i", WTERMSIG(ret));
-	else if(ret)
-		pr_warn(ctx, "on-disestablish command exited with status %i", WEXITSTATUS(ret));
-
-	chdir(cwd);
 	free(cwd);
 }
 

@@ -163,7 +163,8 @@ void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir
 
 		read_peer_dir(ctx, conf, conf->peer_dirs->str);
 
-		chdir(oldcwd);
+		if(chdir(oldcwd))
+			pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
 	}
 	else {
 		pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
@@ -250,7 +251,8 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	fastd_config_pstate_delete(ps);
 	fastd_config_yylex_destroy(scanner);
 
-	chdir(oldcwd);
+	if(chdir(oldcwd))
+		pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
 
 	free(filename2);
 	free(oldcwd);
@@ -568,7 +570,9 @@ static void reconfigure_read_peer_dirs(fastd_context *ctx, fastd_config *new_con
 			pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir->str, strerror(errno));
 	}
 
-	chdir(oldcwd);
+	if (chdir(oldcwd))
+		pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
+
 	free(oldcwd);
 }
 
