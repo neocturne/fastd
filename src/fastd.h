@@ -115,6 +115,12 @@ struct _fastd_config {
 
 	char *on_down;
 	char *on_down_dir;
+
+	char *on_establish;
+	char *on_establish_dir;
+
+	char *on_disestablish;
+	char *on_disestablish_dir;
 };
 
 struct _fastd_context {

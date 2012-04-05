@@ -73,6 +73,8 @@
 %token TOK_ON
 %token TOK_UP
 %token TOK_DOWN
+%token TOK_ESTABLISH
+%token TOK_DISESTABLISH
 %token TOK_PEERS
 %token TOK_FROM
 %token TOK_LOG
@@ -131,6 +133,8 @@ statement:	TOK_LOG log ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_ON TOK_DOWN on_down ';'
+	|	TOK_ON TOK_ESTABLISH on_establish ';'
+	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_PEER peer '{' peer_conf '}'
 	|	TOK_PEER_TO_PEER peer_to_peer ';'
 	|	TOK_INCLUDE include ';'
@@ -209,6 +213,24 @@ on_down:	TOK_STRING	{
 
 			conf->on_down = strdup($1->str);
 			conf->on_down_dir = get_current_dir_name();
+		}
+	;
+
+on_establish:	TOK_STRING	{
+			free(conf->on_establish);
+			free(conf->on_establish_dir);
+
+			conf->on_establish = strdup($1->str);
+			conf->on_establish_dir = get_current_dir_name();
+		}
+	;
+
+on_disestablish:	TOK_STRING	{
+			free(conf->on_disestablish);
+			free(conf->on_disestablish_dir);
+
+			conf->on_disestablish = strdup($1->str);
+			conf->on_disestablish_dir = get_current_dir_name();
 		}
 	;
 

@@ -79,6 +79,13 @@ static void default_config(fastd_config *conf) {
 
 	conf->on_down = NULL;
 	conf->on_down_dir = NULL;
+
+	conf->on_establish = NULL;
+	conf->on_establish_dir = NULL;
+
+	conf->on_disestablish = NULL;
+	conf->on_disestablish_dir = NULL;
+
 }
 
 static bool config_match(const char *opt, ...) {
@@ -506,6 +513,26 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			continue;
 		}
 
+		IF_OPTION_ARG("--on-establish") {
+			free(conf->on_establish);
+			free(conf->on_establish_dir);
+
+			conf->on_establish = strdup(arg);
+			conf->on_establish_dir = get_current_dir_name();
+
+			continue;
+		}
+
+		IF_OPTION_ARG("--on-disestablish") {
+			free(conf->on_disestablish);
+			free(conf->on_disestablish_dir);
+
+			conf->on_disestablish = strdup(arg);
+			conf->on_disestablish_dir = get_current_dir_name();
+
+			continue;
+		}
+
 		IF_OPTION("--generate-key") {
 			keygen = true;
 			continue;
@@ -640,5 +667,9 @@ void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
 	free(conf->on_up_dir);
 	free(conf->on_down);
 	free(conf->on_down_dir);
+	free(conf->on_establish);
+	free(conf->on_establish_dir);
+	free(conf->on_disestablish);
+	free(conf->on_disestablish_dir);
 	free(conf->protocol_config);
 }
