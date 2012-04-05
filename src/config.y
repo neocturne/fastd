@@ -72,6 +72,7 @@
 %token TOK_TUN
 %token TOK_ON
 %token TOK_UP
+%token TOK_DOWN
 %token TOK_PEERS
 %token TOK_FROM
 %token TOK_LOG
@@ -97,10 +98,10 @@
 
 	void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s);
 
-	extern fastd_protocol fastd_protocol_null;
+	extern const fastd_protocol fastd_protocol_null;
 
 	#ifdef WITH_PROTOCOL_ECFXP
-	extern fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
+	extern const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 	#endif
 }
 
@@ -129,6 +130,7 @@ statement:	TOK_LOG log ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_UP on_up ';'
+	|	TOK_ON TOK_DOWN on_down ';'
 	|	TOK_PEER peer '{' peer_conf '}'
 	|	TOK_PEER_TO_PEER peer_to_peer ';'
 	|	TOK_INCLUDE include ';'
@@ -198,6 +200,15 @@ on_up:		TOK_STRING	{
 
 			conf->on_up = strdup($1->str);
 			conf->on_up_dir = get_current_dir_name();
+		}
+	;
+
+on_down:	TOK_STRING	{
+			free(conf->on_down);
+			free(conf->on_down_dir);
+
+			conf->on_down = strdup($1->str);
+			conf->on_down_dir = get_current_dir_name();
 		}
 	;
 

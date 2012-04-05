@@ -41,10 +41,10 @@
 #include <sys/types.h>
 
 
-extern fastd_protocol fastd_protocol_null;
+extern const fastd_protocol fastd_protocol_null;
 
 #ifdef WITH_PROTOCOL_ECFXP
-extern fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
+extern const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
 #endif
 
 
@@ -76,6 +76,9 @@ static void default_config(fastd_config *conf) {
 
 	conf->on_up = NULL;
 	conf->on_up_dir = NULL;
+
+	conf->on_down = NULL;
+	conf->on_down_dir = NULL;
 }
 
 static bool config_match(const char *opt, ...) {
@@ -493,6 +496,16 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			continue;
 		}
 
+		IF_OPTION_ARG("--on-down") {
+			free(conf->on_down);
+			free(conf->on_down_dir);
+
+			conf->on_down = strdup(arg);
+			conf->on_down_dir = get_current_dir_name();
+
+			continue;
+		}
+
 		IF_OPTION("--generate-key") {
 			keygen = true;
 			continue;
@@ -613,4 +626,19 @@ void fastd_reconfigure(fastd_context *ctx, fastd_config *conf) {
 
 	count_peers(ctx, conf);
 
+}
+
+void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
+	while (conf->peers)
+		fastd_peer_config_delete(ctx, conf);
+
+	fastd_string_stack_free(conf->peer_dirs);
+
+	free(conf->ifname);
+	free(conf->secret);
+	free(conf->on_up);
+	free(conf->on_up_dir);
+	free(conf->on_down);
+	free(conf->on_down_dir);
+	free(conf->protocol_config);
 }

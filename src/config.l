@@ -70,6 +70,7 @@ tap		{ UPDATE_LOCATION; return TOK_TAP; }
 tun		{ UPDATE_LOCATION; return TOK_TUN; }
 on		{ UPDATE_LOCATION; return TOK_ON; }
 up		{ UPDATE_LOCATION; return TOK_UP; }
+down		{ UPDATE_LOCATION; return TOK_DOWN; }
 peers		{ UPDATE_LOCATION; return TOK_PEERS; }
 from		{ UPDATE_LOCATION; return TOK_FROM; }
 log		{ UPDATE_LOCATION; return TOK_LOG; }

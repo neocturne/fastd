@@ -43,21 +43,34 @@
 
 
 static bool sighup = false;
+static bool terminate = false;
 
 
 static void on_sighup(int signo) {
 	sighup = true;
 }
 
+static void on_terminate(int signo) {
+	terminate = true;
+}
+
 
 static void init_signals(fastd_context *ctx) {
 	struct sigaction action;
 
-	action.sa_handler = on_sighup;
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 
+	action.sa_handler = on_sighup;
 	if(sigaction(SIGHUP, &action, NULL))
+		exit_errno(ctx, "sigaction");
+
+	action.sa_handler = on_terminate;
+	if(sigaction(SIGTERM, &action, NULL))
+		exit_errno(ctx, "sigaction");
+	if(sigaction(SIGQUIT, &action, NULL))
+		exit_errno(ctx, "sigaction");
+	if(sigaction(SIGINT, &action, NULL))
 		exit_errno(ctx, "sigaction");
 }
 
@@ -93,10 +106,17 @@ static void init_tuntap(fastd_context *ctx) {
 
 	ctx->ifname = strdup(ifr.ifr_name);
 
-	pr_debug(ctx, "Tun/tap device initialized.");
+	pr_debug(ctx, "tun/tap device initialized.");
 }
 
-static void init_socket(fastd_context *ctx) {
+static void close_tuntap(fastd_context *ctx) {
+	if(close(ctx->tunfd))
+		warn_errno(ctx, "closing tun/tap: close");
+
+	free(ctx->ifname);
+}
+
+static void init_sockets(fastd_context *ctx) {
 	struct sockaddr_in addr_in = ctx->conf->bind_addr_in;
 	struct sockaddr_in6 addr_in6 = ctx->conf->bind_addr_in6;
 
@@ -133,7 +153,7 @@ static void init_socket(fastd_context *ctx) {
 		pr_debug(ctx, "Initializing IPv6 socket...");
 
 		if ((ctx->sock6fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-			if (ctx->sockfd > 0)
+			if (ctx->sockfd >= 0)
 				warn_errno(ctx, "socket");
 			else
 				exit_errno(ctx, "socket");
@@ -151,6 +171,18 @@ static void init_socket(fastd_context *ctx) {
 	}
 	else {
 		ctx->sock6fd = -1;
+	}
+}
+
+static void close_sockets(fastd_context *ctx) {
+	if (ctx->sockfd >= 0) {
+		if(close(ctx->sockfd))
+			warn_errno(ctx, "closing IPv4 socket: close");
+	}
+
+	if (ctx->sock6fd >= 0) {
+		if(close(ctx->sock6fd))
+			warn_errno(ctx, "closing IPv6 socket: close");
 	}
 }
 
@@ -178,6 +210,30 @@ static void on_up(fastd_context *ctx) {
 	free(cwd);
 }
 
+static void on_down(fastd_context *ctx) {
+	if (!ctx->conf->on_down)
+		return;
+
+	char *cwd = get_current_dir_name();
+	chdir(ctx->conf->on_down_dir);
+
+	setenv("INTERFACE", ctx->ifname, 1);
+
+	char buf[6];
+	snprintf(buf, 6, "%u", ctx->conf->mtu);
+	setenv("MTU", buf, 1);
+
+	int ret = system(ctx->conf->on_down);
+
+	if (WIFSIGNALED(ret))
+		pr_error(ctx, "on-down command exited with signal %i", WTERMSIG(ret));
+	else if(ret)
+		pr_warn(ctx, "on-down command exited with status %i", WEXITSTATUS(ret));
+
+	chdir(cwd);
+	free(cwd);
+}
+
 static void init_peers(fastd_context *ctx) {
 	fastd_peer_config *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
@@ -185,6 +241,15 @@ static void init_peers(fastd_context *ctx) {
 
 		if (peer_conf->enabled)
 			fastd_peer_add(ctx, peer_conf);
+	}
+}
+
+static void delete_peers(fastd_context *ctx) {
+	fastd_peer *peer, *next;
+	for (peer = ctx->peers; peer; peer = next) {
+		next = peer->next;
+
+		fastd_peer_delete(ctx, peer);
 	}
 }
 
@@ -500,24 +565,24 @@ int main(int argc, char *argv[]) {
 
 	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
 
+	init_signals(&ctx);
+
 	fastd_config conf;
 	fastd_configure(&ctx, &conf, argc, argv);
 	ctx.conf = &conf;
 
 	conf.protocol_config = conf.protocol->init(&ctx);
 
-	init_signals(&ctx);
-
 	update_time(&ctx);
+
+	init_tuntap(&ctx);
+	init_sockets(&ctx);
 
 	init_peers(&ctx);
 
-	init_tuntap(&ctx);
-	init_socket(&ctx);
-
 	on_up(&ctx);
 
-	while (1) {
+	while (!terminate) {
 		handle_tasks(&ctx);
 		handle_input(&ctx);
 
@@ -528,6 +593,15 @@ int main(int argc, char *argv[]) {
 			fastd_reconfigure(&ctx, &conf);
 		}
 	}
+
+	on_down(&ctx);
+
+	delete_peers(&ctx);
+
+	close_sockets(&ctx);
+	close_tuntap(&ctx);
+
+	fastd_config_release(&ctx, &conf);
 
 	return 0;
 }

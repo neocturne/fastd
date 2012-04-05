@@ -96,7 +96,7 @@ struct _fastd_config {
 
 	bool peer_to_peer;
 
-	fastd_protocol *protocol;
+	const fastd_protocol *protocol;
 	char *secret;
 	unsigned key_valid;
 	unsigned key_refresh;
@@ -112,6 +112,9 @@ struct _fastd_config {
 
 	char *on_up;
 	char *on_up_dir;
+
+	char *on_down;
+	char *on_down_dir;
 };
 
 struct _fastd_context {
@@ -146,6 +149,7 @@ void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir
 bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);
+void fastd_config_release(fastd_context *ctx, fastd_config *conf);
 
 void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure);
 

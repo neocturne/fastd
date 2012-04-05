@@ -113,11 +113,8 @@ void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf) {
 	for (peer = ctx->peers; peer; peer = next) {
 		next = peer->next;
 
-		if (peer->config == conf) {
-			reset_peer(ctx, peer);
-			delete_peer(ctx, peer);
-			continue;
-		}
+		if (peer->config == conf)
+			fastd_peer_delete(ctx, peer);
 	}
 
 	ctx->conf->protocol->peer_config_purged(ctx, conf);
@@ -167,6 +164,11 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 		delete_peer(ctx, peer);
 	else
 		setup_peer(ctx, peer);
+}
+
+void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
+	reset_peer(ctx, peer);
+	delete_peer(ctx, peer);
 }
 
 static fastd_peer* add_peer(fastd_context *ctx) {
