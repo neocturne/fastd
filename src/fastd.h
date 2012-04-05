@@ -59,7 +59,9 @@ struct _fastd_eth_addr {
 struct _fastd_protocol {
 	const char *name;
 
-	void (*init)(fastd_context *ctx, fastd_config *conf);
+	fastd_protocol_config* (*init)(fastd_context *ctx);
+	void (*peer_configure)(fastd_context *ctx, fastd_peer_config *peer_conf);
+	void (*peer_config_purged)(fastd_context *ctx, fastd_peer_config *peer_conf);
 
 	size_t (*max_packet_size)(fastd_context *ctx);
 	size_t (*min_encrypt_head_space)(fastd_context *ctx);
@@ -140,9 +142,10 @@ struct _fastd_string_stack {
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
-void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *dir, int depth);
+void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir);
 bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
+void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);
 
 void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure);
 
@@ -263,6 +266,13 @@ static inline bool timespec_after(const struct timespec *tp1, const struct times
 /* returns (tp1 - tp2) in milliseconds  */
 static inline int timespec_diff(const struct timespec *tp1, const struct timespec *tp2) {
 	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
+}
+
+static inline bool strequal(const char *str1, const char *str2) {
+	if (str1 && str2)
+		return (!strcmp(str1, str2));
+	else
+		return (str1 == str2);
 }
 
 #endif /* _FASTD_FASTD_H_ */

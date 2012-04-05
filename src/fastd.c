@@ -35,11 +35,31 @@
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <poll.h>
+#include <signal.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+
+static bool sighup = false;
+
+
+static void on_sighup(int signo) {
+	sighup = true;
+}
+
+
+static void init_signals(fastd_context *ctx) {
+	struct sigaction action;
+
+	action.sa_handler = on_sighup;
+	action.sa_flags = 0;
+	sigemptyset(&action.sa_mask);
+
+	if(sigaction(SIGHUP, &action, NULL))
+		exit_errno(ctx, "sigaction");
+}
 
 static void init_tuntap(fastd_context *ctx) {
 	struct ifreq ifr;
@@ -161,6 +181,8 @@ static void on_up(fastd_context *ctx) {
 static void init_peers(fastd_context *ctx) {
 	fastd_peer_config *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
+		ctx->conf->protocol->peer_configure(ctx, peer_conf);
+
 		if (peer_conf->enabled)
 			fastd_peer_add(ctx, peer_conf);
 	}
@@ -280,8 +302,14 @@ static void handle_tun(fastd_context *ctx) {
 	fastd_buffer buffer = fastd_buffer_alloc(max_len, ctx->conf->protocol->min_encrypt_head_space(ctx), 0);
 
 	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
-	if (len < 0)
+	if (len < 0) {
+		if (errno == EINTR) {
+			fastd_buffer_free(buffer);
+			return;
+		}
+
 		exit_errno(ctx, "read");
+	}
 
 	buffer.len = len;
 
@@ -339,7 +367,9 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 
 	ssize_t len = recvmsg(sockfd, &msg, 0);
 	if (len < 0) {
-		pr_warn(ctx, "recvfrom: %s", strerror(errno));
+		if (errno != EINTR)
+			pr_warn(ctx, "recvfrom: %s", strerror(errno));
+
 		fastd_buffer_free(buffer);
 		return;
 	}
@@ -423,8 +453,12 @@ static void handle_input(fastd_context *ctx) {
 		timeout = 60000; /* call maintenance at least once a minute */
 
 	int ret = poll(fds, 3, timeout);
-	if (ret < 0)
+	if (ret < 0) {
+		if (errno == EINTR)
+			return;
+
 		exit_errno(ctx, "poll");
+	}
 
 	update_time(ctx);
 
@@ -470,6 +504,10 @@ int main(int argc, char *argv[]) {
 	fastd_configure(&ctx, &conf, argc, argv);
 	ctx.conf = &conf;
 
+	conf.protocol_config = conf.protocol->init(&ctx);
+
+	init_signals(&ctx);
+
 	update_time(&ctx);
 
 	init_peers(&ctx);
@@ -484,6 +522,11 @@ int main(int argc, char *argv[]) {
 		handle_input(&ctx);
 
 		maintenance(&ctx);
+
+		if (sighup) {
+			sighup = false;
+			fastd_reconfigure(&ctx, &conf);
+		}
 	}
 
 	return 0;

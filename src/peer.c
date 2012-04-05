@@ -95,14 +95,67 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 	return peer;
 }
 
-void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf) {
-	fastd_peer_config *peer = conf->peers, *next = peer->next;
-
+void fastd_peer_config_free(fastd_peer_config *peer) {
 	free(peer->name);
 	free(peer->key);
+	free(peer->protocol_config);
 	free(peer);
+}
 
+void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf) {
+	fastd_peer_config *peer = conf->peers, *next = peer->next;
+	fastd_peer_config_free(peer);
 	conf->peers = next;
+}
+
+void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf) {
+	fastd_peer *peer, *next;
+	for (peer = ctx->peers; peer; peer = next) {
+		next = peer->next;
+
+		if (peer->config == conf) {
+			reset_peer(ctx, peer);
+			delete_peer(ctx, peer);
+			continue;
+		}
+	}
+
+	ctx->conf->protocol->peer_config_purged(ctx, conf);
+	fastd_peer_config_free(conf);
+}
+
+static bool fastd_peer_addr_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2) {
+	if (addr1->sa.sa_family != addr2->sa.sa_family)
+		return false;
+
+	switch (addr1->sa.sa_family) {
+	case AF_UNSPEC:
+		break;
+
+	case AF_INET:
+		if (addr1->in.sin_addr.s_addr != addr2->in.sin_addr.s_addr)
+			return false;
+		break;
+
+	case AF_INET6:
+		if (!IN6_ARE_ADDR_EQUAL(&addr1->in6.sin6_addr, &addr2->in6.sin6_addr))
+			return false;
+	}
+
+	return true;
+}
+
+bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_config *peer2) {
+	if (peer1->enabled != peer2->enabled)
+		return false;
+
+	if (!fastd_peer_addr_equal(&peer1->address, &peer2->address))
+		return false;
+
+	if (!strequal(peer1->key, peer2->key))
+		return false;
+
+	return true;
 }
 
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
@@ -115,7 +168,6 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 	else
 		setup_peer(ctx, peer);
 }
-
 
 static fastd_peer* add_peer(fastd_context *ctx) {
 	fastd_peer *peer = malloc(sizeof(fastd_peer));

@@ -34,9 +34,17 @@
 #include <arpa/inet.h>
 
 
-static void protocol_init(fastd_context *ctx, fastd_config *conf) {
-	if (conf->n_floating > 1)
+static fastd_protocol_config* protocol_init(fastd_context *ctx) {
+	if (ctx->conf->n_floating > 1)
 		exit_error(ctx, "with protocol `null' use can't define more than one floating peer");
+
+	return NULL;
+}
+
+static void protocol_peer_configure(fastd_context *ctx, fastd_peer_config *peer_conf) {
+}
+
+static void protocol_peer_config_purged(fastd_context *ctx, fastd_peer_config *peer_conf) {
 }
 
 static size_t protocol_max_packet_size(fastd_context *ctx) {
@@ -131,6 +139,8 @@ const fastd_protocol fastd_protocol_null = {
 	.name = "null",
 
 	.init = protocol_init,
+	.peer_configure = protocol_peer_configure,
+	.peer_config_purged = protocol_peer_config_purged,
 
 	.max_packet_size = protocol_max_packet_size,
 	.min_encrypt_head_space = protocol_min_head_space,

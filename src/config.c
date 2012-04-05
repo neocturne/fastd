@@ -71,6 +71,7 @@ static void default_config(fastd_config *conf) {
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_refresh = 3300;	/* 55 minutes */
 
+	conf->peer_dirs = NULL;
 	conf->peers = NULL;
 
 	conf->on_up = NULL;
@@ -96,10 +97,53 @@ static bool config_match(const char *opt, ...) {
 	return match;
 }
 
-void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *dir, int depth) {
-	if (depth >= MAX_CONFIG_DEPTH)
-		exit_error(ctx, "maximum config include depth exceeded");
+static void read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir) {
+	DIR *dirh = opendir(".");
 
+	if (dirh) {
+		while (true) {
+			struct dirent entry, *result;
+			int ret;
+
+			ret = readdir_r(dirh, &entry, &result);
+			if (ret) {
+				pr_error(ctx, "readdir_r: %s", strerror(ret));
+				break;
+			}
+
+			if (!result)
+				break;
+			if (result->d_name[0] == '.')
+				continue;
+
+			struct stat statbuf;
+			if (stat(result->d_name, &statbuf)) {
+				pr_warn(ctx, "ignoring file `%s': stat failed: %s", result->d_name, strerror(errno));
+				continue;
+			}
+			if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
+				pr_info(ctx, "ignoring file `%s': no regular file", result->d_name);
+				continue;
+			}
+
+			fastd_peer_config_new(ctx, conf);
+			conf->peers->name = strdup(result->d_name);
+			conf->peers->config_source_dir = dir;
+
+			if (!fastd_read_config(ctx, conf, result->d_name, true, 0)) {
+				pr_warn(ctx, "peer config `%s' will be ignored", result->d_name);
+				fastd_peer_config_delete(ctx, conf);
+			}
+		}
+
+		closedir(dirh);
+	}
+	else {
+		pr_error(ctx, "opendir for `%s' failed: %s", dir, strerror(errno));
+	}
+}
+
+void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir) {
 	char *oldcwd = get_current_dir_name();
 
 	if (!chdir(dir)) {
@@ -107,56 +151,15 @@ void fastd_read_config_dir(fastd_context *ctx, fastd_config *conf, const char *d
 		conf->peer_dirs = fastd_string_stack_push(conf->peer_dirs, newdir);
 		free(newdir);
 
-		DIR *dirh = opendir(".");
-
-		if (dirh) {
-			while (true) {
-				struct dirent entry, *result;
-				int ret;
-
-				ret = readdir_r(dirh, &entry, &result);
-				if (ret) {
-					pr_error(ctx, "readdir_r: %s", strerror(ret));
-					break;
-				}
-
-				if (!result)
-					break;
-				if (result->d_name[0] == '.')
-					continue;
-
-				struct stat statbuf;
-				if (stat(result->d_name, &statbuf)) {
-					pr_warn(ctx, "ignoring file `%s': stat failed: %s", result->d_name, strerror(errno));
-					continue;
-				}
-				if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
-					pr_info(ctx, "ignoring file `%s': no regular file", result->d_name);
-					continue;
-				}
-
-				fastd_peer_config_new(ctx, conf);
-				conf->peers->name = strdup(result->d_name);
-				conf->peers->config_source_dir = conf->peer_dirs->str;
-
-				if (!fastd_read_config(ctx, conf, result->d_name, true, depth)) {
-					pr_warn(ctx, "peer config `%s' will be ignored", result->d_name);
-					fastd_peer_config_delete(ctx, conf);
-				}
-			}
-
-			closedir(dirh);
-		}
-		else {
-			pr_error(ctx, "opendir for `%s' failed: %s", dir, strerror(errno));
-		}
+		read_peer_dir(ctx, conf, conf->peer_dirs->str);
 
 		chdir(oldcwd);
-		free(oldcwd);
 	}
 	else {
 		pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
 	}
+
+	free(oldcwd);
 }
 
 bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth) {
@@ -248,6 +251,32 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	return ret;
 }
 
+static void count_peers(fastd_context *ctx, fastd_config *conf) {
+	conf->n_floating = 0;
+	conf->n_v4 = 0;
+	conf->n_v6 = 0;
+
+	fastd_peer_config *peer;
+	for (peer = conf->peers; peer; peer = peer->next) {
+		switch (peer->address.sa.sa_family) {
+		case AF_UNSPEC:
+			conf->n_floating++;
+			break;
+
+		case AF_INET:
+			conf->n_v4++;
+			break;
+
+		case AF_INET6:
+			conf->n_v6++;
+			break;
+
+		default:
+			exit_bug(ctx, "invalid peer address family");
+		}
+	}
+}
+
 #define IF_OPTION(args...) if(config_match(argv[i], args, NULL) && (++i))
 #define IF_OPTION_ARG(args...) if(config_match(argv[i], args, NULL) && ({ \
 				arg = argv[i+1];			\
@@ -309,7 +338,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		}
 
 		IF_OPTION_ARG("--config-peer-dir") {
-			fastd_read_config_dir(ctx, conf, arg, 0);
+			fastd_read_peer_dir(ctx, conf, arg);
 			continue;
 		}
 
@@ -478,29 +507,6 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		exit(0);
 	}
 
-	conf->n_floating = 0;
-	conf->n_v4 = 0;
-	conf->n_v6 = 0;
-
-	for (peer = conf->peers; peer; peer = peer->next) {
-		switch (peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			conf->n_floating++;
-			break;
-
-		case AF_INET:
-			conf->n_v4++;
-			break;
-
-		case AF_INET6:
-			conf->n_v6++;
-			break;
-
-		default:
-			exit_bug(ctx, "invalid peer address family");
-		}
-	}
-
 	if (conf->mode == MODE_TUN) {
 		if (!conf->peers || conf->peers->next)
 			exit_error(ctx, "config error: for tun mode exactly one peer must be configured");
@@ -508,5 +514,103 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			exit_error(ctx, "config error: for tun mode peer directories can't be used");
 	}
 
-	conf->protocol->init(ctx, conf);
+	count_peers(ctx, conf);
+}
+
+static void reconfigure_read_peer_dirs(fastd_context *ctx, fastd_config *new_conf, fastd_string_stack *dirs) {
+	char *oldcwd = get_current_dir_name();
+
+	fastd_string_stack *dir;
+	for (dir = dirs; dir; dir = dir->next) {
+		if (!chdir(dir->str))
+			read_peer_dir(ctx, new_conf, dir->str);
+		else
+			pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir->str, strerror(errno));
+	}
+
+	chdir(oldcwd);
+	free(oldcwd);
+}
+
+static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config **old_peers, fastd_peer_config **new_peers) {
+	fastd_peer_config **peer, **next, **new_peer, **new_next;
+	for (peer = old_peers; *peer; peer = next) {
+		next = &(*peer)->next;
+
+		/* don't touch statically configured peers */
+		if (!(*peer)->config_source_dir)
+			continue;
+
+		/* search for each peer in the list of new peers */
+		for (new_peer = new_peers; *new_peer; new_peer = new_next) {
+			new_next = &(*new_peer)->next;
+
+			if (((*peer)->config_source_dir == (*new_peer)->config_source_dir) && strequal((*peer)->name, (*new_peer)->name)) {
+				if (fastd_peer_config_equal(*peer, *new_peer)) {
+					pr_debug(ctx, "peer `%s' unchanged", (*peer)->name);
+
+					fastd_peer_config *free_peer = *new_peer;
+					*new_peer = *new_next;
+					fastd_peer_config_free(free_peer);
+					peer = NULL;
+				}
+				else {
+					pr_debug(ctx, "peer `%s' changed, resetting", (*peer)->name);
+					new_peer = NULL;
+				}
+
+				break;
+			}
+		}
+
+		/* no new peer was found, or the old one has changed */
+		if (peer && (!new_peer || !*new_peer)) {
+			pr_debug(ctx, "removing peer `%s'", (*peer)->name);
+
+			fastd_peer_config *free_peer = *peer;
+			*peer = *next;
+			next = peer;
+
+			fastd_peer_config_purge(ctx, free_peer);
+		}
+	}
+}
+
+static void reconfigure_reset_waiting(fastd_context *ctx) {
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (fastd_peer_is_waiting(peer))
+			fastd_peer_reset(ctx, peer);
+	}
+}
+
+static void reconfigure_handle_new_peers(fastd_context *ctx, fastd_peer_config **peers, fastd_peer_config *new_peers) {
+	fastd_peer_config *peer, *next;
+	for (peer = new_peers; peer; peer = next) {
+		next = peer->next;
+
+		ctx->conf->protocol->peer_configure(ctx, peer);
+		if (peer->enabled)
+			fastd_peer_add(ctx, peer);
+
+		peer->next = *peers;
+		*peers = peer;
+	}
+}
+
+void fastd_reconfigure(fastd_context *ctx, fastd_config *conf) {
+	pr_info(ctx, "reconfigure triggered");
+
+	fastd_config temp_conf;
+	temp_conf.peers = NULL;
+
+	reconfigure_read_peer_dirs(ctx, &temp_conf, conf->peer_dirs);
+	reconfigure_handle_old_peers(ctx, &conf->peers, &temp_conf.peers);
+
+	reconfigure_reset_waiting(ctx);
+
+	reconfigure_handle_new_peers(ctx, &conf->peers, temp_conf.peers);
+
+	count_peers(ctx, conf);
+
 }

@@ -191,50 +191,39 @@ static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t
 	return false;
 }
 
-static void protocol_init(fastd_context *ctx, fastd_config *conf) {
-	conf->protocol_config = malloc(sizeof(fastd_protocol_config));
+static fastd_protocol_config* protocol_init(fastd_context *ctx) {
+	fastd_protocol_config *protocol_config = malloc(sizeof(fastd_protocol_config));
 
-	if (!conf->secret)
+	if (!ctx->conf->secret)
 		exit_error(ctx, "no secret key configured");
 
-	if (!read_key(conf->protocol_config->secret_key.s, conf->secret))
+	if (!read_key(protocol_config->secret_key.s, ctx->conf->secret))
 		exit_error(ctx, "invalid secret key");
 
 	ecc_25519_work work;
-	ecc_25519_scalarmult_base(&work, &conf->protocol_config->secret_key);
-	ecc_25519_store(&conf->protocol_config->public_key, &work);
+	ecc_25519_scalarmult_base(&work, &protocol_config->secret_key);
+	ecc_25519_store(&protocol_config->public_key, &work);
 
-	fastd_peer_config *peer;
-	for (peer = conf->peers; peer; peer = peer->next) {
-		ecc_public_key_256 key;
+	return protocol_config;
+}
 
-		if (!peer->key) {
-			pr_warn(ctx, "no key configured for %P, disabling peer", peer);
-			peer->enabled = false;
-			continue;
-		}
+static void protocol_peer_configure(fastd_context *ctx, fastd_peer_config *peer_conf) {
+	ecc_public_key_256 key;
 
-		if (!read_key(key.p, peer->key)) {
-			pr_warn(ctx, "invalid key configured for %P, disabling peer", peer);
-			peer->enabled = false;
-			continue;
-		}
-
-		peer->protocol_config = malloc(sizeof(fastd_protocol_peer_config));
-		peer->protocol_config->public_key = key;
+	if (!peer_conf->key) {
+		pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
+		peer_conf->enabled = false;
+		return;
 	}
-}
 
-static size_t protocol_max_packet_size(fastd_context *ctx) {
-	return (fastd_max_packet_size(ctx) + NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
-}
+	if (!read_key(key.p, peer_conf->key)) {
+		pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
+		peer_conf->enabled = false;
+		return;
+	}
 
-static size_t protocol_min_encrypt_head_space(fastd_context *ctx) {
-	return crypto_secretbox_xsalsa20poly1305_ZEROBYTES;
-}
-
-static size_t protocol_min_decrypt_head_space(fastd_context *ctx) {
-	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
+	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config));
+	peer_conf->protocol_config->public_key = key;
 }
 
 static void init_peer_state(fastd_context *ctx, fastd_peer *peer) {
@@ -250,6 +239,38 @@ static inline void free_handshake(protocol_handshake *handshake) {
 		memset(handshake, 0, sizeof(protocol_handshake));
 		free(handshake);
 	}
+}
+
+static void protocol_peer_config_purged(fastd_context *ctx, fastd_peer_config *peer_conf) {
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (!peer->protocol_state)
+			continue;
+
+		if (peer->protocol_state->initiating_handshake &&
+		    peer->protocol_state->initiating_handshake->peer_config == peer_conf) {
+			free_handshake(peer->protocol_state->initiating_handshake);
+			peer->protocol_state->initiating_handshake = NULL;
+		}
+
+		if (peer->protocol_state->accepting_handshake &&
+		    peer->protocol_state->accepting_handshake->peer_config == peer_conf) {
+			free_handshake(peer->protocol_state->accepting_handshake);
+			peer->protocol_state->accepting_handshake = NULL;
+		}
+	}
+}
+
+static size_t protocol_max_packet_size(fastd_context *ctx) {
+	return (fastd_max_packet_size(ctx) + NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+}
+
+static size_t protocol_min_encrypt_head_space(fastd_context *ctx) {
+	return crypto_secretbox_xsalsa20poly1305_ZEROBYTES;
+}
+
+static size_t protocol_min_decrypt_head_space(fastd_context *ctx) {
+	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
 static protocol_handshake* new_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_peer_config *peer_config, bool initiate) {
@@ -825,6 +846,8 @@ const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
 	.name = "ec25519-fhmqvc-xsalsa20-poly1305",
 
 	.init = protocol_init,
+	.peer_configure = protocol_peer_configure,
+	.peer_config_purged = protocol_peer_config_purged,
 
 	.max_packet_size = protocol_max_packet_size,
 	.min_encrypt_head_space = protocol_min_encrypt_head_space,

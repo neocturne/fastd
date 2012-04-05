@@ -54,7 +54,7 @@ struct _fastd_peer {
 struct _fastd_peer_config {
 	fastd_peer_config *next;
 
-	char *config_source_dir;
+	const char *config_source_dir;
 
 	bool enabled;
 	char *name;
@@ -73,7 +73,10 @@ struct _fastd_peer_eth_addr {
 
 
 fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf);
+void fastd_peer_config_free(fastd_peer_config *peer);
 void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf);
+void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf);
+bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_config *peer2);
 
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
@@ -90,6 +93,10 @@ static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config
 
 static inline bool fastd_peer_is_floating(const fastd_peer *peer) {
 	return (peer->config && fastd_peer_config_is_floating(peer->config));
+}
+
+static inline bool fastd_peer_is_waiting(const fastd_peer *peer) {
+	return (peer->state == STATE_WAIT);
 }
 
 static inline bool fastd_peer_is_temporary(const fastd_peer *peer) {
