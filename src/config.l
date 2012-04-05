@@ -111,10 +111,19 @@ no		{ UPDATE_LOCATION; return TOK_NO; }
 			int i, esc = 0;
 
 			for (i = 0; i < yyleng; i++) {
-				if (yytext[i] == '\\')
-					esc++;
-				else if(esc)
+				if (yytext[i] == '\\') {
+					i++;
+					if (yytext[i] == '\n') {
+						esc+=2;
+					}
+					else {
+						yytext[i-esc-1] = yytext[i];
+						esc++;
+					}
+				}
+				else if(esc) {
 					yytext[i-esc] = yytext[i];
+				}
 			}
 			yytext[yyleng-esc-1] = 0;
 			yylval->str = fastd_string_stack_dup(yytext);
