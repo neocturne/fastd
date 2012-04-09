@@ -296,8 +296,10 @@ static void handle_tasks(fastd_context *ctx) {
 					exit_bug(ctx, "unsupported address family");
 				}
 
+				uint8_t packet_type = task->send.packet_type;
+
 				struct iovec iov[2] = {
-					{ .iov_base = &task->send.packet_type, .iov_len = 1 },
+					{ .iov_base = &packet_type, .iov_len = 1 },
 					{ .iov_base = task->send.buffer.data, .iov_len = task->send.buffer.len }
 				};
 
