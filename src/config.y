@@ -61,6 +61,7 @@
 %token TOK_MTU
 %token TOK_MODE
 %token TOK_PROTOCOL
+%token TOK_METHOD
 %token TOK_PEER
 %token TOK_ADDRESS
 %token TOK_SECRET
@@ -99,12 +100,6 @@
 	#include <peer.h>
 
 	void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s);
-
-	extern const fastd_protocol fastd_protocol_null;
-
-	#ifdef WITH_PROTOCOL_ECFXP
-	extern const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
-	#endif
 }
 
 
@@ -130,6 +125,7 @@ statement:	TOK_LOG log ';'
 	|	TOK_MTU mtu ';'
 	|	TOK_MODE mode ';'
 	|	TOK_PROTOCOL protocol ';'
+	|	TOK_METHOD method ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_ON TOK_DOWN on_down ';'
@@ -180,19 +176,19 @@ mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
 	;
 
 protocol:	TOK_STRING {
-			if (!strcmp($1->str, "null")) {
-				conf->protocol = &fastd_protocol_null;
-			}
-#ifdef WITH_PROTOCOL_ECFXP
-			else if (!strcmp($1->str, "ecfxp")) {
-				conf->protocol = &fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
-			}
-#endif
-			else {
+			if (!fastd_config_protocol(ctx, conf, $1->str)) {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid protocol");
 				YYERROR;
 			}
-}
+		}
+	;
+
+method:		TOK_STRING {
+			if (!fastd_config_method(ctx, conf, $1->str)) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid method");
+				YYERROR;
+			}
+		}
 	;
 
 secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1->str); }

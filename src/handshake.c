@@ -45,6 +45,7 @@ static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"(protocol specific 4)",
 	"(protocol specific 5)",
 	"MTU",
+	"method name",
 };
 
 static const char const *REPLY_TYPES[REPLY_MAX] = {
@@ -59,10 +60,12 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 
 fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size_t tail_space) {
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
+	size_t method_len = strlen(ctx->conf->method->name);
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
 						 2*5 +            /* handshake type, mode */
 						 6 +		  /* MTU */
 						 4+protocol_len + /* protocol name */
+						 4+method_len +   /* method name */
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -75,6 +78,7 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size
 	fastd_handshake_add_uint16(ctx, &buffer, RECORD_MTU, ctx->conf->mtu);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
+	fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, ctx->conf->method->name);
 
 	return buffer;
 }
@@ -178,6 +182,19 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 		    || strncmp((char*)handshake.records[RECORD_PROTOCOL_NAME].data, ctx->conf->protocol->name, handshake.records[RECORD_PROTOCOL_NAME].length)) {
 			reply_code = REPLY_UNACCEPTABLE_VALUE;
 			error_detail = RECORD_PROTOCOL_NAME;
+			goto send_reply;
+		}
+
+		if (!handshake.records[RECORD_METHOD_NAME].data) {
+			reply_code = REPLY_MANDATORY_MISSING;
+			error_detail = RECORD_METHOD_NAME;
+			goto send_reply;
+		}
+
+		if (handshake.records[RECORD_METHOD_NAME].length != strlen(ctx->conf->method->name)
+		    || strncmp((char*)handshake.records[RECORD_METHOD_NAME].data, ctx->conf->method->name, handshake.records[RECORD_METHOD_NAME].length)) {
+			reply_code = REPLY_UNACCEPTABLE_VALUE;
+			error_detail = RECORD_METHOD_NAME;
 			goto send_reply;
 		}
 

@@ -63,10 +63,6 @@ struct _fastd_protocol {
 	void (*peer_configure)(fastd_context *ctx, fastd_peer_config *peer_conf);
 	void (*peer_config_purged)(fastd_context *ctx, fastd_peer_config *peer_conf);
 
-	size_t (*max_packet_size)(fastd_context *ctx);
-	size_t (*min_encrypt_head_space)(fastd_context *ctx);
-	size_t (*min_decrypt_head_space)(fastd_context *ctx);
-
 	void (*handshake_init)(fastd_context *ctx, fastd_peer *peer);
 	void (*handshake_handle)(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake);
 
@@ -76,6 +72,23 @@ struct _fastd_protocol {
 	void (*free_peer_state)(fastd_context *ctx, fastd_peer *peer);
 
 	void (*generate_key)(fastd_context *ctx);
+};
+
+struct _fastd_method {
+	const char *name;
+
+	size_t (*max_packet_size)(fastd_context *ctx);
+	size_t (*min_encrypt_head_space)(fastd_context *ctx);
+	size_t (*min_decrypt_head_space)(fastd_context *ctx);
+
+	fastd_method_session_state* (*session_init)(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator);
+	bool (*session_is_valid)(fastd_context *ctx, fastd_method_session_state *session);
+	bool (*session_is_initiator)(fastd_context *ctx, fastd_method_session_state *session);
+	bool (*session_want_refresh)(fastd_context *ctx, fastd_method_session_state *session);
+	void (*session_free)(fastd_context *ctx, fastd_method_session_state *session);
+
+	bool (*encrypt)(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
+	bool (*decrypt)(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
 };
 
 struct _fastd_config {
@@ -97,6 +110,7 @@ struct _fastd_config {
 	bool peer_to_peer;
 
 	const fastd_protocol *protocol;
+	const fastd_method *method;
 	char *secret;
 	unsigned key_valid;
 	unsigned key_refresh;
@@ -153,6 +167,9 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
 void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir);
 bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth);
+
+bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *name);
+bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);
 void fastd_config_release(fastd_context *ctx, fastd_config *conf);

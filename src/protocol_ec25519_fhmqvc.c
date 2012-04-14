@@ -36,10 +36,8 @@
 #include <libuecc/ecc.h>
 #include <crypto_auth_hmacsha256.h>
 #include <crypto_hash_sha256.h>
-#include <crypto_secretbox_xsalsa20poly1305.h>
 
 
-#define NONCEBYTES 7
 #define PUBLICKEYBYTES 32
 #define SECRETKEYBYTES 32
 #define HMACBYTES crypto_auth_hmacsha256_BYTES
@@ -50,16 +48,8 @@
 #error bug: HASHBYTES != crypto_auth_hmacsha256_KEYBYTES
 #endif
 
-#if HASHBYTES != crypto_secretbox_xsalsa20poly1305_KEYBYTES
-#error bug: HASHBYTES != crypto_secretbox_xsalsa20poly1305_KEYBYTES
-#endif
-
 #if HASHBYTES != SECRETKEYBYTES
 #error bug: HASHBYTES != SECRETKEYBYTES
-#endif
-
-#if crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES < NONCEBYTES
-#error bug: crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES < NONCEBYTES
 #endif
 
 
@@ -91,14 +81,9 @@ typedef struct _protocol_handshake {
 
 typedef struct _protocol_session {
 	bool handshakes_cleaned;
-
-	struct timespec valid_till;
-	struct timespec refresh_after;
 	bool refreshing;
-	uint8_t key[HASHBYTES];
 
-	uint8_t send_nonce[NONCEBYTES];
-	uint8_t receive_nonce[NONCEBYTES];
+	fastd_method_session_state *method_state;
 } protocol_session;
 
 struct _fastd_protocol_peer_state {
@@ -131,64 +116,18 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 	return true;
 }
 
-static inline bool is_nonce_zero(const uint8_t nonce[NONCEBYTES]) {
-	int i;
-	for (i = 0; i < NONCEBYTES; i++) {
-		if (nonce[i] != 0)
-			return false;
-	}
-
-	return true;
-}
-
-static inline void increment_nonce(uint8_t nonce[NONCEBYTES]) {
-	nonce[0] += 2;
-
-	if (nonce[0] == 0 || nonce[0] == 1) {
-		int i;
-		for (i = 1; i < NONCEBYTES; i++) {
-			nonce[i]++;
-			if (nonce[i] != 0)
-				break;
-		}
-	}
-}
-
 static inline bool is_session_valid(fastd_context *ctx, const protocol_session *session) {
-	return timespec_after(&session->valid_till, &ctx->now);
-}
-
-static inline bool is_session_zero(fastd_context *ctx, const protocol_session *session) {
-	return (session->valid_till.tv_sec == 0);
-}
-
-static inline bool is_session_initiator(const protocol_session *session) {
-	return (session->send_nonce[0] & 1);
+	return ctx->conf->method->session_is_valid(ctx, session->method_state);
 }
 
 static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
 	protocol_session *session = &peer->protocol_state->session;
 
-	if (is_session_initiator(session) && !session->refreshing && timespec_after(&ctx->now, &session->refresh_after)) {
+	if (!session->refreshing && ctx->conf->method->session_want_refresh(ctx, session->method_state)) {
 		pr_debug(ctx, "refreshing session with %P", peer);
 		session->refreshing = true;
 		fastd_task_schedule_handshake(ctx, peer, 0);
 	}
-}
-
-static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t old_nonce[NONCEBYTES]) {
-	if ((nonce[0] & 1) != (old_nonce[0] & 1))
-		return false;
-
-	int i;
-	for (i = NONCEBYTES-1; i >= 0; i--) {
-		if (nonce[i] > old_nonce[i])
-			return true;
-		if (nonce[i] < old_nonce[i])
-			return false;
-	}
-
-	return false;
 }
 
 static fastd_protocol_config* protocol_init(fastd_context *ctx) {
@@ -259,18 +198,6 @@ static void protocol_peer_config_purged(fastd_context *ctx, fastd_peer_config *p
 			peer->protocol_state->accepting_handshake = NULL;
 		}
 	}
-}
-
-static size_t protocol_max_packet_size(fastd_context *ctx) {
-	return (fastd_max_packet_size(ctx) + NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
-}
-
-static size_t protocol_min_encrypt_head_space(fastd_context *ctx) {
-	return crypto_secretbox_xsalsa20poly1305_ZEROBYTES;
-}
-
-static size_t protocol_min_decrypt_head_space(fastd_context *ctx) {
-	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
 static protocol_handshake* new_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_peer_config *peer_config, bool initiate) {
@@ -384,36 +311,29 @@ static void respond_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_
 static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_config *peer_config, bool initiator,
 		      const ecc_public_key_256 *A, const ecc_public_key_256 *B, const ecc_public_key_256 *X,
 		      const ecc_public_key_256 *Y, const ecc_public_key_256 *sigma) {
-	int i;
 	uint8_t hashinput[5*PUBLICKEYBYTES];
+	uint8_t hash[HASHBYTES];
 
 	pr_verbose(ctx, "New session with %P established.", peer);
 
-	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session))
+	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
+		ctx->conf->method->session_free(ctx, peer->protocol_state->old_session.method_state);
 		peer->protocol_state->old_session = peer->protocol_state->session;
+	}
+	else {
+		ctx->conf->method->session_free(ctx, peer->protocol_state->session.method_state);
+	}
 
 	memcpy(hashinput, X->p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
 	memcpy(hashinput+2*PUBLICKEYBYTES, A->p, PUBLICKEYBYTES);
 	memcpy(hashinput+3*PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
-	crypto_hash_sha256(peer->protocol_state->session.key, hashinput, 5*PUBLICKEYBYTES);
+	crypto_hash_sha256(hash, hashinput, 5*PUBLICKEYBYTES);
 
 	peer->protocol_state->session.handshakes_cleaned = false;
-
-	peer->protocol_state->session.valid_till = ctx->now;
-	peer->protocol_state->session.valid_till.tv_sec += ctx->conf->key_valid;
-
-	peer->protocol_state->session.refresh_after = ctx->now;
-	peer->protocol_state->session.refresh_after.tv_sec += ctx->conf->key_refresh;
 	peer->protocol_state->session.refreshing = false;
-
-	peer->protocol_state->session.send_nonce[0] = initiator ? 3 : 2;
-	peer->protocol_state->session.receive_nonce[0] = initiator ? 0 : 1;
-	for (i = 1; i < NONCEBYTES; i++) {
-		peer->protocol_state->session.send_nonce[i] = 0;
-		peer->protocol_state->session.receive_nonce[i] = 0;
-	}
+	peer->protocol_state->session.method_state = ctx->conf->method->session_init(ctx, hash, HASHBYTES, initiator);
 
 	free_handshake(peer->protocol_state->initiating_handshake);
 	peer->protocol_state->initiating_handshake = NULL;
@@ -439,7 +359,7 @@ static void establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_con
 	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
 
 	if (!initiator)
-		protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
+		protocol_send(ctx, peer, fastd_buffer_alloc(0, ctx->conf->method->min_encrypt_head_space(ctx), 0));
 }
 
 static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
@@ -685,94 +605,69 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 			fastd_task_schedule_handshake(ctx, peer, 0);
 		}
 
-		goto end;
+		goto fail;
 	}
 
-	if (buffer.len < NONCEBYTES)
-		goto end;
+	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session))
+		goto fail;
 
-	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session)) {
-		goto end;
-	}
-
-	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
-	memcpy(nonce, buffer.data, NONCEBYTES);
-	memset(nonce+NONCEBYTES, 0, crypto_secretbox_xsalsa20poly1305_NONCEBYTES-NONCEBYTES);
-
-	fastd_buffer_pull_head(&buffer, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
-	memset(buffer.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
-
-	fastd_buffer recv_buffer = fastd_buffer_alloc(buffer.len, 0, 0);
-
-	protocol_session *session = NULL;
+	fastd_buffer recv_buffer;
+	bool ok = false;
 
 	if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
-		if (is_nonce_valid(nonce, peer->protocol_state->old_session.receive_nonce)) {
-			if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, peer->protocol_state->old_session.key) == 0) {
-				pr_debug(ctx, "received packet for old session from %P", peer);
-				session = &peer->protocol_state->old_session;
-			}
-		}
+		if (ctx->conf->method->decrypt(ctx, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
+			ok = true;
 	}
 
-	if (!session) {
-		session = &peer->protocol_state->session;
+	if (!ok) {
+		if (ctx->conf->method->decrypt(ctx, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
+			ok = true;
 
-		if (!is_nonce_valid(nonce, session->receive_nonce)) {
-			pr_debug(ctx, "received packet with invalid nonce from %P", peer);
-			fastd_buffer_free(recv_buffer);
-			goto end;
-		}
-
-		if (crypto_secretbox_xsalsa20poly1305_open(recv_buffer.data, buffer.data, buffer.len, nonce, session->key) == 0) {
-			if (!session->handshakes_cleaned) {
+			if (!peer->protocol_state->session.handshakes_cleaned) {
 				pr_debug(ctx, "cleaning left handshakes with %P", peer);
 				fastd_task_delete_peer_handshakes(ctx, peer);
-				session->handshakes_cleaned = true;
+				peer->protocol_state->session.handshakes_cleaned = true;
 
-				if (is_session_initiator(session))
-					protocol_send(ctx, peer, fastd_buffer_alloc(0, protocol_min_encrypt_head_space(ctx), 0));
+				if (ctx->conf->method->session_is_initiator(ctx, peer->protocol_state->session.method_state))
+					protocol_send(ctx, peer, fastd_buffer_alloc(0, ctx->conf->method->min_encrypt_head_space(ctx), 0));
 			}
 
-			if (!is_session_zero(ctx, &peer->protocol_state->old_session)) {
+			if (peer->protocol_state->old_session.method_state) {
 				pr_debug(ctx, "invalidating old session with %P", peer);
-				memset(&peer->protocol_state->old_session, 0, sizeof(protocol_session));
+				ctx->conf->method->session_free(ctx, peer->protocol_state->old_session.method_state);
+				peer->protocol_state->old_session.method_state = NULL;
 			}
 
 			check_session_refresh(ctx, peer);
 		}
-		else {
-			pr_debug(ctx, "verification failed for packet received from %P", peer);
-			fastd_buffer_free(recv_buffer);
-			goto end;
-		}
+	}
+
+	if (!ok) {
+		pr_debug(ctx, "verification failed for packet received from %P", peer);
+		goto fail;
 	}
 
 	fastd_peer_seen(ctx, peer);
-
-	fastd_buffer_push_head(&recv_buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	if (recv_buffer.len)
 		fastd_task_put_handle_recv(ctx, peer, recv_buffer);
 	else
 		fastd_buffer_free(recv_buffer);
 
-	memcpy(session->receive_nonce, nonce, NONCEBYTES);
+	return;
 
- end:
+ fail:
 	fastd_buffer_free(buffer);
 }
 
 static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session)) {
-		fastd_buffer_free(buffer);
-		return;
-	}
+	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session))
+		goto fail;
 
 	check_session_refresh(ctx, peer);
 
 	protocol_session *session;
-	if (is_session_initiator(&peer->protocol_state->session) && is_session_valid(ctx, &peer->protocol_state->old_session)) {
+	if (ctx->conf->method->session_is_initiator(ctx, peer->protocol_state->session.method_state) && is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		pr_debug(ctx, "sending packet for old session to %P", peer);
 		session = &peer->protocol_state->old_session;
 	}
@@ -780,34 +675,27 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 		session = &peer->protocol_state->session;
 	}
 
-	fastd_buffer_pull_head(&buffer, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
-	memset(buffer.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
-
-	fastd_buffer send_buffer = fastd_buffer_alloc(buffer.len, 0, 0);
-
-	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
-	memcpy(nonce, session->send_nonce, NONCEBYTES);
-	memset(nonce+NONCEBYTES, 0, crypto_secretbox_xsalsa20poly1305_NONCEBYTES-NONCEBYTES);
-
-	crypto_secretbox_xsalsa20poly1305(send_buffer.data, buffer.data, buffer.len, nonce, session->key);
-
-	fastd_buffer_free(buffer);
-
-	fastd_buffer_push_head(&send_buffer, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
-	memcpy(send_buffer.data, session->send_nonce, NONCEBYTES);
-
+	fastd_buffer send_buffer;
+	if (!ctx->conf->method->encrypt(ctx, session->method_state, &send_buffer, buffer))
+		goto fail;
+	
 	fastd_task_put_send(ctx, peer, send_buffer);
-
-	increment_nonce(session->send_nonce);
 
 	fastd_task_delete_peer_keepalives(ctx, peer);
 	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
+	return;
+
+ fail:
+	fastd_buffer_free(buffer);
 }
 
 static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {
 	if (peer->protocol_state) {
 		free_handshake(peer->protocol_state->initiating_handshake);
 		free_handshake(peer->protocol_state->accepting_handshake);
+
+		ctx->conf->method->session_free(ctx, peer->protocol_state->old_session.method_state);
+		ctx->conf->method->session_free(ctx, peer->protocol_state->session.method_state);
 
 		free(peer->protocol_state);
 	}
@@ -842,16 +730,12 @@ static void protocol_generate_key(fastd_context *ctx) {
 }
 
 
-const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305 = {
-	.name = "ec25519-fhmqvc-xsalsa20-poly1305",
+const fastd_protocol fastd_protocol_ec25519_fhmqvc = {
+	.name = "ec25519-fhmqvc",
 
 	.init = protocol_init,
 	.peer_configure = protocol_peer_configure,
 	.peer_config_purged = protocol_peer_config_purged,
-
-	.max_packet_size = protocol_max_packet_size,
-	.min_encrypt_head_space = protocol_min_encrypt_head_space,
-	.min_decrypt_head_space = protocol_min_decrypt_head_space,
 
 	.handshake_init = protocol_handshake_init,
 	.handshake_handle = protocol_handshake_handle,

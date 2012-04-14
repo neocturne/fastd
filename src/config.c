@@ -41,10 +41,12 @@
 #include <sys/types.h>
 
 
-extern const fastd_protocol fastd_protocol_null;
+extern const fastd_protocol fastd_protocol_ec25519_fhmqvc;
 
-#ifdef WITH_PROTOCOL_ECFXP
-extern const fastd_protocol fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
+extern const fastd_method fastd_method_null;
+
+#ifdef WITH_METHOD_XSALSA20_POLY1305
+extern const fastd_method fastd_method_xsalsa20_poly1305;
 #endif
 
 
@@ -66,7 +68,8 @@ static void default_config(fastd_config *conf) {
 
 	conf->peer_to_peer = false;
 
-	conf->protocol = &fastd_protocol_null;
+	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
+	conf->method = &fastd_method_null;
 	conf->secret = NULL;
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_refresh = 3300;	/* 55 minutes */
@@ -105,6 +108,28 @@ static bool config_match(const char *opt, ...) {
 	va_end(ap);
 
 	return match;
+}
+
+bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *name) {
+	if (!strcmp(name, "ec25519-fhmqvc"))
+		conf->protocol = &fastd_protocol_ec25519_fhmqvc;
+	else
+		return false;
+
+	return true;
+}
+
+bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name) {
+	if (!strcmp(name, "null"))
+		conf->method = &fastd_method_null;
+#ifdef WITH_METHOD_XSALSA20_POLY1305
+	else if (!strcmp(name, "xsalsa20-poly1305"))
+		conf->method = &fastd_method_xsalsa20_poly1305;
+#endif
+	else
+		return false;
+
+	return true;
 }
 
 static void read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir) {
@@ -436,14 +461,14 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 
 		IF_OPTION_ARG("-P", "--protocol") {
-			if (!strcmp(arg, "null"))
-				conf->protocol = &fastd_protocol_null;
-#ifdef WITH_PROTOCOL_ECFXP
-			else if (!strcmp(arg, "ecfxp"))
-				conf->protocol = &fastd_protocol_ec25519_fhmqvc_xsalsa20_poly1305;
-#endif
-			else
+			if (!fastd_config_protocol(ctx, conf, arg))
 				exit_error(ctx, "invalid protocol `%s'", arg);
+			continue;
+		}
+
+		IF_OPTION_ARG("--method") {
+			if (!fastd_config_method(ctx, conf, arg))
+				exit_error(ctx, "invalid method `%s'", arg);
 			continue;
 		}
 

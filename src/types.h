@@ -66,14 +66,16 @@ typedef struct _fastd_config fastd_config;
 typedef struct _fastd_context fastd_context;
 
 typedef struct _fastd_protocol fastd_protocol;
+typedef struct _fastd_method fastd_method;
 
 typedef struct _fastd_handshake fastd_handshake;
 
 typedef struct _fastd_string_stack fastd_string_stack;
 
-/* May be defined by the protocol however it likes */
+/* May be defined by the protocol/method however it likes */
 typedef struct _fastd_protocol_config fastd_protocol_config;
 typedef struct _fastd_protocol_peer_config fastd_protocol_peer_config;
 typedef struct _fastd_protocol_peer_state fastd_protocol_peer_state;
+typedef struct _fastd_method_session_state fastd_method_session_state;
 
 #endif /* _FASTD_TYPES_H_ */

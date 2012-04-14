@@ -340,7 +340,7 @@ static void handle_tasks(fastd_context *ctx) {
 					fastd_peer *dest_peer;
 					for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
 						if (dest_peer != task->peer && dest_peer->state == STATE_ESTABLISHED) {
-							fastd_buffer send_buffer = fastd_buffer_alloc(task->handle_recv.buffer.len, ctx->conf->protocol->min_encrypt_head_space(ctx), 0);
+							fastd_buffer send_buffer = fastd_buffer_alloc(task->handle_recv.buffer.len, ctx->conf->method->min_encrypt_head_space(ctx), 0);
 							memcpy(send_buffer.data, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
 							ctx->conf->protocol->send(ctx, dest_peer, send_buffer);
 						}
@@ -366,7 +366,7 @@ static void handle_tasks(fastd_context *ctx) {
 
 		case TASK_KEEPALIVE:
 			pr_debug(ctx, "sending keepalive to %P", task->peer);
-			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(0, ctx->conf->protocol->min_encrypt_head_space(ctx), 0));
+			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(0, ctx->conf->method->min_encrypt_head_space(ctx), 0));
 			break;
 
 		default:
@@ -379,7 +379,7 @@ static void handle_tasks(fastd_context *ctx) {
 
 static void handle_tun(fastd_context *ctx) {
 	size_t max_len = fastd_max_packet_size(ctx);
-	fastd_buffer buffer = fastd_buffer_alloc(max_len, ctx->conf->protocol->min_encrypt_head_space(ctx), 0);
+	fastd_buffer buffer = fastd_buffer_alloc(max_len, ctx->conf->method->min_encrypt_head_space(ctx), 0);
 
 	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
 	if (len < 0) {
@@ -416,7 +416,7 @@ static void handle_tun(fastd_context *ctx) {
 	if (peer == NULL) {
 		for (peer = ctx->peers; peer; peer = peer->next) {
 			if (peer->state == STATE_ESTABLISHED) {
-				fastd_buffer send_buffer = fastd_buffer_alloc(len, ctx->conf->protocol->min_encrypt_head_space(ctx), 0);
+				fastd_buffer send_buffer = fastd_buffer_alloc(len, ctx->conf->method->min_encrypt_head_space(ctx), 0);
 				memcpy(send_buffer.data, buffer.data, len);
 				ctx->conf->protocol->send(ctx, peer, send_buffer);
 			}
@@ -427,8 +427,8 @@ static void handle_tun(fastd_context *ctx) {
 }
 
 static void handle_socket(fastd_context *ctx, int sockfd) {
-	size_t max_len = ctx->conf->protocol->max_packet_size(ctx);
-	fastd_buffer buffer = fastd_buffer_alloc(max_len, ctx->conf->protocol->min_decrypt_head_space(ctx), 0);
+	size_t max_len = ctx->conf->method->max_packet_size(ctx);
+	fastd_buffer buffer = fastd_buffer_alloc(max_len, ctx->conf->method->min_decrypt_head_space(ctx), 0);
 	uint8_t packet_type;
 
 	struct iovec iov[2] = {

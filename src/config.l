@@ -59,6 +59,7 @@ bind		{ UPDATE_LOCATION; return TOK_BIND; }
 mtu		{ UPDATE_LOCATION; return TOK_MTU; }
 mode		{ UPDATE_LOCATION; return TOK_MODE; }
 protocol	{ UPDATE_LOCATION; return TOK_PROTOCOL; }
+method		{ UPDATE_LOCATION; return TOK_METHOD; }
 peer		{ UPDATE_LOCATION; return TOK_PEER; }
 address		{ UPDATE_LOCATION; return TOK_ADDRESS; }
 secret		{ UPDATE_LOCATION; return TOK_SECRET; }
