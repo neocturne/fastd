@@ -210,7 +210,7 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer b
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_ERROR_DETAIL, error_detail);
 
-			fastd_task_put_send_handshake(ctx, peer, reply_buffer);
+			fastd_send_handshake(ctx, peer, reply_buffer);
 		}
 		else {
 			ctx->conf->protocol->handshake_handle(ctx, peer, &handshake);

@@ -186,6 +186,91 @@ static void close_sockets(fastd_context *ctx) {
 	}
 }
 
+static void fastd_send_type(fastd_context *ctx, fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
+	int sockfd;
+	struct msghdr msg;
+	memset(&msg, 0, sizeof(msg));
+
+	switch (peer->address.sa.sa_family) {
+	case AF_INET:
+		msg.msg_name = &peer->address.in;
+		msg.msg_namelen = sizeof(struct sockaddr_in);
+		sockfd = ctx->sockfd;
+		break;
+
+	case AF_INET6:
+		msg.msg_name = &peer->address.in6;
+		msg.msg_namelen = sizeof(struct sockaddr_in6);
+		sockfd = ctx->sock6fd;
+		break;
+
+	default:
+		exit_bug(ctx, "unsupported address family");
+	}
+
+	struct iovec iov[2] = {
+		{ .iov_base = &packet_type, .iov_len = 1 },
+		{ .iov_base = buffer.data, .iov_len = buffer.len }
+	};
+
+	msg.msg_iov = iov;
+	msg.msg_iovlen = buffer.len ? 2 : 1;
+
+	sendmsg(sockfd, &msg, 0);
+
+	fastd_buffer_free(buffer);
+}
+
+void fastd_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	fastd_send_type(ctx, peer, PACKET_DATA, buffer);
+}
+
+void fastd_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	fastd_send_type(ctx, peer, PACKET_HANDSHAKE, buffer);
+}
+
+void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+	if (ctx->conf->mode == MODE_TAP) {
+		const fastd_eth_addr *src_addr = fastd_get_source_address(ctx, buffer);
+
+		if (fastd_eth_addr_is_unicast(src_addr))
+			fastd_peer_eth_addr_add(ctx, peer, src_addr);
+	}
+
+	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
+		warn_errno(ctx, "write");
+
+	if (ctx->conf->mode == MODE_TAP && ctx->conf->peer_to_peer) {
+		const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, buffer);
+
+		if (fastd_eth_addr_is_unicast(dest_addr)) {
+			fastd_peer *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
+
+			if (dest_peer && dest_peer != peer && dest_peer->state == STATE_ESTABLISHED) {
+				ctx->conf->protocol->send(ctx, dest_peer, buffer);
+			}
+			else {
+				fastd_buffer_free(buffer);
+			}
+		}
+		else {
+			fastd_peer *dest_peer;
+			for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
+				if (dest_peer != peer && dest_peer->state == STATE_ESTABLISHED) {
+					fastd_buffer send_buffer = fastd_buffer_alloc(buffer.len, ctx->conf->method->min_encrypt_head_space(ctx), 0);
+					memcpy(send_buffer.data, buffer.data, buffer.len);
+					ctx->conf->protocol->send(ctx, dest_peer, send_buffer);
+				}
+			}
+
+			fastd_buffer_free(buffer);
+		}
+	}
+	else {
+		fastd_buffer_free(buffer);
+	}
+}
+
 static void on_up(fastd_context *ctx) {
 	if (!ctx->conf->on_up)
 		return;
@@ -273,87 +358,6 @@ static void handle_tasks(fastd_context *ctx) {
 	fastd_task *task;
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
-		case TASK_SEND:
-			if (task->peer) {
-				int sockfd;
-				struct msghdr msg;
-				memset(&msg, 0, sizeof(msg));
-
-				switch (task->peer->address.sa.sa_family) {
-				case AF_INET:
-					msg.msg_name = &task->peer->address.in;
-					msg.msg_namelen = sizeof(struct sockaddr_in);
-					sockfd = ctx->sockfd;
-					break;
-
-				case AF_INET6:
-					msg.msg_name = &task->peer->address.in6;
-					msg.msg_namelen = sizeof(struct sockaddr_in6);
-					sockfd = ctx->sock6fd;
-					break;
-
-				default:
-					exit_bug(ctx, "unsupported address family");
-				}
-
-				uint8_t packet_type = task->send.packet_type;
-
-				struct iovec iov[2] = {
-					{ .iov_base = &packet_type, .iov_len = 1 },
-					{ .iov_base = task->send.buffer.data, .iov_len = task->send.buffer.len }
-				};
-
-				msg.msg_iov = iov;
-				msg.msg_iovlen = task->send.buffer.len ? 2 : 1;
-
-				sendmsg(sockfd, &msg, 0);
-			}
-
-			fastd_buffer_free(task->send.buffer);
-			break;
-
-		case TASK_HANDLE_RECV:
-			if (ctx->conf->mode == MODE_TAP) {
-				const fastd_eth_addr *src_addr = fastd_get_source_address(ctx, task->handle_recv.buffer);
-
-				if (fastd_eth_addr_is_unicast(src_addr))
-					fastd_peer_eth_addr_add(ctx, task->peer, src_addr);
-			}
-
-			if (write(ctx->tunfd, task->handle_recv.buffer.data, task->handle_recv.buffer.len) < 0)
-				warn_errno(ctx, "write");
-
-			if (ctx->conf->mode == MODE_TAP && ctx->conf->peer_to_peer) {
-				const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, task->handle_recv.buffer);
-
-				if (fastd_eth_addr_is_unicast(dest_addr)) {
-					fastd_peer *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
-
-					if (dest_peer && dest_peer != task->peer && dest_peer->state == STATE_ESTABLISHED) {
-						ctx->conf->protocol->send(ctx, dest_peer, task->handle_recv.buffer);
-					}
-					else {
-						fastd_buffer_free(task->handle_recv.buffer);
-					}
-				}
-				else {
-					fastd_peer *dest_peer;
-					for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
-						if (dest_peer != task->peer && dest_peer->state == STATE_ESTABLISHED) {
-							fastd_buffer send_buffer = fastd_buffer_alloc(task->handle_recv.buffer.len, ctx->conf->method->min_encrypt_head_space(ctx), 0);
-							memcpy(send_buffer.data, task->handle_recv.buffer.data, task->handle_recv.buffer.len);
-							ctx->conf->protocol->send(ctx, dest_peer, send_buffer);
-						}
-					}
-
-					fastd_buffer_free(task->handle_recv.buffer);
-				}
-			}
-			else {
-				fastd_buffer_free(task->handle_recv.buffer);
-			}
-			break;
-
 		case TASK_HANDSHAKE:
 			pr_debug(ctx, "sending handshake to %P...", task->peer);
 			ctx->conf->protocol->handshake_init(ctx, task->peer);

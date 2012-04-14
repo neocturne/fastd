@@ -242,7 +242,7 @@ static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake->public_key.p);
 
-	fastd_task_put_send_handshake(ctx, peer, buffer);
+	fastd_send_handshake(ctx, peer, buffer);
 }
 
 static inline bool has_field(const fastd_handshake *handshake, uint8_t type, size_t length) {
@@ -303,7 +303,7 @@ static void respond_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer->protocol_state->accepting_handshake->peer_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
 
-	fastd_task_put_send_handshake(ctx, peer, buffer);
+	fastd_send_handshake(ctx, peer, buffer);
 
 	peer->protocol_state->accepting_handshake->state = HANDSHAKE_STATE_RESPONSE;
 }
@@ -423,7 +423,7 @@ static void finish_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_h
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer->protocol_state->initiating_handshake->peer_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
 
-	fastd_task_put_send_handshake(ctx, peer, buffer);
+	fastd_send_handshake(ctx, peer, buffer);
 
 	establish(ctx, peer, peer->protocol_state->initiating_handshake->peer_config, true,
 		  &peer->protocol_state->initiating_handshake->public_key,
@@ -650,7 +650,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	fastd_peer_seen(ctx, peer);
 
 	if (recv_buffer.len)
-		fastd_task_put_handle_recv(ctx, peer, recv_buffer);
+		fastd_handle_receive(ctx, peer, recv_buffer);
 	else
 		fastd_buffer_free(recv_buffer);
 
@@ -679,7 +679,7 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 	if (!ctx->conf->method->encrypt(ctx, session->method_state, &send_buffer, buffer))
 		goto fail;
 	
-	fastd_task_put_send(ctx, peer, send_buffer);
+	fastd_send(ctx, peer, send_buffer);
 
 	fastd_task_delete_peer_keepalives(ctx, peer);
 	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);

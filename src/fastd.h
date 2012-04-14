@@ -163,6 +163,10 @@ struct _fastd_string_stack {
 	char str[];
 };
 
+void fastd_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+void fastd_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
 void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir);

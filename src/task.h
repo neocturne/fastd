@@ -34,8 +34,6 @@
 
 
 typedef enum _fastd_task_type {
-	TASK_SEND,
-	TASK_HANDLE_RECV,
 	TASK_HANDSHAKE,
 	TASK_KEEPALIVE,
 } fastd_task_type;
@@ -43,25 +41,11 @@ typedef enum _fastd_task_type {
 typedef struct _fastd_task_any {
 } fastd_task_any;
 
-typedef struct _fastd_task_send {
-	fastd_packet_type packet_type;
-	fastd_buffer buffer;
-} fastd_task_send;
-
-typedef struct _fastd_task_handle_recv {
-	fastd_buffer buffer;
-} fastd_task_handle_recv;
-
 typedef struct _fastd_task {
 	fastd_queue_entry entry;
 
 	fastd_task_type type;
 	fastd_peer *peer;
-
-	union  {
-		fastd_task_send send;
-		fastd_task_handle_recv handle_recv;
-	};
 } fastd_task;
 
 
@@ -71,11 +55,6 @@ static inline int fastd_task_timeout(fastd_context *ctx) {
 
 
 fastd_task* fastd_task_get(fastd_context *ctx);
-
-void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-
-void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
 void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout);
 void fastd_task_schedule_keepalive(fastd_context *ctx, fastd_peer *peer, int timeout);

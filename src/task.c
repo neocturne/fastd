@@ -31,35 +31,6 @@ fastd_task* fastd_task_get(fastd_context *ctx) {
 	return container_of(fastd_queue_get(ctx, &ctx->task_queue), fastd_task, entry);
 }
 
-static void fastd_task_put_send_type(fastd_context *ctx, fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
-	fastd_task *task = malloc(sizeof(fastd_task));
-
-	task->type = TASK_SEND;
-	task->peer = peer;
-	task->send.packet_type = packet_type;
-	task->send.buffer = buffer;
-
-	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, 0);
-}
-
-void fastd_task_put_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_put_send_type(ctx, peer, PACKET_HANDSHAKE, buffer);
-}
-
-void fastd_task_put_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task_put_send_type(ctx, peer, PACKET_DATA, buffer);
-}
-
-void fastd_task_put_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_task *task = malloc(sizeof(fastd_task));
-
-	task->type = TASK_HANDLE_RECV;
-	task->peer = peer;
-	task->handle_recv.buffer = buffer;
-
-	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, 0);
-}
-
 static bool is_handshake(fastd_queue_entry *data, void *extra) {
 	fastd_task *task = container_of(data, fastd_task, entry);
 	fastd_peer *peer = extra;
@@ -152,22 +123,6 @@ static bool delete_task(fastd_queue_entry *data, void *extra) {
 
 	if (e->keepalive_only && task->type != TASK_KEEPALIVE)
 		return true;
-
-	switch (task->type) {
-	case TASK_SEND:
-		fastd_buffer_free(task->send.buffer);
-		break;
-
-	case TASK_HANDLE_RECV:
-		fastd_buffer_free(task->handle_recv.buffer);
-		break;
-
-	case TASK_HANDSHAKE:
-		break;
-
-	case TASK_KEEPALIVE:
-		break;
-	}
 
 	free(task);
 
