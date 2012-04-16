@@ -174,12 +174,16 @@ static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 }
 
 static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
-	if (fastd_peer_is_temporary(peer)) {
-		exit_fatal(ctx, "tried to setup temporary peer");
-	}
+	if (peer->config->hostname)
+		peer->address.sa.sa_family = AF_UNSPEC;
+	else
+		peer->address = peer->config->address;
 
-	peer->address = peer->config->address;
-	peer->state = STATE_WAIT;
+	if (peer->config->hostname)
+		peer->state = STATE_RESOLVE;
+	else
+		peer->state = STATE_WAIT;
+
 	peer->seen = (struct timespec){0, 0};
 
 	if (!fastd_peer_is_floating(peer))
@@ -205,6 +209,7 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 	fastd_peer_config *peer = malloc(sizeof(fastd_peer_config));
 	peer->enabled = true;
 
+	peer->hostname = NULL;
 	memset(&peer->address, 0, sizeof(fastd_peer_address));
 
 	peer->config_source_dir = NULL;
@@ -221,6 +226,7 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 
 void fastd_peer_config_free(fastd_peer_config *peer) {
 	free(peer->name);
+	free(peer->hostname);
 	free(peer->key);
 	free(peer->protocol_config);
 	free(peer);
@@ -270,6 +276,9 @@ bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_co
 	if (peer1->enabled != peer2->enabled)
 		return false;
 
+	if (!strequal(peer1->hostname, peer2->hostname))
+		return false;
+
 	if (!fastd_peer_addr_equal(&peer1->address, &peer2->address))
 		return false;
 
@@ -311,8 +320,6 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	fastd_peer *peer = add_peer(ctx);
 
 	peer->config = peer_conf;
-	peer->state = STATE_WAIT;
-
 	setup_peer(ctx, peer);
 
 	pr_debug(ctx, "adding peer %P", peer);
@@ -369,6 +376,7 @@ fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *per
 
 void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
 	switch(peer->state) {
+	case STATE_RESOLVE:
 	case STATE_WAIT:
 		peer->state = STATE_ESTABLISHED;
 		on_establish(ctx, peer);

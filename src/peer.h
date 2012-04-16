@@ -30,12 +30,6 @@
 #include "fastd.h"
 
 
-union _fastd_peer_address {
-	struct sockaddr sa;
-	struct sockaddr_in in;
-	struct sockaddr_in6 in6;
-};
-
 struct _fastd_peer {
 	fastd_peer *next;
 
@@ -59,6 +53,7 @@ struct _fastd_peer_config {
 	bool enabled;
 	char *name;
 
+	char *hostname;
 	fastd_peer_address address;
 	char *key;
 
@@ -89,7 +84,7 @@ const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_b
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
 
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config) {
-	return (config->address.sa.sa_family == AF_UNSPEC);
+	return (config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC);
 }
 
 static inline bool fastd_peer_is_floating(const fastd_peer *peer) {

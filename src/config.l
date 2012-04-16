@@ -61,7 +61,9 @@ mode		{ UPDATE_LOCATION; return TOK_MODE; }
 protocol	{ UPDATE_LOCATION; return TOK_PROTOCOL; }
 method		{ UPDATE_LOCATION; return TOK_METHOD; }
 peer		{ UPDATE_LOCATION; return TOK_PEER; }
-address		{ UPDATE_LOCATION; return TOK_ADDRESS; }
+remote		{ UPDATE_LOCATION; return TOK_REMOTE; }
+ipv4		{ UPDATE_LOCATION; return TOK_IPV4; }
+ipv6		{ UPDATE_LOCATION; return TOK_IPV6; }
 secret		{ UPDATE_LOCATION; return TOK_SECRET; }
 key		{ UPDATE_LOCATION; return TOK_KEY; }
 include		{ UPDATE_LOCATION; return TOK_INCLUDE; }
@@ -87,6 +89,7 @@ debug		{ UPDATE_LOCATION; return TOK_DEBUG; }
 peer-to-peer	{ UPDATE_LOCATION; return TOK_PEER_TO_PEER; }
 yes		{ UPDATE_LOCATION; return TOK_YES; }
 no		{ UPDATE_LOCATION; return TOK_NO; }
+port		{ UPDATE_LOCATION; return TOK_PORT; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

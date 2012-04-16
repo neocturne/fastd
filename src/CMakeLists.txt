@@ -17,12 +17,13 @@ add_executable(fastd
   printf.c
   queue.c
   random.c
+  resolve.c
   task.c
   protocol_ec25519_fhmqvc.c
   ${FLEX_fastd_config_lex_OUTPUTS}
   ${BISON_fastd_config_parse_OUTPUTS}
   ${METHODS}
 )
-target_link_libraries(fastd rt ${UECC_LIBRARY} ${NACL_LIBRARY})
+target_link_libraries(fastd rt ${CMAKE_THREAD_LIBS_INIT} ${UECC_LIBRARY} ${NACL_LIBRARY})
 
 install(TARGETS fastd RUNTIME DESTINATION sbin)

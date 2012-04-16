@@ -43,6 +43,9 @@ static void print_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	if (peer->config && peer->config->name) {
 		fprintf(stderr, "%c%s%c", pl, peer->config->name, pr);
 	}
+	else if (peer->config && peer->config->hostname) {
+		fprintf(stderr, "%c\"%s\"%c", pl, peer->config->hostname, pr);
+	}
 	else {
 		switch (peer->address.sa.sa_family) {
 		case AF_UNSPEC:

@@ -42,8 +42,8 @@
 #include <unistd.h>
 
 
-static bool sighup = false;
-static bool terminate = false;
+static volatile bool sighup = false;
+static volatile bool terminate = false;
 
 
 static void on_sighup(int signo) {
@@ -52,6 +52,13 @@ static void on_sighup(int signo) {
 
 static void on_terminate(int signo) {
 	terminate = true;
+}
+
+static void on_sigusr1(int signo, siginfo_t *siginfo, void *context) {
+	fastd_resolve_return *ret = siginfo->si_value.sival_ptr;
+
+	ret->next = ret->ctx->resolve_returns;
+	ret->ctx->resolve_returns = ret;
 }
 
 
@@ -71,6 +78,11 @@ static void init_signals(fastd_context *ctx) {
 	if(sigaction(SIGQUIT, &action, NULL))
 		exit_errno(ctx, "sigaction");
 	if(sigaction(SIGINT, &action, NULL))
+		exit_errno(ctx, "sigaction");
+
+	action.sa_flags = SA_SIGINFO;
+	action.sa_sigaction = on_sigusr1;
+	if(sigaction(SIGUSR1, &action, NULL))
 		exit_errno(ctx, "sigaction");
 }
 
@@ -111,7 +123,7 @@ static void init_tuntap(fastd_context *ctx) {
 
 static void close_tuntap(fastd_context *ctx) {
 	if(close(ctx->tunfd))
-		warn_errno(ctx, "closing tun/tap: close");
+		pr_warn_errno(ctx, "closing tun/tap: close");
 
 	free(ctx->ifname);
 }
@@ -154,7 +166,7 @@ static void init_sockets(fastd_context *ctx) {
 
 		if ((ctx->sock6fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 			if (ctx->sockfd >= 0)
-				warn_errno(ctx, "socket");
+				pr_warn_errno(ctx, "socket");
 			else
 				exit_errno(ctx, "socket");
 		}
@@ -177,12 +189,12 @@ static void init_sockets(fastd_context *ctx) {
 static void close_sockets(fastd_context *ctx) {
 	if (ctx->sockfd >= 0) {
 		if(close(ctx->sockfd))
-			warn_errno(ctx, "closing IPv4 socket: close");
+			pr_warn_errno(ctx, "closing IPv4 socket: close");
 	}
 
 	if (ctx->sock6fd >= 0) {
 		if(close(ctx->sock6fd))
-			warn_errno(ctx, "closing IPv6 socket: close");
+			pr_warn_errno(ctx, "closing IPv6 socket: close");
 	}
 }
 
@@ -238,7 +250,7 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 	}
 
 	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
-		warn_errno(ctx, "write");
+		pr_warn_errno(ctx, "write");
 
 	if (ctx->conf->mode == MODE_TAP && ctx->conf->peer_to_peer) {
 		const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, buffer);
@@ -354,18 +366,25 @@ static void update_time(fastd_context *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
+static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
+	pr_debug(ctx, "sending handshake to %P...", peer);
+	ctx->conf->protocol->handshake_init(ctx, peer);
+
+	if (fastd_peer_is_established(peer))
+		fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 10000, 20000));
+	else
+		fastd_task_schedule_handshake(ctx, peer, 20000);
+}
+
 static void handle_tasks(fastd_context *ctx) {
 	fastd_task *task;
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
-			pr_debug(ctx, "sending handshake to %P...", task->peer);
-			ctx->conf->protocol->handshake_init(ctx, task->peer);
-
-			if (fastd_peer_is_established(task->peer))
-				fastd_task_schedule_handshake(ctx, task->peer, fastd_rand(ctx, 10000, 20000));
+			if (task->peer->state == STATE_RESOLVE)
+				fastd_resolve_peer_handshake(ctx, task->peer);
 			else
-				fastd_task_schedule_handshake(ctx, task->peer, 20000);
+				send_handshake(ctx, task->peer);
 			break;
 
 		case TASK_KEEPALIVE:
@@ -554,6 +573,35 @@ static void handle_input(fastd_context *ctx) {
 		handle_socket(ctx, ctx->sock6fd);
 }
 
+static void handle_resolv_returns(fastd_context *ctx) {
+	while (ctx->resolve_returns) {
+		fastd_peer *peer;
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (peer->state != STATE_RESOLVE)
+				continue;
+
+			if (!strequal(peer->config->hostname, ctx->resolve_returns->hostname))
+				continue;
+
+			if (peer->config->address.sa.sa_family != AF_UNSPEC &&
+			    peer->config->address.sa.sa_family != ctx->resolve_returns->addr.sa.sa_family)
+				continue;
+
+			if (peer->config->address.in.sin_port != htons(ctx->resolve_returns->port))
+				continue;
+
+			peer->address = ctx->resolve_returns->addr;
+			send_handshake(ctx, peer);
+			break;
+		}
+
+		fastd_resolve_return *next = ctx->resolve_returns->next;
+		free(ctx->resolve_returns->hostname);
+		free(ctx->resolve_returns);
+		ctx->resolve_returns = next;
+	}
+}
+
 static void cleanup_peers(fastd_context *ctx) {
 	fastd_peer *peer, *next;
 
@@ -611,6 +659,8 @@ int main(int argc, char *argv[]) {
 			sighup = false;
 			fastd_reconfigure(&ctx, &conf);
 		}
+
+		handle_resolv_returns(&ctx);
 	}
 
 	on_down(&ctx);

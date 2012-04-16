@@ -91,6 +91,24 @@ struct _fastd_method {
 	bool (*decrypt)(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
 };
 
+union _fastd_peer_address {
+	struct sockaddr sa;
+	struct sockaddr_in in;
+	struct sockaddr_in6 in6;
+};
+
+struct _fastd_resolve_return {
+	fastd_resolve_return *next;
+
+	fastd_context *ctx;
+
+	char *hostname;
+	sa_family_t af;
+	uint16_t port;
+
+	fastd_peer_address addr;
+};
+
 struct _fastd_config {
 	fastd_loglevel loglevel;
 
@@ -156,6 +174,8 @@ struct _fastd_context {
 	fastd_peer_eth_addr *eth_addr;
 
 	unsigned int randseed;
+
+	fastd_resolve_return *resolve_returns;
 };
 
 struct _fastd_string_stack {
@@ -163,9 +183,12 @@ struct _fastd_string_stack {
 	char str[];
 };
 
+
 void fastd_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 void fastd_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+
+void fastd_resolve_peer_handshake(fastd_context *ctx, fastd_peer *peer);
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
@@ -216,7 +239,8 @@ static inline int fastd_rand(fastd_context *ctx, int min, int max) {
 #define pr_verbose(ctx, args...) pr_log(ctx, LOG_VERBOSE, "Verbose: ", args)
 #define pr_debug(ctx, args...) pr_log(ctx, LOG_DEBUG, "DEBUG: ", args)
 
-#define warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
+#define pr_warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
+#define pr_error_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
 #define exit_fatal(ctx, args...) do { pr_fatal(ctx, args); abort(); } while(0)
 #define exit_bug(ctx, message) exit_fatal(ctx, "BUG: %s", message)
 #define exit_error(ctx, args...) do { pr_error(ctx, args); exit(1); } while(0)

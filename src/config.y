@@ -38,7 +38,6 @@
 
 	#include <fastd.h>
 	#include <arpa/inet.h>
-	#include <unistd.h>
 }
 
 %union {
@@ -63,7 +62,9 @@
 %token TOK_PROTOCOL
 %token TOK_METHOD
 %token TOK_PEER
-%token TOK_ADDRESS
+%token TOK_REMOTE
+%token TOK_IPV4
+%token TOK_IPV6
 %token TOK_SECRET
 %token TOK_KEY
 %token TOK_INCLUDE
@@ -89,6 +90,7 @@
 %token TOK_PEER_TO_PEER
 %token TOK_YES
 %token TOK_NO
+%token TOK_PORT
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -96,8 +98,10 @@
 
 %code {
 	#include <config.h>
-	#include <stdint.h>
 	#include <peer.h>
+
+	#include <stdint.h>
+	#include <unistd.h>
 
 	void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s);
 }
@@ -109,6 +113,7 @@
 %type <boolean> boolean
 %type <num> maybe_port
 %type <str> maybe_as
+%type <num> maybe_af
 
 %%
 start:		START_CONFIG config
@@ -153,18 +158,18 @@ interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
 bind:		TOK_ADDR maybe_port {
 			conf->bind_addr_in.sin_family = AF_INET;
 			conf->bind_addr_in.sin_addr = $1;
-			conf->bind_addr_in.sin_port = $2;
+			conf->bind_addr_in.sin_port = htons($2);
 		}
 	|	TOK_ADDR6 maybe_port {
 			conf->bind_addr_in6.sin6_family = AF_INET6;
 			conf->bind_addr_in6.sin6_addr = $1;
-			conf->bind_addr_in6.sin6_port = $2;
+			conf->bind_addr_in6.sin6_port = htons($2);
 		}
 	|	TOK_ANY maybe_port {
 			conf->bind_addr_in.sin_addr.s_addr = htonl(INADDR_ANY);
-			conf->bind_addr_in.sin_port = $2;
+			conf->bind_addr_in.sin_port = htons($2);
 			conf->bind_addr_in6.sin6_addr = in6addr_any;
-			conf->bind_addr_in6.sin6_port = $2;
+			conf->bind_addr_in6.sin6_port = htons($2);
 		}
 	;
 
@@ -221,7 +226,7 @@ on_establish:	TOK_STRING	{
 		}
 	;
 
-on_disestablish:	TOK_STRING	{
+on_disestablish: TOK_STRING	{
 			free(conf->on_disestablish);
 			free(conf->on_disestablish_dir);
 
@@ -240,20 +245,33 @@ peer_conf:	peer_conf peer_statement
 	|
 	;
 
-peer_statement: TOK_ADDRESS peer_address ';'
+peer_statement: TOK_REMOTE peer_remote ';'
 	|	TOK_KEY peer_key ';'
 	|	TOK_INCLUDE peer_include  ';'
 	;
 
-peer_address:	TOK_ADDR ':' port {
+peer_remote:	TOK_ADDR port {
+			free(conf->peers->hostname);
+			conf->peers->hostname = NULL;
+
 			conf->peers->address.in.sin_family = AF_INET;
 			conf->peers->address.in.sin_addr = $1;
-			conf->peers->address.in.sin_port = $3;
+			conf->peers->address.in.sin_port = htons($2);
 		}
-	|	TOK_ADDR6 ':' port {
+	|	TOK_ADDR6 port {
+			free(conf->peers->hostname);
+			conf->peers->hostname = NULL;
+
 			conf->peers->address.in6.sin6_family = AF_INET6;
 			conf->peers->address.in6.sin6_addr = $1;
-			conf->peers->address.in6.sin6_port = $3;
+			conf->peers->address.in6.sin6_port = htons($2);
+		}
+	|	maybe_af TOK_STRING port {
+			free(conf->peers->hostname);
+
+			conf->peers->hostname = strdup($2->str);
+			conf->peers->address.sa.sa_family = $1;
+			conf->peers->address.in.sin_port = htons($3);
 		}
 	;
 
@@ -292,7 +310,7 @@ maybe_string:	TOK_STRING
 	|			{ $$ = NULL; }
 	;
 
-maybe_port:	':' port	{ $$ = $2; }
+maybe_port:	port		{ $$ = $1; }
 	|			{ $$ = 0; }
 	;
 
@@ -300,16 +318,25 @@ maybe_as:	TOK_AS TOK_STRING { $$ = $2; }
 	|			{ $$ = NULL; }
 	;
 
+maybe_af:	TOK_IPV4	{ $$ = AF_INET; }
+	|	TOK_IPV6	{ $$ = AF_INET6; }
+	|			{ $$ = AF_UNSPEC; }
+	;
+
 boolean:	TOK_YES		{ $$ = true; }
 	|	TOK_NO		{ $$ = false; }
 	;
 
-port:		TOK_INTEGER {
-			if ($1 < 0 || $1 > 65635) {
+colon_or_port:	':'
+	|	TOK_PORT
+	;
+
+port:		colon_or_port TOK_INTEGER {
+			if ($2 < 0 || $2 > 65635) {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid port");
 				YYERROR;
 			}
-			$$ = htons($1);
+			$$ = $2;
 		}
 	;
 %%

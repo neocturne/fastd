@@ -6,6 +6,12 @@ set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR})
 find_package(BISON 2.5 REQUIRED)
 find_package(FLEX REQUIRED)
 
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+find_package(Threads)
+if(NOT CMAKE_USE_PTHREADS_INIT)
+  MESSAGE(FATAL_ERROR "No pthread support found.")
+endif(NOT CMAKE_USE_PTHREADS_INIT)
+
 find_package(UECC REQUIRED)
 find_package(NaCl REQUIRED)
 
