@@ -549,6 +549,9 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			exit_error(ctx, "config error: for tun mode peer directories can't be used");
 	}
 
+	if (!conf->peers && !conf->peer_dirs)
+		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
+
 	count_peers(ctx, conf);
 }
 
