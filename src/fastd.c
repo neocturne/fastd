@@ -35,6 +35,7 @@
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <poll.h>
+#include <pthread.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -231,7 +232,13 @@ static void fastd_send_type(fastd_context *ctx, fastd_peer *peer, uint8_t packet
 	msg.msg_iov = iov;
 	msg.msg_iovlen = buffer.len ? 2 : 1;
 
-	sendmsg(sockfd, &msg, 0);
+	int ret;
+	do {
+		ret = sendmsg(sockfd, &msg, 0);
+	} while (ret < 0 && errno == EINTR);
+
+	if (ret < 0)
+		pr_warn_errno(ctx, "sendmsg");
 
 	fastd_buffer_free(buffer);
 }
@@ -668,12 +675,18 @@ int main(int argc, char *argv[]) {
 
 		maintenance(&ctx);
 
+		sigset_t set, oldset;
+		sigemptyset(&set);
+		pthread_sigmask(SIG_SETMASK, &set, &oldset);
+
 		if (sighup) {
 			sighup = false;
 			fastd_reconfigure(&ctx, &conf);
 		}
 
 		handle_resolv_returns(&ctx);
+
+		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 	}
 
 	on_down(&ctx);
