@@ -24,6 +24,7 @@ add_executable(fastd
   ${BISON_fastd_config_parse_OUTPUTS}
   ${METHODS}
 )
-target_link_libraries(fastd rt ${CMAKE_THREAD_LIBS_INIT} ${UECC_LIBRARY} ${NACL_LIBRARY})
+set_target_properties(fastd PROPERTIES COMPILE_FLAGS -pthread LINK_FLAGS -pthread)
+target_link_libraries(fastd rt ${UECC_LIBRARY} ${NACL_LIBRARY})
 
 install(TARGETS fastd RUNTIME DESTINATION sbin)
