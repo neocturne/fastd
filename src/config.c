@@ -339,7 +339,6 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]) {
 	default_config(conf);
 
-	fastd_peer_config *peer;
 	int i = 1;
 	const char *arg;
 	long l;
