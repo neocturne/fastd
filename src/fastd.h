@@ -124,7 +124,7 @@ struct _fastd_config {
 	uint16_t mtu;
 	fastd_mode mode;
 
-	bool peer_to_peer;
+	bool forward;
 
 	const fastd_protocol *protocol;
 	const fastd_method *method;

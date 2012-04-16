@@ -255,7 +255,7 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
 		pr_warn_errno(ctx, "write");
 
-	if (ctx->conf->mode == MODE_TAP && ctx->conf->peer_to_peer) {
+	if (ctx->conf->mode == MODE_TAP && ctx->conf->forward) {
 		const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, buffer);
 
 		if (fastd_eth_addr_is_unicast(dest_addr)) {

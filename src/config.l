@@ -86,7 +86,7 @@ warn		{ UPDATE_LOCATION; return TOK_WARN; }
 info		{ UPDATE_LOCATION; return TOK_INFO; }
 verbose		{ UPDATE_LOCATION; return TOK_VERBOSE; }
 debug		{ UPDATE_LOCATION; return TOK_DEBUG; }
-peer-to-peer	{ UPDATE_LOCATION; return TOK_PEER_TO_PEER; }
+forward		{ UPDATE_LOCATION; return TOK_FORWARD; }
 yes		{ UPDATE_LOCATION; return TOK_YES; }
 no		{ UPDATE_LOCATION; return TOK_NO; }
 port		{ UPDATE_LOCATION; return TOK_PORT; }

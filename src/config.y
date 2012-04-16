@@ -87,7 +87,7 @@
 %token TOK_INFO
 %token TOK_VERBOSE
 %token TOK_DEBUG
-%token TOK_PEER_TO_PEER
+%token TOK_FORWARD
 %token TOK_YES
 %token TOK_NO
 %token TOK_PORT
@@ -106,8 +106,6 @@
 	void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s);
 }
 
-
-%type <str> maybe_string
 
 %type <num> port
 %type <boolean> boolean
@@ -137,7 +135,7 @@ statement:	TOK_LOG log ';'
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_PEER peer '{' peer_conf '}'
-	|	TOK_PEER_TO_PEER peer_to_peer ';'
+	|	TOK_FORWARD forward ';'
 	|	TOK_INCLUDE include ';'
 	;
 
@@ -235,7 +233,7 @@ on_disestablish: TOK_STRING	{
 		}
 	;
 
-peer:		maybe_string {
+peer:		TOK_STRING {
 			fastd_peer_config_new(ctx, conf);
 			conf->peers->name = strdup($1->str);
 		}
@@ -285,7 +283,7 @@ peer_include:	TOK_STRING	{
 	;
 
 
-peer_to_peer:	boolean		{ conf->peer_to_peer = $1; }
+forward:	boolean		{ conf->forward = $1; }
 	;
 
 
@@ -305,10 +303,6 @@ include:	TOK_PEER TOK_STRING maybe_as {
 		}
 	;
 
-
-maybe_string:	TOK_STRING
-	|			{ $$ = NULL; }
-	;
 
 maybe_port:	port		{ $$ = $1; }
 	|			{ $$ = 0; }

@@ -66,7 +66,7 @@ static void default_config(fastd_config *conf) {
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
 
-	conf->peer_to_peer = false;
+	conf->forward = false;
 
 	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	conf->method = &fastd_method_null;
@@ -484,51 +484,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 			continue;
 		}
 
-		IF_OPTION_ARG("-p", "--peer") {
-			peer = fastd_peer_config_new(ctx, conf);
-
-			if (strcmp(arg, "float") == 0)
-				continue;
-
-			if (arg[0] == '[') {
-				charptr = strchr(arg, ']');
-				if (!charptr || (charptr[1] != ':'))
-					exit_error(ctx, "invalid peer address `%s'", arg);
-
-				addrstr = strndup(arg+1, charptr-arg-1);
-				charptr++;
-			}
-			else {
-				charptr = strchr(arg, ':');
-				if (!charptr)
-					exit_error(ctx, "invalid peer address `%s'", arg);
-
-				addrstr = strndup(arg, charptr-arg);
-			}
-
-			l = strtol(charptr+1, &endptr, 10);
-			if (*endptr || l < 0 || l > 65535)
-				exit_error(ctx, "invalid peer port `%s'", charptr+1);
-
-			if (arg[0] == '[') {
-				peer->address.in6.sin6_family = AF_INET6;
-				if (inet_pton(AF_INET6, addrstr, &peer->address.in6.sin6_addr) != 1)
-					exit_error(ctx, "invalid peer address `%s'", addrstr);
-				peer->address.in6.sin6_port = htons(l);
-			}
-			else {
-				peer->address.in.sin_family = AF_INET;
-				if (inet_pton(AF_INET, addrstr, &peer->address.in.sin_addr) != 1)
-					exit_error(ctx, "invalid peer address `%s'", addrstr);
-				peer->address.in.sin_port = htons(l);
-			}
-
-			free(addrstr);
-			continue;
-		}
-
-		IF_OPTION("--peer-to-peer") {
-			conf->peer_to_peer = true;
+		IF_OPTION("--forward") {
+			conf->forward = true;
 			continue;
 		}
 
