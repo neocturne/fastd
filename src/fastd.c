@@ -370,10 +370,7 @@ static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
 	pr_debug(ctx, "sending handshake to %P...", peer);
 	ctx->conf->protocol->handshake_init(ctx, peer);
 
-	if (fastd_peer_is_established(peer))
-		fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 10000, 20000));
-	else
-		fastd_task_schedule_handshake(ctx, peer, 20000);
+	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
 }
 
 static void handle_tasks(fastd_context *ctx) {
