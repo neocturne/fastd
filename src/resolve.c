@@ -38,12 +38,11 @@ typedef struct _resolv_arg {
 	fastd_context *ctx;
 	pthread_t master_thread;
 	char *hostname;
-	sa_family_t af;
-	uint16_t port;
+	fastd_peer_address constraints;
 } resolv_arg;
 
 
-static void* fastd_resolve_peer_handshake_do(void *varg) {
+static void* resolve_peer(void *varg) {
 	resolv_arg *arg = varg;
 
 	struct addrinfo hints;
@@ -52,10 +51,10 @@ static void* fastd_resolve_peer_handshake_do(void *varg) {
 	bool error = false;
 
 	char portstr[6];
-	snprintf(portstr, 6, "%u", arg->port);
+	snprintf(portstr, 6, "%u", ntohs(arg->constraints.in.sin_port));
 
 	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = arg->af;
+	hints.ai_family = arg->constraints.sa.sa_family;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
@@ -79,8 +78,7 @@ static void* fastd_resolve_peer_handshake_do(void *varg) {
 	ret->ctx = arg->ctx;
 
 	ret->hostname = arg->hostname;
-	ret->af = arg->af;
-	ret->port = arg->port;
+	ret->constraints = arg->constraints;
 
 	if (!error) {
 		pr_debug(arg->ctx, "Resolved host `%s' successfully", arg->hostname);
@@ -101,19 +99,18 @@ static void* fastd_resolve_peer_handshake_do(void *varg) {
 	return NULL;
 }
 
-void fastd_resolve_peer_handshake(fastd_context *ctx, fastd_peer *peer) {
-	pr_debug(ctx, "Resolving host `%s' for peer %P...", peer->config->hostname, peer);
+void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer) {
+	pr_debug(ctx, "Resolving host `%s' for peer `%s'...", peer->hostname, peer->name);
 
 	resolv_arg *arg = malloc(sizeof(resolv_arg));
 
 	arg->ctx = ctx;
 	arg->master_thread = pthread_self();
-	arg->hostname = strdup(peer->config->hostname);
-	arg->af = peer->config->address.sa.sa_family;
-	arg->port = ntohs(peer->config->address.in.sin_port);
+	arg->hostname = strdup(peer->hostname);
+	arg->constraints = peer->address;
 
 	pthread_t thread;
-	if (pthread_create(&thread, NULL, fastd_resolve_peer_handshake_do, arg) != 0) {
+	if (pthread_create(&thread, NULL, resolve_peer, arg) != 0) {
 		pr_error_errno(ctx, "unable to create resolver thread");
 		free(arg->hostname);
 		free(arg);

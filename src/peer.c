@@ -251,7 +251,7 @@ void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf) {
 	fastd_peer_config_free(conf);
 }
 
-static bool fastd_peer_addr_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2) {
+bool fastd_peer_addr_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2) {
 	if (addr1->sa.sa_family != addr2->sa.sa_family)
 		return false;
 
@@ -330,9 +330,6 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *address) {
 	fastd_peer *peer = add_peer(ctx);
 
-	if (!ctx->conf->n_floating)
-		exit_bug(ctx, "tried to add a temporary peer with no floating remotes defined");
-
 	peer->config = NULL;
 	peer->address = *address;
 	peer->state = STATE_TEMP;
@@ -407,6 +404,26 @@ const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buf
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
+}
+
+bool fastd_peer_config_matches_dynamic(const fastd_peer_config *config, const fastd_peer_address *addr) {
+	if (!config->hostname)
+		return false;
+
+	if (config->address.sa.sa_family != AF_UNSPEC &&
+	    config->address.sa.sa_family != addr->sa.sa_family)
+		return false;
+
+	if (addr->sa.sa_family == AF_INET6) {
+		if (config->address.in.sin_port != addr->in6.sin6_port)
+			return false;
+	}
+	else {
+		if (config->address.in.sin_port != addr->in.sin_port)
+			return false;
+	}
+
+	return true;
 }
 
 static inline int fastd_eth_addr_cmp(const fastd_eth_addr *addr1, const fastd_eth_addr *addr2) {

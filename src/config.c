@@ -292,20 +292,32 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 	conf->n_floating = 0;
 	conf->n_v4 = 0;
 	conf->n_v6 = 0;
+	conf->n_dynamic = 0;
+	conf->n_dynamic_v4 = 0;
+	conf->n_dynamic_v6 = 0;
 
 	fastd_peer_config *peer;
 	for (peer = conf->peers; peer; peer = peer->next) {
 		switch (peer->address.sa.sa_family) {
 		case AF_UNSPEC:
-			conf->n_floating++;
+			if (peer->hostname)
+				conf->n_dynamic++;
+			else
+				conf->n_floating++;
 			break;
 
 		case AF_INET:
-			conf->n_v4++;
+			if (peer->hostname)
+				conf->n_dynamic_v4++;
+			else
+				conf->n_v4++;
 			break;
 
 		case AF_INET6:
-			conf->n_v6++;
+			if (peer->hostname)
+				conf->n_dynamic_v6++;
+			else
+				conf->n_v6++;
 			break;
 
 		default:

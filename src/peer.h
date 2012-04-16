@@ -67,6 +67,8 @@ struct _fastd_peer_eth_addr {
 };
 
 
+bool fastd_peer_addr_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2);
+
 fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf);
 void fastd_peer_config_free(fastd_peer_config *peer);
 void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf);
@@ -87,8 +89,14 @@ static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config
 	return (config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC);
 }
 
+bool fastd_peer_config_matches_dynamic(const fastd_peer_config *config, const fastd_peer_address *addr);
+
 static inline bool fastd_peer_is_floating(const fastd_peer *peer) {
 	return (peer->config && fastd_peer_config_is_floating(peer->config));
+}
+
+static inline bool fastd_peer_is_dynamic(const fastd_peer *peer) {
+	return (peer->config && peer->config->hostname);
 }
 
 static inline bool fastd_peer_is_waiting(const fastd_peer *peer) {

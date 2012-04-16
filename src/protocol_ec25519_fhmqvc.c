@@ -245,10 +245,6 @@ static void protocol_handshake_init(fastd_context *ctx, fastd_peer *peer) {
 	fastd_send_handshake(ctx, peer, buffer);
 }
 
-static inline bool has_field(const fastd_handshake *handshake, uint8_t type, size_t length) {
-	return (handshake->records[type].length == length);
-}
-
 static void respond_handshake(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
 	pr_debug(ctx, "responding handshake with %P...", peer);
 
@@ -454,20 +450,27 @@ static void handle_finish_handshake(fastd_context *ctx, fastd_peer *peer, const 
 		  &peer->protocol_state->accepting_handshake->sigma);
 }
 
-static inline const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd_peer *peer, const unsigned char key[32]) {
+static inline const fastd_peer_config* match_sender_key(fastd_context *ctx, fastd_peer *peer, const unsigned char key[32]) {
 	if (peer->config) {
 		if (memcmp(peer->config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0)
 			return peer->config;
 	}
 
-	if (fastd_peer_is_temporary(peer) || fastd_peer_is_floating(peer)) {
+	if (fastd_peer_is_temporary(peer) || fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer)) {
 		fastd_peer_config *config;
 		for (config = ctx->conf->peers; config; config = config->next) {
-			if (!fastd_peer_config_is_floating(config))
+			if (!fastd_peer_config_is_floating(config) && !fastd_peer_config_matches_dynamic(config, &peer->address))
 				continue;
 
-		if (memcmp(config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0)
-			return config;
+			if (memcmp(config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
+				if (fastd_peer_config_is_floating(config)) {
+					return config;
+				}
+				else { /* matches dynamic */
+					fastd_resolve_peer(ctx, config);
+					return NULL;
+				}
+			}
 		}
 	}
 
@@ -484,6 +487,10 @@ static void kill_handshakes(fastd_context *ctx, fastd_peer *peer) {
 	peer->protocol_state->accepting_handshake = NULL;
 }
 
+static inline bool has_field(const fastd_handshake *handshake, uint8_t type, size_t length) {
+	return (handshake->records[type].length == length);
+}
+
 static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake) {
 	init_peer_state(ctx, peer);
 
@@ -493,6 +500,10 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_peer *peer, cons
 	}
 
 	const fastd_peer_config *peer_config = match_sender_key(ctx, peer, handshake->records[RECORD_SENDER_KEY].data);
+	if (!peer_config) {
+		pr_debug(ctx, "ignoring handshake from %P (unknown key or unresolved host)", peer);
+		return;
+	}
 
 	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
 		pr_debug(ctx, "received handshake reply without receipient key from %P", peer);

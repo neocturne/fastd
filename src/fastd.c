@@ -55,6 +55,9 @@ static void on_terminate(int signo) {
 }
 
 static void on_sigusr1(int signo, siginfo_t *siginfo, void *context) {
+	if (siginfo->si_code != SI_QUEUE || !siginfo->si_value.sival_ptr)
+		return;
+
 	fastd_resolve_return *ret = siginfo->si_value.sival_ptr;
 
 	ret->next = ret->ctx->resolve_returns;
@@ -133,10 +136,10 @@ static void init_sockets(fastd_context *ctx) {
 	struct sockaddr_in6 addr_in6 = ctx->conf->bind_addr_in6;
 
 	if (addr_in.sin_family == AF_UNSPEC && addr_in6.sin6_family == AF_UNSPEC) {
-		if (ctx->conf->n_floating || ctx->conf->peer_dirs || ctx->conf->n_v4)
+		if (ctx->conf->peer_dirs || ctx->conf->n_floating || ctx->conf->n_v4 || ctx->conf->n_dynamic || ctx->conf->n_dynamic_v4)
 			addr_in.sin_family = AF_INET;
 
-		if (ctx->conf->n_floating || ctx->conf->peer_dirs || ctx->conf->n_v6)
+		if (ctx->conf->peer_dirs || ctx->conf->n_floating || ctx->conf->n_v6 || ctx->conf->n_dynamic || ctx->conf->n_dynamic_v6)
 			addr_in6.sin6_family = AF_INET6;
 	}
 
@@ -362,13 +365,15 @@ static void delete_peers(fastd_context *ctx) {
 	}
 }
 
-static void update_time(fastd_context *ctx) {
+static inline void update_time(fastd_context *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
-static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
-	pr_debug(ctx, "sending handshake to %P...", peer);
-	ctx->conf->protocol->handshake_init(ctx, peer);
+static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
+	if (peer->address.sa.sa_family != AF_UNSPEC) {
+		pr_debug(ctx, "sending handshake to %P...", peer);
+		ctx->conf->protocol->handshake_init(ctx, peer);
+	}
 
 	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
 }
@@ -379,7 +384,7 @@ static void handle_tasks(fastd_context *ctx) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
 			if (task->peer->state == STATE_RESOLVE)
-				fastd_resolve_peer_handshake(ctx, task->peer);
+				fastd_resolve_peer(ctx, task->peer->config);
 			else
 				send_handshake(ctx, task->peer);
 			break;
@@ -516,7 +521,9 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 			fastd_buffer_free(buffer);
 		}
 	}
-	else if(ctx->conf->n_floating) {
+	else if(ctx->conf->n_floating || ctx->conf->n_dynamic ||
+		(recvaddr.sa.sa_family == AF_INET && ctx->conf->n_dynamic_v4) ||
+		(recvaddr.sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6)) {
 		switch (packet_type) {
 		case PACKET_DATA:
 			peer = fastd_peer_add_temp(ctx, (fastd_peer_address*)&recvaddr);
@@ -570,35 +577,6 @@ static void handle_input(fastd_context *ctx) {
 		handle_socket(ctx, ctx->sock6fd);
 }
 
-static void handle_resolv_returns(fastd_context *ctx) {
-	while (ctx->resolve_returns) {
-		fastd_peer *peer;
-		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (peer->state != STATE_RESOLVE)
-				continue;
-
-			if (!strequal(peer->config->hostname, ctx->resolve_returns->hostname))
-				continue;
-
-			if (peer->config->address.sa.sa_family != AF_UNSPEC &&
-			    peer->config->address.sa.sa_family != ctx->resolve_returns->addr.sa.sa_family)
-				continue;
-
-			if (peer->config->address.in.sin_port != htons(ctx->resolve_returns->port))
-				continue;
-
-			peer->address = ctx->resolve_returns->addr;
-			send_handshake(ctx, peer);
-			break;
-		}
-
-		fastd_resolve_return *next = ctx->resolve_returns->next;
-		free(ctx->resolve_returns->hostname);
-		free(ctx->resolve_returns);
-		ctx->resolve_returns = next;
-	}
-}
-
 static void cleanup_peers(fastd_context *ctx) {
 	fastd_peer *peer, *next;
 
@@ -613,6 +591,44 @@ static void cleanup_peers(fastd_context *ctx) {
 			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000)
 				fastd_peer_reset(ctx, peer);
 		}
+	}
+}
+
+static void cleanup_peer_with_address(fastd_context *ctx, const fastd_peer_address *addr) {
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (fastd_peer_is_temporary(peer) && fastd_peer_addr_equal(&peer->address, addr)) {
+			fastd_peer_reset(ctx, peer);
+			return;
+		}
+	}
+}
+
+static void handle_resolv_returns(fastd_context *ctx) {
+	while (ctx->resolve_returns) {
+		fastd_peer *peer;
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (!peer->config)
+				continue;
+
+			if (!strequal(peer->config->hostname, ctx->resolve_returns->hostname))
+				continue;
+
+			if (!fastd_peer_config_matches_dynamic(peer->config, &ctx->resolve_returns->constraints))
+				continue;
+
+			cleanup_peer_with_address(ctx, &ctx->resolve_returns->addr);
+			peer->address = ctx->resolve_returns->addr;
+
+			if (peer->state == STATE_RESOLVE)
+				send_handshake(ctx, peer);
+			break;
+		}
+
+		fastd_resolve_return *next = ctx->resolve_returns->next;
+		free(ctx->resolve_returns->hostname);
+		free(ctx->resolve_returns);
+		ctx->resolve_returns = next;
 	}
 }
 

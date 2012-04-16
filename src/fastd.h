@@ -103,8 +103,7 @@ struct _fastd_resolve_return {
 	fastd_context *ctx;
 
 	char *hostname;
-	sa_family_t af;
-	uint16_t port;
+	fastd_peer_address constraints;
 
 	fastd_peer_address addr;
 };
@@ -139,6 +138,9 @@ struct _fastd_config {
 	unsigned n_floating;
 	unsigned n_v4;
 	unsigned n_v6;
+	unsigned n_dynamic;
+	unsigned n_dynamic_v4;
+	unsigned n_dynamic_v6;
 
 	fastd_protocol_config *protocol_config;
 
@@ -188,7 +190,7 @@ void fastd_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 void fastd_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
-void fastd_resolve_peer_handshake(fastd_context *ctx, fastd_peer *peer);
+void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer);
 
 void fastd_printf(const fastd_context *ctx, const char *format, ...);
 
