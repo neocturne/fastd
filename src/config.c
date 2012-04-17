@@ -89,6 +89,7 @@ static void default_config(fastd_config *conf) {
 	conf->on_disestablish = NULL;
 	conf->on_disestablish_dir = NULL;
 
+	conf->generate_key = false;
 }
 
 static bool config_match(const char *opt, ...) {
@@ -326,217 +327,242 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 	}
 }
 
-#define IF_OPTION(args...) if(config_match(argv[i], args, NULL) && (++i))
-#define IF_OPTION_ARG(args...) if(config_match(argv[i], args, NULL) && ({ \
-				arg = argv[i+1];			\
-				i+=2;					\
-				if (i > argc)				\
-					exit_error(ctx, "config error: option `%s' needs an argument", argv[i-2]); \
-				true;					\
-			}))
-#define IGNORE_OPTION (i++)
 
-void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]) {
-	default_config(conf);
+#define OPTIONS \
+	OPTION(usage, "\t--help | -h\n\t\tShows this help text", "--help", "-h") \
+	OPTION(version, "\t--version | -v\n\t\tShows the fastd version", "--version", "-v") \
+	OPTION_ARG(option_log_level, "\t--log-level error|warn|info|verbose|debug\n\t\tSets the log level; default is info", "--log-level") \
+	OPTION_ARG(option_config, "\t--config | -c <filename>\n\t\tLoads a config file", "--config", "-c") \
+	OPTION_ARG(option_config_peer, "\t--config-peer <filename>\n\t\tLoads a config file for a single peer", "--config-peer") \
+	OPTION_ARG(option_config_peer_dir, "\t--config-peer-dir <dir>\n\t\tLoads all files from a directory as peer configs", "--config-peer-dir") \
+	OPTION_ARG(option_mode, "\t--mode | -m tap|tun\n\t\tSets the mode of the interface", "--mode", "-m") \
+	OPTION_ARG(option_interface, "\t--interface | -i <name>\n\t\tSets the name of the TUN/TAP interface to use", "--interface", "-i") \
+	OPTION_ARG(option_mtu, "\t--mtu | -M <mtu>\n\t\tSets the MTU; must be at least 576", "--mtu", "-M") \
+	OPTION_ARG(option_bind, "\t--bind | -b <address>:<port>\n\t\tSets the bind address", "--bind", "-b") \
+	OPTION_ARG(option_protocol, "\t--protocol | -p <protocol>\n\t\tSets the protocol", "--protocol", "-p") \
+	OPTION_ARG(option_method, "\t--method <method>\n\t\tSets the encryption method", "--method") \
+	OPTION(option_forward, "\t--forward\n\t\tEnables forwarding of packets between clients; read the documentation before use!", "--forward") \
+	OPTION_ARG(option_on_up, "\t--on-up <command>\n\t\tSets a shell command to execute after interface creation", "--on-up") \
+	OPTION_ARG(option_on_down, "\t--on-down <command>\n\t\tSets a shell command to execute before interface destruction", "--on-down") \
+	OPTION_ARG(option_on_establish, "\t--on-establish <command>\n\t\tSets a shell command to execute when a new connection is established", "--on-establish") \
+	OPTION_ARG(option_on_disestablish, "\t--on-disestablish <command>\n\t\tSets a shell command to execute when a connection is lost", "--on-disestablish") \
+	OPTION(option_generate_key, "\t--generate-key\n\t\tGenerates a new keypair", "--generate-key")
 
-	int i = 1;
-	const char *arg;
+
+static void usage(fastd_context *ctx, fastd_config *conf) {
+#define OPTION(func, message, args...) puts("\n" message);
+#define OPTION_ARG(func, message, args...) puts("\n" message);
+
+	puts("fastd (Fast and Secure Tunneling Daemon) version " FASTD_VERSION " usage:");
+
+	OPTIONS
+	exit(0);
+
+#undef OPTION
+#undef OPTION_ARG
+}
+
+static void version(fastd_context *ctx, fastd_config *conf) {
+	puts("fastd " FASTD_VERSION);
+	exit(0);
+}
+
+
+static void option_log_level(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	if (!strcmp(arg, "fatal"))
+		conf->loglevel = LOG_FATAL;
+	else if (!strcmp(arg, "error"))
+		conf->loglevel = LOG_ERROR;
+	else if (!strcmp(arg, "warn"))
+		conf->loglevel = LOG_WARN;
+	else if (!strcmp(arg, "info"))
+		conf->loglevel = LOG_INFO;
+	else if (!strcmp(arg, "verbose"))
+		conf->loglevel = LOG_VERBOSE;
+	else if (!strcmp(arg, "debug"))
+		conf->loglevel = LOG_DEBUG;
+	else
+		exit_error(ctx, "invalid log level `%s'", arg);
+}
+
+static void option_config(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	if (!strcmp(arg, "-"))
+		arg = NULL;
+
+	if (!fastd_read_config(ctx, conf, arg, false, 0))
+		exit(1);
+}
+
+static void option_config_peer(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	fastd_peer_config_new(ctx, conf);
+
+	if(!fastd_read_config(ctx, conf, arg, true, 0))
+		exit(1);
+}
+
+static void option_config_peer_dir(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	fastd_read_peer_dir(ctx, conf, arg);
+}
+
+static void option_mode(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	if (!strcmp(arg, "tap"))
+		conf->mode = MODE_TAP;
+	else if (!strcmp(arg, "tun"))
+		conf->mode = MODE_TUN;
+	else
+		exit_error(ctx, "invalid mode `%s'", arg);
+}
+
+static void option_interface(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	free(conf->ifname);
+	conf->ifname = strdup(arg);
+}
+
+static void option_mtu(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	char *endptr;
+
+	conf->mtu = strtol(arg, &endptr, 10);
+	if (*endptr || conf->mtu < 576)
+		exit_error(ctx, "invalid mtu `%s'", arg);
+}
+
+static void option_bind(fastd_context *ctx, fastd_config *conf, const char *arg) {
 	long l;
 	char *charptr;
 	char *endptr;
 	char *addrstr;
-	bool keygen = false;
 
+	if (arg[0] == '[') {
+		charptr = strchr(arg, ']');
+		if (!charptr || (charptr[1] != ':' && charptr[1] != '\0'))
+			exit_error(ctx, "invalid bind address `%s'", arg);
 
-	while (i < argc) {
-		IF_OPTION_ARG("--log-level") {
-			if (!strcmp(arg, "fatal"))
-				conf->loglevel = LOG_FATAL;
-			else if (!strcmp(arg, "error"))
-				conf->loglevel = LOG_ERROR;
-			else if (!strcmp(arg, "warn"))
-				conf->loglevel = LOG_WARN;
-			else if (!strcmp(arg, "info"))
-				conf->loglevel = LOG_INFO;
-			else if (!strcmp(arg, "verbose"))
-				conf->loglevel = LOG_VERBOSE;
-			else if (!strcmp(arg, "debug"))
-				conf->loglevel = LOG_DEBUG;
-			else
-				exit_error(ctx, "invalid mode `%s'", arg);
-			continue;
+		addrstr = strndup(arg+1, charptr-arg-1);
+
+		if (charptr[1] == ':')
+			charptr++;
+		else
+			charptr = NULL;
+	}
+	else {
+		charptr = strchr(arg, ':');
+		if (charptr) {
+			addrstr = strndup(arg, charptr-arg);
 		}
-
-		IF_OPTION_ARG("-c", "--config") {
-			const char *filename = arg;
-			if (!strcmp(arg, "-"))
-				filename = NULL;
-
-			if (!fastd_read_config(ctx, conf, filename, false, 0))
-				exit(1);
-			continue;
+		else {
+			addrstr = strdup(arg);
 		}
-
-		IF_OPTION_ARG("--config-peer") {
-			fastd_peer_config_new(ctx, conf);
-
-			if(!fastd_read_config(ctx, conf, arg, true, 0))
-				exit(1);
-			continue;
-		}
-
-		IF_OPTION_ARG("--config-peer-dir") {
-			fastd_read_peer_dir(ctx, conf, arg);
-			continue;
-		}
-
-		IF_OPTION_ARG("-i", "--interface") {
-			free(conf->ifname);
-			conf->ifname = strdup(arg);
-			continue;
-		}
-
-		IF_OPTION_ARG("-b", "--bind") {
-			if (arg[0] == '[') {
-				charptr = strchr(arg, ']');
-				if (!charptr || (charptr[1] != ':' && charptr[1] != '\0'))
-					exit_error(ctx, "invalid bind address `%s'", arg);
-
-				addrstr = strndup(arg+1, charptr-arg-1);
-			
-				if (charptr[1] == ':')
-					charptr++;
-				else
-					charptr = NULL;
-			}
-			else {
-				charptr = strchr(arg, ':');
-				if (charptr) {
-					addrstr = strndup(arg, charptr-arg);
-				}
-				else {
-					addrstr = strdup(arg);
-				}
-			}
-
-			if (charptr) {
-				l = strtol(charptr+1, &endptr, 10);
-				if (*endptr || l < 0 || l > 65535)
-					exit_error(ctx, "invalid bind port `%s'", charptr+1);
-			}
-			else {
-				l = 0;
-			}
-
-			if (strcmp(addrstr, "any") == 0) {
-				conf->bind_addr_in.sin_addr.s_addr = htonl(INADDR_ANY);
-				conf->bind_addr_in.sin_port = htons(l);
-
-				conf->bind_addr_in6.sin6_addr = in6addr_any;
-				conf->bind_addr_in6.sin6_port = htons(l);
-			}
-			else if (arg[0] == '[') {
-				conf->bind_addr_in6.sin6_family = AF_INET6;
-				if (inet_pton(AF_INET6, addrstr, &conf->bind_addr_in6.sin6_addr) != 1)
-					exit_error(ctx, "invalid bind address `%s'", addrstr);
-				conf->bind_addr_in6.sin6_port = htons(l);
-			}
-			else {
-				conf->bind_addr_in.sin_family = AF_INET;
-				if (inet_pton(AF_INET, addrstr, &conf->bind_addr_in.sin_addr) != 1)
-					exit_error(ctx, "invalid bind address `%s'", addrstr);
-				conf->bind_addr_in.sin_port = htons(l);
-			}
-
-			free(addrstr);
-
-			continue;
-		}
-
-		IF_OPTION_ARG("-M", "--mtu") {
-			conf->mtu = strtol(arg, &endptr, 10);
-			if (*endptr || conf->mtu < 576)
-				exit_error(ctx, "invalid mtu `%s'", arg);
-			continue;
-		}
-
-		IF_OPTION_ARG("-m", "--mode") {
-			if (!strcmp(arg, "tap"))
-				conf->mode = MODE_TAP;
-			else if (!strcmp(arg, "tun"))
-				conf->mode = MODE_TUN;
-			else
-				exit_error(ctx, "invalid mode `%s'", arg);
-			continue;
-		}
-
-
-		IF_OPTION_ARG("-P", "--protocol") {
-			if (!fastd_config_protocol(ctx, conf, arg))
-				exit_error(ctx, "invalid protocol `%s'", arg);
-			continue;
-		}
-
-		IF_OPTION_ARG("--method") {
-			if (!fastd_config_method(ctx, conf, arg))
-				exit_error(ctx, "invalid method `%s'", arg);
-			continue;
-		}
-
-		IF_OPTION("--forward") {
-			conf->forward = true;
-			continue;
-		}
-
-		IF_OPTION_ARG("--on-up") {
-			free(conf->on_up);
-			free(conf->on_up_dir);
-
-			conf->on_up = strdup(arg);
-			conf->on_up_dir = get_current_dir_name();
-
-			continue;
-		}
-
-		IF_OPTION_ARG("--on-down") {
-			free(conf->on_down);
-			free(conf->on_down_dir);
-
-			conf->on_down = strdup(arg);
-			conf->on_down_dir = get_current_dir_name();
-
-			continue;
-		}
-
-		IF_OPTION_ARG("--on-establish") {
-			free(conf->on_establish);
-			free(conf->on_establish_dir);
-
-			conf->on_establish = strdup(arg);
-			conf->on_establish_dir = get_current_dir_name();
-
-			continue;
-		}
-
-		IF_OPTION_ARG("--on-disestablish") {
-			free(conf->on_disestablish);
-			free(conf->on_disestablish_dir);
-
-			conf->on_disestablish = strdup(arg);
-			conf->on_disestablish_dir = get_current_dir_name();
-
-			continue;
-		}
-
-		IF_OPTION("--generate-key") {
-			keygen = true;
-			continue;
-		}
-
-		exit_error(ctx, "config error: unknown option `%s'", argv[i]);
 	}
 
-	if (keygen) {
+	if (charptr) {
+		l = strtol(charptr+1, &endptr, 10);
+		if (*endptr || l < 0 || l > 65535)
+			exit_error(ctx, "invalid bind port `%s'", charptr+1);
+	}
+	else {
+		l = 0;
+	}
+
+	if (strcmp(addrstr, "any") == 0) {
+		conf->bind_addr_in.sin_addr.s_addr = htonl(INADDR_ANY);
+		conf->bind_addr_in.sin_port = htons(l);
+
+		conf->bind_addr_in6.sin6_addr = in6addr_any;
+		conf->bind_addr_in6.sin6_port = htons(l);
+	}
+	else if (arg[0] == '[') {
+		conf->bind_addr_in6.sin6_family = AF_INET6;
+		if (inet_pton(AF_INET6, addrstr, &conf->bind_addr_in6.sin6_addr) != 1)
+			exit_error(ctx, "invalid bind address `%s'", addrstr);
+		conf->bind_addr_in6.sin6_port = htons(l);
+	}
+	else {
+		conf->bind_addr_in.sin_family = AF_INET;
+		if (inet_pton(AF_INET, addrstr, &conf->bind_addr_in.sin_addr) != 1)
+			exit_error(ctx, "invalid bind address `%s'", addrstr);
+		conf->bind_addr_in.sin_port = htons(l);
+	}
+
+	free(addrstr);
+}
+
+static void option_protocol(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	if (!fastd_config_protocol(ctx, conf, arg))
+		exit_error(ctx, "invalid protocol `%s'", arg);
+}
+
+static void option_method(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	if (!fastd_config_method(ctx, conf, arg))
+		exit_error(ctx, "invalid method `%s'", arg);
+}
+
+static void option_forward(fastd_context *ctx, fastd_config *conf) {
+	conf->forward = true;
+}
+
+static void option_on_up(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	free(conf->on_up);
+	free(conf->on_up_dir);
+
+	conf->on_up = strdup(arg);
+	conf->on_up_dir = get_current_dir_name();
+}
+
+static void option_on_down(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	free(conf->on_down);
+	free(conf->on_down_dir);
+
+	conf->on_down = strdup(arg);
+	conf->on_down_dir = get_current_dir_name();
+}
+
+static void option_on_establish(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	free(conf->on_establish);
+	free(conf->on_establish_dir);
+
+	conf->on_establish = strdup(arg);
+	conf->on_establish_dir = get_current_dir_name();
+}
+
+static void option_on_disestablish(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	free(conf->on_disestablish);
+	free(conf->on_disestablish_dir);
+
+	conf->on_disestablish = strdup(arg);
+	conf->on_disestablish_dir = get_current_dir_name();
+}
+
+static void option_generate_key(fastd_context *ctx, fastd_config *conf) {
+	conf->generate_key = true;
+}
+
+
+void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]) {
+#define OPTION(func, message, args...) \
+	if(config_match(argv[i], args, NULL)) {	\
+		i++;				\
+		func(ctx, conf);		\
+		continue;			\
+	}
+#define OPTION_ARG(func, message, args...) \
+	if(config_match(argv[i], args, NULL)) {	\
+		i+=2;				\
+		if (i > argc)			\
+			exit_error(ctx, "config error: option `%s' needs an argument; see --help for usage", argv[i-2]); \
+		func(ctx, conf, argv[i-1]);	\
+		continue;			\
+	}
+
+	default_config(conf);
+
+	int i = 1;
+	while (i < argc) {
+		OPTIONS
+
+		exit_error(ctx, "config error: unknown option `%s'; see --help for usage", argv[i]);
+	}
+
+	if (conf->generate_key) {
 		ctx->conf = conf;
 		conf->protocol->generate_key(ctx);
 		exit(0);
@@ -553,6 +579,9 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
 
 	count_peers(ctx, conf);
+
+#undef OPTION
+#undef OPTION_ARG
 }
 
 static void reconfigure_read_peer_dirs(fastd_context *ctx, fastd_config *new_conf, fastd_string_stack *dirs) {

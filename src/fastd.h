@@ -44,6 +44,9 @@
 #include <time.h>
 
 
+#define FASTD_VERSION "0.4-rc4"
+
+
 struct _fastd_buffer {
 	void *base;
 	size_t base_len;
@@ -155,6 +158,8 @@ struct _fastd_config {
 
 	char *on_disestablish;
 	char *on_disestablish_dir;
+
+	bool generate_key;
 };
 
 struct _fastd_context {
