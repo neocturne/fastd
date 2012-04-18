@@ -329,35 +329,53 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 
 
 #define OPTIONS \
-	OPTION(usage, "\t--help | -h\n\t\tShows this help text", "--help", "-h") \
-	OPTION(version, "\t--version | -v\n\t\tShows the fastd version", "--version", "-v") \
-	OPTION_ARG(option_log_level, "\t--log-level error|warn|info|verbose|debug\n\t\tSets the log level; default is info", "--log-level") \
-	OPTION_ARG(option_config, "\t--config | -c <filename>\n\t\tLoads a config file", "--config", "-c") \
-	OPTION_ARG(option_config_peer, "\t--config-peer <filename>\n\t\tLoads a config file for a single peer", "--config-peer") \
-	OPTION_ARG(option_config_peer_dir, "\t--config-peer-dir <dir>\n\t\tLoads all files from a directory as peer configs", "--config-peer-dir") \
-	OPTION_ARG(option_mode, "\t--mode | -m tap|tun\n\t\tSets the mode of the interface", "--mode", "-m") \
-	OPTION_ARG(option_interface, "\t--interface | -i <name>\n\t\tSets the name of the TUN/TAP interface to use", "--interface", "-i") \
-	OPTION_ARG(option_mtu, "\t--mtu | -M <mtu>\n\t\tSets the MTU; must be at least 576", "--mtu", "-M") \
-	OPTION_ARG(option_bind, "\t--bind | -b <address>:<port>\n\t\tSets the bind address", "--bind", "-b") \
-	OPTION_ARG(option_protocol, "\t--protocol | -p <protocol>\n\t\tSets the protocol", "--protocol", "-p") \
-	OPTION_ARG(option_method, "\t--method <method>\n\t\tSets the encryption method", "--method") \
-	OPTION(option_forward, "\t--forward\n\t\tEnables forwarding of packets between clients; read the documentation before use!", "--forward") \
-	OPTION_ARG(option_on_up, "\t--on-up <command>\n\t\tSets a shell command to execute after interface creation", "--on-up") \
-	OPTION_ARG(option_on_down, "\t--on-down <command>\n\t\tSets a shell command to execute before interface destruction", "--on-down") \
-	OPTION_ARG(option_on_establish, "\t--on-establish <command>\n\t\tSets a shell command to execute when a new connection is established", "--on-establish") \
-	OPTION_ARG(option_on_disestablish, "\t--on-disestablish <command>\n\t\tSets a shell command to execute when a connection is lost", "--on-disestablish") \
-	OPTION(option_generate_key, "\t--generate-key\n\t\tGenerates a new keypair", "--generate-key")
+	OPTION(usage, "--help" OR "-h", "Shows this help text") \
+	OPTION(version, "--version" OR "-v", "Shows the fastd version") \
+	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the log level; default is info") \
+	OPTION_ARG(option_config, "--config" OR "-c", "<filename>", "Loads a config file") \
+	OPTION_ARG(option_config_peer, "--config-peer", "<filename>", "Loads a config file for a single peer") \
+	OPTION_ARG(option_config_peer_dir, "--config-peer-dir", "<dir>", "Loads all files from a directory as peer configs") \
+	OPTION_ARG(option_mode, "--mode" OR "-m", "tap|tun", "Sets the mode of the interface") \
+	OPTION_ARG(option_interface, "--interface" OR "-i", "<name>", "Sets the name of the TUN/TAP interface to use") \
+	OPTION_ARG(option_mtu, "--mtu" OR "-M", "<mtu>", "Sets the MTU; must be at least 576") \
+	OPTION_ARG(option_bind, "--bind" OR "-b", "<address>:<port>", "Sets the bind address") \
+	OPTION_ARG(option_protocol, "--protocol" OR "-p", "<protocol>", "Sets the protocol") \
+	OPTION_ARG(option_method, "--method", "<method>", "Sets the encryption method") \
+	OPTION(option_forward, "--forward", "Enables forwarding of packets between clients; read the documentation before use!") \
+	OPTION_ARG(option_on_up, "--on-up", "<command>", "Sets a shell command to execute after interface creation") \
+	OPTION_ARG(option_on_down, "--on-down", "<command>", "Sets a shell command to execute before interface destruction") \
+	OPTION_ARG(option_on_establish, "--on-establish", "<command>", "Sets a shell command to execute when a new connection is established") \
+	OPTION_ARG(option_on_disestablish, "--on-disestablish", "<command>", "Sets a shell command to execute when a connection is lost") \
+	OPTION(option_generate_key, "--generate-key", "Generates a new keypair")
 
+
+static void print_usage(const char *options, const char *message) {
+	/* 28 spaces */
+	static const char spaces[] = "                            ";
+
+	int len = strlen(options);
+
+	printf("%s", options);
+
+	if (len < 28)
+		printf("%s", spaces+len);
+	else
+		printf("\n%s", spaces);
+
+	puts(message);
+}
 
 static void usage(fastd_context *ctx, fastd_config *conf) {
-#define OPTION(func, message, args...) puts("\n" message);
-#define OPTION_ARG(func, message, args...) puts("\n" message);
+#define OR ", "
+#define OPTION(func, options, message) print_usage("  " options, message);
+#define OPTION_ARG(func, options, arg, message) print_usage("  " options " " arg, message);
 
-	puts("fastd (Fast and Secure Tunneling Daemon) version " FASTD_VERSION " usage:");
+	puts("fastd (Fast and Secure Tunneling Daemon) version " FASTD_VERSION " usage:\n");
 
 	OPTIONS
 	exit(0);
 
+#undef OR
 #undef OPTION
 #undef OPTION_ARG
 }
@@ -538,19 +556,20 @@ static void option_generate_key(fastd_context *ctx, fastd_config *conf) {
 
 
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]) {
-#define OPTION(func, message, args...) \
-	if(config_match(argv[i], args, NULL)) {	\
-		i++;				\
-		func(ctx, conf);		\
-		continue;			\
+#define OR ,
+#define OPTION(func, options, message) \
+	if(config_match(argv[i], options, NULL)) {	\
+		i++;					\
+		func(ctx, conf);			\
+		continue;				\
 	}
-#define OPTION_ARG(func, message, args...) \
-	if(config_match(argv[i], args, NULL)) {	\
-		i+=2;				\
-		if (i > argc)			\
+#define OPTION_ARG(func, options, arg, message) 	\
+	if(config_match(argv[i], options, NULL)) {	\
+		i+=2;					\
+		if (i > argc)				\
 			exit_error(ctx, "config error: option `%s' needs an argument; see --help for usage", argv[i-2]); \
-		func(ctx, conf, argv[i-1]);	\
-		continue;			\
+		func(ctx, conf, argv[i-1]);		\
+		continue;				\
 	}
 
 	default_config(conf);
@@ -580,6 +599,7 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 	count_peers(ctx, conf);
 
+#undef OR
 #undef OPTION
 #undef OPTION_ARG
 }
