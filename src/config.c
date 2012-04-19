@@ -55,7 +55,6 @@ static void default_config(fastd_config *conf) {
 
 	conf->keepalive_interval = 60;
 	conf->peer_stale_time = 300;
-	conf->peer_stale_time_temp = 30;
 	conf->eth_addr_stale_time = 300;
 
 	conf->ifname = NULL;
@@ -668,7 +667,7 @@ static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config *
 static void reconfigure_reset_waiting(fastd_context *ctx) {
 	fastd_peer *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (fastd_peer_is_waiting(peer))
+		if (!fastd_peer_is_established(peer))
 			fastd_peer_reset(ctx, peer);
 	}
 }

@@ -47,13 +47,6 @@ typedef enum _fastd_mode {
 	MODE_TUN,
 } fastd_mode;
 
-typedef enum _fastd_peer_state {
-	STATE_RESOLVE,
-	STATE_WAIT,
-	STATE_TEMP,
-	STATE_ESTABLISHED,
-} fastd_peer_state;
-
 
 typedef struct _fastd_buffer fastd_buffer;
 
@@ -78,6 +71,7 @@ typedef struct _fastd_resolve_return fastd_resolve_return;
 
 /* May be defined by the protocol/method however it likes */
 typedef struct _fastd_protocol_config fastd_protocol_config;
+typedef struct _fastd_protocol_state fastd_protocol_state;
 typedef struct _fastd_protocol_peer_config fastd_protocol_peer_config;
 typedef struct _fastd_protocol_peer_state fastd_protocol_peer_state;
 typedef struct _fastd_method_session_state fastd_method_session_state;

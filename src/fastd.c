@@ -202,20 +202,20 @@ static void close_sockets(fastd_context *ctx) {
 	}
 }
 
-static void fastd_send_type(fastd_context *ctx, fastd_peer *peer, uint8_t packet_type, fastd_buffer buffer) {
+static void fastd_send_type(fastd_context *ctx, const fastd_peer_address *address, uint8_t packet_type, fastd_buffer buffer) {
 	int sockfd;
 	struct msghdr msg;
 	memset(&msg, 0, sizeof(msg));
 
-	switch (peer->address.sa.sa_family) {
+	switch (address->sa.sa_family) {
 	case AF_INET:
-		msg.msg_name = &peer->address.in;
+		msg.msg_name = (void*)&address->in;
 		msg.msg_namelen = sizeof(struct sockaddr_in);
 		sockfd = ctx->sockfd;
 		break;
 
 	case AF_INET6:
-		msg.msg_name = &peer->address.in6;
+		msg.msg_name = (void*)&address->in6;
 		msg.msg_namelen = sizeof(struct sockaddr_in6);
 		sockfd = ctx->sock6fd;
 		break;
@@ -243,12 +243,12 @@ static void fastd_send_type(fastd_context *ctx, fastd_peer *peer, uint8_t packet
 	fastd_buffer_free(buffer);
 }
 
-void fastd_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_send_type(ctx, peer, PACKET_DATA, buffer);
+void fastd_send(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer) {
+	fastd_send_type(ctx, address, PACKET_DATA, buffer);
 }
 
-void fastd_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	fastd_send_type(ctx, peer, PACKET_HANDSHAKE, buffer);
+void fastd_send_handshake(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer) {
+	fastd_send_type(ctx, address, PACKET_HANDSHAKE, buffer);
 }
 
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
@@ -268,7 +268,7 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 		if (fastd_eth_addr_is_unicast(dest_addr)) {
 			fastd_peer *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
-			if (dest_peer && dest_peer != peer && dest_peer->state == STATE_ESTABLISHED) {
+			if (dest_peer && dest_peer != peer && fastd_peer_is_established(dest_peer)) {
 				ctx->conf->protocol->send(ctx, dest_peer, buffer);
 			}
 			else {
@@ -278,7 +278,7 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 		else {
 			fastd_peer *dest_peer;
 			for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
-				if (dest_peer != peer && dest_peer->state == STATE_ESTABLISHED) {
+				if (dest_peer != peer && fastd_peer_is_established(dest_peer)) {
 					fastd_buffer send_buffer = fastd_buffer_alloc(buffer.len, ctx->conf->method->min_encrypt_head_space(ctx), 0);
 					memcpy(send_buffer.data, buffer.data, buffer.len);
 					ctx->conf->protocol->send(ctx, dest_peer, send_buffer);
@@ -379,7 +379,7 @@ static inline void update_time(fastd_context *ctx) {
 static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
 	if (peer->address.sa.sa_family != AF_UNSPEC) {
 		pr_debug(ctx, "sending handshake to %P...", peer);
-		ctx->conf->protocol->handshake_init(ctx, peer);
+		ctx->conf->protocol->handshake_init(ctx, &peer->address, peer->config);
 	}
 
 	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
@@ -390,7 +390,7 @@ static void handle_tasks(fastd_context *ctx) {
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
-			if (task->peer->state == STATE_RESOLVE)
+			if (fastd_peer_is_dynamic(task->peer))
 				fastd_resolve_peer(ctx, task->peer->config);
 			else
 				send_handshake(ctx, task->peer);
@@ -437,7 +437,7 @@ static void handle_tun(fastd_context *ctx) {
 				return;
 			}
 
-			if (peer->state == STATE_ESTABLISHED) {
+			if (fastd_peer_is_established(peer)) {
 				ctx->conf->protocol->send(ctx, peer, buffer);
 			}
 			else {
@@ -447,7 +447,7 @@ static void handle_tun(fastd_context *ctx) {
 	}
 	if (peer == NULL) {
 		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (peer->state == STATE_ESTABLISHED) {
+			if (fastd_peer_is_established(peer)) {
 				fastd_buffer send_buffer = fastd_buffer_alloc(len, ctx->conf->method->min_encrypt_head_space(ctx), 0);
 				memcpy(send_buffer.data, buffer.data, len);
 				ctx->conf->protocol->send(ctx, peer, send_buffer);
@@ -490,28 +490,8 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 
 	fastd_peer *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (peer->address.sa.sa_family != recvaddr.sa.sa_family)
-			continue;
-
-		if (recvaddr.sa.sa_family == AF_INET) {
-			if (peer->address.in.sin_addr.s_addr != recvaddr.in.sin_addr.s_addr)
-				continue;
-			if (peer->address.in.sin_port != recvaddr.in.sin_port)
-				continue;
-
+		if (fastd_peer_address_equal(&peer->address, &recvaddr))
 			break;
-		}
-		else if (recvaddr.sa.sa_family == AF_INET6) {
-			if (!IN6_ARE_ADDR_EQUAL(&peer->address.in6.sin6_addr, &recvaddr.in6.sin6_addr))
-				continue;
-			if (peer->address.in6.sin6_port != recvaddr.in6.sin6_port)
-				continue;
-
-			break;
-		}
-		else {
-			exit_bug(ctx, "unsupported address family");
-		}
 	}
 
 	if (peer) {
@@ -521,7 +501,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 			break;
 
 		case PACKET_HANDSHAKE:
-			fastd_handshake_handle(ctx, peer, buffer);
+			fastd_handshake_handle(ctx, &recvaddr, peer->config, buffer);
 			break;
 
 		default:
@@ -533,13 +513,11 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 		(recvaddr.sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6)) {
 		switch (packet_type) {
 		case PACKET_DATA:
-			peer = fastd_peer_add_temp(ctx, (fastd_peer_address*)&recvaddr);
-			ctx->conf->protocol->handle_recv(ctx, peer, buffer);
+			ctx->conf->protocol->handshake_init(ctx, &recvaddr, NULL);
 			break;
 
 		case PACKET_HANDSHAKE:
-			peer = fastd_peer_add_temp(ctx, (fastd_peer_address*)&recvaddr);
-			fastd_handshake_handle(ctx, peer, buffer);
+			fastd_handshake_handle(ctx, &recvaddr, NULL, buffer);
 			break;
 
 		default:
@@ -547,7 +525,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 		}
 	}
 	else  {
-		pr_debug(ctx, "received packet from unknown peer");
+		pr_debug(ctx, "received packet from unknown peer %I", &recvaddr);
 		fastd_buffer_free(buffer);
 	}
 }
@@ -590,26 +568,13 @@ static void cleanup_peers(fastd_context *ctx) {
 	for (peer = ctx->peers; peer; peer = next) {
 		next = peer->next;
 
-		if (fastd_peer_is_temporary(peer)) {
-			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time_temp*1000)
-				fastd_peer_reset(ctx, peer);
-		}
-		else if (fastd_peer_is_established(peer)) {
+		if (fastd_peer_is_established(peer)) {
 			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000)
 				fastd_peer_reset(ctx, peer);
 		}
 	}
 }
 
-static void cleanup_peer_with_address(fastd_context *ctx, const fastd_peer_address *addr) {
-	fastd_peer *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (fastd_peer_is_temporary(peer) && fastd_peer_addr_equal(&peer->address, addr)) {
-			fastd_peer_reset(ctx, peer);
-			return;
-		}
-	}
-}
 
 static void handle_resolv_returns(fastd_context *ctx) {
 	while (ctx->resolve_returns) {
@@ -624,11 +589,13 @@ static void handle_resolv_returns(fastd_context *ctx) {
 			if (!fastd_peer_config_matches_dynamic(peer->config, &ctx->resolve_returns->constraints))
 				continue;
 
-			cleanup_peer_with_address(ctx, &ctx->resolve_returns->addr);
-			peer->address = ctx->resolve_returns->addr;
-
-			if (peer->state == STATE_RESOLVE)
-				send_handshake(ctx, peer);
+			if (fastd_peer_claim_address(ctx, peer, &ctx->resolve_returns->addr)) {
+				if (!fastd_peer_is_established(peer))
+					send_handshake(ctx, peer);
+			}
+			else {
+				pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", ctx->resolve_returns->hostname, ctx->resolve_returns->addr);
+			}
 			break;
 		}
 
@@ -695,6 +662,8 @@ int main(int argc, char *argv[]) {
 
 	close_sockets(&ctx);
 	close_tuntap(&ctx);
+
+	free(ctx.protocol_state);
 
 	fastd_config_release(&ctx, &conf);
 

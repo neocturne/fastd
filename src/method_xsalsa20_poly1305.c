@@ -118,7 +118,7 @@ static bool method_session_is_initiator(fastd_context *ctx, fastd_method_session
 }
 
 static bool method_session_want_refresh(fastd_context *ctx, fastd_method_session_state *session) {
-	return (method_session_is_initiator(ctx, session) && timespec_after(&ctx->now, &session->refresh_after));
+	return timespec_after(&ctx->now, &session->refresh_after);
 }
 
 static void method_session_free(fastd_context *ctx, fastd_method_session_state *session) {

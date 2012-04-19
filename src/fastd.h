@@ -64,10 +64,9 @@ struct _fastd_protocol {
 
 	fastd_protocol_config* (*init)(fastd_context *ctx);
 	void (*peer_configure)(fastd_context *ctx, fastd_peer_config *peer_conf);
-	void (*peer_config_purged)(fastd_context *ctx, fastd_peer_config *peer_conf);
 
-	void (*handshake_init)(fastd_context *ctx, fastd_peer *peer);
-	void (*handshake_handle)(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake);
+	void (*handshake_init)(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf);
+	void (*handshake_handle)(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
@@ -116,7 +115,6 @@ struct _fastd_config {
 
 	unsigned keepalive_interval;
 	unsigned peer_stale_time;
-	unsigned peer_stale_time_temp;
 	unsigned eth_addr_stale_time;
 
 	char *ifname;
@@ -182,6 +180,8 @@ struct _fastd_context {
 
 	unsigned int randseed;
 
+	fastd_protocol_state *protocol_state;
+
 	fastd_resolve_return *resolve_returns;
 };
 
@@ -191,8 +191,8 @@ struct _fastd_string_stack {
 };
 
 
-void fastd_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-void fastd_send_handshake(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+void fastd_send(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer);
+void fastd_send_handshake(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer);
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
 void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer);

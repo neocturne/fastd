@@ -31,37 +31,35 @@
 #include <stdarg.h>
 
 
-static void print_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
+static void print_peer_address(const fastd_context *ctx, const fastd_peer_address *address) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
-	char pl = '<', pr = '>';
 
-	if (fastd_peer_is_temporary(peer)) {
-		pl = '{';
-		pr = '}';
+	switch (address->sa.sa_family) {
+	case AF_UNSPEC:
+		fputs("floating", stderr);
+		return;
+
+	case AF_INET:
+		if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))
+			fprintf(stderr, "%s:%u", addr_buf, ntohs(address->in.sin_port));
+		return;
+
+	case AF_INET6:
+		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf)))
+			fprintf(stderr, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
+		break;
+
+	default:
+		exit_bug(ctx, "unsupported address family");
 	}
+}
 
+static void print_peer_str(const fastd_context *ctx, const fastd_peer *peer) {
 	if (peer->config && peer->config->name) {
-		fprintf(stderr, "%c%s%c", pl, peer->config->name, pr);
+		fprintf(stderr, "<%s>", peer->config->name);
 	}
 	else {
-		switch (peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			fprintf(stderr, "%cfloating%c", pl, pr);
-			return;
-
-		case AF_INET:
-			if (inet_ntop(AF_INET, &peer->address.in.sin_addr, addr_buf, sizeof(addr_buf)))
-				fprintf(stderr, "%c%s:%u%c", pl, addr_buf, ntohs(peer->address.in.sin_port), pr);
-			return;
-
-		case AF_INET6:
-			if (inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, addr_buf, sizeof(addr_buf)))
-				fprintf(stderr, "%c[%s]:%u%c", pl, addr_buf, ntohs(peer->address.in6.sin6_port), pr);
-			break;
-
-		default:
-			exit_bug(ctx, "unsupported address family");
-		}
+		fputs("<(null)>", stderr);
 	}
 }
 
@@ -84,10 +82,8 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 		for(len = 1; str[len]; len++) {
 			char last;
 			bool finished = true;
-			char addr_buf[INET6_ADDRSTRLEN];
-			void *p;
-			fastd_peer *peer;
-			fastd_eth_addr *eth_addr;
+			const void *p;
+			const fastd_eth_addr *eth_addr;
 
 			switch (str[len]) {
 			case 'l':
@@ -190,20 +186,8 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 				str[len+1] = last;
 				break;
 
-			case 'I':
-				p = va_arg(ap, void*);
-
-				if (p) {
-					if (inet_ntop(flag_l ? AF_INET6 : AF_INET, p, addr_buf, sizeof(addr_buf)))
-						fputs(addr_buf, stderr);
-				}
-				else {
-					fputs("(null)", stderr);
-				}
-				break;
-
 			case 'E':
-				eth_addr = va_arg(ap, fastd_eth_addr*);
+				eth_addr = va_arg(ap, const fastd_eth_addr*);
 
 				if (eth_addr) {
 					fprintf(stderr, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -216,10 +200,19 @@ void fastd_printf(const fastd_context *ctx, const char *format, ...) {
 				break;
 
 			case 'P':
-				peer = va_arg(ap, void*);
+				p = va_arg(ap, const fastd_peer*);
 
-				if (peer)
-					print_peer_str(ctx, peer);
+				if (p)
+					print_peer_str(ctx, (const fastd_peer*)p);
+				else
+					fputs("(null)", stderr);
+				break;
+
+			case 'I':
+				p = va_arg(ap, const fastd_peer_address*);
+
+				if (p)
+					print_peer_address(ctx, (const fastd_peer_address*)p);
 				else
 					fputs("(null)", stderr);
 				break;

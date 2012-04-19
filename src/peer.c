@@ -152,7 +152,7 @@ static void on_disestablish(fastd_context *ctx, fastd_peer *peer) {
 }
 
 static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
-	if (peer->state == STATE_ESTABLISHED)
+	if (peer->established)
 		on_disestablish(ctx, peer);
 
 	ctx->conf->protocol->free_peer_state(ctx, peer);
@@ -179,12 +179,9 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	else
 		peer->address = peer->config->address;
 
-	if (peer->config->hostname)
-		peer->state = STATE_RESOLVE;
-	else
-		peer->state = STATE_WAIT;
-
+	peer->established = false;
 	peer->seen = (struct timespec){0, 0};
+	peer->protocol_state = NULL;
 
 	if (!fastd_peer_is_floating(peer))
 		fastd_task_schedule_handshake(ctx, peer, 0);
@@ -247,11 +244,10 @@ void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf) {
 			fastd_peer_delete(ctx, peer);
 	}
 
-	ctx->conf->protocol->peer_config_purged(ctx, conf);
 	fastd_peer_config_free(conf);
 }
 
-bool fastd_peer_addr_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2) {
+bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2) {
 	if (addr1->sa.sa_family != addr2->sa.sa_family)
 		return false;
 
@@ -262,13 +258,41 @@ bool fastd_peer_addr_equal(const fastd_peer_address *addr1, const fastd_peer_add
 	case AF_INET:
 		if (addr1->in.sin_addr.s_addr != addr2->in.sin_addr.s_addr)
 			return false;
+		if (addr1->in.sin_port != addr2->in.sin_port)
+			return false;
 		break;
 
 	case AF_INET6:
 		if (!IN6_ARE_ADDR_EQUAL(&addr1->in6.sin6_addr, &addr2->in6.sin6_addr))
 			return false;
+		if (addr1->in6.sin6_port != addr2->in6.sin6_port)
+			return false;
 	}
 
+	return true;
+}
+
+bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, const fastd_peer_address *addr) {
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (fastd_peer_address_equal(&peer->address, addr)) {
+			if (peer == new_peer)
+				break;
+
+			if (fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer)) {
+				if (fastd_peer_is_established(peer))
+					fastd_peer_reset(ctx, peer);
+
+				memset(&peer->address, 0, sizeof(fastd_peer_address));
+				break;
+			}
+			else {
+				return false;
+			}
+		}
+	}
+
+	new_peer->address = *addr;
 	return true;
 }
 
@@ -279,7 +303,7 @@ bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_co
 	if (!strequal(peer1->hostname, peer2->hostname))
 		return false;
 
-	if (!fastd_peer_addr_equal(&peer1->address, &peer2->address))
+	if (!fastd_peer_address_equal(&peer1->address, &peer2->address))
 		return false;
 
 	if (!strequal(peer1->key, peer2->key))
@@ -292,11 +316,7 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 	pr_debug(ctx, "resetting peer %P", peer);
 
 	reset_peer(ctx, peer);
-
-	if (fastd_peer_is_temporary(peer))
-		delete_peer(ctx, peer);
-	else
-		setup_peer(ctx, peer);
+	setup_peer(ctx, peer);
 }
 
 void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
@@ -304,20 +324,11 @@ void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
 	delete_peer(ctx, peer);
 }
 
-static fastd_peer* add_peer(fastd_context *ctx) {
+fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	fastd_peer *peer = malloc(sizeof(fastd_peer));
 
 	peer->next = ctx->peers;
-	peer->last_req_id = 0;
-	peer->protocol_state = NULL;
-
 	ctx->peers = peer;
-
-	return peer;
-}
-
-fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
-	fastd_peer *peer = add_peer(ctx);
 
 	peer->config = peer_conf;
 	setup_peer(ctx, peer);
@@ -327,64 +338,11 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	return peer;
 }
 
-fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *address) {
-	fastd_peer *peer = add_peer(ctx);
-
-	peer->config = NULL;
-	peer->address = *address;
-	peer->state = STATE_TEMP;
-	peer->seen = ctx->now;
-
-	pr_debug(ctx, "added peer %P", peer);
-
-	return peer;
-}
-
-fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer) {
-	pr_debug(ctx, "merging peer %P into %P", temp_peer, perm_peer);
-
-	ctx->conf->protocol->free_peer_state(ctx, perm_peer);
-
-	if (perm_peer->state == STATE_ESTABLISHED)
-		on_disestablish(ctx, perm_peer);
-
-	perm_peer->address = temp_peer->address;
-	perm_peer->state = STATE_ESTABLISHED;
-	perm_peer->seen = temp_peer->seen;
-	perm_peer->protocol_state = temp_peer->protocol_state;
-	temp_peer->protocol_state = NULL;
-
-	int i;
-	for (i = 0; i < ctx->n_eth_addr; i++) {
-		if (ctx->eth_addr[i].peer == temp_peer) {
-			ctx->eth_addr[i].peer = perm_peer;
-		}
-	}
-
-	fastd_task_replace_peer(ctx, temp_peer, perm_peer);
-
-	fastd_peer_reset(ctx, temp_peer);
-
-	on_establish(ctx, perm_peer);
-	pr_info(ctx, "Connection with %P established.", perm_peer);
-
-	return perm_peer;
-}
-
 void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
-	switch(peer->state) {
-	case STATE_RESOLVE:
-	case STATE_WAIT:
-		peer->state = STATE_ESTABLISHED;
+	if (!peer->established) {
+		peer->established = true;
 		on_establish(ctx, peer);
 		pr_info(ctx, "Connection with %P established.", peer);
-		break;
-
-	case STATE_TEMP:
-		exit_bug(ctx, "tried to set a temporary connection to established");
-
-	default:
-		return;
 	}
 }
 

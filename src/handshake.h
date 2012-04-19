@@ -61,16 +61,15 @@ typedef struct _fastd_handshake_record {
 } fastd_handshake_record;
 
 struct _fastd_handshake {
-	uint8_t req_id;
 	uint8_t type;
 	fastd_handshake_record records[RECORD_MAX];
 };
 
 
-fastd_buffer fastd_handshake_new_init(fastd_context *ctx, fastd_peer *peer, size_t tail_space);
-fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, fastd_peer *peer, const fastd_handshake *handshake, size_t tail_space);
+fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space);
+fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, size_t tail_space);
 
-void fastd_handshake_handle(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer);
 
 
 static inline void fastd_handshake_add(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, size_t len, const void *data) {

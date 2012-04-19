@@ -37,8 +37,7 @@ struct _fastd_peer {
 
 	fastd_peer_address address;
 
-	fastd_peer_state state;
-	uint8_t last_req_id;
+	bool established;
 
 	struct timespec seen;
 
@@ -67,7 +66,7 @@ struct _fastd_peer_eth_addr {
 };
 
 
-bool fastd_peer_addr_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2);
+bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2);
 
 fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf);
 void fastd_peer_config_free(fastd_peer_config *peer);
@@ -78,9 +77,8 @@ bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_co
 void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
 void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
-fastd_peer* fastd_peer_add_temp(fastd_context *ctx, const fastd_peer_address *address);
-fastd_peer* fastd_peer_set_established_merge(fastd_context *ctx, fastd_peer *perm_peer, fastd_peer *temp_peer);
 void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer);
+bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *peer, const fastd_peer_address *addr);
 
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer);
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
@@ -89,26 +87,22 @@ static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config
 	return (config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC);
 }
 
+static inline bool fastd_peer_config_is_dynamic(const fastd_peer_config *config) {
+	return (config->hostname != NULL);
+}
+
 bool fastd_peer_config_matches_dynamic(const fastd_peer_config *config, const fastd_peer_address *addr);
 
 static inline bool fastd_peer_is_floating(const fastd_peer *peer) {
-	return (peer->config && fastd_peer_config_is_floating(peer->config));
+	return fastd_peer_config_is_floating(peer->config);
 }
 
 static inline bool fastd_peer_is_dynamic(const fastd_peer *peer) {
-	return (peer->config && peer->config->hostname);
-}
-
-static inline bool fastd_peer_is_waiting(const fastd_peer *peer) {
-	return (peer->state == STATE_WAIT);
-}
-
-static inline bool fastd_peer_is_temporary(const fastd_peer *peer) {
-	return (peer->state == STATE_TEMP);
+	return fastd_peer_config_is_dynamic(peer->config);
 }
 
 static inline bool fastd_peer_is_established(const fastd_peer *peer) {
-	return (peer->state == STATE_ESTABLISHED);
+	return peer->established;
 }
 
 static inline void fastd_peer_seen(fastd_context *ctx, fastd_peer *peer) {
