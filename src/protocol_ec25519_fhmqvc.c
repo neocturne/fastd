@@ -162,6 +162,12 @@ static void protocol_peer_configure(fastd_context *ctx, fastd_peer_config *peer_
 		return;
 	}
 
+	if (memcmp(key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
+		pr_verbose(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
+		peer_conf->enabled = false;
+		return;
+	}
+
 	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config));
 	peer_conf->protocol_config->public_key = key;
 }
