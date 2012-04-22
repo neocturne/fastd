@@ -76,6 +76,8 @@ struct _fastd_protocol_peer_config {
 };
 
 typedef struct _protocol_session {
+	struct timespec established;
+
 	bool handshakes_cleaned;
 	bool refreshing;
 
@@ -119,6 +121,23 @@ static inline bool is_handshake_key_preferred(fastd_context *ctx, const handshak
 
 static inline bool is_session_valid(fastd_context *ctx, const protocol_session *session) {
 	return ctx->conf->method->session_is_valid(ctx, session->method_state);
+}
+
+static fastd_peer* get_peer(fastd_context *ctx, const fastd_peer_config *peer_conf) {
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (peer->config == peer_conf)
+			break;
+	}
+	if (!peer)
+		exit_bug(ctx, "no peer for config found");
+
+	return peer;
+}
+
+static bool backoff(fastd_context *ctx, const fastd_peer *peer) {
+	return (peer->protocol_state && is_session_valid(ctx, &peer->protocol_state->session)
+		&& timespec_diff(&ctx->now, &peer->protocol_state->session.established) < 15000);
 }
 
 static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
@@ -289,21 +308,27 @@ static void respond_handshake(fastd_context *ctx, const fastd_peer_address *addr
 	fastd_send_handshake(ctx, address, buffer);
 }
 
-static void establish(fastd_context *ctx, const fastd_peer_config *peer_conf, const fastd_peer_address *address, bool initiator,
+static bool establish(fastd_context *ctx, const fastd_peer_config *peer_conf, const fastd_peer_address *address, bool initiator,
 		      const ecc_public_key_256 *A, const ecc_public_key_256 *B, const ecc_public_key_256 *X,
 		      const ecc_public_key_256 *Y, const ecc_public_key_256 *sigma) {
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hash[HASHBYTES];
 
-	fastd_peer *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (peer->config == peer_conf)
-			break;
-	}
-	if (!peer)
-		exit_bug(ctx, "no peer for config found");
+	fastd_peer *peer = get_peer(ctx, peer_conf);
 
 	pr_verbose(ctx, "%I authorized as %P", address, peer);
+
+	/*if (backoff(ctx, peer)) {
+		if (initiator == ctx->conf->method->session_is_initiator(ctx, peer->protocol_state->session.method_state)) {
+			pr_verbose(ctx, "received repeated handshakes from %P, ignoring", peer);
+		}
+		else {
+			pr_verbose(ctx, "mismatched concurrent handshakes with %P, resetting", peer);
+			fastd_peer_reset(ctx, peer);
+		}
+
+		return false;
+		}*/
 
 	init_peer_state(ctx, peer);
 
@@ -322,6 +347,7 @@ static void establish(fastd_context *ctx, const fastd_peer_config *peer_conf, co
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
 	crypto_hash_sha256(hash, hashinput, 5*PUBLICKEYBYTES);
 
+	peer->protocol_state->session.established = ctx->now;
 	peer->protocol_state->session.handshakes_cleaned = false;
 	peer->protocol_state->session.refreshing = false;
 	peer->protocol_state->session.method_state = ctx->conf->method->session_init(ctx, hash, HASHBYTES, initiator);
@@ -331,7 +357,7 @@ static void establish(fastd_context *ctx, const fastd_peer_config *peer_conf, co
 	if (!fastd_peer_claim_address(ctx, peer, address)) {
 		pr_warn(ctx, "can't set address %I which is used by a fixed peer", ctx->resolve_returns->addr);
 		fastd_peer_reset(ctx, peer);
-		return;
+		return false;
 	}
 
 	fastd_peer_set_established(ctx, peer);
@@ -342,6 +368,8 @@ static void establish(fastd_context *ctx, const fastd_peer_config *peer_conf, co
 
 	if (!initiator)
 		protocol_send(ctx, peer, fastd_buffer_alloc(0, ctx->conf->method->min_encrypt_head_space(ctx), 0));
+
+	return true;
 }
 
 static void finish_handshake(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const handshake_key *handshake_key, const ecc_public_key_256 *peer_handshake_key, const fastd_handshake *handshake) {
@@ -399,6 +427,10 @@ static void finish_handshake(fastd_context *ctx, const fastd_peer_address *addre
 	memcpy(hashinput+PUBLICKEYBYTES, handshake_key->public_key.p, PUBLICKEYBYTES);
 	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key);
 
+	if (!establish(ctx, peer_conf, address, true, &handshake_key->public_key, peer_handshake_key, &ctx->conf->protocol_config->public_key,
+		       &peer_conf->protocol_config->public_key, &sigma))
+		return;
+
 	fastd_buffer buffer = fastd_handshake_new_reply(ctx, handshake, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
@@ -409,8 +441,6 @@ static void finish_handshake(fastd_context *ctx, const fastd_peer_address *addre
 
 	fastd_send_handshake(ctx, address, buffer);
 
-	establish(ctx, peer_conf, address, true, &handshake_key->public_key, peer_handshake_key, &ctx->conf->protocol_config->public_key,
-		  &peer_conf->protocol_config->public_key, &sigma);
 }
 
 static void handle_finish_handshake(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const handshake_key *handshake_key, const ecc_public_key_256 *peer_handshake_key, const fastd_handshake *handshake) {
@@ -511,6 +541,11 @@ static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_addre
 	peer_conf = match_sender_key(ctx, address, peer_conf, handshake->records[RECORD_SENDER_KEY].data);
 	if (!peer_conf) {
 		pr_debug(ctx, "ignoring handshake from %I (unknown key or unresolved host)", address);
+		return;
+	}
+
+	if (backoff(ctx, get_peer(ctx, peer_conf))) {
+		pr_verbose(ctx, "received repeated handshakes from %I, ignoring", address);
 		return;
 	}
 
