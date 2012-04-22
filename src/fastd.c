@@ -625,7 +625,17 @@ int main(int argc, char *argv[]) {
 	fastd_configure(&ctx, &conf, argc, argv);
 	ctx.conf = &conf;
 
+	if (conf.generate_key) {
+		conf.protocol->generate_key(&ctx);
+		exit(0);
+	}
+
 	conf.protocol_config = conf.protocol->init(&ctx);
+
+	if (conf.show_key) {
+		conf.protocol->show_key(&ctx);
+		exit(0);
+	}
 
 	update_time(&ctx);
 

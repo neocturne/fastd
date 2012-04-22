@@ -696,7 +696,8 @@ static void protocol_generate_key(fastd_context *ctx) {
 	ecc_secret_key_256 secret_key;
 	ecc_public_key_256 public_key;
 
-	pr_info(ctx, "Reading 32 bytes from /dev/random...");
+	if (!ctx->conf->machine_readable)
+		pr_info(ctx, "Reading 32 bytes from /dev/random...");
 
 	fastd_random_bytes(ctx, secret_key.s, 32, true);
 	ecc_25519_secret_sanitize(&secret_key, &secret_key);
@@ -705,8 +706,20 @@ static void protocol_generate_key(fastd_context *ctx) {
 	ecc_25519_scalarmult_base(&work, &secret_key);
 	ecc_25519_store(&public_key, &work);
 
-	hexdump("Secret: ", secret_key.s);
-	hexdump("Public: ", public_key.p);
+	if (ctx->conf->machine_readable) {
+		hexdump("", secret_key.s);
+	}
+	else {
+		hexdump("Secret: ", secret_key.s);
+		hexdump("Public: ", public_key.p);
+	}
+}
+
+static void protocol_show_key(fastd_context *ctx) {
+	if (ctx->conf->machine_readable)
+		hexdump("", ctx->conf->protocol_config->public_key.p);
+	else
+		hexdump("Public: ", ctx->conf->protocol_config->public_key.p);
 }
 
 
@@ -725,4 +738,5 @@ const fastd_protocol fastd_protocol_ec25519_fhmqvc = {
 	.free_peer_state = protocol_free_peer_state,
 
 	.generate_key = protocol_generate_key,
+	.show_key = protocol_show_key,
 };

@@ -88,7 +88,9 @@ static void default_config(fastd_config *conf) {
 	conf->on_disestablish = NULL;
 	conf->on_disestablish_dir = NULL;
 
+	conf->machine_readable = false;
 	conf->generate_key = false;
+	conf->show_key = false;
 }
 
 static bool config_match(const char *opt, ...) {
@@ -345,7 +347,9 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 	OPTION_ARG(option_on_down, "--on-down", "<command>", "Sets a shell command to execute before interface destruction") \
 	OPTION_ARG(option_on_establish, "--on-establish", "<command>", "Sets a shell command to execute when a new connection is established") \
 	OPTION_ARG(option_on_disestablish, "--on-disestablish", "<command>", "Sets a shell command to execute when a connection is lost") \
-	OPTION(option_generate_key, "--generate-key", "Generates a new keypair")
+	OPTION(option_generate_key, "--generate-key", "Generates a new keypair") \
+	OPTION(option_show_key, "--show-key", "Shows the public key corresponding to the configured secret") \
+	OPTION(option_machine_readable, "--machine-readable", "Supresses output of explaining text in the --show-key and --generate-key commands")
 
 
 static void print_usage(const char *options, const char *message) {
@@ -551,6 +555,16 @@ static void option_on_disestablish(fastd_context *ctx, fastd_config *conf, const
 
 static void option_generate_key(fastd_context *ctx, fastd_config *conf) {
 	conf->generate_key = true;
+	conf->show_key = false;
+}
+
+static void option_show_key(fastd_context *ctx, fastd_config *conf) {
+	conf->generate_key = false;
+	conf->show_key = true;
+}
+
+static void option_machine_readable(fastd_context *ctx, fastd_config *conf) {
+	conf->machine_readable = true;
 }
 
 
@@ -580,11 +594,8 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		exit_error(ctx, "config error: unknown option `%s'; see --help for usage", argv[i]);
 	}
 
-	if (conf->generate_key) {
-		ctx->conf = conf;
-		conf->protocol->generate_key(ctx);
-		exit(0);
-	}
+	if (conf->generate_key || conf->show_key)
+		return;
 
 	if (conf->mode == MODE_TUN) {
 		if (!conf->peers || conf->peers->next)

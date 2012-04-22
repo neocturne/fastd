@@ -74,6 +74,7 @@ struct _fastd_protocol {
 	void (*free_peer_state)(fastd_context *ctx, fastd_peer *peer);
 
 	void (*generate_key)(fastd_context *ctx);
+	void (*show_key)(fastd_context *ctx);
 };
 
 struct _fastd_method {
@@ -157,7 +158,9 @@ struct _fastd_config {
 	char *on_disestablish;
 	char *on_disestablish_dir;
 
+	bool machine_readable;
 	bool generate_key;
+	bool show_key;
 };
 
 struct _fastd_context {
