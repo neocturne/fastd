@@ -58,9 +58,6 @@ static void* resolve_peer(void *varg) {
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
-#ifdef AI_IDN
-	hints.ai_flags |= AI_IDN;
-#endif
 
 	gai_ret = getaddrinfo(arg->hostname, portstr, &hints, &res);
 
