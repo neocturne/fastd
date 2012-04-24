@@ -589,13 +589,10 @@ static void handle_resolv_returns(fastd_context *ctx) {
 			if (!fastd_peer_config_matches_dynamic(peer->config, &ctx->resolve_returns->constraints))
 				continue;
 
-			if (fastd_peer_claim_address(ctx, peer, &ctx->resolve_returns->addr)) {
-				if (!fastd_peer_is_established(peer))
-					send_handshake(ctx, peer);
-			}
-			else {
+			if (fastd_peer_claim_address(ctx, peer, &ctx->resolve_returns->addr))
+				send_handshake(ctx, peer);
+			else
 				pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", ctx->resolve_returns->hostname, ctx->resolve_returns->addr);
-			}
 			break;
 		}
 
