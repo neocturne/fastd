@@ -43,8 +43,6 @@ static void on_establish(fastd_context *ctx, fastd_peer *peer) {
 		setenv("INTERFACE", ctx->ifname, 1);
 
 		char buf[INET6_ADDRSTRLEN];
-		snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
-		setenv("MTU", buf, 1);
 
 		if (peer->config && peer->config->name)
 			setenv("PEER_NAME", peer->config->name, 1);
@@ -102,8 +100,6 @@ static void on_disestablish(fastd_context *ctx, fastd_peer *peer) {
 		setenv("INTERFACE", ctx->ifname, 1);
 
 		char buf[INET6_ADDRSTRLEN];
-		snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
-		setenv("MTU", buf, 1);
 
 		if (peer->config && peer->config->name)
 			setenv("PEER_NAME", peer->config->name, 1);

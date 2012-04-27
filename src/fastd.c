@@ -90,48 +90,6 @@ static void init_signals(fastd_context *ctx) {
 		exit_errno(ctx, "sigaction");
 }
 
-static void init_tuntap(fastd_context *ctx) {
-	struct ifreq ifr;
-
-	pr_debug(ctx, "Initializing tun/tap device...");
-
-	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR)) < 0)
-		exit_errno(ctx, "Could not open tun/tap device file");
-
-	memset(&ifr, 0, sizeof(ifr));
-
-	if (ctx->conf->ifname)
-		strncpy(ifr.ifr_name, ctx->conf->ifname, IF_NAMESIZE-1);
-
-	switch (ctx->conf->mode) {
-	case MODE_TAP:
-		ifr.ifr_flags = IFF_TAP;
-		break;
-
-	case MODE_TUN:
-		ifr.ifr_flags = IFF_TUN;
-		break;
-
-	default:
-		exit_bug(ctx, "invalid mode");
-	}
-
-	ifr.ifr_flags |= IFF_NO_PI;
-	if (ioctl(ctx->tunfd, TUNSETIFF, (void *)&ifr) < 0)
-		exit_errno(ctx, "TUNSETIFF ioctl failed");
-
-	ctx->ifname = strdup(ifr.ifr_name);
-
-	pr_debug(ctx, "tun/tap device initialized.");
-}
-
-static void close_tuntap(fastd_context *ctx) {
-	if(close(ctx->tunfd))
-		pr_warn_errno(ctx, "closing tun/tap: close");
-
-	free(ctx->ifname);
-}
-
 static void init_sockets(fastd_context *ctx) {
 	struct sockaddr_in addr_in = ctx->conf->bind_addr_in;
 	struct sockaddr_in6 addr_in6 = ctx->conf->bind_addr_in6;
@@ -188,6 +146,56 @@ static void init_sockets(fastd_context *ctx) {
 	else {
 		ctx->sock6fd = -1;
 	}
+}
+
+static void init_tuntap(fastd_context *ctx) {
+	struct ifreq ifr;
+
+	pr_debug(ctx, "Initializing tun/tap device...");
+
+	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR)) < 0)
+		exit_errno(ctx, "Could not open tun/tap device file");
+
+	memset(&ifr, 0, sizeof(ifr));
+
+	if (ctx->conf->ifname)
+		strncpy(ifr.ifr_name, ctx->conf->ifname, IFNAMSIZ);
+
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		ifr.ifr_flags = IFF_TAP;
+		break;
+
+	case MODE_TUN:
+		ifr.ifr_flags = IFF_TUN;
+		break;
+
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
+
+	ifr.ifr_flags |= IFF_NO_PI;
+	if (ioctl(ctx->tunfd, TUNSETIFF, &ifr) < 0)
+		exit_errno(ctx, "TUNSETIFF ioctl failed");
+
+	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ);
+
+	int ctl_sock = ctx->sockfd;
+	if (ctl_sock < 0)
+		ctl_sock = ctx->sock6fd;
+
+	ifr.ifr_mtu = ctx->conf->mtu;
+	if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
+		exit_errno(ctx, "SIOCSIFMTU ioctl failed");
+
+	pr_debug(ctx, "tun/tap device initialized.");
+}
+
+static void close_tuntap(fastd_context *ctx) {
+	if(close(ctx->tunfd))
+		pr_warn_errno(ctx, "closing tun/tap: close");
+
+	free(ctx->ifname);
 }
 
 static void close_sockets(fastd_context *ctx) {
@@ -302,10 +310,6 @@ static void on_up(fastd_context *ctx) {
 	if (!chdir(ctx->conf->on_up_dir)) {
 		setenv("INTERFACE", ctx->ifname, 1);
 
-		char buf[6];
-		snprintf(buf, 6, "%u", ctx->conf->mtu);
-		setenv("MTU", buf, 1);
-
 		int ret = system(ctx->conf->on_up);
 
 		if (WIFSIGNALED(ret))
@@ -331,10 +335,6 @@ static void on_down(fastd_context *ctx) {
 
 	if(!chdir(ctx->conf->on_down_dir)) {
 		setenv("INTERFACE", ctx->ifname, 1);
-
-		char buf[6];
-		snprintf(buf, 6, "%u", ctx->conf->mtu);
-		setenv("MTU", buf, 1);
 
 		int ret = system(ctx->conf->on_down);
 
@@ -636,8 +636,8 @@ int main(int argc, char *argv[]) {
 
 	update_time(&ctx);
 
-	init_tuntap(&ctx);
 	init_sockets(&ctx);
+	init_tuntap(&ctx);
 
 	init_peers(&ctx);
 
@@ -667,8 +667,8 @@ int main(int argc, char *argv[]) {
 
 	delete_peers(&ctx);
 
-	close_sockets(&ctx);
 	close_tuntap(&ctx);
+	close_sockets(&ctx);
 
 	free(ctx.protocol_state);
 
