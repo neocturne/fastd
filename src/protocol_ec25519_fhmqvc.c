@@ -506,6 +506,9 @@ static const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd
 	if (!peer_conf || fastd_peer_config_is_floating(peer_conf) || fastd_peer_config_is_dynamic(peer_conf)) {
 		fastd_peer_config *config;
 		for (config = ctx->conf->peers; config; config = config->next) {
+			if (!config->enabled || !config->protocol_config)
+				continue;
+
 			if (!fastd_peer_config_is_floating(config) && !fastd_peer_config_matches_dynamic(config, address))
 				continue;
 
