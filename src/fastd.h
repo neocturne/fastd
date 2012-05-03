@@ -101,10 +101,6 @@ union _fastd_peer_address {
 };
 
 struct _fastd_resolve_return {
-	fastd_resolve_return *next;
-
-	fastd_context *ctx;
-
 	char *hostname;
 	fastd_peer_address constraints;
 
@@ -173,6 +169,9 @@ struct _fastd_context {
 	fastd_peer *peers;
 	fastd_queue task_queue;
 
+	int resolverfd;
+	int resolvewfd;
+
 	int tunfd;
 	int sockfd;
 	int sock6fd;
@@ -184,8 +183,6 @@ struct _fastd_context {
 	unsigned int randseed;
 
 	fastd_protocol_state *protocol_state;
-
-	fastd_resolve_return *resolve_returns;
 };
 
 struct _fastd_string_stack {

@@ -55,17 +55,6 @@ static void on_terminate(int signo) {
 	terminate = true;
 }
 
-static void on_sigusr1(int signo, siginfo_t *siginfo, void *context) {
-	if (siginfo->si_code != SI_QUEUE || !siginfo->si_value.sival_ptr)
-		return;
-
-	fastd_resolve_return *ret = siginfo->si_value.sival_ptr;
-
-	ret->next = ret->ctx->resolve_returns;
-	ret->ctx->resolve_returns = ret;
-}
-
-
 static void init_signals(fastd_context *ctx) {
 	struct sigaction action;
 
@@ -83,11 +72,16 @@ static void init_signals(fastd_context *ctx) {
 		exit_errno(ctx, "sigaction");
 	if(sigaction(SIGINT, &action, NULL))
 		exit_errno(ctx, "sigaction");
+}
 
-	action.sa_flags = SA_SIGINFO;
-	action.sa_sigaction = on_sigusr1;
-	if(sigaction(SIGUSR1, &action, NULL))
-		exit_errno(ctx, "sigaction");
+static void init_pipes(fastd_context *ctx) {
+	int pipefd[2];
+
+	if (pipe(pipefd))
+		exit_errno(ctx, "pipe");
+
+	ctx->resolverfd = pipefd[0];
+	ctx->resolvewfd = pipefd[1];
 }
 
 static void init_sockets(fastd_context *ctx) {
@@ -530,6 +524,40 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	}
 }
 
+static void handle_resolv_returns(fastd_context *ctx) {
+	fastd_resolve_return resolve_return;
+
+	if (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
+		if (errno != EINTR)
+			pr_warn(ctx, "recvfrom: %s", strerror(errno));
+
+		return;
+	}
+
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (!peer->config)
+			continue;
+
+		if (!strequal(peer->config->hostname, resolve_return.hostname))
+			continue;
+
+		if (!fastd_peer_config_matches_dynamic(peer->config, &resolve_return.constraints))
+			continue;
+
+		if (fastd_peer_claim_address(ctx, peer, &resolve_return.addr)) {
+			send_handshake(ctx, peer);
+		}
+		else {
+			pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", resolve_return.hostname, &resolve_return.addr);
+			fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
+		}
+		break;
+	}
+
+	free(resolve_return.hostname);
+}
+
 static void handle_input(fastd_context *ctx) {
 	struct pollfd fds[3];
 	fds[0].fd = ctx->tunfd;
@@ -538,13 +566,15 @@ static void handle_input(fastd_context *ctx) {
 	fds[1].events = POLLIN;
 	fds[2].fd = ctx->sock6fd;
 	fds[2].events = POLLIN;
+	fds[3].fd = ctx->resolverfd;
+	fds[3].events = POLLIN;
 
 	int timeout = fastd_task_timeout(ctx);
 
 	if (timeout < 0 || timeout > 60000)
 		timeout = 60000; /* call maintenance at least once a minute */
 
-	int ret = poll(fds, 3, timeout);
+	int ret = poll(fds, 4, timeout);
 	if (ret < 0) {
 		if (errno == EINTR)
 			return;
@@ -560,6 +590,8 @@ static void handle_input(fastd_context *ctx) {
 		handle_socket(ctx, ctx->sockfd);
 	if (fds[2].revents & POLLIN)
 		handle_socket(ctx, ctx->sock6fd);
+	if (fds[3].revents & POLLIN)
+		handle_resolv_returns(ctx);
 }
 
 static void cleanup_peers(fastd_context *ctx) {
@@ -572,34 +604,6 @@ static void cleanup_peers(fastd_context *ctx) {
 			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000)
 				fastd_peer_reset(ctx, peer);
 		}
-	}
-}
-
-
-static void handle_resolv_returns(fastd_context *ctx) {
-	while (ctx->resolve_returns) {
-		fastd_peer *peer;
-		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (!peer->config)
-				continue;
-
-			if (!strequal(peer->config->hostname, ctx->resolve_returns->hostname))
-				continue;
-
-			if (!fastd_peer_config_matches_dynamic(peer->config, &ctx->resolve_returns->constraints))
-				continue;
-
-			if (fastd_peer_claim_address(ctx, peer, &ctx->resolve_returns->addr))
-				send_handshake(ctx, peer);
-			else
-				pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", ctx->resolve_returns->hostname, ctx->resolve_returns->addr);
-			break;
-		}
-
-		fastd_resolve_return *next = ctx->resolve_returns->next;
-		free(ctx->resolve_returns->hostname);
-		free(ctx->resolve_returns);
-		ctx->resolve_returns = next;
 	}
 }
 
@@ -617,6 +621,7 @@ int main(int argc, char *argv[]) {
 	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
 
 	init_signals(&ctx);
+	init_pipes(&ctx);
 
 	fastd_config conf;
 	fastd_configure(&ctx, &conf, argc, argv);
@@ -657,8 +662,6 @@ int main(int argc, char *argv[]) {
 			sighup = false;
 			fastd_reconfigure(&ctx, &conf);
 		}
-
-		handle_resolv_returns(&ctx);
 
 		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 	}

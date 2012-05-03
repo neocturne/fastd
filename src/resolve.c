@@ -31,7 +31,7 @@
 
 #include <netdb.h>
 #include <pthread.h>
-#include <signal.h>
+#include <unistd.h>
 
 
 typedef struct _resolv_arg {
@@ -70,25 +70,21 @@ static void* resolve_peer(void *varg) {
 		error = true;
 	}
 
-	fastd_resolve_return *ret = malloc(sizeof(fastd_resolve_return));
+	fastd_resolve_return ret;
 
-	ret->ctx = arg->ctx;
-
-	ret->hostname = arg->hostname;
-	ret->constraints = arg->constraints;
+	ret.hostname = arg->hostname;
+	ret.constraints = arg->constraints;
 
 	if (!error) {
 		pr_debug(arg->ctx, "Resolved host `%s' successfully", arg->hostname);
-		memcpy(&ret->addr, res->ai_addr, res->ai_addrlen);
+		memcpy(&ret.addr, res->ai_addr, res->ai_addrlen);
 	}
 	else {
-		ret->addr.sa.sa_family = AF_UNSPEC;
+		ret.addr.sa.sa_family = AF_UNSPEC;
 	}
 
-	union sigval sigval;
-	sigval.sival_ptr = ret;
-	if (pthread_sigqueue(arg->master_thread, SIGUSR1, sigval))
-		exit_errno(arg->ctx, "pthread_sigqueue");
+	if (write(arg->ctx->resolvewfd, &ret, sizeof(ret)) < 0)
+		exit_errno(arg->ctx, "write");
 
 	freeaddrinfo(res);
 	free(arg);
