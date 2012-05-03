@@ -318,18 +318,6 @@ static bool establish(fastd_context *ctx, const fastd_peer_config *peer_conf, co
 
 	pr_verbose(ctx, "%I authorized as %P", address, peer);
 
-	/*if (backoff(ctx, peer)) {
-		if (initiator == ctx->conf->method->session_is_initiator(ctx, peer->protocol_state->session.method_state)) {
-			pr_verbose(ctx, "received repeated handshakes from %P, ignoring", peer);
-		}
-		else {
-			pr_verbose(ctx, "mismatched concurrent handshakes with %P, resetting", peer);
-			fastd_peer_reset(ctx, peer);
-		}
-
-		return false;
-		}*/
-
 	init_peer_state(ctx, peer);
 
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
@@ -355,7 +343,7 @@ static bool establish(fastd_context *ctx, const fastd_peer_config *peer_conf, co
 	fastd_peer_seen(ctx, peer);
 
 	if (!fastd_peer_claim_address(ctx, peer, address)) {
-		pr_warn(ctx, "can't set address %I which is used by a fixed peer", ctx->resolve_returns->addr);
+		pr_warn(ctx, "can't set address %I which is used by a fixed peer", address);
 		fastd_peer_reset(ctx, peer);
 		return false;
 	}
