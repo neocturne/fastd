@@ -71,6 +71,7 @@ static void* resolve_peer(void *varg) {
 	}
 
 	fastd_resolve_return ret;
+	memset(&ret, 0, sizeof(ret));
 
 	ret.hostname = arg->hostname;
 	ret.constraints = arg->constraints;
