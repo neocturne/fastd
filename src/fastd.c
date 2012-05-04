@@ -674,6 +674,7 @@ int main(int argc, char *argv[]) {
 	close_sockets(&ctx);
 
 	free(ctx.protocol_state);
+	free(ctx.eth_addr);
 
 	fastd_config_release(&ctx, &conf);
 
