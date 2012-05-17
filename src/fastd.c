@@ -39,6 +39,7 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -614,9 +615,33 @@ static void maintenance(fastd_context *ctx) {
 }
 
 
+static void close_fds(fastd_context *ctx) {
+	struct rlimit rl;
+	int fd, maxfd;
+
+	if (getrlimit(RLIMIT_NOFILE, &rl) > 0)
+		maxfd = (int)rl.rlim_max;
+	else
+		maxfd = sysconf(_SC_OPEN_MAX);
+
+	for (fd = 3; fd < maxfd; fd++) {
+		if (close(fd) < 0) {
+			if (errno == EINTR) {
+				fd--;
+				continue;
+			}
+
+			if (errno != EBADF)
+				pr_error_errno(ctx, "close");
+		}
+	}
+}
+
 int main(int argc, char *argv[]) {
 	fastd_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
+
+	close_fds(&ctx);
 
 	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
 
