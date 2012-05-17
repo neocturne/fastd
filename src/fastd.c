@@ -671,6 +671,11 @@ int main(int argc, char *argv[]) {
 
 	init_peers(&ctx);
 
+	if (conf.daemon) {
+		if (daemon(0, 1) < 0)
+			exit_errno(&ctx, "daemon");
+	}
+
 	on_up(&ctx);
 
 	while (!terminate) {

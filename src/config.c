@@ -88,6 +88,7 @@ static void default_config(fastd_config *conf) {
 	conf->on_disestablish = NULL;
 	conf->on_disestablish_dir = NULL;
 
+	conf->daemon = false;
 	conf->machine_readable = false;
 	conf->generate_key = false;
 	conf->show_key = false;
@@ -332,6 +333,7 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 #define OPTIONS \
 	OPTION(usage, "--help" OR "-h", "Shows this help text") \
 	OPTION(version, "--version" OR "-v", "Shows the fastd version") \
+	OPTION(option_daemon, "--daemon" OR "-d", "Runs fastd in the background") \
 	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the log level; default is info") \
 	OPTION_ARG(option_config, "--config" OR "-c", "<filename>", "Loads a config file") \
 	OPTION_ARG(option_config_peer, "--config-peer", "<filename>", "Loads a config file for a single peer") \
@@ -553,6 +555,9 @@ static void option_on_disestablish(fastd_context *ctx, fastd_config *conf, const
 	conf->on_disestablish_dir = get_current_dir_name();
 }
 
+static void option_daemon(fastd_context *ctx, fastd_config *conf) {
+	conf->daemon = true;
+}
 static void option_generate_key(fastd_context *ctx, fastd_config *conf) {
 	conf->generate_key = true;
 	conf->show_key = false;
