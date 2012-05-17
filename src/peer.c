@@ -269,21 +269,23 @@ bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_
 }
 
 bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, const fastd_peer_address *addr) {
-	fastd_peer *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (fastd_peer_address_equal(&peer->address, addr)) {
-			if (peer == new_peer)
-				break;
+	if (addr->sa.sa_family != AF_UNSPEC) {
+		fastd_peer *peer;
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (fastd_peer_address_equal(&peer->address, addr)) {
+				if (peer == new_peer)
+					break;
 
-			if (fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer)) {
-				if (fastd_peer_is_established(peer))
-					fastd_peer_reset(ctx, peer);
+				if (fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer)) {
+					if (fastd_peer_is_established(peer))
+						fastd_peer_reset(ctx, peer);
 
-				memset(&peer->address, 0, sizeof(fastd_peer_address));
-				break;
-			}
-			else {
-				return false;
+					memset(&peer->address, 0, sizeof(fastd_peer_address));
+					break;
+				}
+				else {
+					return false;
+				}
 			}
 		}
 	}
