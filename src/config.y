@@ -81,6 +81,9 @@
 %token TOK_FROM
 %token TOK_LOG
 %token TOK_LEVEL
+%token TOK_SYSLOG
+%token TOK_STDERR
+%token TOK_TO
 %token TOK_FATAL
 %token TOK_ERROR
 %token TOK_WARN
@@ -107,6 +110,8 @@
 }
 
 
+%type <num> maybe_log_level
+%type <num> log_level
 %type <num> port
 %type <boolean> boolean
 %type <num> maybe_port
@@ -139,15 +144,40 @@ statement:	TOK_LOG log ';'
 	|	TOK_INCLUDE include ';'
 	;
 
-log:		TOK_LEVEL log_level
+log:		TOK_LEVEL log_level {
+			conf->log_stderr_level = $2;
+		}
+	|	TOK_TO TOK_STDERR maybe_log_level {
+			conf->log_stderr_level = $3;
+		}
+	|	TOK_TO TOK_SYSLOG maybe_log_level {
+			conf->log_syslog_level = $3;
+		}
+	|	TOK_TO TOK_SYSLOG TOK_AS TOK_STRING maybe_log_level {
+			free(conf->log_syslog_ident);
+			conf->log_syslog_ident = strdup($4->str);
+
+			conf->log_syslog_level = $5;
+		}
+	|	TOK_TO TOK_STRING maybe_log_level {
+			if (!fastd_config_add_log_file(ctx, conf, $2->str, $3)) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "unable to set log file");
+				YYERROR;
+			}
+		}
 	;
 
-log_level:	TOK_FATAL	{ conf->loglevel = LOG_FATAL; }
-	|	TOK_ERROR	{ conf->loglevel = LOG_ERROR; }
-	|	TOK_WARN	{ conf->loglevel = LOG_WARN; }
-	|	TOK_INFO	{ conf->loglevel = LOG_INFO; }
-	|	TOK_VERBOSE	{ conf->loglevel = LOG_VERBOSE; }
-	|	TOK_DEBUG	{ conf->loglevel = LOG_DEBUG; }
+maybe_log_level:
+		TOK_LEVEL log_level	{ $$ = $2; }
+	|				{ $$ = FASTD_DEFAULT_LOG_LEVEL; }
+	;
+
+log_level:	TOK_FATAL	{ $$ = LOG_CRIT; }
+	|	TOK_ERROR	{ $$ = LOG_ERR; }
+	|	TOK_WARN	{ $$ = LOG_WARNING; }
+	|	TOK_INFO	{ $$ = LOG_NOTICE; }
+	|	TOK_VERBOSE	{ $$ = LOG_INFO; }
+	|	TOK_DEBUG	{ $$ = LOG_DEBUG; }
 	;
 
 interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
@@ -197,7 +227,7 @@ method:		TOK_STRING {
 secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1->str); }
 	;
 
-on_up:		TOK_STRING	{
+on_up:		TOK_STRING {
 			free(conf->on_up);
 			free(conf->on_up_dir);
 
@@ -206,7 +236,7 @@ on_up:		TOK_STRING	{
 		}
 	;
 
-on_down:	TOK_STRING	{
+on_down:	TOK_STRING {
 			free(conf->on_down);
 			free(conf->on_down_dir);
 
@@ -215,7 +245,7 @@ on_down:	TOK_STRING	{
 		}
 	;
 
-on_establish:	TOK_STRING	{
+on_establish:	TOK_STRING {
 			free(conf->on_establish);
 			free(conf->on_establish_dir);
 
@@ -224,7 +254,7 @@ on_establish:	TOK_STRING	{
 		}
 	;
 
-on_disestablish: TOK_STRING	{
+on_disestablish: TOK_STRING {
 			free(conf->on_disestablish);
 			free(conf->on_disestablish_dir);
 
@@ -273,13 +303,15 @@ peer_remote:	TOK_ADDR port {
 		}
 	;
 
-peer_key:	TOK_STRING	{ free(conf->peers->key); conf->peers->key = strdup($1->str); }
+peer_key:	TOK_STRING {
+			free(conf->peers->key); conf->peers->key = strdup($1->str);
+		}
 	;
 
-peer_include:	TOK_STRING	{
-					if (!fastd_read_config(ctx, conf, $1->str, true, depth))
-						YYERROR;
-				}
+peer_include:	TOK_STRING {
+			if (!fastd_read_config(ctx, conf, $1->str, true, depth))
+				YYERROR;
+		}
 	;
 
 
@@ -308,7 +340,9 @@ maybe_port:	port		{ $$ = $1; }
 	|			{ $$ = 0; }
 	;
 
-maybe_as:	TOK_AS TOK_STRING { $$ = $2; }
+maybe_as:	TOK_AS TOK_STRING {
+			$$ = $2;
+		}
 	|			{ $$ = NULL; }
 	;
 

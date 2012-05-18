@@ -33,12 +33,14 @@
 #include <errno.h>
 #include <linux/if_ether.h>
 #include <netinet/in.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <time.h>
@@ -107,8 +109,25 @@ struct _fastd_resolve_return {
 	fastd_peer_address addr;
 };
 
+struct _fastd_log_file {
+	fastd_log_file *next;
+
+	int level;
+	char *filename;
+};
+
+struct _fastd_log_fd {
+	fastd_log_fd *next;
+
+	fastd_log_file *config;
+	int fd;
+};
+
 struct _fastd_config {
-	fastd_loglevel loglevel;
+	int log_stderr_level;
+	int log_syslog_level;
+	char *log_syslog_ident;
+	fastd_log_file *log_files;
 
 	unsigned keepalive_interval;
 	unsigned peer_stale_time;
@@ -163,6 +182,8 @@ struct _fastd_config {
 struct _fastd_context {
 	const fastd_config *conf;
 
+	fastd_log_fd *log_files;
+
 	char *ifname;
 
 	struct timespec now;
@@ -198,13 +219,14 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 
 void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer);
 
-void fastd_printf(const fastd_context *ctx, const char *format, ...);
+int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const char *format, va_list ap);
 
 void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir);
 bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth);
 
 bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *name);
 bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name);
+bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);
 void fastd_config_release(fastd_context *ctx, fastd_config *conf);
@@ -216,36 +238,71 @@ static inline int fastd_rand(fastd_context *ctx, int min, int max) {
 	return (r%(max-min) + min);
 }
 
-#define pr_log(ctx, level, prefix, args...) do { \
-		if ((ctx)->conf == NULL || (level) <= (ctx)->conf->loglevel) { \
-			char timestr[100]; \
-			time_t t; \
-			struct tm tm; \
-			\
-			t = time(NULL); \
-			if (localtime_r(&t, &tm) != NULL) { \
-				if (strftime(timestr, sizeof(timestr), "%F %T %z --- ", &tm) > 0) \
-					fputs(timestr, stderr); \
-			} \
-			\
-			fputs(prefix, stderr); \
-			fastd_printf(ctx, args); \
-			fputs("\n", stderr); \
-		} \
-	} while(0)
 
-#define is_error(ctx) ((ctx)->conf == NULL || LOG_ERROR <= (ctx)->conf->loglevel)
-#define is_warn(ctx) ((ctx)->conf == NULL || LOG_WARN <= (ctx)->conf->loglevel)
-#define is_info(ctx) ((ctx)->conf == NULL || LOG_INFO <= (ctx)->conf->loglevel)
-#define is_verbose(ctx) ((ctx)->conf == NULL || LOG_VERBOSE <= (ctx)->conf->loglevel)
-#define is_debug(ctx) ((ctx)->conf == NULL || LOG_DEBUG <= (ctx)->conf->loglevel)
+#define FASTD_DEFAULT_LOG_LEVEL	LOG_INFO
 
-#define pr_fatal(ctx, args...) pr_log(ctx, LOG_FATAL, "Fatal: ", args)
-#define pr_error(ctx, args...) pr_log(ctx, LOG_ERROR, "Error: ", args)
-#define pr_warn(ctx, args...) pr_log(ctx, LOG_WARN, "Warning: ", args)
-#define pr_info(ctx, args...) pr_log(ctx, LOG_INFO, "Info: ", args)
-#define pr_verbose(ctx, args...) pr_log(ctx, LOG_VERBOSE, "Verbose: ", args)
-#define pr_debug(ctx, args...) pr_log(ctx, LOG_DEBUG, "DEBUG: ", args)
+
+static inline const char* get_log_prefix(int log_level) {
+	switch(log_level) {
+	case LOG_CRIT:
+		return "Fatal: ";
+	case LOG_ERR:
+		return "Error: ";
+	case LOG_WARNING:
+		return "Warning: ";
+	case LOG_NOTICE:
+		return "Info: ";
+	case LOG_INFO:
+		return "Verbose: ";
+	case LOG_DEBUG:
+		return "DEBUG: ";
+	default:
+		return "";
+	}
+}
+
+static inline void pr_log(const fastd_context *ctx, int level, const char *format, ...) {
+	char buffer[1024];
+	char timestr[100] = "";
+	va_list ap;
+
+	va_start(ap, format);
+	fastd_vsnprintf(ctx, buffer, sizeof(buffer), format, ap);
+	va_end(ap);
+
+	buffer[sizeof(buffer)-1] = 0;
+
+	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level || ctx->conf->log_files) {
+		time_t t;
+		struct tm tm;
+
+		t = time(NULL);
+		if (localtime_r(&t, &tm) != NULL) {
+			if (strftime(timestr, sizeof(timestr), "%F %T %z --- ", &tm) <= 0)
+				*timestr = 0;
+		}
+	}
+
+	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level)
+		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
+
+	if (level <= ctx->conf->log_syslog_level)
+		syslog(level, "%s", buffer);
+
+	fastd_log_fd *file;
+	for (file = ctx->log_files; file; file = file->next) {
+		if (level <= file->config->level)
+			dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
+	}
+}
+
+
+#define pr_fatal(ctx, args...) pr_log(ctx, LOG_CRIT, args)
+#define pr_error(ctx, args...) pr_log(ctx, LOG_ERR, args)
+#define pr_warn(ctx, args...) pr_log(ctx, LOG_WARNING, args)
+#define pr_info(ctx, args...) pr_log(ctx, LOG_NOTICE, args)
+#define pr_verbose(ctx, args...) pr_log(ctx, LOG_INFO, args)
+#define pr_debug(ctx, args...) pr_log(ctx, LOG_DEBUG, args)
 
 #define pr_warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
 #define pr_error_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))

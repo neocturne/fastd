@@ -80,6 +80,9 @@ peers		{ UPDATE_LOCATION; return TOK_PEERS; }
 from		{ UPDATE_LOCATION; return TOK_FROM; }
 log		{ UPDATE_LOCATION; return TOK_LOG; }
 level 		{ UPDATE_LOCATION; return TOK_LEVEL; }
+syslog		{ UPDATE_LOCATION; return TOK_SYSLOG; }
+stderr		{ UPDATE_LOCATION; return TOK_STDERR; }
+to		{ UPDATE_LOCATION; return TOK_TO; }
 fatal		{ UPDATE_LOCATION; return TOK_FATAL; }
 error		{ UPDATE_LOCATION; return TOK_ERROR; }
 warn		{ UPDATE_LOCATION; return TOK_WARN; }

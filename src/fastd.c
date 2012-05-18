@@ -85,6 +85,35 @@ static void init_pipes(fastd_context *ctx) {
 	ctx->resolvewfd = pipefd[1];
 }
 
+static void init_log(fastd_context *ctx) {
+	if (ctx->conf->log_syslog_level >= 0)
+		openlog(ctx->conf->log_syslog_ident, LOG_PID, LOG_DAEMON);
+
+	fastd_log_file *config;
+	for (config = ctx->conf->log_files; config; config = config->next) {
+		fastd_log_fd *file = malloc(sizeof(fastd_log_fd));
+
+		file->config = config;
+		file->fd = open(config->filename, O_WRONLY|O_APPEND|O_CREAT, 0600);
+
+		file->next = ctx->log_files;
+		ctx->log_files = file;
+	}
+}
+
+static void close_log(fastd_context *ctx) {
+	while (ctx->log_files) {
+		fastd_log_fd *next = ctx->log_files->next;
+
+		close(ctx->log_files->fd);
+		free(ctx->log_files);
+
+		ctx->log_files = next;
+	}
+
+	closelog();
+}
+
 static void init_sockets(fastd_context *ctx) {
 	struct sockaddr_in addr_in = ctx->conf->bind_addr_in;
 	struct sockaddr_in6 addr_in6 = ctx->conf->bind_addr_in6;
@@ -586,7 +615,7 @@ static void handle_input(fastd_context *ctx) {
 	update_time(ctx);
 
 	if (fds[0].revents & POLLIN)
-		handle_tun(ctx);
+	  handle_tun(ctx);
 	if (fds[1].revents & POLLIN)
 		handle_socket(ctx, ctx->sockfd);
 	if (fds[2].revents & POLLIN)
@@ -652,6 +681,8 @@ int main(int argc, char *argv[]) {
 	fastd_configure(&ctx, &conf, argc, argv);
 	ctx.conf = &conf;
 
+	init_log(&ctx);
+
 	if (conf.generate_key) {
 		conf.protocol->generate_key(&ctx);
 		exit(0);
@@ -672,7 +703,7 @@ int main(int argc, char *argv[]) {
 	init_peers(&ctx);
 
 	if (conf.daemon) {
-		if (daemon(0, 1) < 0)
+		if (daemon(1, 1) < 0)
 			exit_errno(&ctx, "daemon");
 	}
 
@@ -690,7 +721,12 @@ int main(int argc, char *argv[]) {
 
 		if (sighup) {
 			sighup = false;
+
+			close_log(&ctx);
+			init_log(&ctx);
+
 			fastd_reconfigure(&ctx, &conf);
+
 		}
 
 		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
@@ -706,6 +742,7 @@ int main(int argc, char *argv[]) {
 	free(ctx.protocol_state);
 	free(ctx.eth_addr);
 
+	close_log(&ctx);
 	fastd_config_release(&ctx, &conf);
 
 	return 0;

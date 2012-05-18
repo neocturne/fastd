@@ -33,15 +33,6 @@
 #ifndef _FASTD_TYPES_H_
 #define _FASTD_TYPES_H_
 
-typedef enum _fastd_loglevel {
-	LOG_FATAL = 0,
-	LOG_ERROR,
-	LOG_WARN,
-	LOG_INFO,
-	LOG_VERBOSE,
-	LOG_DEBUG,
-} fastd_loglevel;
-
 typedef enum _fastd_mode {
 	MODE_TAP,
 	MODE_TUN,
@@ -55,6 +46,9 @@ typedef struct _fastd_peer_config fastd_peer_config;
 typedef struct _fastd_eth_addr fastd_eth_addr;
 typedef struct _fastd_peer fastd_peer;
 typedef struct _fastd_peer_eth_addr fastd_peer_eth_addr;
+
+typedef struct _fastd_log_file fastd_log_file;
+typedef struct _fastd_log_fd fastd_log_fd;
 
 typedef struct _fastd_config fastd_config;
 typedef struct _fastd_context fastd_context;

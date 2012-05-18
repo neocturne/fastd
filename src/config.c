@@ -51,7 +51,10 @@ extern const fastd_method fastd_method_xsalsa20_poly1305;
 
 
 static void default_config(fastd_config *conf) {
-	conf->loglevel = LOG_INFO;
+	conf->log_stderr_level = -1;
+	conf->log_syslog_level = -1;
+	conf->log_syslog_ident = strdup("fastd");
+	conf->log_files = NULL;
 
 	conf->keepalive_interval = 60;
 	conf->peer_stale_time = 300;
@@ -132,6 +135,43 @@ bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *nam
 	else
 		return false;
 
+	return true;
+}
+
+bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level) {
+	char *name2 = strdup(name);
+	char *name3 = strdup(name);
+
+	char *dir = dirname(name2);
+	char *base = basename(name3);
+
+	char *oldcwd = get_current_dir_name();
+
+	if (!chdir(dir)) {
+		char *logdir = get_current_dir_name();
+
+		fastd_log_file *file = malloc(sizeof(fastd_log_file));
+		file->filename = malloc(strlen(logdir) + 1 + strlen(base) + 1);
+
+		strcpy(file->filename, logdir);
+		strcat(file->filename, "/");
+		strcat(file->filename, base);
+
+		file->level = level;
+
+		file->next = conf->log_files;
+		conf->log_files = file;
+
+		if(chdir(oldcwd))
+			pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
+	}
+	else {
+		pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
+	}
+
+
+	free(name2);
+	free(name3);
 	return true;
 }
 
@@ -334,7 +374,9 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 	OPTION(usage, "--help" OR "-h", "Shows this help text") \
 	OPTION(version, "--version" OR "-v", "Shows the fastd version") \
 	OPTION(option_daemon, "--daemon" OR "-d", "Runs fastd in the background") \
-	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the log level; default is info") \
+	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the stderr log level; default is info, if no alternative log destination ist configured") \
+	OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug", "Sets the log level for syslog output; default is not to use syslog") \
+	OPTION_ARG(option_syslog_ident, "--syslog-ident", "<ident>", "Sets the syslog identification; default is 'fastd'") \
 	OPTION_ARG(option_config, "--config" OR "-c", "<filename>", "Loads a config file") \
 	OPTION_ARG(option_config_peer, "--config-peer", "<filename>", "Loads a config file for a single peer") \
 	OPTION_ARG(option_config_peer_dir, "--config-peer-dir", "<dir>", "Loads all files from a directory as peer configs") \
@@ -390,22 +432,36 @@ static void version(fastd_context *ctx, fastd_config *conf) {
 	exit(0);
 }
 
-
-static void option_log_level(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static int parse_log_level(fastd_context *ctx, const char *arg) {
 	if (!strcmp(arg, "fatal"))
-		conf->loglevel = LOG_FATAL;
+		return LOG_CRIT;
 	else if (!strcmp(arg, "error"))
-		conf->loglevel = LOG_ERROR;
+		return LOG_ERR;
 	else if (!strcmp(arg, "warn"))
-		conf->loglevel = LOG_WARN;
+		return LOG_WARNING;
 	else if (!strcmp(arg, "info"))
-		conf->loglevel = LOG_INFO;
+		return LOG_NOTICE;
 	else if (!strcmp(arg, "verbose"))
-		conf->loglevel = LOG_VERBOSE;
+		return LOG_INFO;
 	else if (!strcmp(arg, "debug"))
-		conf->loglevel = LOG_DEBUG;
+		return LOG_DEBUG;
 	else
 		exit_error(ctx, "invalid log level `%s'", arg);
+}
+
+
+
+static void option_log_level(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	conf->log_stderr_level = parse_log_level(ctx, arg);
+}
+
+static void option_syslog_level(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	conf->log_syslog_level = parse_log_level(ctx, arg);
+}
+
+static void option_syslog_ident(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	free(conf->log_syslog_ident);
+	conf->log_syslog_ident = strdup(arg);
 }
 
 static void option_config(fastd_context *ctx, fastd_config *conf, const char *arg) {
@@ -599,6 +655,9 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 		exit_error(ctx, "config error: unknown option `%s'; see --help for usage", argv[i]);
 	}
 
+	if (conf->log_stderr_level < 0 && conf->log_syslog_level < 0 && !conf->log_files)
+		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
+
 	if (conf->generate_key || conf->show_key)
 		return;
 
@@ -725,6 +784,13 @@ void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
 
 	fastd_string_stack_free(conf->peer_dirs);
 
+	while (conf->log_files) {
+		fastd_log_file *next = conf->log_files->next;
+		free(conf->log_files->filename);
+		free(conf->log_files);
+		conf->log_files = next;
+	}
+
 	free(conf->ifname);
 	free(conf->secret);
 	free(conf->on_up);
@@ -736,4 +802,5 @@ void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
 	free(conf->on_disestablish);
 	free(conf->on_disestablish_dir);
 	free(conf->protocol_config);
+	free(conf->log_syslog_ident);
 }
