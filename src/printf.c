@@ -147,3 +147,57 @@ int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const c
 
 	return buffer-buffer_start;
 }
+
+static inline const char* get_log_prefix(int log_level) {
+	switch(log_level) {
+	case LOG_CRIT:
+		return "Fatal: ";
+	case LOG_ERR:
+		return "Error: ";
+	case LOG_WARNING:
+		return "Warning: ";
+	case LOG_NOTICE:
+		return "Info: ";
+	case LOG_INFO:
+		return "Verbose: ";
+	case LOG_DEBUG:
+		return "DEBUG: ";
+	default:
+		return "";
+	}
+}
+
+void fastd_logf(const fastd_context *ctx, int level, const char *format, ...) {
+	char buffer[1024];
+	char timestr[100] = "";
+	va_list ap;
+
+	va_start(ap, format);
+	fastd_vsnprintf(ctx, buffer, sizeof(buffer), format, ap);
+	va_end(ap);
+
+	buffer[sizeof(buffer)-1] = 0;
+
+	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level || ctx->conf->log_files) {
+		time_t t;
+		struct tm tm;
+
+		t = time(NULL);
+		if (localtime_r(&t, &tm) != NULL) {
+			if (strftime(timestr, sizeof(timestr), "%F %T %z --- ", &tm) <= 0)
+				*timestr = 0;
+		}
+	}
+
+	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level)
+		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
+
+	if (level <= ctx->conf->log_syslog_level)
+		syslog(level, "%s", buffer);
+
+	fastd_log_fd *file;
+	for (file = ctx->log_files; file; file = file->next) {
+		if (level <= file->config->level)
+			dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
+	}
+}

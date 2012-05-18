@@ -220,6 +220,7 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer);
 
 int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const char *format, va_list ap);
+void fastd_logf(const fastd_context *ctx, int level, const char *format, ...);
 
 void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir);
 bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth);
@@ -242,67 +243,12 @@ static inline int fastd_rand(fastd_context *ctx, int min, int max) {
 #define FASTD_DEFAULT_LOG_LEVEL	LOG_INFO
 
 
-static inline const char* get_log_prefix(int log_level) {
-	switch(log_level) {
-	case LOG_CRIT:
-		return "Fatal: ";
-	case LOG_ERR:
-		return "Error: ";
-	case LOG_WARNING:
-		return "Warning: ";
-	case LOG_NOTICE:
-		return "Info: ";
-	case LOG_INFO:
-		return "Verbose: ";
-	case LOG_DEBUG:
-		return "DEBUG: ";
-	default:
-		return "";
-	}
-}
-
-static inline void pr_log(const fastd_context *ctx, int level, const char *format, ...) {
-	char buffer[1024];
-	char timestr[100] = "";
-	va_list ap;
-
-	va_start(ap, format);
-	fastd_vsnprintf(ctx, buffer, sizeof(buffer), format, ap);
-	va_end(ap);
-
-	buffer[sizeof(buffer)-1] = 0;
-
-	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level || ctx->conf->log_files) {
-		time_t t;
-		struct tm tm;
-
-		t = time(NULL);
-		if (localtime_r(&t, &tm) != NULL) {
-			if (strftime(timestr, sizeof(timestr), "%F %T %z --- ", &tm) <= 0)
-				*timestr = 0;
-		}
-	}
-
-	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level)
-		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
-
-	if (level <= ctx->conf->log_syslog_level)
-		syslog(level, "%s", buffer);
-
-	fastd_log_fd *file;
-	for (file = ctx->log_files; file; file = file->next) {
-		if (level <= file->config->level)
-			dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
-	}
-}
-
-
-#define pr_fatal(ctx, args...) pr_log(ctx, LOG_CRIT, args)
-#define pr_error(ctx, args...) pr_log(ctx, LOG_ERR, args)
-#define pr_warn(ctx, args...) pr_log(ctx, LOG_WARNING, args)
-#define pr_info(ctx, args...) pr_log(ctx, LOG_NOTICE, args)
-#define pr_verbose(ctx, args...) pr_log(ctx, LOG_INFO, args)
-#define pr_debug(ctx, args...) pr_log(ctx, LOG_DEBUG, args)
+#define pr_fatal(ctx, args...) fastd_logf(ctx, LOG_CRIT, args)
+#define pr_error(ctx, args...) fastd_logf(ctx, LOG_ERR, args)
+#define pr_warn(ctx, args...) fastd_logf(ctx, LOG_WARNING, args)
+#define pr_info(ctx, args...) fastd_logf(ctx, LOG_NOTICE, args)
+#define pr_verbose(ctx, args...) fastd_logf(ctx, LOG_INFO, args)
+#define pr_debug(ctx, args...) fastd_logf(ctx, LOG_DEBUG, args)
 
 #define pr_warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
 #define pr_error_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))

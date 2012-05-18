@@ -48,6 +48,7 @@ static volatile bool sighup = false;
 static volatile bool terminate = false;
 
 
+
 static void on_sighup(int signo) {
 	sighup = true;
 }
