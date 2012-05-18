@@ -295,9 +295,6 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, const fa
 }
 
 bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_config *peer2) {
-	if (peer1->enabled != peer2->enabled)
-		return false;
-
 	if (!strequal(peer1->hostname, peer2->hostname))
 		return false;
 
