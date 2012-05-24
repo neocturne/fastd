@@ -192,7 +192,7 @@ void fastd_logf(const fastd_context *ctx, int level, const char *format, ...) {
 	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level)
 		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
 
-	if (level <= ctx->conf->log_syslog_level)
+	if (ctx->conf != NULL && level <= ctx->conf->log_syslog_level)
 		syslog(level, "%s", buffer);
 
 	fastd_log_fd *file;
