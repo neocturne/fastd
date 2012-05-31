@@ -61,11 +61,11 @@ static void* resolve_peer(void *varg) {
 
 	gai_ret = getaddrinfo(arg->hostname, portstr, &hints, &res);
 
-	if (gai_ret) {
+	if (gai_ret || !res) {
 		pr_debug(arg->ctx, "Resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
 		error = true;
 	}
-	else if (res->ai_addrlen > sizeof(fastd_peer_address)) {
+	else if (res->ai_addrlen > sizeof(fastd_peer_address) || (res->ai_addr->sa_family != AF_INET && res->ai_addr->sa_family != AF_INET6)) {
 		pr_warn(arg->ctx, "Resolving host `%s': unsupported address returned", arg->hostname);
 		error = true;
 	}
