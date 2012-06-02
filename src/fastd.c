@@ -560,7 +560,7 @@ static void handle_resolv_returns(fastd_context *ctx) {
 
 	if (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
 		if (errno != EINTR)
-			pr_warn(ctx, "recvfrom: %s", strerror(errno));
+			pr_warn(ctx, "read: %s", strerror(errno));
 
 		return;
 	}
