@@ -145,6 +145,7 @@ static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
 
 	if (!session->refreshing && ctx->conf->method->session_is_initiator(ctx, session->method_state) && ctx->conf->method->session_want_refresh(ctx, session->method_state)) {
 		pr_debug(ctx, "refreshing session with %P", peer);
+		session->handshakes_cleaned = true;
 		session->refreshing = true;
 		fastd_task_schedule_handshake(ctx, peer, 0);
 	}
