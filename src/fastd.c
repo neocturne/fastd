@@ -667,6 +667,23 @@ static void close_fds(fastd_context *ctx) {
 	}
 }
 
+static void write_pid(fastd_context *ctx, pid_t pid) {
+	if (!ctx->conf->pid_file)
+		return;
+
+	int fd = open(ctx->conf->pid_file, O_WRONLY|O_CREAT, 0666);
+	if (fd < 0) {
+		pr_error_errno(ctx, "can't write PID file: open");
+		return;
+	}
+
+	if (dprintf(fd, "%i", pid) < 0)
+		pr_error_errno(ctx, "can't write PID file: dprintf");
+
+	if (close(fd) < 0)
+		pr_warn_errno(ctx, "close");
+}
+
 int main(int argc, char *argv[]) {
 	fastd_context ctx;
 	memset(&ctx, 0, sizeof(ctx));
@@ -704,8 +721,20 @@ int main(int argc, char *argv[]) {
 	init_peers(&ctx);
 
 	if (conf.daemon) {
-		if (daemon(1, 1) < 0)
-			exit_errno(&ctx, "daemon");
+		pid_t pid = fork();
+		if (pid < 0) {
+			exit_errno(&ctx, "fork");
+		}
+		else if (pid > 0) {
+			write_pid(&ctx, pid);
+			exit(0);
+		}
+
+		if (setsid() < 0)
+			pr_error_errno(&ctx, "setsid");
+	}
+	else {
+		write_pid(&ctx, getpid());
 	}
 
 	on_up(&ctx);

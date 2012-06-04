@@ -174,6 +174,8 @@ struct _fastd_config {
 	char *on_disestablish_dir;
 
 	bool daemon;
+	char *pid_file;
+
 	bool machine_readable;
 	bool generate_key;
 	bool show_key;

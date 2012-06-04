@@ -92,6 +92,8 @@ static void default_config(fastd_config *conf) {
 	conf->on_disestablish_dir = NULL;
 
 	conf->daemon = false;
+	conf->pid_file = NULL;
+
 	conf->machine_readable = false;
 	conf->generate_key = false;
 	conf->show_key = false;
@@ -374,6 +376,7 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 	OPTION(usage, "--help" OR "-h", "Shows this help text") \
 	OPTION(version, "--version" OR "-v", "Shows the fastd version") \
 	OPTION(option_daemon, "--daemon" OR "-d", "Runs fastd in the background") \
+	OPTION_ARG(option_pid_file, "--pid-file", "<filename>", "Writes fastd's PID to the specified file") \
 	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the stderr log level; default is info, if no alternative log destination ist configured") \
 	OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug", "Sets the log level for syslog output; default is not to use syslog") \
 	OPTION_ARG(option_syslog_ident, "--syslog-ident", "<ident>", "Sets the syslog identification; default is 'fastd'") \
@@ -614,6 +617,12 @@ static void option_on_disestablish(fastd_context *ctx, fastd_config *conf, const
 static void option_daemon(fastd_context *ctx, fastd_config *conf) {
 	conf->daemon = true;
 }
+
+static void option_pid_file(fastd_context *ctx, fastd_config *conf, const char *arg) {
+	free(conf->pid_file);
+	conf->pid_file = strdup(arg);
+}
+
 static void option_generate_key(fastd_context *ctx, fastd_config *conf) {
 	conf->generate_key = true;
 	conf->show_key = false;
