@@ -46,6 +46,7 @@ static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"(protocol specific 5)",
 	"MTU",
 	"method name",
+	"version name",
 };
 
 static const char const *REPLY_TYPES[REPLY_MAX] = {
@@ -61,11 +62,13 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
 	size_t method_len = strlen(ctx->conf->method->name);
+	size_t version_len = strlen(FASTD_VERSION);
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
 						 2*5 +            /* handshake type, mode */
 						 6 +		  /* MTU */
 						 4+protocol_len + /* protocol name */
 						 4+method_len +   /* method name */
+						 4+version_len +  /* version name */
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -79,20 +82,23 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
 
 	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
 	fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, ctx->conf->method->name);
+	fastd_handshake_add(ctx, &buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
 
 	return buffer;
 }
 
 fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, size_t tail_space) {
 	bool first = (AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE]) == 1);
-	size_t mtu_size = 0;
+	size_t version_len = strlen(FASTD_VERSION);
+	size_t extra_size = 0;
 
 	if (first)
-		mtu_size = 6;
+		extra_size = 6 +            /* MTU */
+			     4+version_len; /* version name */
 
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
 						 2*5 +           /* handshake type, reply code */
-						 mtu_size +
+						 extra_size +
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -103,8 +109,10 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])+1);
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
 
-	if (first)
+	if (first) {
 		fastd_handshake_add_uint16(ctx, &buffer, RECORD_MTU, ctx->conf->mtu);
+		fastd_handshake_add(ctx, &buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
+	}
 
 	return buffer;
 }

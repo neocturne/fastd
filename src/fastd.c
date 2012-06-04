@@ -715,6 +715,8 @@ int main(int argc, char *argv[]) {
 
 	update_time(&ctx);
 
+	pr_info(&ctx, "fastd " FASTD_VERSION " starting");
+
 	init_sockets(&ctx);
 	init_tuntap(&ctx);
 

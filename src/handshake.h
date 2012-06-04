@@ -44,6 +44,7 @@ typedef enum _fastd_handshake_record_type {
 	RECORD_PROTOCOL5,
 	RECORD_MTU,
 	RECORD_METHOD_NAME,
+	RECORD_VERSION_NAME,
 	RECORD_MAX,
 } fastd_handshake_record_type;
 

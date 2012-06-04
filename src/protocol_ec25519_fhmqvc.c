@@ -519,6 +519,7 @@ static inline bool has_field(const fastd_handshake *handshake, uint8_t type, siz
 
 static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake) {
 	handshake_key *handshake_key;
+	char *peer_version_name = NULL;
 
 	maintenance(ctx);
 
@@ -568,6 +569,12 @@ static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_addre
 
 	switch(handshake->type) {
 	case 1:
+		if (handshake->records[RECORD_VERSION_NAME].data)
+			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
+		
+		pr_debug(ctx, "received handshake from %P[%I] using fastd %s", peer, address, peer_version_name);
+		free(peer_version_name);
+
 		respond_handshake(ctx, address, peer, &ctx->protocol_state->handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake);
 		break;
 
@@ -583,7 +590,11 @@ static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_addre
 			return;
 		}
 
-		pr_debug(ctx, "received handshake response from %P[%I]", peer, address);
+		if (handshake->records[RECORD_VERSION_NAME].data)
+			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
+		
+		pr_debug(ctx, "received handshake response from %P[%I] using fastd %s", peer, address, peer_version_name);
+		free(peer_version_name);
 
 		finish_handshake(ctx, address, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake);
 		break;
