@@ -644,6 +644,12 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 		if (ctx->conf->method->decrypt(ctx, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
 			ok = true;
 
+			if (peer->protocol_state->old_session.method_state) {
+				pr_debug(ctx, "invalidating old session with %P", peer);
+				ctx->conf->method->session_free(ctx, peer->protocol_state->old_session.method_state);
+				peer->protocol_state->old_session.method_state = NULL;
+			}
+
 			if (!peer->protocol_state->session.handshakes_cleaned) {
 				pr_debug(ctx, "cleaning left handshakes with %P", peer);
 				fastd_task_delete_peer_handshakes(ctx, peer);
@@ -651,12 +657,6 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 
 				if (ctx->conf->method->session_is_initiator(ctx, peer->protocol_state->session.method_state))
 					protocol_send(ctx, peer, fastd_buffer_alloc(0, ctx->conf->method->min_encrypt_head_space(ctx), 0));
-			}
-
-			if (peer->protocol_state->old_session.method_state) {
-				pr_debug(ctx, "invalidating old session with %P", peer);
-				ctx->conf->method->session_free(ctx, peer->protocol_state->old_session.method_state);
-				peer->protocol_state->old_session.method_state = NULL;
 			}
 
 			check_session_refresh(ctx, peer);
