@@ -637,12 +637,12 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	bool ok = false;
 
 	if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
-		if (ctx->conf->method->decrypt(ctx, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
+		if (ctx->conf->method->decrypt(ctx, peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
 			ok = true;
 	}
 
 	if (!ok) {
-		if (ctx->conf->method->decrypt(ctx, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
+		if (ctx->conf->method->decrypt(ctx, peer, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
 			ok = true;
 
 			if (peer->protocol_state->old_session.method_state) {
@@ -698,7 +698,7 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 	}
 
 	fastd_buffer send_buffer;
-	if (!ctx->conf->method->encrypt(ctx, session->method_state, &send_buffer, buffer))
+	if (!ctx->conf->method->encrypt(ctx, peer, session->method_state, &send_buffer, buffer))
 		goto fail;
 	
 	fastd_send(ctx, &peer->address, send_buffer);

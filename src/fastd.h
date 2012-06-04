@@ -92,8 +92,8 @@ struct _fastd_method {
 	bool (*session_want_refresh)(fastd_context *ctx, fastd_method_session_state *session);
 	void (*session_free)(fastd_context *ctx, fastd_method_session_state *session);
 
-	bool (*encrypt)(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
-	bool (*decrypt)(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
+	bool (*encrypt)(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
+	bool (*decrypt)(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
 };
 
 union _fastd_peer_address {
@@ -132,6 +132,9 @@ struct _fastd_config {
 	unsigned keepalive_interval;
 	unsigned peer_stale_time;
 	unsigned eth_addr_stale_time;
+
+	unsigned reorder_count;
+	unsigned reorder_time;
 
 	char *ifname;
 

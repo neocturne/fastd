@@ -39,6 +39,9 @@ struct _fastd_method_session_state {
 
 	uint8_t send_nonce[NONCEBYTES];
 	uint8_t receive_nonce[NONCEBYTES];
+
+	struct timespec receive_last;
+	uint64_t receive_reorder_seen;
 };
 
 
@@ -55,19 +58,20 @@ static inline void increment_nonce(uint8_t nonce[NONCEBYTES]) {
 	}
 }
 
-static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t old_nonce[NONCEBYTES]) {
+static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t old_nonce[NONCEBYTES], int64_t *age) {
 	if ((nonce[0] & 1) != (old_nonce[0] & 1))
 		return false;
 
 	int i;
+	*age = 0;
+
 	for (i = NONCEBYTES-1; i >= 0; i--) {
-		if (nonce[i] > old_nonce[i])
-			return true;
-		if (nonce[i] < old_nonce[i])
-			return false;
+		*age *= 256;
+		*age += old_nonce[i]-nonce[i];
 	}
 
-	return false;
+	*age /= 2;
+	return true;
 }
 
 static size_t method_max_packet_size(fastd_context *ctx) {
@@ -128,7 +132,7 @@ static void method_session_free(fastd_context *ctx, fastd_method_session_state *
 	}
 }
 
-static bool method_encrypt(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
+static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
 	fastd_buffer_pull_head(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
@@ -150,7 +154,7 @@ static bool method_encrypt(fastd_context *ctx, fastd_method_session_state *sessi
 	return true;
 }
 
-static bool method_decrypt(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
+static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
 	if (in.len < NONCEBYTES)
 		return false;
 
@@ -161,8 +165,17 @@ static bool method_decrypt(fastd_context *ctx, fastd_method_session_state *sessi
 	memcpy(nonce, in.data, NONCEBYTES);
 	memset(nonce+NONCEBYTES, 0, crypto_secretbox_xsalsa20poly1305_NONCEBYTES-NONCEBYTES);
 
-	if (!is_nonce_valid(nonce, session->receive_nonce))
+	int64_t age;
+	if (!is_nonce_valid(nonce, session->receive_nonce, &age))
 		return false;
+
+	if (age >= 0) {
+		if (timespec_diff(&ctx->now, &session->receive_last) > ctx->conf->reorder_time*1000)
+			return false;
+
+		if (age > ctx->conf->reorder_count)
+			return false;
+	}
 	
 	fastd_buffer_pull_head(&in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
@@ -180,9 +193,23 @@ static bool method_decrypt(fastd_context *ctx, fastd_method_session_state *sessi
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(out, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+	if (age < 0) {
+		session->receive_reorder_seen >>= age;
+		session->receive_reorder_seen |= (1 >> (age+1));
+		memcpy(session->receive_nonce, nonce, NONCEBYTES);
+		session->receive_last = ctx->now;
+	}
+	else if (age == 0 || session->receive_reorder_seen & (1 << (age-1))) {
+		pr_debug(ctx, "dropping duplicate packet from %P (age %u)", peer, (unsigned)age);
+		fastd_buffer_free(*out);
+		*out = fastd_buffer_alloc(crypto_secretbox_xsalsa20poly1305_ZEROBYTES, 0, 0);
+	}
+	else {
+		pr_debug(ctx, "accepting reordered packet from %P (age %u)", peer, (unsigned)age);
+		session->receive_reorder_seen |= (1 << (age-1));
+	}
 
-	memcpy(session->receive_nonce, nonce, NONCEBYTES);
+	fastd_buffer_push_head(out, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	return true;
 }

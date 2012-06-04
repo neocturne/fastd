@@ -57,7 +57,7 @@ static bool method_session_want_refresh(fastd_context *ctx, fastd_method_session
 static void method_session_free(fastd_context *ctx, fastd_method_session_state *session) {
 }
 
-static bool method_passthrough(fastd_context *ctx, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
+static bool method_passthrough(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
 	*out = in;
 	return true;
 }
