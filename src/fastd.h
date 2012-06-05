@@ -46,7 +46,7 @@
 #include <time.h>
 
 
-#define FASTD_VERSION "0.4-rc11"
+#define FASTD_VERSION "0.4-rc12"
 
 
 struct _fastd_buffer {
