@@ -104,6 +104,10 @@ int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const c
 			buffer += snprintf_safe(buffer, buffer_end-buffer, "%s", va_arg(ap, char*));
 			break;
 
+		case 'p':
+			buffer += snprintf_safe(buffer, buffer_end-buffer, "%p", va_arg(ap, void*));
+			break;
+
 		case 'E':
 			eth_addr = va_arg(ap, const fastd_eth_addr*);
 
