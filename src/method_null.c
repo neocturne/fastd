@@ -35,7 +35,7 @@ static size_t method_min_head_space(fastd_context *ctx) {
 	return 0;
 }
 
-static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator, fastd_method_session_state *old_session) {
 	if (initiator)
 		return (fastd_method_session_state*)1;
 	else

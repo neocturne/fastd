@@ -319,6 +319,20 @@ static bool establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_add
 
 	init_peer_state(ctx, peer);
 
+	memcpy(hashinput, X->p, PUBLICKEYBYTES);
+	memcpy(hashinput+PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
+	memcpy(hashinput+2*PUBLICKEYBYTES, A->p, PUBLICKEYBYTES);
+	memcpy(hashinput+3*PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
+	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
+	crypto_hash_sha256(hash, hashinput, 5*PUBLICKEYBYTES);
+
+	fastd_method_session_state *new_method_state = ctx->conf->method->session_init(ctx, hash, HASHBYTES, initiator, peer->protocol_state->session.method_state);
+
+	if (!new_method_state) {
+		pr_debug(ctx, "not establishing new session with %P[%I] by method choice", peer, address);
+		return false;
+	}
+
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		ctx->conf->method->session_free(ctx, peer->protocol_state->old_session.method_state);
 		peer->protocol_state->old_session = peer->protocol_state->session;
@@ -327,17 +341,10 @@ static bool establish(fastd_context *ctx, fastd_peer *peer, const fastd_peer_add
 		ctx->conf->method->session_free(ctx, peer->protocol_state->session.method_state);
 	}
 
-	memcpy(hashinput, X->p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, A->p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
-	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
-	crypto_hash_sha256(hash, hashinput, 5*PUBLICKEYBYTES);
-
 	peer->protocol_state->session.established = ctx->now;
 	peer->protocol_state->session.handshakes_cleaned = false;
 	peer->protocol_state->session.refreshing = false;
-	peer->protocol_state->session.method_state = ctx->conf->method->session_init(ctx, hash, HASHBYTES, initiator);
+	peer->protocol_state->session.method_state = new_method_state;
 
 	fastd_peer_seen(ctx, peer);
 
