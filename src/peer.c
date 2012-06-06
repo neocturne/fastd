@@ -328,7 +328,7 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	peer->config = peer_conf;
 	setup_peer(ctx, peer);
 
-	pr_debug(ctx, "adding peer %P", peer);
+	pr_verbose(ctx, "adding peer %P", peer);
 
 	return peer;
 }
@@ -337,7 +337,7 @@ void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
 	if (!peer->established) {
 		peer->established = true;
 		on_establish(ctx, peer);
-		pr_info(ctx, "Connection with %P established.", peer);
+		pr_info(ctx, "connection with %P established.", peer);
 	}
 }
 
@@ -428,7 +428,7 @@ void fastd_peer_eth_addr_add(fastd_context *ctx, fastd_peer *peer, const fastd_e
 	
 	ctx->eth_addr[min] = (fastd_peer_eth_addr){ *addr, peer, ctx->now };
 
-	pr_debug(ctx, "Learned new MAC address %E on peer %P", addr, peer);
+	pr_debug(ctx, "learned new MAC address %E on peer %P", addr, peer);
 }
 
 void fastd_peer_eth_addr_cleanup(fastd_context *ctx) {

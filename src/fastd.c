@@ -134,7 +134,7 @@ static void init_sockets(fastd_context *ctx) {
 		pr_warn(ctx, "there are IPv6 peers defined, but bind is explicitly set to IPv4");
 
 	if (addr_in.sin_family == AF_INET) {
-		pr_debug(ctx, "Initializing IPv4 socket...");
+		pr_debug(ctx, "initializing IPv4 socket...");
 
 		if ((ctx->sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
 			exit_errno(ctx, "socket");
@@ -149,7 +149,7 @@ static void init_sockets(fastd_context *ctx) {
 	}
 
 	if (addr_in6.sin6_family == AF_INET6) {
-		pr_debug(ctx, "Initializing IPv6 socket...");
+		pr_debug(ctx, "initializing IPv6 socket...");
 
 		if ((ctx->sock6fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 			if (ctx->sockfd >= 0)
@@ -176,10 +176,10 @@ static void init_sockets(fastd_context *ctx) {
 static void init_tuntap(fastd_context *ctx) {
 	struct ifreq ifr;
 
-	pr_debug(ctx, "Initializing tun/tap device...");
+	pr_debug(ctx, "initializing tun/tap device...");
 
 	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR)) < 0)
-		exit_errno(ctx, "Could not open tun/tap device file");
+		exit_errno(ctx, "could not open tun/tap device file");
 
 	memset(&ifr, 0, sizeof(ifr));
 

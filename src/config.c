@@ -722,7 +722,7 @@ static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config *
 
 			if (((*peer)->config_source_dir == (*new_peer)->config_source_dir) && strequal((*peer)->name, (*new_peer)->name)) {
 				if (fastd_peer_config_equal(*peer, *new_peer)) {
-					pr_debug(ctx, "peer `%s' unchanged", (*peer)->name);
+					pr_verbose(ctx, "peer `%s' unchanged", (*peer)->name);
 
 					fastd_peer_config *free_peer = *new_peer;
 					*new_peer = *new_next;
@@ -730,7 +730,7 @@ static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config *
 					peer = NULL;
 				}
 				else {
-					pr_debug(ctx, "peer `%s' changed, resetting", (*peer)->name);
+					pr_verbose(ctx, "peer `%s' changed, resetting", (*peer)->name);
 					new_peer = NULL;
 				}
 
@@ -740,7 +740,7 @@ static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config *
 
 		/* no new peer was found, or the old one has changed */
 		if (peer && (!new_peer || !*new_peer)) {
-			pr_debug(ctx, "removing peer `%s'", (*peer)->name);
+			pr_verbose(ctx, "removing peer `%s'", (*peer)->name);
 
 			fastd_peer_config *free_peer = *peer;
 			*peer = *next;

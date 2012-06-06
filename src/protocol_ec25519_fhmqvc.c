@@ -144,7 +144,7 @@ static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
 	protocol_session *session = &peer->protocol_state->session;
 
 	if (!session->refreshing && ctx->conf->method->session_is_initiator(ctx, session->method_state) && ctx->conf->method->session_want_refresh(ctx, session->method_state)) {
-		pr_debug(ctx, "refreshing session with %P", peer);
+		pr_verbose(ctx, "refreshing session with %P", peer);
 		session->handshakes_cleaned = true;
 		session->refreshing = true;
 		fastd_task_schedule_handshake(ctx, peer, 0);
@@ -183,7 +183,7 @@ static void protocol_peer_configure(fastd_context *ctx, fastd_peer_config *peer_
 	}
 
 	if (memcmp(key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
-		pr_verbose(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
+		pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
 		peer_conf->enabled = false;
 		return;
 	}
@@ -545,7 +545,7 @@ static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_addre
 	fastd_peer *peer = get_peer(ctx, peer_conf);
 
 	if (backoff(ctx, peer)) {
-		pr_verbose(ctx, "received repeated handshakes from %P[%I], ignoring", peer, address);
+		pr_debug(ctx, "received repeated handshakes from %P[%I], ignoring", peer, address);
 		return;
 	}
 
@@ -580,7 +580,7 @@ static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_addre
 		if (handshake->records[RECORD_VERSION_NAME].data)
 			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
 		
-		pr_debug(ctx, "received handshake from %P[%I] using fastd %s", peer, address, peer_version_name);
+		pr_verbose(ctx, "received handshake from %P[%I] using fastd %s", peer, address, peer_version_name);
 		free(peer_version_name);
 
 		respond_handshake(ctx, address, peer, &ctx->protocol_state->handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake);
@@ -601,7 +601,7 @@ static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_addre
 		if (handshake->records[RECORD_VERSION_NAME].data)
 			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
 		
-		pr_debug(ctx, "received handshake response from %P[%I] using fastd %s", peer, address, peer_version_name);
+		pr_verbose(ctx, "received handshake response from %P[%I] using fastd %s", peer, address, peer_version_name);
 		free(peer_version_name);
 
 		finish_handshake(ctx, address, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake);
@@ -672,7 +672,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	}
 
 	if (!ok) {
-		pr_debug(ctx, "verification failed for packet received from %P", peer);
+		pr_verbose(ctx, "verification failed for packet received from %P", peer);
 		goto fail;
 	}
 

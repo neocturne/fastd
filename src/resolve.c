@@ -62,11 +62,11 @@ static void* resolve_peer(void *varg) {
 	gai_ret = getaddrinfo(arg->hostname, portstr, &hints, &res);
 
 	if (gai_ret || !res) {
-		pr_debug(arg->ctx, "Resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
+		pr_verbose(arg->ctx, "resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
 		error = true;
 	}
 	else if (res->ai_addrlen > sizeof(fastd_peer_address) || (res->ai_addr->sa_family != AF_INET && res->ai_addr->sa_family != AF_INET6)) {
-		pr_warn(arg->ctx, "Resolving host `%s': unsupported address returned", arg->hostname);
+		pr_warn(arg->ctx, "resolving host `%s': unsupported address returned", arg->hostname);
 		error = true;
 	}
 
@@ -77,7 +77,7 @@ static void* resolve_peer(void *varg) {
 	ret.constraints = arg->constraints;
 
 	if (!error) {
-		pr_debug(arg->ctx, "Resolved host `%s' successfully", arg->hostname);
+		pr_verbose(arg->ctx, "resolved host `%s' successfully", arg->hostname);
 		memcpy(&ret.addr, res->ai_addr, res->ai_addrlen);
 	}
 	else {
@@ -94,7 +94,7 @@ static void* resolve_peer(void *varg) {
 }
 
 void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer) {
-	pr_debug(ctx, "Resolving host `%s' for peer `%s'...", peer->hostname, peer->name);
+	pr_verbose(ctx, "resolving host `%s' for peer `%s'...", peer->hostname, peer->name);
 
 	resolv_arg *arg = malloc(sizeof(resolv_arg));
 
