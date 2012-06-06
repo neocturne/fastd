@@ -39,6 +39,8 @@ struct _fastd_peer {
 
 	bool established;
 
+	struct timespec last_resolve;
+	struct timespec last_resolve_return;
 	struct timespec seen;
 
 	fastd_protocol_peer_state *protocol_state;

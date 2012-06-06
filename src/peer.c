@@ -176,6 +176,8 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 		peer->address = peer->config->address;
 
 	peer->established = false;
+	peer->last_resolve = (struct timespec){0, 0};
+	peer->last_resolve_return = (struct timespec){0, 0};
 	peer->seen = (struct timespec){0, 0};
 	peer->protocol_state = NULL;
 
@@ -284,6 +286,7 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, const fa
 					break;
 				}
 				else {
+					memset(&new_peer->address, 0, sizeof(fastd_peer_address));
 					return false;
 				}
 			}

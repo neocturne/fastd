@@ -416,7 +416,7 @@ static void handle_tasks(fastd_context *ctx) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
 			if (fastd_peer_is_dynamic(task->peer))
-				fastd_resolve_peer(ctx, task->peer->config);
+				fastd_resolve_peer(ctx, task->peer);
 			else
 				send_handshake(ctx, task->peer);
 			break;
@@ -575,6 +575,8 @@ static void handle_resolv_returns(fastd_context *ctx) {
 
 		if (!fastd_peer_config_matches_dynamic(peer->config, &resolve_return.constraints))
 			continue;
+
+		peer->last_resolve_return = ctx->now;
 
 		if (fastd_peer_claim_address(ctx, peer, &resolve_return.addr)) {
 			send_handshake(ctx, peer);

@@ -85,7 +85,7 @@ static void* resolve_peer(void *varg) {
 	}
 
 	if (write(arg->ctx->resolvewfd, &ret, sizeof(ret)) < 0)
-		exit_errno(arg->ctx, "write");
+		pr_error_errno(arg->ctx, "can't write resolve return");
 
 	freeaddrinfo(res);
 	free(arg);
@@ -93,15 +93,37 @@ static void* resolve_peer(void *varg) {
 	return NULL;
 }
 
-void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer) {
-	pr_verbose(ctx, "resolving host `%s' for peer `%s'...", peer->hostname, peer->name);
+void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer) {
+	if (timespec_after(&peer->last_resolve, &peer->last_resolve_return)) {
+		pr_debug(ctx, "not resolving %P as there is already a resolve running", peer);
+		return;
+	}
+
+	if (timespec_diff(&ctx->now, &peer->last_resolve) < ctx->conf->min_resolve_interval*1000) {
+		pr_debug(ctx, "not resolving %P as it has been resolved a short time ago", peer);
+
+		fastd_resolve_return ret;
+		memset(&ret, 0, sizeof(ret));
+
+		ret.hostname = strdup(peer->config->hostname);
+		ret.constraints = peer->config->address;
+		ret.addr = peer->address;
+
+		if (write(ctx->resolvewfd, &ret, sizeof(ret)) < 0)
+			pr_error_errno(ctx, "can't write resolve return");
+
+		return;
+	}
+
+	pr_verbose(ctx, "resolving host `%s' for peer %P...", peer->config->hostname, peer);
+	peer->last_resolve = ctx->now;
 
 	resolv_arg *arg = malloc(sizeof(resolv_arg));
 
 	arg->ctx = ctx;
 	arg->master_thread = pthread_self();
-	arg->hostname = strdup(peer->hostname);
-	arg->constraints = peer->address;
+	arg->hostname = strdup(peer->config->hostname);
+	arg->constraints = peer->config->address;
 
 	pthread_t thread;
 	if (pthread_create(&thread, NULL, resolve_peer, arg) != 0) {

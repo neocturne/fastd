@@ -136,6 +136,8 @@ struct _fastd_config {
 	unsigned reorder_count;
 	unsigned reorder_time;
 
+	unsigned min_resolve_interval;
+
 	char *ifname;
 
 	struct sockaddr_in bind_addr_in;
@@ -222,7 +224,7 @@ void fastd_send(fastd_context *ctx, const fastd_peer_address *address, fastd_buf
 void fastd_send_handshake(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer);
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
-void fastd_resolve_peer(fastd_context *ctx, const fastd_peer_config *peer);
+void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer);
 
 int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const char *format, va_list ap);
 void fastd_logf(const fastd_context *ctx, int level, const char *format, ...);

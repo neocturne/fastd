@@ -511,7 +511,7 @@ static const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd
 					return config;
 				}
 				else { /* matches dynamic */
-					fastd_resolve_peer(ctx, config);
+					fastd_resolve_peer(ctx, get_peer(ctx, config));
 					return NULL;
 				}
 			}
