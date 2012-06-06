@@ -577,12 +577,20 @@ static void protocol_handshake_handle(fastd_context *ctx, const fastd_peer_addre
 
 	switch(handshake->type) {
 	case 1:
+		if (timespec_diff(&ctx->now, &peer->last_handshake_response) < ctx->conf->min_handshake_interval*1000
+		    && fastd_peer_address_equal(address, &peer->last_handshake_response_address)) {
+			pr_debug(ctx, "not responding repeated handshake from %P[%I]", peer, address);
+			return;
+		}
+
 		if (handshake->records[RECORD_VERSION_NAME].data)
 			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
-		
+
 		pr_verbose(ctx, "received handshake from %P[%I] using fastd %s", peer, address, peer_version_name);
 		free(peer_version_name);
 
+		peer->last_handshake_response = ctx->now;
+		peer->last_handshake_response_address = *address;
 		respond_handshake(ctx, address, peer, &ctx->protocol_state->handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake);
 		break;
 

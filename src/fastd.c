@@ -403,8 +403,16 @@ static inline void update_time(fastd_context *ctx) {
 
 static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
 	if (peer->address.sa.sa_family != AF_UNSPEC) {
-		pr_debug(ctx, "sending handshake to %P...", peer);
-		ctx->conf->protocol->handshake_init(ctx, &peer->address, peer->config);
+		if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
+		    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
+			pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
+		}
+		else {
+			pr_debug(ctx, "sending handshake to %P...", peer);
+			peer->last_handshake = ctx->now;
+			peer->last_handshake_address = peer->address;
+			ctx->conf->protocol->handshake_init(ctx, &peer->address, peer->config);
+		}
 	}
 
 	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));

@@ -136,6 +136,7 @@ struct _fastd_config {
 	unsigned reorder_count;
 	unsigned reorder_time;
 
+	unsigned min_handshake_interval;
 	unsigned min_resolve_interval;
 
 	char *ifname;

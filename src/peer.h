@@ -43,6 +43,12 @@ struct _fastd_peer {
 	struct timespec last_resolve_return;
 	struct timespec seen;
 
+	struct timespec last_handshake;
+	fastd_peer_address last_handshake_address;
+
+	struct timespec last_handshake_response;
+	fastd_peer_address last_handshake_response_address;
+
 	fastd_protocol_peer_state *protocol_state;
 };
 

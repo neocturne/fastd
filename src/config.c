@@ -63,6 +63,7 @@ static void default_config(fastd_config *conf) {
 	conf->reorder_count = 64;
 	conf->reorder_time = 10;
 
+	conf->min_handshake_interval = 15;
 	conf->min_resolve_interval = 15;
 
 	conf->ifname = NULL;

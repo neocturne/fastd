@@ -176,9 +176,17 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 		peer->address = peer->config->address;
 
 	peer->established = false;
+
 	peer->last_resolve = (struct timespec){0, 0};
 	peer->last_resolve_return = (struct timespec){0, 0};
 	peer->seen = (struct timespec){0, 0};
+
+	peer->last_handshake = (struct timespec){0, 0};
+	peer->last_handshake_address.sa.sa_family = AF_UNSPEC;
+
+	peer->last_handshake_response = (struct timespec){0, 0};
+	peer->last_handshake_response_address.sa.sa_family = AF_UNSPEC;
+
 	peer->protocol_state = NULL;
 
 	if (!fastd_peer_is_floating(peer))
