@@ -538,6 +538,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 		(recvaddr.sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6)) {
 		switch (packet_type) {
 		case PACKET_DATA:
+			fastd_buffer_free(buffer);
 			ctx->conf->protocol->handshake_init(ctx, &recvaddr, NULL);
 			break;
 
