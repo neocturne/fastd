@@ -94,6 +94,7 @@
 %token TOK_YES
 %token TOK_NO
 %token TOK_PORT
+%token TOK_FLOAT
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -117,6 +118,7 @@
 %type <num> maybe_port
 %type <str> maybe_as
 %type <num> maybe_af
+%type <boolean> maybe_float
 
 %%
 start:		START_CONFIG config
@@ -294,12 +296,13 @@ peer_remote:	TOK_ADDR port {
 			conf->peers->address.in6.sin6_addr = $1;
 			conf->peers->address.in6.sin6_port = htons($2);
 		}
-	|	maybe_af TOK_STRING port {
+	|	maybe_af TOK_STRING port maybe_float {
 			free(conf->peers->hostname);
 
 			conf->peers->hostname = strdup($2->str);
 			conf->peers->address.sa.sa_family = $1;
 			conf->peers->address.in.sin_port = htons($3);
+			conf->peers->dynamic_float = $4;
 		}
 	;
 
@@ -349,6 +352,10 @@ maybe_as:	TOK_AS TOK_STRING {
 maybe_af:	TOK_IPV4	{ $$ = AF_INET; }
 	|	TOK_IPV6	{ $$ = AF_INET6; }
 	|			{ $$ = AF_UNSPEC; }
+	;
+
+maybe_float:	TOK_FLOAT	{ $$ = true; }
+	|			{ $$ = false; }
 	;
 
 boolean:	TOK_YES		{ $$ = true; }

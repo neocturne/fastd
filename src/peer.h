@@ -62,6 +62,7 @@ struct _fastd_peer_config {
 
 	char *hostname;
 	fastd_peer_address address;
+	bool dynamic_float;
 	char *key;
 
 	fastd_protocol_peer_config *protocol_config;
@@ -92,7 +93,7 @@ const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_b
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
 
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config) {
-	return (config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC);
+	return ((config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC) || config->dynamic_float);
 }
 
 static inline bool fastd_peer_config_is_dynamic(const fastd_peer_config *config) {

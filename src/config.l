@@ -93,6 +93,7 @@ forward		{ UPDATE_LOCATION; return TOK_FORWARD; }
 yes		{ UPDATE_LOCATION; return TOK_YES; }
 no		{ UPDATE_LOCATION; return TOK_NO; }
 port		{ UPDATE_LOCATION; return TOK_PORT; }
+float		{ UPDATE_LOCATION; return TOK_FLOAT; }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

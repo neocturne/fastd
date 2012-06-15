@@ -189,7 +189,7 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (!peer->protocol_state)
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
-	if (!fastd_peer_is_floating(peer))
+	if (!fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer))
 		fastd_task_schedule_handshake(ctx, peer, 0);
 }
 
@@ -215,6 +215,7 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 
 	peer->hostname = NULL;
 	memset(&peer->address, 0, sizeof(fastd_peer_address));
+	peer->dynamic_float = false;
 
 	peer->config_source_dir = NULL;
 
@@ -308,6 +309,9 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, const fa
 
 bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_config *peer2) {
 	if (!strequal(peer1->hostname, peer2->hostname))
+		return false;
+
+	if(peer1->dynamic_float != peer2->dynamic_float)
 		return false;
 
 	if (!fastd_peer_address_equal(&peer1->address, &peer2->address))
