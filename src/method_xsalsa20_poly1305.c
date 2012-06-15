@@ -86,15 +86,12 @@ static size_t method_min_decrypt_head_space(fastd_context *ctx) {
 	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
-static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator, fastd_method_session_state *old_session) {
+static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
 	int i;
 
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
 
-	if (old_session && memcmp(secret, old_session->key, crypto_secretbox_xsalsa20poly1305_KEYBYTES) == 0)
-		return NULL;
-	
 	fastd_method_session_state *session = malloc(sizeof(fastd_method_session_state));
 
 	session->valid_till = ctx->now;

@@ -790,7 +790,6 @@ void fastd_reconfigure(fastd_context *ctx, fastd_config *conf) {
 	reconfigure_handle_new_peers(ctx, &conf->peers, temp_conf.peers);
 
 	count_peers(ctx, conf);
-
 }
 
 void fastd_config_release(fastd_context *ctx, fastd_config *conf) {

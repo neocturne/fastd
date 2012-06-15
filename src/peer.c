@@ -151,8 +151,7 @@ static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (peer->established)
 		on_disestablish(ctx, peer);
 
-	ctx->conf->protocol->free_peer_state(ctx, peer);
-	peer->protocol_state = NULL;
+	ctx->conf->protocol->reset_peer_state(ctx, peer);
 
 	int i, deleted = 0;
 	for (i = 0; i < ctx->n_eth_addr; i++) {
@@ -187,7 +186,8 @@ static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	peer->last_handshake_response = (struct timespec){0, 0};
 	peer->last_handshake_response_address.sa.sa_family = AF_UNSPEC;
 
-	peer->protocol_state = NULL;
+	if (!peer->protocol_state)
+		ctx->conf->protocol->init_peer_state(ctx, peer);
 
 	if (!fastd_peer_is_floating(peer))
 		fastd_task_schedule_handshake(ctx, peer, 0);
@@ -204,6 +204,7 @@ static void delete_peer(fastd_context *ctx, fastd_peer *peer) {
 		}
 	}
 
+	ctx->conf->protocol->free_peer_state(ctx, peer);
 	free(peer);
 }
 
@@ -337,6 +338,7 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	ctx->peers = peer;
 
 	peer->config = peer_conf;
+	peer->protocol_state = NULL;
 	setup_peer(ctx, peer);
 
 	pr_verbose(ctx, "adding peer %P", peer);
