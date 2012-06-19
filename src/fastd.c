@@ -423,7 +423,7 @@ static void handle_tasks(fastd_context *ctx) {
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
-			if (fastd_peer_is_dynamic(task->peer))
+			if (fastd_peer_is_dynamic(task->peer) && !(fastd_peer_is_floating(task->peer) && fastd_peer_is_established(task->peer)))
 				fastd_resolve_peer(ctx, task->peer);
 			else
 				send_handshake(ctx, task->peer);
