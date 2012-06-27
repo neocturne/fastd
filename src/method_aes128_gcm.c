@@ -25,11 +25,13 @@
 
 
 #include "fastd.h"
+#include <asm/byteorder.h>
 #include <crypto_stream_aes128ctr.h>
 
 
 #define NONCEBYTES 7
 #define BLOCKBYTES 16
+#define BLOCKQWORDS (BLOCKBYTES/8)
 
 
 struct _fastd_method_session_state {
@@ -37,7 +39,7 @@ struct _fastd_method_session_state {
 	struct timespec refresh_after;
 
 	uint8_t d[crypto_stream_aes128ctr_BEFORENMBYTES];
-	uint8_t H[BLOCKBYTES];
+	uint64_t H[8*BLOCKBYTES*BLOCKQWORDS];
 
 	uint8_t send_nonce[NONCEBYTES];
 	uint8_t receive_nonce[NONCEBYTES];
@@ -89,6 +91,28 @@ static size_t method_min_decrypt_head_space(fastd_context *ctx) {
 	return 0;
 }
 
+static const uint64_t r[BLOCKQWORDS] = {__constant_cpu_to_le64(0x87)};
+
+static inline unsigned int shl1(uint8_t out[BLOCKBYTES], const uint8_t in[BLOCKBYTES]) {
+	int i;
+	uint8_t c = 0;
+
+	for (i = 0; i < BLOCKBYTES; i++) {
+		uint8_t c2 = in[i] >> 7;
+		out[i] = (in[i] << 1) | c;
+		c = c2;
+	}
+
+	return c;
+}
+
+static inline void xor_if(uint64_t x[BLOCKQWORDS], const uint64_t a[BLOCKQWORDS], uint64_t b) {
+        uint64_t mask = -b;
+
+	x[0] ^= (mask & a[0]);
+	x[1] ^= (mask & a[1]);
+}
+
 static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
 	int i;
 
@@ -107,7 +131,12 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 
 	uint8_t zerononce[crypto_stream_aes128ctr_NONCEBYTES];
 	memset(zerononce, 0, crypto_stream_aes128ctr_NONCEBYTES);
-	crypto_stream_aes128ctr_afternm(session->H, BLOCKBYTES, zerononce, session->d);
+	crypto_stream_aes128ctr_afternm((uint8_t*)session->H, BLOCKBYTES, zerononce, session->d);
+
+	for (i = 1; i < 8*BLOCKBYTES; i++) {
+		unsigned int carry = shl1((uint8_t*)(session->H + i*BLOCKQWORDS), (uint8_t*)(session->H + (i-1)*BLOCKQWORDS));
+		xor_if(session->H + i*BLOCKQWORDS, r, carry);
+	}
 
 	session->send_nonce[0] = initiator ? 3 : 2;
 	session->receive_nonce[0] = initiator ? 0 : 1;
@@ -139,103 +168,23 @@ static void method_session_free(fastd_context *ctx, fastd_method_session_state *
 	}
 }
 
-static void sel(uint8_t *out, const uint8_t *r, const uint8_t *s, unsigned int l, unsigned int b) {
-        unsigned int j;
-        unsigned int t;
-        uint8_t bminus1;
-
-        bminus1 = b - 1;
-        for (j = 0; j < l; ++j) {
-                t = bminus1 & (r[j] ^ s[j]);
-                out[j] = s[j] ^ t;
-        }
-}
-
 static inline void xor(uint8_t *x, const uint8_t *a, const uint8_t *b, unsigned int l) {
 	int i;
 	for (i = 0; i < l; i++)
 		x[i] = a[i] ^ b[i];
 }
 
-static inline void shl1(uint8_t *x, unsigned int l) {
-	int i;
-	uint8_t c = 0;
+#define BITOF(x, b) ((x[b/8] >> (b%8)) & 1)
 
-	for (i = 0; i < l; i++) {
-		uint8_t c2 = x[i] >> 7;
-		x[i] = (x[i] << 1) | c;
-		c = c2;
-	}
-}
-
-static inline void shr1(uint8_t *x, unsigned int l) {
-	int i;
-	uint8_t c = 0;
-
-	for (i = l-1; i >= 0; i--) {
-		uint8_t c2 = x[i] & 1;
-		x[i] = (x[i] >> 1) | (c << 7);
-		c = c2;
-	}
-}
-
-static const uint8_t p[BLOCKBYTES] = {0x87};
-
-static void mul(uint8_t out[BLOCKBYTES], const uint8_t a[BLOCKBYTES], const uint8_t b[BLOCKBYTES]) {
-	uint8_t out2[2*BLOCKBYTES];
-	uint8_t zero[2*BLOCKBYTES];
-	uint8_t a2[2*BLOCKBYTES];
-	uint8_t b2[BLOCKBYTES];
-
-	memset(out2, 0, 2*BLOCKBYTES);
-	memset(zero, 0, 2*BLOCKBYTES);
-
-	memcpy(a2, a, BLOCKBYTES);
-	memset(a2+BLOCKBYTES, 0, BLOCKBYTES);
-
-	memcpy(b2, b, BLOCKBYTES);
+static void mulH(uint8_t out[BLOCKBYTES], const uint8_t in[BLOCKBYTES], fastd_method_session_state *session) {
+	uint64_t out2[BLOCKQWORDS];
+	memset(out2, 0, BLOCKBYTES);
 
 	int i;
-	for (i = 0; i < 8*BLOCKBYTES; i++) {
-		uint8_t tmp[2*BLOCKBYTES];
+	for (i = 0; i < 8*BLOCKBYTES; i++)
+		xor_if(out2, session->H + i*BLOCKQWORDS, BITOF(in, i));
 
-		sel(tmp, zero, a2, 2*BLOCKBYTES, b2[0]&1);
-		xor(out2, out2, tmp, 2*BLOCKBYTES);
-
-		shl1(a2, 2*BLOCKBYTES);
-		shr1(b2, BLOCKBYTES);
-	}
-
-	uint8_t out3[BLOCKBYTES+1];
-	memcpy(out3, out2, BLOCKBYTES);
-	out3[BLOCKBYTES] = 0;
-
-	uint8_t p2[BLOCKBYTES+1];
-	memcpy(p2, p, BLOCKBYTES);
-	p2[BLOCKBYTES] = 0;
-
-	for (i = 0; i < 8*BLOCKBYTES; i++) {
-		uint8_t tmp[BLOCKBYTES+1];
-
-		sel(tmp, zero, p2, BLOCKBYTES+1, out2[BLOCKBYTES]&1);
-		xor(out3, out3, tmp, BLOCKBYTES+1);
-
-		shl1(p2, BLOCKBYTES+1);
-		shr1(out2+BLOCKBYTES, BLOCKBYTES);
-	}
-
-	memcpy(out, out3, BLOCKBYTES);
-	memcpy(p2, p, BLOCKBYTES);
-
-	for (i = 0; i < 8; i++) {
-		uint8_t tmp[2];
-
-		sel(tmp, zero, p2, 2, out3[BLOCKBYTES]&1);
-		xor(out, out, tmp, 2);
-
-		shl1(p2, BLOCKBYTES);
-		out3[BLOCKBYTES] >>= 1;
-	}
+	memcpy(out, out2, BLOCKBYTES);
 }
 
 #define BLOCKPTR(buf, i) (((uint8_t*)(buf))+i*BLOCKBYTES)
@@ -265,7 +214,7 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 		xor(BLOCKPTR(out->data, i), BLOCKPTR(in.data, i), BLOCKPTR(stream, i+1), len);
 
 		xor(sig, sig, BLOCKPTR(out->data, i), len);
-		mul(sig, sig, session->H);
+		mulH(sig, sig, session);
 	}
 
 	sig[BLOCKBYTES-8] ^= (in.len >> 53) & 0xff;
@@ -276,7 +225,7 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	sig[BLOCKBYTES-3] ^= (in.len >> 13) & 0xff;
 	sig[BLOCKBYTES-2] ^= (in.len >> 5) & 0xff;
 	sig[BLOCKBYTES-1] ^= (in.len << 3) & 0xff;
-	mul(sig, sig, session->H);
+	mulH(sig, sig, session);
 
 	xor(sig, sig, stream, BLOCKBYTES);
 
@@ -334,7 +283,7 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 		xor(BLOCKPTR(out->data, i), BLOCKPTR(in.data, i), BLOCKPTR(stream, i+1), len);
 
 		xor(sig, sig, BLOCKPTR(in.data, i), len);
-		mul(sig, sig, session->H);
+		mulH(sig, sig, session);
 	}
 
 	sig[BLOCKBYTES-8] ^= (in.len >> 53) & 0xff;
@@ -345,7 +294,7 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	sig[BLOCKBYTES-3] ^= (in.len >> 13) & 0xff;
 	sig[BLOCKBYTES-2] ^= (in.len >> 5) & 0xff;
 	sig[BLOCKBYTES-1] ^= (in.len << 3) & 0xff;
-	mul(sig, sig, session->H);
+	mulH(sig, sig, session);
 
 	xor(sig, sig, stream, BLOCKBYTES);
 
