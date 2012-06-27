@@ -39,7 +39,7 @@ struct _fastd_method_session_state {
 	struct timespec refresh_after;
 
 	uint8_t d[crypto_stream_aes128ctr_BEFORENMBYTES];
-	uint64_t H[8*BLOCKBYTES*BLOCKQWORDS];
+	uint64_t H[32*16*BLOCKQWORDS];
 
 	uint8_t send_nonce[NONCEBYTES];
 	uint8_t receive_nonce[NONCEBYTES];
@@ -91,26 +91,32 @@ static size_t method_min_decrypt_head_space(fastd_context *ctx) {
 	return 0;
 }
 
-static const uint64_t r[BLOCKQWORDS] = {__constant_cpu_to_le64(0x87)};
+static const uint64_t r[BLOCKQWORDS] = {
+	__constant_cpu_to_le64(0x87), 0,
+};
 
-static inline unsigned int shl1(uint8_t out[BLOCKBYTES], const uint8_t in[BLOCKBYTES]) {
+static inline uint8_t shl(uint8_t out[BLOCKBYTES], const uint8_t in[BLOCKBYTES], int n) {
 	int i;
 	uint8_t c = 0;
 
 	for (i = 0; i < BLOCKBYTES; i++) {
-		uint8_t c2 = in[i] >> 7;
-		out[i] = (in[i] << 1) | c;
+		uint8_t c2 = in[i] >> (8-n);
+		out[i] = (in[i] << n) | c;
 		c = c2;
 	}
 
 	return c;
 }
 
-static inline void xor_if(uint64_t x[BLOCKQWORDS], const uint64_t a[BLOCKQWORDS], uint64_t b) {
-        uint64_t mask = -b;
+static inline void xor(uint8_t *x, const uint8_t *a, const uint8_t *b, unsigned int l) {
+	int i;
+	for (i = 0; i < l; i++)
+		x[i] = a[i] ^ b[i];
+}
 
-	x[0] ^= (mask & a[0]);
-	x[1] ^= (mask & a[1]);
+static inline void xor_block(uint64_t x[BLOCKQWORDS], const uint64_t a[BLOCKQWORDS]) {
+	x[0] ^= a[0];
+	x[1] ^= a[1];
 }
 
 static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
@@ -131,11 +137,41 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 
 	uint8_t zerononce[crypto_stream_aes128ctr_NONCEBYTES];
 	memset(zerononce, 0, crypto_stream_aes128ctr_NONCEBYTES);
-	crypto_stream_aes128ctr_afternm((uint8_t*)session->H, BLOCKBYTES, zerononce, session->d);
+	uint64_t Hbase[4*BLOCKQWORDS];
+	uint64_t Rbase[4*BLOCKQWORDS];
+	crypto_stream_aes128ctr_afternm((uint8_t*)Hbase, BLOCKBYTES, zerononce, session->d);
 
-	for (i = 1; i < 8*BLOCKBYTES; i++) {
-		unsigned int carry = shl1((uint8_t*)(session->H + i*BLOCKQWORDS), (uint8_t*)(session->H + (i-1)*BLOCKQWORDS));
-		xor_if(session->H + i*BLOCKQWORDS, r, carry);
+	memcpy(Rbase, r, BLOCKBYTES);
+
+	for (i = 1; i < 4; i++) {
+		uint8_t carry = shl((uint8_t*)(Hbase + i*BLOCKQWORDS), (uint8_t*)(Hbase + (i-1)*BLOCKQWORDS), 1);
+		if (carry)
+			xor_block(Hbase + i*BLOCKQWORDS, r);
+
+		shl((uint8_t*)(Rbase + i*BLOCKQWORDS), (uint8_t*)(Rbase + (i-1)*BLOCKQWORDS), 1);
+	}
+
+	uint64_t R[16*BLOCKQWORDS];
+	memset(session->H, 0, sizeof(session->H));
+	memset(R, 0, sizeof(R));
+
+	for (i = 0; i < 16; i++) {
+		int j;
+		for (j = 0; j < 4; j++) {
+			if (i & (1 << j)) {
+				xor_block(session->H + i*BLOCKQWORDS, Hbase + j*BLOCKQWORDS);
+				xor_block(R + i*BLOCKQWORDS, Rbase + j*BLOCKQWORDS);
+			}
+		}
+	}
+
+	for (i = 1; i < 32; i++) {
+		int j;
+
+		for (j = 0; j < 16; j++) {
+			uint8_t carry = shl((uint8_t*)(session->H + (16*i + j)*BLOCKQWORDS), (uint8_t*)(session->H + (16*(i-1) + j)*BLOCKQWORDS), 4);
+			xor_block(session->H + (16*i + j)*BLOCKQWORDS, R + carry*BLOCKQWORDS);
+		}
 	}
 
 	session->send_nonce[0] = initiator ? 3 : 2;
@@ -168,21 +204,15 @@ static void method_session_free(fastd_context *ctx, fastd_method_session_state *
 	}
 }
 
-static inline void xor(uint8_t *x, const uint8_t *a, const uint8_t *b, unsigned int l) {
-	int i;
-	for (i = 0; i < l; i++)
-		x[i] = a[i] ^ b[i];
-}
-
-#define BITOF(x, b) ((x[b/8] >> (b%8)) & 1)
-
 static void mulH(uint8_t out[BLOCKBYTES], const uint8_t in[BLOCKBYTES], fastd_method_session_state *session) {
 	uint64_t out2[BLOCKQWORDS];
 	memset(out2, 0, BLOCKBYTES);
 
 	int i;
-	for (i = 0; i < 8*BLOCKBYTES; i++)
-		xor_if(out2, session->H + i*BLOCKQWORDS, BITOF(in, i));
+	for (i = 0; i < 16; i++) {
+		xor_block(out2, session->H + (32*i + (in[i]&0xf))*BLOCKQWORDS);
+		xor_block(out2, session->H + (32*i+16 + (in[i]>>4))*BLOCKQWORDS);
+	}
 
 	memcpy(out, out2, BLOCKBYTES);
 }
