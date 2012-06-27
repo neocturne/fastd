@@ -601,7 +601,7 @@ static void handle_resolv_returns(fastd_context *ctx) {
 }
 
 static void handle_input(fastd_context *ctx) {
-	struct pollfd fds[3];
+	struct pollfd fds[4];
 	fds[0].fd = ctx->tunfd;
 	fds[0].events = POLLIN;
 	fds[1].fd = ctx->sockfd;
