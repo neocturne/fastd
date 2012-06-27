@@ -48,6 +48,9 @@ extern const fastd_method fastd_method_null;
 #ifdef WITH_METHOD_XSALSA20_POLY1305
 extern const fastd_method fastd_method_xsalsa20_poly1305;
 #endif
+#ifdef WITH_METHOD_AES128_GCM
+extern const fastd_method fastd_method_aes128_gcm;
+#endif
 
 
 static void default_config(fastd_config *conf) {
@@ -139,6 +142,10 @@ bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *nam
 #ifdef WITH_METHOD_XSALSA20_POLY1305
 	else if (!strcmp(name, "xsalsa20-poly1305"))
 		conf->method = &fastd_method_xsalsa20_poly1305;
+#endif
+#ifdef WITH_METHOD_AES128_GCM
+	else if (!strcmp(name, "aes128-gcm"))
+		conf->method = &fastd_method_aes128_gcm;
 #endif
 	else
 		return false;

@@ -17,6 +17,7 @@ find_package(NaCl REQUIRED)
 
 
 set(WITH_METHOD_XSALSA20_POLY1305 TRUE CACHE BOOL "Include xsalsa20-poly1305 method")
+set(WITH_METHOD_AES128_GCM TRUE CACHE BOOL "Include aes128-gcm method")
 
 set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
 
