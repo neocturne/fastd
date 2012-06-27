@@ -247,9 +247,6 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 		mulH(sig, sig, session);
 	}
 
-	sig[BLOCKBYTES-8] ^= (in.len >> 53) & 0xff;
-	sig[BLOCKBYTES-7] ^= (in.len >> 45) & 0xff;
-	sig[BLOCKBYTES-6] ^= (in.len >> 37) & 0xff;
 	sig[BLOCKBYTES-5] ^= (in.len >> 29) & 0xff;
 	sig[BLOCKBYTES-4] ^= (in.len >> 21) & 0xff;
 	sig[BLOCKBYTES-3] ^= (in.len >> 13) & 0xff;
@@ -316,9 +313,6 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 		mulH(sig, sig, session);
 	}
 
-	sig[BLOCKBYTES-8] ^= (in.len >> 53) & 0xff;
-	sig[BLOCKBYTES-7] ^= (in.len >> 45) & 0xff;
-	sig[BLOCKBYTES-6] ^= (in.len >> 37) & 0xff;
 	sig[BLOCKBYTES-5] ^= (in.len >> 29) & 0xff;
 	sig[BLOCKBYTES-4] ^= (in.len >> 21) & 0xff;
 	sig[BLOCKBYTES-3] ^= (in.len >> 13) & 0xff;
