@@ -243,7 +243,7 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *addres
 			const char *error_field_str;
 
 			if (reply_code >= REPLY_MAX) {
-				pr_warn(ctx, "Handshake with %I failed with unknown code %I", address, reply_code);
+				pr_warn(ctx, "Handshake with %I failed with unknown code %i", address, reply_code);
 				goto end_free;
 			}
 
