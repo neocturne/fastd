@@ -24,6 +24,8 @@
 */
 
 
+#define _GNU_SOURCE
+
 #include "handshake.h"
 #include "packet.h"
 #include "peer.h"
