@@ -46,7 +46,7 @@
 #include <time.h>
 
 
-#define FASTD_VERSION "0.4"
+#define FASTD_VERSION "0.5-rc1"
 
 
 /* This must be adjusted when new methods are added */
