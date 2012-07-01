@@ -49,6 +49,10 @@
 #define FASTD_VERSION "0.4"
 
 
+/* This must be adjusted when new methods are added */
+#define MAX_METHODS 3
+
+
 struct _fastd_buffer {
 	void *base;
 	size_t base_len;
@@ -68,7 +72,7 @@ struct _fastd_protocol {
 	void (*peer_configure)(fastd_context *ctx, fastd_peer_config *peer_conf);
 
 	void (*handshake_init)(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf);
-	void (*handshake_handle)(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake);
+	void (*handshake_handle)(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake, const fastd_method *method);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
@@ -152,7 +156,8 @@ struct _fastd_config {
 	bool forward;
 
 	const fastd_protocol *protocol;
-	const fastd_method *method;
+	const fastd_method *methods[MAX_METHODS];
+	const fastd_method *method_default;
 	char *secret;
 	unsigned key_valid;
 	unsigned key_refresh;
@@ -314,6 +319,16 @@ static inline fastd_string_stack* fastd_string_stack_dup(const char *str) {
 	fastd_string_stack *ret = malloc(sizeof(fastd_string_stack) + strlen(str) + 1);
 	ret->next = NULL;
 	strcpy(ret->str, str);
+
+	return ret;
+}
+
+static inline fastd_string_stack* fastd_string_stack_dupn(const char *str, size_t len) {
+	size_t str_len = strnlen(str, len);
+	fastd_string_stack *ret = malloc(sizeof(fastd_string_stack) + str_len + 1);
+	ret->next = NULL;
+	strncpy(ret->str, str, str_len);
+	ret->str[str_len] = 0;
 
 	return ret;
 }

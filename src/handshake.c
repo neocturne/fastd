@@ -47,6 +47,7 @@ static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"MTU",
 	"method name",
 	"version name",
+	"method list",
 };
 
 static const char const *REPLY_TYPES[REPLY_MAX] = {
@@ -59,16 +60,45 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 #define AS_UINT16(ptr) ((*(uint8_t*)(ptr).data) + (*((uint8_t*)(ptr).data+1) << 8))
 
 
+static uint8_t* create_method_list(fastd_context *ctx, size_t *len) {
+	*len = strlen(ctx->conf->methods[0]->name);
+
+	int i;
+	for (i = 1; i < MAX_METHODS; i++) {
+		if (!ctx->conf->methods[i])
+			break;
+
+		*len += strlen(ctx->conf->methods[i]->name) + 1;
+	}
+
+	uint8_t *ret = malloc(*len+1);
+	char *ptr = (char*)ret;
+
+	for (i = 0; i < MAX_METHODS; i++) {
+		if (!ctx->conf->methods[i])
+			break;
+
+		ptr = stpcpy(ptr, ctx->conf->methods[i]->name) + 1;
+	}
+
+	return ret;
+}
+
 fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
-	size_t protocol_len = strlen(ctx->conf->protocol->name);
-	size_t method_len = strlen(ctx->conf->method->name);
 	size_t version_len = strlen(FASTD_VERSION);
+	size_t protocol_len = strlen(ctx->conf->protocol->name);
+	size_t method_len = strlen(ctx->conf->method_default->name);
+
+	size_t method_list_len;
+	uint8_t *method_list = create_method_list(ctx, &method_list_len);
+
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
-						 2*5 +            /* handshake type, mode */
-						 6 +		  /* MTU */
-						 4+protocol_len + /* protocol name */
-						 4+method_len +   /* method name */
-						 4+version_len +  /* version name */
+						 2*5 +               /* handshake type, mode */
+						 6 +		     /* MTU */
+						 4+version_len +     /* version name */
+						 4+protocol_len +    /* protocol name */
+						 4+method_len +      /* method name */
+						 4+method_list_len + /* supported method name list */
 						 tail_space
 						 );
 	fastd_packet *request = buffer.data;
@@ -80,16 +110,33 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_MODE, ctx->conf->mode);
 	fastd_handshake_add_uint16(ctx, &buffer, RECORD_MTU, ctx->conf->mtu);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
-	fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, ctx->conf->method->name);
 	fastd_handshake_add(ctx, &buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
+	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
+	fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, ctx->conf->method_default->name);
+	fastd_handshake_add(ctx, &buffer, RECORD_METHOD_LIST, method_list_len, method_list);
+
+	free(method_list);
 
 	return buffer;
 }
 
-fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, size_t tail_space) {
+static const fastd_method* method_from_name(fastd_context *ctx, const char *name, size_t n) {
+	int i;
+	for (i = 0; i < MAX_METHODS; i++) {
+		if (!ctx->conf->methods[i])
+			break;
+
+		if (strncmp(name, ctx->conf->methods[i]->name, n) == 0)
+			return ctx->conf->methods[i];
+	}
+
+	return NULL;
+}
+
+fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, const fastd_method *method, size_t tail_space) {
 	bool first = (AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE]) == 1);
 	size_t version_len = strlen(FASTD_VERSION);
+	size_t method_len = strlen(method->name);
 	size_t extra_size = 0;
 
 	if (first)
@@ -98,6 +145,7 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake
 
 	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
 						 2*5 +           /* handshake type, reply code */
+						 4+method_len +  /* method name */
 						 extra_size +
 						 tail_space
 						 );
@@ -108,6 +156,7 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake
 
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])+1);
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
+	fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, method->name);
 
 	if (first) {
 		fastd_handshake_add_uint16(ctx, &buffer, RECORD_MTU, ctx->conf->mtu);
@@ -115,6 +164,20 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake
 	}
 
 	return buffer;
+}
+
+static fastd_string_stack* parse_string_list(uint8_t *data, size_t len) {
+	uint8_t *end = data+len;
+	fastd_string_stack *ret = NULL;
+
+	while (data < end) {
+		fastd_string_stack *part = fastd_string_stack_dupn((char*)data, end-data);
+		part->next = ret;
+		ret = part;
+		data += strlen(part->str) + 1;
+	}
+
+	return ret;
 }
 
 void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer) {
@@ -190,17 +253,43 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *addres
 			goto send_reply;
 		}
 
-		if (!handshake.records[RECORD_METHOD_NAME].data) {
-			reply_code = REPLY_MANDATORY_MISSING;
-			error_detail = RECORD_METHOD_NAME;
-			goto send_reply;
-		}
+		const fastd_method *method = NULL;
 
-		if (handshake.records[RECORD_METHOD_NAME].length != strlen(ctx->conf->method->name)
-		    || strncmp((char*)handshake.records[RECORD_METHOD_NAME].data, ctx->conf->method->name, handshake.records[RECORD_METHOD_NAME].length)) {
-			reply_code = REPLY_UNACCEPTABLE_VALUE;
-			error_detail = RECORD_METHOD_NAME;
-			goto send_reply;
+		if (handshake.records[RECORD_METHOD_LIST].data && handshake.records[RECORD_METHOD_LIST].length) {
+			fastd_string_stack *method_list = parse_string_list(handshake.records[RECORD_METHOD_LIST].data, handshake.records[RECORD_METHOD_LIST].length);
+
+			fastd_string_stack *method_name = method_list;
+			while (method_name) {
+				const fastd_method *cur_method = method_from_name(ctx, method_name->str, SIZE_MAX);
+
+				if (cur_method)
+					method = cur_method;
+
+				method_name = method_name->next;
+			}
+
+			fastd_string_stack_free(method_list);
+
+			if (!method) {
+				reply_code = REPLY_UNACCEPTABLE_VALUE;
+				error_detail = RECORD_METHOD_LIST;
+				goto send_reply;
+			}
+		}
+		else {
+			if (!handshake.records[RECORD_METHOD_NAME].data) {
+				reply_code = REPLY_MANDATORY_MISSING;
+				error_detail = RECORD_METHOD_NAME;
+				goto send_reply;
+			}
+			if (handshake.records[RECORD_METHOD_NAME].length != strlen(ctx->conf->method_default->name)
+			    || strncmp((char*)handshake.records[RECORD_METHOD_NAME].data, ctx->conf->method_default->name, handshake.records[RECORD_METHOD_NAME].length)) {
+				reply_code = REPLY_UNACCEPTABLE_VALUE;
+				error_detail = RECORD_METHOD_NAME;
+				goto send_reply;
+			}
+
+			method = ctx->conf->method_default;
 		}
 
 	send_reply:
@@ -218,17 +307,10 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *addres
 			fastd_send_handshake(ctx, address, reply_buffer);
 		}
 		else {
-			ctx->conf->protocol->handshake_handle(ctx, address, peer_conf, &handshake);
+			ctx->conf->protocol->handshake_handle(ctx, address, peer_conf, &handshake, method);
 		}
 	}
 	else {
-		if ((handshake.type & 1) == 0) {
-			/*if (packet->req_id != peer->last_req_id) {
-				pr_warn(ctx, "received handshake reply with request ID %u from %P while %u was expected", packet->req_id, peer, peer->last_req_id);
-				goto end_free;
-				}*/
-		}
-
 		if (handshake.records[RECORD_REPLY_CODE].length != 1) {
 			pr_warn(ctx, "received handshake reply without reply code from %I", address);
 			goto end_free;
@@ -237,7 +319,22 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *addres
 		uint8_t reply_code = AS_UINT8(handshake.records[RECORD_REPLY_CODE]);
 
 		if (reply_code == REPLY_SUCCESS) {
-			ctx->conf->protocol->handshake_handle(ctx, address, peer_conf, &handshake);
+			const fastd_method *method = ctx->conf->method_default;
+
+			if (handshake.records[RECORD_METHOD_NAME].data) {
+				method = method_from_name(ctx, handshake.records[RECORD_METHOD_NAME].data, handshake.records[RECORD_METHOD_NAME].length);
+			}
+
+			/*
+			 * If we receive an invalid method here, some went really wrong on the other side.
+			 * It doesn't even make sense to send an error reply here.
+			 */
+			if (!method) {
+				pr_warn(ctx, "Handshake with %I failed because an invalid method name was sent", address);
+				goto end_free;
+			}
+
+			ctx->conf->protocol->handshake_handle(ctx, address, peer_conf, &handshake, method);
 		}
 		else {
 			const char *error_field_str;

@@ -45,6 +45,7 @@ typedef enum _fastd_handshake_record_type {
 	RECORD_MTU,
 	RECORD_METHOD_NAME,
 	RECORD_VERSION_NAME,
+	RECORD_METHOD_LIST,
 	RECORD_MAX,
 } fastd_handshake_record_type;
 
@@ -68,7 +69,7 @@ struct _fastd_handshake {
 
 
 fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space);
-fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, size_t tail_space);
+fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, const fastd_method *method, size_t tail_space);
 
 void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer);
 

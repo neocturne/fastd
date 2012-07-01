@@ -80,7 +80,8 @@ static void default_config(fastd_config *conf) {
 	conf->forward = false;
 
 	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
-	conf->method = &fastd_method_null;
+	conf->method_default = &fastd_method_null;
+	memset(conf->methods, 0, sizeof(conf->methods));
 	conf->secret = NULL;
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_refresh = 3300;	/* 55 minutes */
@@ -136,21 +137,41 @@ bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *n
 	return true;
 }
 
-bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name) {
+static inline const fastd_method* parse_method_name(const char *name) {
 	if (!strcmp(name, "null"))
-		conf->method = &fastd_method_null;
+		return &fastd_method_null;
 #ifdef WITH_METHOD_XSALSA20_POLY1305
 	else if (!strcmp(name, "xsalsa20-poly1305"))
-		conf->method = &fastd_method_xsalsa20_poly1305;
+		return &fastd_method_xsalsa20_poly1305;
 #endif
 #ifdef WITH_METHOD_AES128_GCM
 	else if (!strcmp(name, "aes128-gcm"))
-		conf->method = &fastd_method_aes128_gcm;
+		return &fastd_method_aes128_gcm;
 #endif
 	else
+		return NULL;
+}
+
+bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name) {
+	const fastd_method *method = parse_method_name(name);
+
+	if (!method)
 		return false;
 
-	return true;
+	conf->method_default = method;
+
+	int i;
+	for (i = 0; i < MAX_METHODS; i++) {
+		if (conf->methods[i] == method)
+			return true;
+
+		if (conf->methods[i] == NULL) {
+			conf->methods[i] = method;
+			return true;
+		}
+	}
+
+	exit_bug(ctx, "MAX_METHODS too low");
 }
 
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level) {
@@ -679,6 +700,9 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 
 	if (conf->log_stderr_level < 0 && conf->log_syslog_level < 0 && !conf->log_files)
 		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
+
+	if (!conf->methods[0])
+		conf->methods[0] = conf->method_default;
 
 	if (conf->generate_key || conf->show_key)
 		return;
