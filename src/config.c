@@ -430,7 +430,7 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 	OPTION_ARG(option_on_disestablish, "--on-disestablish", "<command>", "Sets a shell command to execute when a connection is lost") \
 	OPTION(option_generate_key, "--generate-key", "Generates a new keypair") \
 	OPTION(option_show_key, "--show-key", "Shows the public key corresponding to the configured secret") \
-	OPTION(option_machine_readable, "--machine-readable", "Supresses output of explaining text in the --show-key and --generate-key commands")
+	OPTION(option_machine_readable, "--machine-readable", "Suppresses output of explaining text in the --show-key and --generate-key commands")
 
 
 static void print_usage(const char *options, const char *message) {
