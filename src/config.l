@@ -38,6 +38,7 @@
 	 #include <config.yy.h>
 }
 
+%s NEEDSPACE
 %s STRING
 %s ADDR6
 %s COMMENT
@@ -49,51 +50,53 @@
 			yylloc->first_column = yylloc->last_column+1; \
 			yylloc->last_column += yyleng; \
 		} while (0)
+
+	#define TOKEN(tok) do { UPDATE_LOCATION; BEGIN(NEEDSPACE); return tok; } while (0)
 %}
 
 <INITIAL>{
-[0-9]+		{ UPDATE_LOCATION; yylval->num = atoi(yytext); return TOK_INTEGER; }
+[0-9]+		{ UPDATE_LOCATION; yylval->num = atoi(yytext); BEGIN(NEEDSPACE); return TOK_INTEGER; }
 
-interface	{ UPDATE_LOCATION; return TOK_INTERFACE; }
-bind		{ UPDATE_LOCATION; return TOK_BIND; }
-mtu		{ UPDATE_LOCATION; return TOK_MTU; }
-mode		{ UPDATE_LOCATION; return TOK_MODE; }
-protocol	{ UPDATE_LOCATION; return TOK_PROTOCOL; }
-method		{ UPDATE_LOCATION; return TOK_METHOD; }
-peer		{ UPDATE_LOCATION; return TOK_PEER; }
-remote		{ UPDATE_LOCATION; return TOK_REMOTE; }
-ipv4		{ UPDATE_LOCATION; return TOK_IPV4; }
-ipv6		{ UPDATE_LOCATION; return TOK_IPV6; }
-secret		{ UPDATE_LOCATION; return TOK_SECRET; }
-key		{ UPDATE_LOCATION; return TOK_KEY; }
-include		{ UPDATE_LOCATION; return TOK_INCLUDE; }
-as		{ UPDATE_LOCATION; return TOK_AS; }
-any		{ UPDATE_LOCATION; return TOK_ANY; }
-tap		{ UPDATE_LOCATION; return TOK_TAP; }
-tun		{ UPDATE_LOCATION; return TOK_TUN; }
-on		{ UPDATE_LOCATION; return TOK_ON; }
-up		{ UPDATE_LOCATION; return TOK_UP; }
-down		{ UPDATE_LOCATION; return TOK_DOWN; }
-establish	{ UPDATE_LOCATION; return TOK_ESTABLISH; }
-disestablish	{ UPDATE_LOCATION; return TOK_DISESTABLISH; }
-peers		{ UPDATE_LOCATION; return TOK_PEERS; }
-from		{ UPDATE_LOCATION; return TOK_FROM; }
-log		{ UPDATE_LOCATION; return TOK_LOG; }
-level 		{ UPDATE_LOCATION; return TOK_LEVEL; }
-syslog		{ UPDATE_LOCATION; return TOK_SYSLOG; }
-stderr		{ UPDATE_LOCATION; return TOK_STDERR; }
-to		{ UPDATE_LOCATION; return TOK_TO; }
-fatal		{ UPDATE_LOCATION; return TOK_FATAL; }
-error		{ UPDATE_LOCATION; return TOK_ERROR; }
-warn		{ UPDATE_LOCATION; return TOK_WARN; }
-info		{ UPDATE_LOCATION; return TOK_INFO; }
-verbose		{ UPDATE_LOCATION; return TOK_VERBOSE; }
-debug		{ UPDATE_LOCATION; return TOK_DEBUG; }
-forward		{ UPDATE_LOCATION; return TOK_FORWARD; }
-yes		{ UPDATE_LOCATION; return TOK_YES; }
-no		{ UPDATE_LOCATION; return TOK_NO; }
-port		{ UPDATE_LOCATION; return TOK_PORT; }
-float		{ UPDATE_LOCATION; return TOK_FLOAT; }
+interface	{ TOKEN(TOK_INTERFACE); }
+bind		{ TOKEN(TOK_BIND); }
+mtu		{ TOKEN(TOK_MTU); }
+mode		{ TOKEN(TOK_MODE); }
+protocol	{ TOKEN(TOK_PROTOCOL); }
+method		{ TOKEN(TOK_METHOD); }
+peer		{ TOKEN(TOK_PEER); }
+remote		{ TOKEN(TOK_REMOTE); }
+ipv4		{ TOKEN(TOK_IPV4); }
+ipv6		{ TOKEN(TOK_IPV6); }
+secret		{ TOKEN(TOK_SECRET); }
+key		{ TOKEN(TOK_KEY); }
+include		{ TOKEN(TOK_INCLUDE); }
+as		{ TOKEN(TOK_AS); }
+any		{ TOKEN(TOK_ANY); }
+tap		{ TOKEN(TOK_TAP); }
+tun		{ TOKEN(TOK_TUN); }
+on		{ TOKEN(TOK_ON); }
+up		{ TOKEN(TOK_UP); }
+down		{ TOKEN(TOK_DOWN); }
+establish	{ TOKEN(TOK_ESTABLISH); }
+disestablish	{ TOKEN(TOK_DISESTABLISH); }
+peers		{ TOKEN(TOK_PEERS); }
+from		{ TOKEN(TOK_FROM); }
+log		{ TOKEN(TOK_LOG); }
+level 		{ TOKEN(TOK_LEVEL); }
+syslog		{ TOKEN(TOK_SYSLOG); }
+stderr		{ TOKEN(TOK_STDERR); }
+to		{ TOKEN(TOK_TO); }
+fatal		{ TOKEN(TOK_FATAL); }
+error		{ TOKEN(TOK_ERROR); }
+warn		{ TOKEN(TOK_WARN); }
+info		{ TOKEN(TOK_INFO); }
+verbose		{ TOKEN(TOK_VERBOSE); }
+debug		{ TOKEN(TOK_DEBUG); }
+forward		{ TOKEN(TOK_FORWARD); }
+yes		{ TOKEN(TOK_YES); }
+no		{ TOKEN(TOK_NO); }
+port		{ TOKEN(TOK_PORT); }
+float		{ TOKEN(TOK_FLOAT); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;
@@ -110,6 +113,13 @@ float		{ UPDATE_LOCATION; return TOK_FLOAT; }
 
 [ \t]		{ yylloc->last_column++; }
 \n		{ yylloc->last_column = 0; yylloc->last_line++; }
+}
+
+<NEEDSPACE>{
+[;:\{\}]	{ UPDATE_LOCATION; BEGIN(INITIAL); return yytext[0]; }
+
+[ \t]		{ yylloc->last_column++; BEGIN(INITIAL); }
+\n		{ yylloc->last_column = 0; yylloc->last_line++; BEGIN(INITIAL); }
 }
 
 <INITIAL>\"	{ UPDATE_LOCATION; BEGIN(STRING); }
@@ -137,7 +147,7 @@ float		{ UPDATE_LOCATION; return TOK_FLOAT; }
 			}
 			yytext[yyleng-esc-1] = 0;
 			yylval->str = fastd_string_stack_dup(yytext);
-			BEGIN(INITIAL);
+			BEGIN(NEEDSPACE);
 			yylloc->last_column++;
 			return TOK_STRING;
 
@@ -153,10 +163,10 @@ float		{ UPDATE_LOCATION; return TOK_FLOAT; }
 		}
 <ADDR6>\]	{ yylloc->last_column++; BEGIN(INITIAL); return TOK_ADDR6; }
 
-<INITIAL>#.*	{ yylloc->last_column += yyleng; }
-<INITIAL>\/\/.*	{ yylloc->last_column += yyleng; }
+<INITIAL,NEEDSPACE>#.*		{ yylloc->last_column += yyleng; }
+<INITIAL,NEEDSPACE>\/\/.*	{ yylloc->last_column += yyleng; }
 
-<INITIAL>\/\*	{ UPDATE_LOCATION; BEGIN(COMMENT); }
+<INITIAL,NEEDSPACE>\/\*		{ UPDATE_LOCATION; BEGIN(COMMENT); }
 <COMMENT>\*\/	{ yylloc->last_column += yyleng; BEGIN(INITIAL); }
 <COMMENT>.	{ yylloc->last_column++; }
 <COMMENT>\n	{ yylloc->last_line++; yylloc->last_column = 0; }
@@ -164,7 +174,7 @@ float		{ UPDATE_LOCATION; return TOK_FLOAT; }
 .		{
 			yylloc->first_line = yylloc->last_line;
 			yylloc->first_column = yylloc->last_column+1;
-			yylval->error = "invalid character";
+			yylval->error = "syntax error";
 			return -1;
 		}
 
