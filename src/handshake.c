@@ -31,8 +31,6 @@
 #include "peer.h"
 #include "task.h"
 
-#include <string.h>
-
 
 static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"handshake type",
