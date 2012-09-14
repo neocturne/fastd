@@ -25,7 +25,6 @@
 
 
 #include "fastd.h"
-#include <asm/byteorder.h>
 #include <crypto_stream_aes128ctr.h>
 
 
@@ -34,12 +33,17 @@
 #define BLOCKQWORDS (BLOCKBYTES/8)
 
 
+typedef union _block_t {
+	uint8_t b[BLOCKBYTES];
+	uint64_t qw[BLOCKQWORDS];
+} block_t;
+
 struct _fastd_method_session_state {
 	struct timespec valid_till;
 	struct timespec refresh_after;
 
 	uint8_t d[crypto_stream_aes128ctr_BEFORENMBYTES];
-	uint64_t H[32*16*BLOCKQWORDS];
+	block_t H[32][16];
 
 	uint8_t send_nonce[NONCEBYTES];
 	uint8_t receive_nonce[NONCEBYTES];
@@ -91,21 +95,19 @@ static size_t method_min_decrypt_head_space(fastd_context *ctx) {
 	return 0;
 }
 
-static const uint64_t r[BLOCKQWORDS] = {
-	__constant_cpu_to_le64(0x87), 0,
-};
+static const block_t r = { .b = {0xe1} };
 
-static inline uint8_t shl(uint8_t out[BLOCKBYTES], const uint8_t in[BLOCKBYTES], int n) {
+static inline uint8_t shr(block_t *out, const block_t *in, int n) {
 	int i;
 	uint8_t c = 0;
 
 	for (i = 0; i < BLOCKBYTES; i++) {
-		uint8_t c2 = in[i] >> (8-n);
-		out[i] = (in[i] << n) | c;
+		uint8_t c2 = in->b[i] << (8-n);
+		out->b[i] = (in->b[i] >> n) | c;
 		c = c2;
 	}
 
-	return c;
+	return (c >> (8-n));
 }
 
 static inline void xor(uint8_t *x, const uint8_t *a, const uint8_t *b, unsigned int l) {
@@ -114,9 +116,9 @@ static inline void xor(uint8_t *x, const uint8_t *a, const uint8_t *b, unsigned 
 		x[i] = a[i] ^ b[i];
 }
 
-static inline void xor_block(uint64_t x[BLOCKQWORDS], const uint64_t a[BLOCKQWORDS]) {
-	x[0] ^= a[0];
-	x[1] ^= a[1];
+static inline void xor_block(block_t *x, const block_t *a) {
+	x->qw[0] ^= a->qw[0];
+	x->qw[1] ^= a->qw[1];
 }
 
 static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
@@ -137,30 +139,31 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 
 	uint8_t zerononce[crypto_stream_aes128ctr_NONCEBYTES];
 	memset(zerononce, 0, crypto_stream_aes128ctr_NONCEBYTES);
-	uint64_t Hbase[4*BLOCKQWORDS];
-	uint64_t Rbase[4*BLOCKQWORDS];
-	crypto_stream_aes128ctr_afternm((uint8_t*)Hbase, BLOCKBYTES, zerononce, session->d);
 
-	memcpy(Rbase, r, BLOCKBYTES);
+	block_t Hbase[4];
+	crypto_stream_aes128ctr_afternm(Hbase[0].b, BLOCKBYTES, zerononce, session->d);
+
+	block_t Rbase[4];
+	Rbase[0] = r;
 
 	for (i = 1; i < 4; i++) {
-		uint8_t carry = shl((uint8_t*)(Hbase + i*BLOCKQWORDS), (uint8_t*)(Hbase + (i-1)*BLOCKQWORDS), 1);
+		uint8_t carry = shr(&Hbase[i], &Hbase[i-1], 1);
 		if (carry)
-			xor_block(Hbase + i*BLOCKQWORDS, r);
+			xor_block(&Hbase[i], &r);
 
-		shl((uint8_t*)(Rbase + i*BLOCKQWORDS), (uint8_t*)(Rbase + (i-1)*BLOCKQWORDS), 1);
+		shr(&Rbase[i], &Rbase[i-1], 1);
 	}
 
-	uint64_t R[16*BLOCKQWORDS];
+	block_t R[16];
 	memset(session->H, 0, sizeof(session->H));
 	memset(R, 0, sizeof(R));
 
 	for (i = 0; i < 16; i++) {
 		int j;
 		for (j = 0; j < 4; j++) {
-			if (i & (1 << j)) {
-				xor_block(session->H + i*BLOCKQWORDS, Hbase + j*BLOCKQWORDS);
-				xor_block(R + i*BLOCKQWORDS, Rbase + j*BLOCKQWORDS);
+			if (i & (8 >> j)) {
+				xor_block(&session->H[0][i], &Hbase[j]);
+				xor_block(&R[i], &Rbase[j]);
 			}
 		}
 	}
@@ -169,8 +172,8 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 		int j;
 
 		for (j = 0; j < 16; j++) {
-			uint8_t carry = shl((uint8_t*)(session->H + (16*i + j)*BLOCKQWORDS), (uint8_t*)(session->H + (16*(i-1) + j)*BLOCKQWORDS), 4);
-			xor_block(session->H + (16*i + j)*BLOCKQWORDS, R + carry*BLOCKQWORDS);
+			uint8_t carry = shr(&session->H[i][j], &session->H[i-1][j], 4);
+			xor_block(&session->H[i][j], &R[carry]);
 		}
 	}
 
@@ -205,19 +208,19 @@ static void method_session_free(fastd_context *ctx, fastd_method_session_state *
 }
 
 static void mulH(uint8_t out[BLOCKBYTES], const uint8_t in[BLOCKBYTES], fastd_method_session_state *session) {
-	uint64_t out2[BLOCKQWORDS];
-	memset(out2, 0, BLOCKBYTES);
+	block_t out2;
+	memset(&out2, 0, BLOCKBYTES);
 
 	int i;
 	for (i = 0; i < 16; i++) {
-		xor_block(out2, session->H + (32*i + (in[i]&0xf))*BLOCKQWORDS);
-		xor_block(out2, session->H + (32*i+16 + (in[i]>>4))*BLOCKQWORDS);
+		xor_block(&out2, &session->H[2*i][in[i]>>4]);
+		xor_block(&out2, &session->H[2*i+1][in[i]&0xf]);
 	}
 
-	memcpy(out, out2, BLOCKBYTES);
+	memcpy(out, &out2, BLOCKBYTES);
 }
 
-#define BLOCKPTR(buf, i) (((uint8_t*)(buf))+i*BLOCKBYTES)
+#define BLOCKPTR(buf, i) (((uint8_t*)(buf))+(i)*BLOCKBYTES)
 
 static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
 	*out = fastd_buffer_alloc(in.len, NONCEBYTES+BLOCKBYTES, 0);
