@@ -265,7 +265,7 @@ static size_t methods_min_encrypt_head_space(fastd_context *ctx) {
 			ret = s;
 	}
 
-	return ALIGN(ret, 8);
+	return alignto(ret, 8);
 }
 
 static size_t methods_min_decrypt_head_space(fastd_context *ctx) {
@@ -281,7 +281,7 @@ static size_t methods_min_decrypt_head_space(fastd_context *ctx) {
 			ret = s;
 	}
 
-	return ALIGN(ret, 8);
+	return alignto(ret, 8);
 }
 
 static size_t methods_min_encrypt_tail_space(fastd_context *ctx) {

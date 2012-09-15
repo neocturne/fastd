@@ -726,7 +726,7 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 }
 
 static void send_empty(fastd_context *ctx, fastd_peer *peer, protocol_session *session) {
-	session_send(ctx, peer, fastd_buffer_alloc(0, ALIGN(session->method->min_encrypt_head_space(ctx), 8), session->method->min_encrypt_tail_space(ctx)), session);
+	session_send(ctx, peer, fastd_buffer_alloc(0, alignto(session->method->min_encrypt_head_space(ctx), 8), session->method->min_encrypt_tail_space(ctx)), session);
 }
 
 static void protocol_init_peer_state(fastd_context *ctx, fastd_peer *peer) {

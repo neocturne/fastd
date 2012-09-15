@@ -283,6 +283,10 @@ static inline int fastd_rand(fastd_context *ctx, int min, int max) {
         (type *)( (char *)__mptr - offsetof(type,member) );})
 
 
+static inline size_t alignto(size_t l, size_t a) {
+	return ((l+a-1)/a)*a;
+}
+
 static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
 	uint8_t *ptr = malloc(base_len);
@@ -353,8 +357,6 @@ static inline void fastd_string_stack_free(fastd_string_stack *str) {
 		str = next;
 	}
 }
-
-#define ALIGN(l, a) (((l+a-1)/a)*a)
 
 static inline bool timespec_after(const struct timespec *tp1, const struct timespec *tp2) {
 	return (tp1->tv_sec > tp2->tv_sec ||

@@ -291,8 +291,8 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	fastd_buffer_pull_head(&in, BLOCKBYTES);
 	memset(in.data, 0, BLOCKBYTES);
 
-	size_t tail_len = ALIGN(in.len, BLOCKBYTES)-in.len;
-	*out = fastd_buffer_alloc(in.len, ALIGN(NONCEBYTES, 8), BLOCKBYTES+tail_len);
+	size_t tail_len = alignto(in.len, BLOCKBYTES)-in.len;
+	*out = fastd_buffer_alloc(in.len, alignto(NONCEBYTES, 8), BLOCKBYTES+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
@@ -353,7 +353,7 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 
 	fastd_buffer_push_head(&in, NONCEBYTES);
 
-	size_t tail_len = ALIGN(in.len, BLOCKBYTES)-in.len;
+	size_t tail_len = alignto(in.len, BLOCKBYTES)-in.len;
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
 	int n_blocks = (in.len+BLOCKBYTES-1)/BLOCKBYTES;
