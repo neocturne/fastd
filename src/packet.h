@@ -30,6 +30,9 @@
 #include <stdint.h>
 
 
+#define PACKET_TYPE_LEN 1
+
+
 typedef enum _fastd_packet_type {
 	PACKET_UNKNOWN = 0,
 	PACKET_HANDSHAKE,

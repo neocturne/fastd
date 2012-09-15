@@ -540,25 +540,14 @@ static void handle_tun(fastd_context *ctx) {
 }
 
 static void handle_socket(fastd_context *ctx, int sockfd) {
-	size_t max_len = methods_max_packet_size(ctx);
-	fastd_buffer buffer = fastd_buffer_alloc(max_len, methods_min_decrypt_head_space(ctx), 0);
-	uint8_t packet_type;
+	size_t max_len = PACKET_TYPE_LEN + methods_max_packet_size(ctx);
+	fastd_buffer buffer = fastd_buffer_alloc(max_len, ALIGN8(methods_min_decrypt_head_space(ctx)), 0);
+	uint8_t *packet_type;
 
-	struct iovec iov[2] = {
-		{ .iov_base = &packet_type, .iov_len = 1 },
-		{ .iov_base = buffer.data, .iov_len = max_len }
-	};
 	fastd_peer_address recvaddr;
+	socklen_t recvaddrlen = sizeof(recvaddr);
 			
-	struct msghdr msg;
-	memset(&msg, 0, sizeof(msg));
-
-	msg.msg_name = &recvaddr;
-	msg.msg_namelen = sizeof(recvaddr);
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 2;
-
-	ssize_t len = recvmsg(sockfd, &msg, 0);
+	ssize_t len = recvfrom(sockfd, buffer.data, buffer.len, 0, (struct sockaddr*)&recvaddr, &recvaddrlen);
 	if (len < 0) {
 		if (errno != EINTR)
 			pr_warn(ctx, "recvfrom: %s", strerror(errno));
@@ -567,7 +556,10 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 		return;
 	}
 
-	buffer.len = len - 1;
+	packet_type = buffer.data;
+	buffer.len = len;
+
+	fastd_buffer_push_head(&buffer, 1);
 
 	fastd_peer *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
@@ -576,7 +568,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	}
 
 	if (peer) {
-		switch (packet_type) {
+		switch (*packet_type) {
 		case PACKET_DATA:
 			ctx->conf->protocol->handle_recv(ctx, peer, buffer);
 			break;
@@ -592,7 +584,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	else if(ctx->conf->n_floating || ctx->conf->n_dynamic ||
 		(recvaddr.sa.sa_family == AF_INET && ctx->conf->n_dynamic_v4) ||
 		(recvaddr.sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6)) {
-		switch (packet_type) {
+		switch (*packet_type) {
 		case PACKET_DATA:
 			fastd_buffer_free(buffer);
 			ctx->conf->protocol->handshake_init(ctx, &recvaddr, NULL);

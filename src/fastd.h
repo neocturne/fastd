@@ -349,6 +349,8 @@ static inline void fastd_string_stack_free(fastd_string_stack *str) {
 	}
 }
 
+#define ALIGN8(l) (((l+7)/8)*8)
+
 static inline bool timespec_after(const struct timespec *tp1, const struct timespec *tp2) {
 	return (tp1->tv_sec > tp2->tv_sec ||
 		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
