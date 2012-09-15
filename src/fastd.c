@@ -28,6 +28,7 @@
 
 #include "fastd.h"
 #include "handshake.h"
+#include "linux_alg.h"
 #include "peer.h"
 #include "task.h"
 
@@ -784,6 +785,8 @@ int main(int argc, char *argv[]) {
 
 	init_log(&ctx);
 
+	fastd_linux_alg_init(&ctx);
+
 	if (conf.generate_key) {
 		conf.protocol->generate_key(&ctx);
 		exit(0);
@@ -856,6 +859,8 @@ int main(int argc, char *argv[]) {
 
 	free(ctx.protocol_state);
 	free(ctx.eth_addr);
+
+	fastd_linux_alg_close(&ctx);
 
 	close_log(&ctx);
 	fastd_config_release(&ctx, &conf);

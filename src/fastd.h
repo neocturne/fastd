@@ -215,6 +215,8 @@ struct _fastd_context {
 	int sockfd;
 	int sock6fd;
 
+	int algfd_ghash;
+
 	size_t eth_addr_size;
 	size_t n_eth_addr;
 	fastd_peer_eth_addr *eth_addr;

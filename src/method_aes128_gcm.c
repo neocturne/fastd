@@ -25,7 +25,10 @@
 
 
 #include "fastd.h"
+#include "linux_alg.h"
+
 #include <crypto_stream_aes128ctr.h>
+#include <unistd.h>
 
 
 #define NONCEBYTES 7
@@ -50,6 +53,8 @@ struct _fastd_method_session_state {
 
 	struct timespec receive_last;
 	uint64_t receive_reorder_seen;
+
+	int algfd_ghash;
 };
 
 
@@ -179,6 +184,8 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 		}
 	}
 
+	session->algfd_ghash = fastd_linux_alg_ghash_init(ctx, Hbase[0].b);
+
 	session->send_nonce[0] = initiator ? 3 : 2;
 	session->receive_nonce[0] = initiator ? 0 : 1;
 
@@ -204,6 +211,8 @@ static bool method_session_want_refresh(fastd_context *ctx, fastd_method_session
 
 static void method_session_free(fastd_context *ctx, fastd_method_session_state *session) {
 	if(session) {
+		close(session->algfd_ghash);
+
 		memset(session, 0, sizeof(fastd_method_session_state));
 		free(session);
 	}
@@ -236,7 +245,16 @@ static inline void put_size(block_t *out, size_t len) {
 	out->b[BLOCKBYTES-1] = len << 3;
 }
 
-static inline void ghash(block_t *out, const block_t *blocks, size_t n_blocks, fastd_method_session_state *session) {
+static inline void ghash(fastd_context *ctx, block_t *out, const block_t *blocks, size_t n_blocks, fastd_method_session_state *session) {
+	if (session->algfd_ghash >= 0) {
+		if (fastd_linux_alg_ghash(ctx, session->algfd_ghash, out->b, blocks, n_blocks*BLOCKBYTES))
+			return;
+
+		/* on error */
+		close(session->algfd_ghash);
+		session->algfd_ghash = -1;
+	}
+
 	memset(out, 0, sizeof(block_t));
 
 	int i;
@@ -274,7 +292,7 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	put_size(&outblocks[n_blocks], in.len);
 
 	block_t *sig = outblocks-1;
-	ghash(sig, outblocks, n_blocks+1, session);
+	ghash(ctx, sig, outblocks, n_blocks+1, session);
 	xor_a(sig, &stream[0]);
 
 	fastd_buffer_free(in);
@@ -329,7 +347,7 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	put_size(&inblocks[n_blocks], in.len);
 
 	block_t sig;
-	ghash(&sig, inblocks, n_blocks+1, session);
+	ghash(ctx, &sig, inblocks, n_blocks+1, session);
 	xor_a(&sig, &stream[0]);
 
 	if (memcmp(&sig, inblocks-1, BLOCKBYTES) != 0) {

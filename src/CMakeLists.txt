@@ -17,6 +17,7 @@ add_executable(fastd
   fastd.c
   config.c
   handshake.c
+  linux_alg.c
   peer.c
   printf.c
   queue.c
