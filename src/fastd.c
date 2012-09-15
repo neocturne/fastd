@@ -75,6 +75,10 @@ static void init_signals(fastd_context *ctx) {
 		exit_errno(ctx, "sigaction");
 	if(sigaction(SIGINT, &action, NULL))
 		exit_errno(ctx, "sigaction");
+
+	action.sa_handler = SIG_IGN;
+	if(sigaction(SIGPIPE, &action, NULL))
+		exit_errno(ctx, "sigaction");
 }
 
 static void init_pipes(fastd_context *ctx) {
