@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 
+#define KEYBYTES 16
 #define NONCEBYTES 7
 #define BLOCKBYTES 16
 #define BLOCKQWORDS (BLOCKBYTES/8)
@@ -54,6 +55,7 @@ struct _fastd_method_session_state {
 	struct timespec receive_last;
 	uint64_t receive_reorder_seen;
 
+	int algfd_aesctr;
 	int algfd_ghash;
 };
 
@@ -92,7 +94,11 @@ static size_t method_max_packet_size(fastd_context *ctx) {
 }
 
 
-static size_t method_min_head_space(fastd_context *ctx) {
+static size_t method_min_encrypt_head_space(fastd_context *ctx) {
+	return BLOCKBYTES;
+}
+
+static size_t method_min_decrypt_head_space(fastd_context *ctx) {
 	return 0;
 }
 
@@ -129,10 +135,32 @@ static inline void xor_a(block_t *x, const block_t *a) {
 	xor(x, x, a);
 }
 
+static inline void xor_blocks(block_t *out, const block_t *in1, const block_t *in2, size_t n_blocks) {
+	int i;
+	for (i = 0; i < n_blocks; i++)
+		xor(&out[i], &in1[i], &in2[i]);
+}
+
+static void aes128ctr(fastd_context *ctx, block_t *out, const block_t *in, size_t n_blocks, const block_t *iv, fastd_method_session_state *session) {
+	if (session->algfd_aesctr >= 0) {
+		if (fastd_linux_alg_aesctr(ctx, session->algfd_aesctr, out, in, n_blocks*BLOCKBYTES, iv->b))
+			return;
+
+		/* on error */
+		close(session->algfd_aesctr);
+		session->algfd_aesctr = -1;
+	}
+
+	block_t stream[n_blocks];
+	crypto_stream_aes128ctr_afternm((uint8_t*)stream, sizeof(stream), iv->b, session->d);
+
+	xor_blocks(out, in, stream, n_blocks);
+}
+
 static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
 	int i;
 
-	if (length < crypto_stream_aes128ctr_KEYBYTES)
+	if (length < KEYBYTES)
 		exit_bug(ctx, "aes128-gcm: tried to init with short secret");
 
 	fastd_method_session_state *session = malloc(sizeof(fastd_method_session_state));
@@ -144,11 +172,12 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 	session->refresh_after.tv_sec += ctx->conf->key_refresh;
 
 	crypto_stream_aes128ctr_beforenm(session->d, secret);
+	session->algfd_aesctr = fastd_linux_alg_aesctr_init(ctx, secret, KEYBYTES);
 
-	static const uint8_t zerononce[crypto_stream_aes128ctr_NONCEBYTES] = {};
+	static const block_t zeroblock = {};
 
 	block_t Hbase[4];
-	crypto_stream_aes128ctr_afternm(Hbase[0].b, BLOCKBYTES, zerononce, session->d);
+	aes128ctr(ctx, &Hbase[0], &zeroblock, 1, &zeroblock, session);
 
 	block_t Rbase[4];
 	Rbase[0] = r;
@@ -230,12 +259,6 @@ static void mulH_a(block_t *x, fastd_method_session_state *session) {
 	*x = out;
 }
 
-static inline void xor_blocks(block_t *out, const block_t *in1, const block_t *in2, size_t n_blocks) {
-	int i;
-	for (i = 0; i < n_blocks; i++)
-		xor(&out[i], &in1[i], &in2[i]);
-}
-
 static inline void put_size(block_t *out, size_t len) {
 	memset(out, 0, BLOCKBYTES-5);
 	out->b[BLOCKBYTES-5] = len >> 29;
@@ -245,7 +268,7 @@ static inline void put_size(block_t *out, size_t len) {
 	out->b[BLOCKBYTES-1] = len << 3;
 }
 
-static inline void ghash(fastd_context *ctx, block_t *out, const block_t *blocks, size_t n_blocks, fastd_method_session_state *session) {
+static void ghash(fastd_context *ctx, block_t *out, const block_t *blocks, size_t n_blocks, fastd_method_session_state *session) {
 	if (session->algfd_ghash >= 0) {
 		if (fastd_linux_alg_ghash(ctx, session->algfd_ghash, out->b, blocks, n_blocks*BLOCKBYTES))
 			return;
@@ -265,39 +288,39 @@ static inline void ghash(fastd_context *ctx, block_t *out, const block_t *blocks
 }
 
 static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
+	fastd_buffer_pull_head(&in, BLOCKBYTES);
+	memset(in.data, 0, BLOCKBYTES);
+
 	size_t tail_len = ALIGN(in.len, BLOCKBYTES)-in.len;
-	*out = fastd_buffer_alloc(in.len, ALIGN(NONCEBYTES+BLOCKBYTES, 8), BLOCKBYTES+tail_len);
+	*out = fastd_buffer_alloc(in.len, ALIGN(NONCEBYTES, 8), BLOCKBYTES+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	uint8_t nonce[crypto_stream_aes128ctr_NONCEBYTES];
-	memcpy(nonce, session->send_nonce, NONCEBYTES);
-	memset(nonce+NONCEBYTES, 0, crypto_stream_aes128ctr_NONCEBYTES-NONCEBYTES-1);
-	nonce[crypto_stream_aes128ctr_NONCEBYTES-1] = 1;
+	block_t nonce;
+	memcpy(nonce.b, session->send_nonce, NONCEBYTES);
+	memset(nonce.b+NONCEBYTES, 0, crypto_stream_aes128ctr_NONCEBYTES-NONCEBYTES-1);
+	nonce.b[crypto_stream_aes128ctr_NONCEBYTES-1] = 1;
 
 	int n_blocks = (in.len+BLOCKBYTES-1)/BLOCKBYTES;
-
-	block_t stream[n_blocks+1];
-	crypto_stream_aes128ctr_afternm((uint8_t*)stream, sizeof(stream), nonce, session->d);
 
 	block_t *inblocks = in.data;
 	block_t *outblocks = out->data;
 
-	xor_blocks(outblocks, inblocks, stream+1, n_blocks);
+	aes128ctr(ctx, outblocks, inblocks, n_blocks, &nonce, session);
 
 	if (tail_len)
 		memset(out->data+out->len, 0, tail_len);
 
-	put_size(&outblocks[n_blocks], in.len);
+	put_size(&outblocks[n_blocks], in.len-BLOCKBYTES);
 
-	block_t *sig = outblocks-1;
-	ghash(ctx, sig, outblocks, n_blocks+1, session);
-	xor_a(sig, &stream[0]);
+	block_t sig;
+	ghash(ctx, &sig, outblocks+1, n_blocks, session);
+	xor_a(&outblocks[0], &sig);
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_pull_head(out, NONCEBYTES+BLOCKBYTES);
+	fastd_buffer_pull_head(out, NONCEBYTES);
 	memcpy(out->data, session->send_nonce, NONCEBYTES);
 	increment_nonce(session->send_nonce);
 
@@ -311,13 +334,13 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	if (!method_session_is_valid(ctx, session))
 		return false;
 
-	uint8_t nonce[crypto_stream_aes128ctr_NONCEBYTES];
-	memcpy(nonce, in.data, NONCEBYTES);
-	memset(nonce+NONCEBYTES, 0, crypto_stream_aes128ctr_NONCEBYTES-NONCEBYTES-1);
-	nonce[crypto_stream_aes128ctr_NONCEBYTES-1] = 1;
+	block_t nonce;
+	memcpy(nonce.b, in.data, NONCEBYTES);
+	memset(nonce.b+NONCEBYTES, 0, crypto_stream_aes128ctr_NONCEBYTES-NONCEBYTES-1);
+	nonce.b[crypto_stream_aes128ctr_NONCEBYTES-1] = 1;
 
 	int64_t age;
-	if (!is_nonce_valid(nonce, session->receive_nonce, &age))
+	if (!is_nonce_valid(nonce.b, session->receive_nonce, &age))
 		return false;
 
 	if (age >= 0) {
@@ -328,45 +351,43 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 			return false;
 	}
 
-	fastd_buffer_push_head(&in, NONCEBYTES+BLOCKBYTES);
+	fastd_buffer_push_head(&in, NONCEBYTES);
 
 	size_t tail_len = ALIGN(in.len, BLOCKBYTES)-in.len;
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
 	int n_blocks = (in.len+BLOCKBYTES-1)/BLOCKBYTES;
 
-	block_t stream[n_blocks+1];
-	crypto_stream_aes128ctr_afternm((uint8_t*)stream, sizeof(stream), nonce, session->d);
-
 	block_t *inblocks = in.data;
 	block_t *outblocks = out->data;
+
+	aes128ctr(ctx, outblocks, inblocks, n_blocks, &nonce, session);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	put_size(&inblocks[n_blocks], in.len);
+	put_size(&inblocks[n_blocks], in.len-BLOCKBYTES);
 
 	block_t sig;
-	ghash(ctx, &sig, inblocks, n_blocks+1, session);
-	xor_a(&sig, &stream[0]);
+	ghash(ctx, &sig, inblocks+1, n_blocks, session);
 
-	if (memcmp(&sig, inblocks-1, BLOCKBYTES) != 0) {
+	if (memcmp(&sig, &outblocks[0], BLOCKBYTES) != 0) {
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_pull_head(&in, NONCEBYTES+BLOCKBYTES);
+		fastd_buffer_pull_head(&in, NONCEBYTES);
 
 		return false;
 	}
 
-	xor_blocks(outblocks, inblocks, stream+1, n_blocks);
-
 	fastd_buffer_free(in);
+
+	fastd_buffer_push_head(out, BLOCKBYTES);
 
 	if (age < 0) {
 		session->receive_reorder_seen >>= age;
 		session->receive_reorder_seen |= (1 >> (age+1));
-		memcpy(session->receive_nonce, nonce, NONCEBYTES);
+		memcpy(session->receive_nonce, nonce.b, NONCEBYTES);
 		session->receive_last = ctx->now;
 	}
 	else if (age == 0 || session->receive_reorder_seen & (1 << (age-1))) {
@@ -386,8 +407,8 @@ const fastd_method fastd_method_aes128_gcm = {
 	.name = "aes128-gcm",
 
 	.max_packet_size = method_max_packet_size,
-	.min_encrypt_head_space = method_min_head_space,
-	.min_decrypt_head_space = method_min_head_space,
+	.min_encrypt_head_space = method_min_encrypt_head_space,
+	.min_decrypt_head_space = method_min_decrypt_head_space,
 	.min_encrypt_tail_space = method_min_encrypt_tail_space,
 	.min_decrypt_tail_space = method_min_decrypt_tail_space,
 

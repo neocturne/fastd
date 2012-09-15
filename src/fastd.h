@@ -216,6 +216,7 @@ struct _fastd_context {
 	int sock6fd;
 
 	int algfd_ghash;
+	int algfd_aesctr;
 
 	size_t eth_addr_size;
 	size_t n_eth_addr;

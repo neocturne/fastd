@@ -36,4 +36,7 @@ void fastd_linux_alg_close(fastd_context *ctx);
 int fastd_linux_alg_ghash_init(fastd_context *ctx, uint8_t key[16]);
 bool fastd_linux_alg_ghash(fastd_context *ctx, int fd, uint8_t out[16], const void *data, size_t len);
 
+int fastd_linux_alg_aesctr_init(fastd_context *ctx, uint8_t *key, size_t keylen);
+bool fastd_linux_alg_aesctr(fastd_context *ctx, int fd, void *out, const void *in, size_t len, const uint8_t iv[16]);
+
 #endif /* _FASTD_LINUX_ALG_H_ */
