@@ -31,7 +31,7 @@ static size_t method_max_packet_size(fastd_context *ctx) {
 	return fastd_max_packet_size(ctx);
 }
 
-static size_t method_min_head_space(fastd_context *ctx) {
+static size_t method_min_head_tail_space(fastd_context *ctx) {
 	return 0;
 }
 
@@ -66,8 +66,10 @@ const fastd_method fastd_method_null = {
 	.name = "null",
 
 	.max_packet_size = method_max_packet_size,
-	.min_encrypt_head_space = method_min_head_space,
-	.min_decrypt_head_space = method_min_head_space,
+	.min_encrypt_head_space = method_min_head_tail_space,
+	.min_decrypt_head_space = method_min_head_tail_space,
+	.min_encrypt_tail_space = method_min_head_tail_space,
+	.min_decrypt_tail_space = method_min_head_tail_space,
 
 	.session_init = method_session_init,
 	.session_is_valid = method_session_is_valid,

@@ -86,6 +86,10 @@ static size_t method_min_decrypt_head_space(fastd_context *ctx) {
 	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
+static size_t method_min_tail_space(fastd_context *ctx) {
+	return 0;
+}
+
 static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
 	int i;
 
@@ -220,6 +224,8 @@ const fastd_method fastd_method_xsalsa20_poly1305 = {
 	.max_packet_size = method_max_packet_size,
 	.min_encrypt_head_space = method_min_encrypt_head_space,
 	.min_decrypt_head_space = method_min_decrypt_head_space,
+	.min_encrypt_tail_space = method_min_tail_space,
+	.min_decrypt_tail_space = method_min_tail_space,
 
 	.session_init = method_session_init,
 	.session_is_valid = method_session_is_valid,

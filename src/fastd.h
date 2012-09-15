@@ -91,6 +91,8 @@ struct _fastd_method {
 	size_t (*max_packet_size)(fastd_context *ctx);
 	size_t (*min_encrypt_head_space)(fastd_context *ctx);
 	size_t (*min_decrypt_head_space)(fastd_context *ctx);
+	size_t (*min_encrypt_tail_space)(fastd_context *ctx);
+	size_t (*min_decrypt_tail_space)(fastd_context *ctx);
 
 	fastd_method_session_state* (*session_init)(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator);
 	bool (*session_is_valid)(fastd_context *ctx, fastd_method_session_state *session);
@@ -349,7 +351,7 @@ static inline void fastd_string_stack_free(fastd_string_stack *str) {
 	}
 }
 
-#define ALIGN8(l) (((l+7)/8)*8)
+#define ALIGN(l, a) (((l+a-1)/a)*a)
 
 static inline bool timespec_after(const struct timespec *tp1, const struct timespec *tp2) {
 	return (tp1->tv_sec > tp2->tv_sec ||
