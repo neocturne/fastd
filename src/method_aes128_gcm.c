@@ -40,13 +40,13 @@
 typedef union _block_t {
 	uint8_t b[BLOCKBYTES];
 	uint64_t qw[BLOCKQWORDS];
-} block_t;
+} __attribute__((aligned(16))) block_t;
 
 struct _fastd_method_session_state {
 	struct timespec valid_till;
 	struct timespec refresh_after;
 
-	uint8_t d[crypto_stream_aes128ctr_BEFORENMBYTES];
+	fastd_buffer d;
 	block_t H[32][16];
 
 	uint8_t send_nonce[NONCEBYTES];
@@ -135,12 +135,6 @@ static inline void xor_a(block_t *x, const block_t *a) {
 	xor(x, x, a);
 }
 
-static inline void xor_blocks(block_t *out, const block_t *in1, const block_t *in2, size_t n_blocks) {
-	int i;
-	for (i = 0; i < n_blocks; i++)
-		xor(&out[i], &in1[i], &in2[i]);
-}
-
 static void aes128ctr(fastd_context *ctx, block_t *out, const block_t *in, size_t n_blocks, const block_t *iv, fastd_method_session_state *session) {
 	if (session->algfd_aesctr >= 0) {
 		if (fastd_linux_alg_aesctr(ctx, session->algfd_aesctr, out, in, n_blocks*BLOCKBYTES, iv->b))
@@ -151,10 +145,7 @@ static void aes128ctr(fastd_context *ctx, block_t *out, const block_t *in, size_
 		session->algfd_aesctr = -1;
 	}
 
-	block_t stream[n_blocks];
-	crypto_stream_aes128ctr_afternm((uint8_t*)stream, sizeof(stream), iv->b, session->d);
-
-	xor_blocks(out, in, stream, n_blocks);
+	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, sizeof(block_t)*n_blocks, iv->b, session->d.data);
 }
 
 static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
@@ -171,7 +162,9 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 	session->refresh_after = ctx->now;
 	session->refresh_after.tv_sec += ctx->conf->key_refresh;
 
-	crypto_stream_aes128ctr_beforenm(session->d, secret);
+	session->d = fastd_buffer_alloc(crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
+	crypto_stream_aes128ctr_beforenm(session->d.data, secret);
+
 	session->algfd_aesctr = fastd_linux_alg_aesctr_init(ctx, secret, KEYBYTES);
 
 	static const block_t zeroblock = {};
@@ -242,6 +235,8 @@ static void method_session_free(fastd_context *ctx, fastd_method_session_state *
 	if(session) {
 		close(session->algfd_ghash);
 
+		fastd_buffer_free(session->d);
+
 		memset(session, 0, sizeof(fastd_method_session_state));
 		free(session);
 	}
@@ -292,7 +287,7 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	memset(in.data, 0, BLOCKBYTES);
 
 	size_t tail_len = alignto(in.len, BLOCKBYTES)-in.len;
-	*out = fastd_buffer_alloc(in.len, alignto(NONCEBYTES, 8), BLOCKBYTES+tail_len);
+	*out = fastd_buffer_alloc(in.len, alignto(NONCEBYTES, 16), BLOCKBYTES+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);

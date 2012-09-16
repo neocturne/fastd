@@ -289,7 +289,8 @@ static inline size_t alignto(size_t l, size_t a) {
 
 static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
-	uint8_t *ptr = malloc(base_len);
+	void *ptr;
+	posix_memalign(&ptr, 16, base_len);
 	return (fastd_buffer){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
 }
 

@@ -269,7 +269,7 @@ static size_t methods_min_encrypt_head_space(fastd_context *ctx) {
 			ret = s;
 	}
 
-	return alignto(ret, 8);
+	return alignto(ret, 16);
 }
 
 static size_t methods_min_decrypt_head_space(fastd_context *ctx) {
@@ -285,7 +285,8 @@ static size_t methods_min_decrypt_head_space(fastd_context *ctx) {
 			ret = s;
 	}
 
-	return alignto(ret, 8);
+	/* ugly hack to get alignment right for aes128-gcm, which needs data aligned to 16 and has a 24 byte header */
+	return alignto(ret, 16) + 8;
 }
 
 static size_t methods_min_encrypt_tail_space(fastd_context *ctx) {
