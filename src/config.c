@@ -37,6 +37,7 @@
 #include <dirent.h>
 #include <libgen.h>
 #include <stdarg.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -85,6 +86,8 @@ static void default_config(fastd_config *conf) {
 	conf->secret = NULL;
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_refresh = 3300;	/* 55 minutes */
+	conf->alg_impl_aes128ctr = ALG_IMPL_DEFAULT;
+	conf->alg_impl_ghash = ALG_IMPL_DEFAULT;
 
 	conf->peer_dirs = NULL;
 	conf->peers = NULL;
@@ -172,6 +175,32 @@ bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *nam
 	}
 
 	exit_bug(ctx, "MAX_METHODS too low");
+}
+
+bool fastd_config_algorithm(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl) {
+	if (!strcasecmp(alg, "aes128-ctr") || !strcasecmp(alg, "aes128") || !strcasecmp(alg, "aes-ctr") || !strcasecmp(alg, "aes")) {
+		if (!strcasecmp(impl, "default"))
+			conf->alg_impl_aes128ctr = ALG_IMPL_DEFAULT;
+		else if (!strcasecmp(impl, "algif"))
+			conf->alg_impl_aes128ctr = ALG_IMPL_ALGIF;
+		else
+			return false;
+
+		return true;
+	}
+	else if (!strcasecmp(alg, "ghash")) {
+		if (!strcasecmp(impl, "default"))
+			conf->alg_impl_ghash = ALG_IMPL_DEFAULT;
+		else if (!strcasecmp(impl, "algif"))
+			conf->alg_impl_ghash = ALG_IMPL_ALGIF;
+		else
+			return false;
+
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level) {

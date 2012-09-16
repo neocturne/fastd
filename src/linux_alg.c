@@ -36,38 +36,60 @@
 #endif
 
 
-void fastd_linux_alg_init(fastd_context *ctx) {
-	ctx->algfd_ghash = socket(AF_ALG, SOCK_SEQPACKET, 0);
-	if (ctx->algfd_ghash < 0)
-		goto ghash_done;
+static int init_aesctr(fastd_context *ctx) {
+	int fd = socket(AF_ALG, SOCK_SEQPACKET, 0);
+	if (fd < 0)
+		goto error;
+
+	struct sockaddr_alg sa = {};
+	sa.salg_family = AF_ALG;
+	strcpy((char*)sa.salg_type, "skcipher");
+	strcpy((char*)sa.salg_name, "ctr(aes)");
+	if (bind(fd, (struct sockaddr*)&sa, sizeof(sa)) < 0)
+		goto error;
+
+	return fd;
+
+ error:
+	if (fd >= 0)
+		close(fd);
+
+	pr_info(ctx, "no kernel support for AES-CTR was found, falling back to userspace implementation");
+	return -1;
+}
+
+static int init_ghash(fastd_context *ctx) {
+	int fd = socket(AF_ALG, SOCK_SEQPACKET, 0);
+	if (fd < 0)
+		goto error;
 
 	struct sockaddr_alg sa = {};
 	sa.salg_family = AF_ALG;
 	strcpy((char*)sa.salg_type, "hash");
 	strcpy((char*)sa.salg_name, "ghash");
-	if (bind(ctx->algfd_ghash, (struct sockaddr*)&sa, sizeof(sa)) < 0) {
-		close(ctx->algfd_ghash);
-		ctx->algfd_ghash = -1;
-	}
+	if (bind(fd, (struct sockaddr*)&sa, sizeof(sa)) < 0)
+		goto error;
 
- ghash_done:
-	if (ctx->algfd_ghash < 0)
-		pr_info(ctx, "no kernel support for GHASH was found, falling back to userspace implementation");
+	return fd;
 
-	ctx->algfd_aesctr = socket(AF_ALG, SOCK_SEQPACKET, 0);
-	if (ctx->algfd_aesctr < 0)
-		goto aesctr_done;
+ error:
+	if (fd >= 0)
+		close(fd);
 
-	strcpy((char*)sa.salg_type, "skcipher");
-	strcpy((char*)sa.salg_name, "ctr(aes)");
-	if (bind(ctx->algfd_aesctr, (struct sockaddr*)&sa, sizeof(sa)) < 0) {
-		close(ctx->algfd_aesctr);
+	pr_info(ctx, "no kernel support for GHASH was found, falling back to userspace implementation");
+	return -1;
+}
+
+void fastd_linux_alg_init(fastd_context *ctx) {
+	if (ctx->conf->alg_impl_aes128ctr == ALG_IMPL_ALGIF)
+		ctx->algfd_aesctr = init_aesctr(ctx);
+	else
 		ctx->algfd_aesctr = -1;
-	}
 
- aesctr_done:
-	if (ctx->algfd_aesctr < 0)
-		pr_info(ctx, "no kernel support for AES-CTR was found, falling back to userspace implementation");
+	if (ctx->conf->alg_impl_ghash == ALG_IMPL_ALGIF)
+		ctx->algfd_ghash = init_ghash(ctx);
+	else
+		ctx->algfd_ghash = -1;
 }
 
 void fastd_linux_alg_close(fastd_context *ctx) {
@@ -76,43 +98,6 @@ void fastd_linux_alg_close(fastd_context *ctx) {
 
 	if (ctx->algfd_aesctr >= 0)
 		close(ctx->algfd_aesctr);
-}
-
-
-int fastd_linux_alg_ghash_init(fastd_context *ctx, uint8_t key[16]) {
-	if (ctx->algfd_ghash < 0)
-		return -1;
-
-	if (setsockopt(ctx->algfd_ghash, SOL_ALG, ALG_SET_KEY, key, 16) < 0) {
-		pr_error_errno(ctx, "fastd_linux_alg_ghash_init: setsockopt");
-		return -1;
-	}
-
-	int ret = accept(ctx->algfd_ghash, NULL, NULL);
-
-	if (ret < 0) {
-		pr_error_errno(ctx, "fastd_linux_alg_ghash_init: accept");
-		return -1;
-	}
-
-	return ret;
-}
-
-bool fastd_linux_alg_ghash(fastd_context *ctx, int fd, uint8_t out[16], const void *data, size_t len) {
-	if (!len)
-		return false;
-
-	if (write(fd, data, len) < 0) {
-		pr_error_errno(ctx, "fastd_linux_alg_ghash: write");
-		return false;
-	}
-
-	if (read(fd, out, 16) < 16) {
-		pr_error_errno(ctx, "fastd_linux_alg_ghash: read");
-		return false;
-	}
-
-	return true;
 }
 
 int fastd_linux_alg_aesctr_init(fastd_context *ctx, uint8_t *key, size_t keylen) {
@@ -168,6 +153,42 @@ bool fastd_linux_alg_aesctr(fastd_context *ctx, int fd, void *out, const void *i
 
 	if (recvmsg(fd, &msg, 0) < 0) {
 		pr_error_errno(ctx, "fastd_linux_alg_aesctr: recvmsg");
+		return false;
+	}
+
+	return true;
+}
+
+int fastd_linux_alg_ghash_init(fastd_context *ctx, uint8_t key[16]) {
+	if (ctx->algfd_ghash < 0)
+		return -1;
+
+	if (setsockopt(ctx->algfd_ghash, SOL_ALG, ALG_SET_KEY, key, 16) < 0) {
+		pr_error_errno(ctx, "fastd_linux_alg_ghash_init: setsockopt");
+		return -1;
+	}
+
+	int ret = accept(ctx->algfd_ghash, NULL, NULL);
+
+	if (ret < 0) {
+		pr_error_errno(ctx, "fastd_linux_alg_ghash_init: accept");
+		return -1;
+	}
+
+	return ret;
+}
+
+bool fastd_linux_alg_ghash(fastd_context *ctx, int fd, uint8_t out[16], const void *data, size_t len) {
+	if (!len)
+		return false;
+
+	if (write(fd, data, len) < 0) {
+		pr_error_errno(ctx, "fastd_linux_alg_ghash: write");
+		return false;
+	}
+
+	if (read(fd, out, 16) < 16) {
+		pr_error_errno(ctx, "fastd_linux_alg_ghash: read");
 		return false;
 	}
 

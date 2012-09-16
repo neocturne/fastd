@@ -163,6 +163,8 @@ struct _fastd_config {
 	char *secret;
 	unsigned key_valid;
 	unsigned key_refresh;
+	fastd_alg_impl alg_impl_aes128ctr;
+	fastd_alg_impl alg_impl_ghash;
 
 	fastd_string_stack *peer_dirs;
 	fastd_peer_config *peers;
@@ -247,6 +249,7 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 
 bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *name);
 bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name);
+bool fastd_config_algorithm(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl);
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);

@@ -38,6 +38,10 @@ typedef enum _fastd_mode {
 	MODE_TUN,
 } fastd_mode;
 
+typedef enum _fastd_alg_impl {
+	ALG_IMPL_DEFAULT,
+	ALG_IMPL_ALGIF,
+} fastd_alg_impl;
 
 typedef struct _fastd_buffer fastd_buffer;
 
