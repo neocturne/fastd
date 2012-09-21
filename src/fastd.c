@@ -27,8 +27,8 @@
 #define _GNU_SOURCE
 
 #include "fastd.h"
+#include "crypto.h"
 #include "handshake.h"
-#include "linux_alg.h"
 #include "peer.h"
 #include "task.h"
 
@@ -118,6 +118,32 @@ static void close_log(fastd_context *ctx) {
 	}
 
 	closelog();
+}
+
+static void crypto_init(fastd_context *ctx) {
+#ifdef USE_CRYPTO_AES128CTR
+	ctx->crypto_aes128ctr = ctx->conf->crypto_aes128ctr->init(ctx);
+	if (!ctx->crypto_aes128ctr)
+		exit_error(ctx, "Unable to initialize AES128-CTR implementation");
+#endif
+
+#ifdef USE_CRYPTO_GHASH
+	ctx->crypto_ghash = ctx->conf->crypto_ghash->init(ctx);
+	if (!ctx->crypto_ghash)
+		exit_error(ctx, "Unable to initialize GHASH implementation");
+#endif
+}
+
+static void crypto_free(fastd_context *ctx) {
+#ifdef USE_CRYPTO_AES128CTR
+	ctx->conf->crypto_aes128ctr->free(ctx, ctx->crypto_aes128ctr);
+	ctx->crypto_aes128ctr = NULL;
+#endif
+
+#ifdef USE_CRYPTO_GHASH
+	ctx->conf->crypto_ghash->free(ctx, ctx->crypto_ghash);
+	ctx->crypto_ghash = NULL;
+#endif
 }
 
 static void init_sockets(fastd_context *ctx) {
@@ -790,7 +816,7 @@ int main(int argc, char *argv[]) {
 
 	init_log(&ctx);
 
-	fastd_linux_alg_init(&ctx);
+	crypto_init(&ctx);
 
 	if (conf.generate_key) {
 		conf.protocol->generate_key(&ctx);
@@ -865,7 +891,7 @@ int main(int argc, char *argv[]) {
 	free(ctx.protocol_state);
 	free(ctx.eth_addr);
 
-	fastd_linux_alg_close(&ctx);
+	crypto_free(&ctx);
 
 	close_log(&ctx);
 	fastd_config_release(&ctx, &conf);

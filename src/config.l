@@ -97,7 +97,7 @@ yes		{ TOKEN(TOK_YES); }
 no		{ TOKEN(TOK_NO); }
 port		{ TOKEN(TOK_PORT); }
 float		{ TOKEN(TOK_FLOAT); }
-algorithm	{ TOKEN(TOK_ALGORITHM); }
+crypto		{ TOKEN(TOK_CRYPTO); }
 use		{ TOKEN(TOK_USE); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {

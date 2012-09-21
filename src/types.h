@@ -33,15 +33,13 @@
 #ifndef _FASTD_TYPES_H_
 #define _FASTD_TYPES_H_
 
+#include <config.h>
+
+
 typedef enum _fastd_mode {
 	MODE_TAP,
 	MODE_TUN,
 } fastd_mode;
-
-typedef enum _fastd_alg_impl {
-	ALG_IMPL_DEFAULT,
-	ALG_IMPL_ALGIF,
-} fastd_alg_impl;
 
 typedef struct _fastd_buffer fastd_buffer;
 
@@ -66,12 +64,30 @@ typedef struct _fastd_string_stack fastd_string_stack;
 
 typedef struct _fastd_resolve_return fastd_resolve_return;
 
+#ifdef USE_CRYPTO_AES128CTR
+typedef struct _fastd_crypto_aes128ctr fastd_crypto_aes128ctr;
+#endif
+#ifdef USE_CRYPTO_GHASH
+typedef struct _fastd_crypto_ghash fastd_crypto_ghash;
+#endif
 
-/* May be defined by the protocol/method however it likes */
+
+/* May be defined by the protocol/method/crypto implementations however they like */
 typedef struct _fastd_protocol_config fastd_protocol_config;
 typedef struct _fastd_protocol_state fastd_protocol_state;
 typedef struct _fastd_protocol_peer_config fastd_protocol_peer_config;
 typedef struct _fastd_protocol_peer_state fastd_protocol_peer_state;
+
 typedef struct _fastd_method_session_state fastd_method_session_state;
+
+#ifdef USE_CRYPTO_AES128CTR
+typedef struct _fastd_crypto_aes128ctr_context fastd_crypto_aes128ctr_context;
+typedef struct _fastd_crypto_aes128ctr_state fastd_crypto_aes128ctr_state;
+#endif
+
+#ifdef USE_CRYPTO_GHASH
+typedef struct _fastd_crypto_ghash_context fastd_crypto_ghash_context;
+typedef struct _fastd_crypto_ghash_state fastd_crypto_ghash_state;
+#endif
 
 #endif /* _FASTD_TYPES_H_ */

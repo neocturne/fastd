@@ -25,29 +25,17 @@
 
 
 #include "fastd.h"
-#include "linux_alg.h"
+#include "crypto.h"
 
-#include <crypto_stream_aes128ctr.h>
 #include <unistd.h>
 
 
 #define KEYBYTES 16
 #define NONCEBYTES 7
-#define BLOCKBYTES 16
-#define BLOCKQWORDS (BLOCKBYTES/8)
-
-
-typedef union _block_t {
-	uint8_t b[BLOCKBYTES];
-	uint64_t qw[BLOCKQWORDS];
-} __attribute__((aligned(16))) block_t;
 
 struct _fastd_method_session_state {
 	struct timespec valid_till;
 	struct timespec refresh_after;
-
-	fastd_buffer d;
-	block_t H[32][16];
 
 	uint8_t send_nonce[NONCEBYTES];
 	uint8_t receive_nonce[NONCEBYTES];
@@ -55,8 +43,8 @@ struct _fastd_method_session_state {
 	struct timespec receive_last;
 	uint64_t receive_reorder_seen;
 
-	int algfd_aesctr;
-	int algfd_ghash;
+	fastd_crypto_aes128ctr_state *cstate_aes128ctr;
+	fastd_crypto_ghash_state *cstate_ghash;
 };
 
 
@@ -90,12 +78,12 @@ static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t
 }
 
 static size_t method_max_packet_size(fastd_context *ctx) {
-	return (fastd_max_packet_size(ctx) + NONCEBYTES + BLOCKBYTES);
+	return (fastd_max_packet_size(ctx) + NONCEBYTES + sizeof(fastd_block128));
 }
 
 
 static size_t method_min_encrypt_head_space(fastd_context *ctx) {
-	return BLOCKBYTES;
+	return sizeof(fastd_block128);
 }
 
 static size_t method_min_decrypt_head_space(fastd_context *ctx) {
@@ -103,50 +91,13 @@ static size_t method_min_decrypt_head_space(fastd_context *ctx) {
 }
 
 static size_t method_min_encrypt_tail_space(fastd_context *ctx) {
-	return (BLOCKBYTES-1);
+	return (sizeof(fastd_block128)-1);
 }
 
 static size_t method_min_decrypt_tail_space(fastd_context *ctx) {
-	return (2*BLOCKBYTES-1);
+	return (2*sizeof(fastd_block128)-1);
 }
 
-
-static const block_t r = { .b = {0xe1} };
-
-static inline uint8_t shr(block_t *out, const block_t *in, int n) {
-	int i;
-	uint8_t c = 0;
-
-	for (i = 0; i < BLOCKBYTES; i++) {
-		uint8_t c2 = in->b[i] << (8-n);
-		out->b[i] = (in->b[i] >> n) | c;
-		c = c2;
-	}
-
-	return (c >> (8-n));
-}
-
-static inline void xor(block_t *x, const block_t *a, const block_t *b) {
-	x->qw[0] = a->qw[0] ^ b->qw[0];
-	x->qw[1] = a->qw[1] ^ b->qw[1];
-}
-
-static inline void xor_a(block_t *x, const block_t *a) {
-	xor(x, x, a);
-}
-
-static void aes128ctr(fastd_context *ctx, block_t *out, const block_t *in, size_t n_blocks, const block_t *iv, fastd_method_session_state *session) {
-	if (session->algfd_aesctr >= 0) {
-		if (fastd_linux_alg_aesctr(ctx, session->algfd_aesctr, out, in, n_blocks*BLOCKBYTES, iv->b))
-			return;
-
-		/* on error */
-		close(session->algfd_aesctr);
-		session->algfd_aesctr = -1;
-	}
-
-	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, sizeof(block_t)*n_blocks, iv->b, session->d.data);
-}
 
 static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
 	int i;
@@ -162,51 +113,16 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 	session->refresh_after = ctx->now;
 	session->refresh_after.tv_sec += ctx->conf->key_refresh;
 
-	session->d = fastd_buffer_alloc(crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
-	crypto_stream_aes128ctr_beforenm(session->d.data, secret);
+	fastd_block128 key;
+	memcpy(key.b, secret, sizeof(fastd_block128));
+	session->cstate_aes128ctr = ctx->conf->crypto_aes128ctr->set_key(ctx, ctx->crypto_aes128ctr, &key);
 
-	session->algfd_aesctr = fastd_linux_alg_aesctr_init(ctx, secret, KEYBYTES);
+	static const fastd_block128 zeroblock = {};
+	fastd_block128 H;
 
-	static const block_t zeroblock = {};
+	ctx->conf->crypto_aes128ctr->crypt(ctx, session->cstate_aes128ctr, &H, &zeroblock, sizeof(fastd_block128), &zeroblock);
 
-	block_t Hbase[4];
-	aes128ctr(ctx, &Hbase[0], &zeroblock, 1, &zeroblock, session);
-
-	block_t Rbase[4];
-	Rbase[0] = r;
-
-	for (i = 1; i < 4; i++) {
-		uint8_t carry = shr(&Hbase[i], &Hbase[i-1], 1);
-		if (carry)
-			xor_a(&Hbase[i], &r);
-
-		shr(&Rbase[i], &Rbase[i-1], 1);
-	}
-
-	block_t R[16];
-	memset(session->H, 0, sizeof(session->H));
-	memset(R, 0, sizeof(R));
-
-	for (i = 0; i < 16; i++) {
-		int j;
-		for (j = 0; j < 4; j++) {
-			if (i & (8 >> j)) {
-				xor_a(&session->H[0][i], &Hbase[j]);
-				xor_a(&R[i], &Rbase[j]);
-			}
-		}
-	}
-
-	for (i = 1; i < 32; i++) {
-		int j;
-
-		for (j = 0; j < 16; j++) {
-			uint8_t carry = shr(&session->H[i][j], &session->H[i-1][j], 4);
-			xor_a(&session->H[i][j], &R[carry]);
-		}
-	}
-
-	session->algfd_ghash = fastd_linux_alg_ghash_init(ctx, Hbase[0].b);
+	session->cstate_ghash = ctx->conf->crypto_ghash->set_h(ctx, ctx->crypto_ghash, &H);
 
 	session->send_nonce[0] = initiator ? 3 : 2;
 	session->receive_nonce[0] = initiator ? 0 : 1;
@@ -233,84 +149,62 @@ static bool method_session_want_refresh(fastd_context *ctx, fastd_method_session
 
 static void method_session_free(fastd_context *ctx, fastd_method_session_state *session) {
 	if(session) {
-		close(session->algfd_ghash);
-
-		fastd_buffer_free(session->d);
+		ctx->conf->crypto_aes128ctr->free_state(ctx, session->cstate_aes128ctr);
+		ctx->conf->crypto_ghash->free_state(ctx, session->cstate_ghash);
 
 		memset(session, 0, sizeof(fastd_method_session_state));
 		free(session);
 	}
 }
 
-static void mulH_a(block_t *x, fastd_method_session_state *session) {
-	block_t out = {};
-
-	int i;
-	for (i = 0; i < 16; i++) {
-		xor_a(&out, &session->H[2*i][x->b[i]>>4]);
-		xor_a(&out, &session->H[2*i+1][x->b[i]&0xf]);
-	}
-
-	*x = out;
-}
-
-static inline void put_size(block_t *out, size_t len) {
-	memset(out, 0, BLOCKBYTES-5);
-	out->b[BLOCKBYTES-5] = len >> 29;
-	out->b[BLOCKBYTES-4] = len >> 21;
-	out->b[BLOCKBYTES-3] = len >> 13;
-	out->b[BLOCKBYTES-2] = len >> 5;
-	out->b[BLOCKBYTES-1] = len << 3;
-}
-
-static void ghash(fastd_context *ctx, block_t *out, const block_t *blocks, size_t n_blocks, fastd_method_session_state *session) {
-	if (session->algfd_ghash >= 0) {
-		if (fastd_linux_alg_ghash(ctx, session->algfd_ghash, out->b, blocks, n_blocks*BLOCKBYTES))
-			return;
-
-		/* on error */
-		close(session->algfd_ghash);
-		session->algfd_ghash = -1;
-	}
-
-	memset(out, 0, sizeof(block_t));
-
-	int i;
-	for (i = 0; i < n_blocks; i++) {
-		xor_a(out, &blocks[i]);
-		mulH_a(out, session);
-	}
+static inline void put_size(fastd_block128 *out, size_t len) {
+	memset(out, 0, sizeof(fastd_block128)-5);
+	out->b[sizeof(fastd_block128)-5] = len >> 29;
+	out->b[sizeof(fastd_block128)-4] = len >> 21;
+	out->b[sizeof(fastd_block128)-3] = len >> 13;
+	out->b[sizeof(fastd_block128)-2] = len >> 5;
+	out->b[sizeof(fastd_block128)-1] = len << 3;
 }
 
 static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
-	fastd_buffer_pull_head(&in, BLOCKBYTES);
-	memset(in.data, 0, BLOCKBYTES);
+	fastd_buffer_pull_head(&in, sizeof(fastd_block128));
+	memset(in.data, 0, sizeof(fastd_block128));
 
-	size_t tail_len = alignto(in.len, BLOCKBYTES)-in.len;
-	*out = fastd_buffer_alloc(in.len, alignto(NONCEBYTES, 16), BLOCKBYTES+tail_len);
+	size_t tail_len = alignto(in.len, sizeof(fastd_block128))-in.len;
+	*out = fastd_buffer_alloc(in.len, alignto(NONCEBYTES, 16), sizeof(fastd_block128)+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	block_t nonce;
+	fastd_block128 nonce;
 	memcpy(nonce.b, session->send_nonce, NONCEBYTES);
-	memset(nonce.b+NONCEBYTES, 0, crypto_stream_aes128ctr_NONCEBYTES-NONCEBYTES-1);
-	nonce.b[crypto_stream_aes128ctr_NONCEBYTES-1] = 1;
+	memset(nonce.b+NONCEBYTES, 0, sizeof(fastd_block128)-NONCEBYTES-1);
+	nonce.b[sizeof(fastd_block128)-1] = 1;
 
-	int n_blocks = (in.len+BLOCKBYTES-1)/BLOCKBYTES;
+	int n_blocks = (in.len+sizeof(fastd_block128)-1)/sizeof(fastd_block128);
 
-	block_t *inblocks = in.data;
-	block_t *outblocks = out->data;
+	fastd_block128 *inblocks = in.data;
+	fastd_block128 *outblocks = out->data;
+	fastd_block128 sig;
 
-	aes128ctr(ctx, outblocks, inblocks, n_blocks, &nonce, session);
+	bool ok = ctx->conf->crypto_aes128ctr->crypt(ctx, session->cstate_aes128ctr, outblocks, inblocks, n_blocks*sizeof(fastd_block128), &nonce);
 
-	if (tail_len)
-		memset(out->data+out->len, 0, tail_len);
+	if (ok) {
+		if (tail_len)
+			memset(out->data+out->len, 0, tail_len);
 
-	put_size(&outblocks[n_blocks], in.len-BLOCKBYTES);
+		put_size(&outblocks[n_blocks], in.len-sizeof(fastd_block128));
 
-	block_t sig;
-	ghash(ctx, &sig, outblocks+1, n_blocks, session);
+		ok = ctx->conf->crypto_ghash->hash(ctx, session->cstate_ghash, &sig, outblocks+1, n_blocks);
+	}
+
+	if (!ok) {
+		/* restore original buffer */
+		fastd_buffer_push_head(&in, sizeof(fastd_block128));
+		fastd_buffer_free(*out);
+		return false;
+	}
+
 	xor_a(&outblocks[0], &sig);
 
 	fastd_buffer_free(in);
@@ -323,16 +217,16 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 }
 
 static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
-	if (in.len < NONCEBYTES+BLOCKBYTES)
+	if (in.len < NONCEBYTES+sizeof(fastd_block128))
 		return false;
 
 	if (!method_session_is_valid(ctx, session))
 		return false;
 
-	block_t nonce;
+	fastd_block128 nonce;
 	memcpy(nonce.b, in.data, NONCEBYTES);
-	memset(nonce.b+NONCEBYTES, 0, crypto_stream_aes128ctr_NONCEBYTES-NONCEBYTES-1);
-	nonce.b[crypto_stream_aes128ctr_NONCEBYTES-1] = 1;
+	memset(nonce.b+NONCEBYTES, 0, sizeof(fastd_block128)-NONCEBYTES-1);
+	nonce.b[sizeof(fastd_block128)-1] = 1;
 
 	int64_t age;
 	if (!is_nonce_valid(nonce.b, session->receive_nonce, &age))
@@ -348,25 +242,27 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 
 	fastd_buffer_push_head(&in, NONCEBYTES);
 
-	size_t tail_len = alignto(in.len, BLOCKBYTES)-in.len;
+	size_t tail_len = alignto(in.len, sizeof(fastd_block128))-in.len;
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
-	int n_blocks = (in.len+BLOCKBYTES-1)/BLOCKBYTES;
+	int n_blocks = (in.len+sizeof(fastd_block128)-1)/sizeof(fastd_block128);
 
-	block_t *inblocks = in.data;
-	block_t *outblocks = out->data;
+	fastd_block128 *inblocks = in.data;
+	fastd_block128 *outblocks = out->data;
+	fastd_block128 sig;
 
-	aes128ctr(ctx, outblocks, inblocks, n_blocks, &nonce, session);
+	bool ok = ctx->conf->crypto_aes128ctr->crypt(ctx, session->cstate_aes128ctr, outblocks, inblocks, n_blocks*sizeof(fastd_block128), &nonce);
 
-	if (tail_len)
-		memset(in.data+in.len, 0, tail_len);
+	if (ok) {
+		if (tail_len)
+			memset(in.data+in.len, 0, tail_len);
 
-	put_size(&inblocks[n_blocks], in.len-BLOCKBYTES);
+		put_size(&inblocks[n_blocks], in.len-sizeof(fastd_block128));
 
-	block_t sig;
-	ghash(ctx, &sig, inblocks+1, n_blocks, session);
+		ok = ctx->conf->crypto_ghash->hash(ctx, session->cstate_ghash, &sig, inblocks+1, n_blocks);
+	}
 
-	if (memcmp(&sig, &outblocks[0], BLOCKBYTES) != 0) {
+	if (!ok || memcmp(&sig, &outblocks[0], sizeof(fastd_block128)) != 0) {
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
@@ -377,7 +273,7 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(out, BLOCKBYTES);
+	fastd_buffer_push_head(out, sizeof(fastd_block128));
 
 	if (age < 0) {
 		session->receive_reorder_seen >>= age;

@@ -31,8 +31,6 @@
 #include <config.ll.h>
 #include <config.yy.h>
 
-#include <config.h>
-
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <libgen.h>
@@ -53,6 +51,38 @@ extern const fastd_method fastd_method_xsalsa20_poly1305;
 extern const fastd_method fastd_method_aes128_gcm;
 #endif
 
+
+#ifdef USE_CRYPTO_AES128CTR
+#ifdef WITH_CRYPTO_AES128CTR_NACL
+extern const fastd_crypto_aes128ctr fastd_crypto_aes128ctr_nacl;
+#endif
+#ifdef WITH_CRYPTO_AES128CTR_LINUX
+extern const fastd_crypto_aes128ctr fastd_crypto_aes128ctr_linux;
+#endif
+
+#ifdef WITH_CRYPTO_AES128CTR_NACL
+static const fastd_crypto_aes128ctr *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_nacl;
+#else
+static const fastd_crypto_aes128ctr *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_linux;
+#endif
+
+#endif
+
+#ifdef USE_CRYPTO_GHASH
+#ifdef WITH_CRYPTO_GHASH_BUILTIN
+extern const fastd_crypto_ghash fastd_crypto_ghash_builtin;
+#endif
+#ifdef WITH_CRYPTO_GHASH_LINUX
+extern const fastd_crypto_ghash fastd_crypto_ghash_linux;
+#endif
+
+#ifdef WITH_CRYPTO_GHASH_BUILTIN
+static const fastd_crypto_ghash *fastd_crypto_ghash_default = &fastd_crypto_ghash_builtin;
+#else
+static const fastd_crypto_ghash *fastd_crypto_ghash_default = &fastd_crypto_ghash_linux;
+#endif
+
+#endif
 
 static void default_config(fastd_config *conf) {
 	conf->log_stderr_level = -1;
@@ -86,8 +116,13 @@ static void default_config(fastd_config *conf) {
 	conf->secret = NULL;
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_refresh = 3300;	/* 55 minutes */
-	conf->alg_impl_aes128ctr = ALG_IMPL_DEFAULT;
-	conf->alg_impl_ghash = ALG_IMPL_DEFAULT;
+
+#ifdef USE_CRYPTO_AES128CTR
+	conf->crypto_aes128ctr = fastd_crypto_aes128ctr_default;
+#endif
+#ifdef USE_CRYPTO_GHASH
+	conf->crypto_ghash = fastd_crypto_ghash_default;
+#endif
 
 	conf->peer_dirs = NULL;
 	conf->peers = NULL;
@@ -177,30 +212,46 @@ bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *nam
 	exit_bug(ctx, "MAX_METHODS too low");
 }
 
-bool fastd_config_algorithm(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl) {
+bool fastd_config_crypto(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl) {
+#ifdef USE_CRYPTO_AES128CTR
 	if (!strcasecmp(alg, "aes128-ctr") || !strcasecmp(alg, "aes128") || !strcasecmp(alg, "aes-ctr") || !strcasecmp(alg, "aes")) {
 		if (!strcasecmp(impl, "default"))
-			conf->alg_impl_aes128ctr = ALG_IMPL_DEFAULT;
-		else if (!strcasecmp(impl, "algif"))
-			conf->alg_impl_aes128ctr = ALG_IMPL_ALGIF;
+			conf->crypto_aes128ctr = fastd_crypto_aes128ctr_default;
+#ifdef WITH_CRYPTO_AES128CTR_NACL
+		else if (!strcasecmp(impl, "nacl"))
+			conf->crypto_aes128ctr = &fastd_crypto_aes128ctr_nacl;
+#endif
+#ifdef WITH_CRYPTO_AES128CTR_LINUX
+		else if (!strcasecmp(impl, "linux"))
+			conf->crypto_aes128ctr = &fastd_crypto_aes128ctr_linux;
+#endif
 		else
 			return false;
 
 		return true;
 	}
-	else if (!strcasecmp(alg, "ghash")) {
+	else
+#endif
+#ifdef USE_CRYPTO_GHASH
+	if (!strcasecmp(alg, "ghash")) {
 		if (!strcasecmp(impl, "default"))
-			conf->alg_impl_ghash = ALG_IMPL_DEFAULT;
-		else if (!strcasecmp(impl, "algif"))
-			conf->alg_impl_ghash = ALG_IMPL_ALGIF;
+			conf->crypto_ghash = fastd_crypto_ghash_default;
+#ifdef WITH_CRYPTO_GHASH_BUILTIN
+		else if (!strcasecmp(impl, "builtin"))
+			conf->crypto_ghash = &fastd_crypto_ghash_builtin;
+#endif
+#ifdef WITH_CRYPTO_GHASH_LINUX
+		else if (!strcasecmp(impl, "linux"))
+			conf->crypto_ghash = &fastd_crypto_ghash_linux;
+#endif
 		else
 			return false;
 
 		return true;
 	}
-	else {
-		return false;
-	}
+	else
+#endif
+	return false;
 }
 
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level) {

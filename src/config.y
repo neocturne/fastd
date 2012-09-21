@@ -95,7 +95,7 @@
 %token TOK_NO
 %token TOK_PORT
 %token TOK_FLOAT
-%token TOK_ALGORITHM
+%token TOK_CRYPTO
 %token TOK_USE
 
 %token <addr> TOK_ADDR
@@ -103,7 +103,6 @@
 
 
 %code {
-	#include <config.h>
 	#include <peer.h>
 
 	#include <stdint.h>
@@ -138,7 +137,7 @@ statement:	TOK_LOG log ';'
 	|	TOK_MODE mode ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_METHOD method ';'
-	|	TOK_ALGORITHM algorithm ';'
+	|	TOK_CRYPTO crypto ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_ON TOK_DOWN on_down ';'
@@ -229,9 +228,9 @@ method:		TOK_STRING {
 		}
 	;
 
-algorithm:	TOK_STRING TOK_USE TOK_STRING {
-			if (!fastd_config_algorithm(ctx, conf, $1->str, $3->str)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid algorithm/implementation");
+crypto:	TOK_STRING TOK_USE TOK_STRING {
+			if (!fastd_config_crypto(ctx, conf, $1->str, $3->str)) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid crypto algorithm/implementation");
 				YYERROR;
 			}
 		}

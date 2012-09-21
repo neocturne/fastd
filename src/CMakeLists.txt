@@ -16,8 +16,9 @@ BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c
 add_executable(fastd
   fastd.c
   config.c
+  crypto.c
+  crypto_linux.c
   handshake.c
-  linux_alg.c
   peer.c
   printf.c
   queue.c
