@@ -192,28 +192,36 @@ bind_new:	{
 			addr->next = conf->bind_addrs;
 			conf->bind_addrs = addr;
 		}
+	;
 
-bind:		bind_new TOK_ADDR maybe_port {
+bind:		bind_new TOK_ADDR maybe_port maybe_bind_to_device {
 			conf->bind_addrs->addr.in.sin_family = AF_INET;
 			conf->bind_addrs->addr.in.sin_addr = $2;
 			conf->bind_addrs->addr.in.sin_port = htons($3);
 			if (!conf->bind_addr_default_v4)
 				conf->bind_addr_default_v4 = conf->bind_addrs;
 		}
-	|	bind_new TOK_ADDR6 maybe_port {
+	|	bind_new TOK_ADDR6 maybe_port maybe_bind_to_device {
 			conf->bind_addrs->addr.in6.sin6_family = AF_INET6;
 			conf->bind_addrs->addr.in6.sin6_addr = $2;
 			conf->bind_addrs->addr.in6.sin6_port = htons($3);
 			if (!conf->bind_addr_default_v6)
 				conf->bind_addr_default_v6 = conf->bind_addrs;
 		}
-	|	bind_new TOK_ANY maybe_port {
+	|	bind_new TOK_ANY maybe_port maybe_bind_to_device {
 			conf->bind_addrs->addr.in.sin_port = htons($3);
 			if (!conf->bind_addr_default_v4)
 				conf->bind_addr_default_v4 = conf->bind_addrs;
 			if (!conf->bind_addr_default_v6)
 				conf->bind_addr_default_v6 = conf->bind_addrs;
 		}
+	;
+
+maybe_bind_to_device:
+		TOK_INTERFACE TOK_STRING {
+			conf->bind_addrs->bindtodev = strdup($2->str);
+		}
+	|	{}
 	;
 
 mtu:		TOK_INTEGER	{ conf->mtu = $1; }
