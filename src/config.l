@@ -99,6 +99,7 @@ port		{ TOKEN(TOK_PORT); }
 float		{ TOKEN(TOK_FLOAT); }
 crypto		{ TOKEN(TOK_CRYPTO); }
 use		{ TOKEN(TOK_USE); }
+default		{ TOKEN(TOK_DEFAULT); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

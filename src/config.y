@@ -97,6 +97,7 @@
 %token TOK_FLOAT
 %token TOK_CRYPTO
 %token TOK_USE
+%token TOK_DEFAULT
 
 %token <addr> TOK_ADDR
 %token <addr6> TOK_ADDR6
@@ -194,21 +195,21 @@ bind_new:	{
 		}
 	;
 
-bind:		bind_new TOK_ADDR maybe_port maybe_bind_to_device {
+bind:		bind_new TOK_ADDR maybe_port maybe_bind_to_device maybe_bind_default {
 			conf->bind_addrs->addr.in.sin_family = AF_INET;
 			conf->bind_addrs->addr.in.sin_addr = $2;
 			conf->bind_addrs->addr.in.sin_port = htons($3);
 			if (!conf->bind_addr_default_v4)
 				conf->bind_addr_default_v4 = conf->bind_addrs;
 		}
-	|	bind_new TOK_ADDR6 maybe_port maybe_bind_to_device {
+	|	bind_new TOK_ADDR6 maybe_port maybe_bind_to_device maybe_bind_default {
 			conf->bind_addrs->addr.in6.sin6_family = AF_INET6;
 			conf->bind_addrs->addr.in6.sin6_addr = $2;
 			conf->bind_addrs->addr.in6.sin6_port = htons($3);
 			if (!conf->bind_addr_default_v6)
 				conf->bind_addr_default_v6 = conf->bind_addrs;
 		}
-	|	bind_new TOK_ANY maybe_port maybe_bind_to_device {
+	|	bind_new TOK_ANY maybe_port maybe_bind_to_device maybe_bind_default {
 			conf->bind_addrs->addr.in.sin_port = htons($3);
 			if (!conf->bind_addr_default_v4)
 				conf->bind_addr_default_v4 = conf->bind_addrs;
@@ -221,7 +222,37 @@ maybe_bind_to_device:
 		TOK_INTERFACE TOK_STRING {
 			conf->bind_addrs->bindtodev = strdup($2->str);
 		}
-	|	{}
+	|
+	;
+
+maybe_bind_default:
+		TOK_DEFAULT bind_default
+	|
+	;
+
+bind_default:
+		TOK_IPV4 {
+			if (conf->bind_addrs->addr.sa.sa_family == AF_INET6) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "tried to set IPv6 bind as IPv4 default");
+				YYERROR;
+			}
+
+			conf->bind_addr_default_v4 = conf->bind_addrs;
+		}
+	|	TOK_IPV6 {
+			if (conf->bind_addrs->addr.sa.sa_family == AF_INET) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "tried to set IPv4 bind as IPv6 default");
+				YYERROR;
+			}
+
+			conf->bind_addr_default_v6 = conf->bind_addrs;
+		}
+	|	{
+			if (conf->bind_addrs->addr.sa.sa_family != AF_INET6)
+				conf->bind_addr_default_v4 = conf->bind_addrs;
+			if (conf->bind_addrs->addr.sa.sa_family != AF_INET)
+				conf->bind_addr_default_v6 = conf->bind_addrs;
+		}
 	;
 
 mtu:		TOK_INTEGER	{ conf->mtu = $1; }
