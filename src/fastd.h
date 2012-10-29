@@ -71,8 +71,8 @@ struct _fastd_protocol {
 	fastd_protocol_config* (*init)(fastd_context *ctx);
 	void (*peer_configure)(fastd_context *ctx, fastd_peer_config *peer_conf);
 
-	void (*handshake_init)(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf);
-	void (*handshake_handle)(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake, const fastd_method *method);
+	void (*handshake_init)(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf);
+	void (*handshake_handle)(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake, const fastd_method *method);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
@@ -131,6 +131,17 @@ struct _fastd_log_fd {
 	int fd;
 };
 
+struct _fastd_bind_address {
+	fastd_bind_address *next;
+	fastd_peer_address addr;
+	char *bindtodev;
+};
+
+struct _fastd_socket {
+	int fd;
+	const fastd_bind_address *addr;
+};
+
 struct _fastd_config {
 	int log_stderr_level;
 	int log_syslog_level;
@@ -149,8 +160,10 @@ struct _fastd_config {
 
 	char *ifname;
 
-	struct sockaddr_in bind_addr_in;
-	struct sockaddr_in6 bind_addr_in6;
+	fastd_bind_address *bind_addrs;
+
+	fastd_bind_address *bind_addr_default_v4;
+	fastd_bind_address *bind_addr_default_v6;
 
 	uint16_t mtu;
 	fastd_mode mode;
@@ -219,8 +232,12 @@ struct _fastd_context {
 	int resolvewfd;
 
 	int tunfd;
-	int sockfd;
-	int sock6fd;
+
+	unsigned n_socks;
+	fastd_socket *socks;
+
+	fastd_socket *sock_default_v4;
+	fastd_socket *sock_default_v6;
 
 #ifdef USE_CRYPTO_AES128CTR
 	fastd_crypto_aes128ctr_context *crypto_aes128ctr;
@@ -244,8 +261,8 @@ struct _fastd_string_stack {
 };
 
 
-void fastd_send(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer);
-void fastd_send_handshake(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer);
+void fastd_send(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer);
+void fastd_send_handshake(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer);
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
 void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer);

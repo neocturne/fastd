@@ -629,25 +629,33 @@ static void option_bind(fastd_context *ctx, fastd_config *conf, const char *arg)
 		l = 0;
 	}
 
-	if (strcmp(addrstr, "any") == 0) {
-		conf->bind_addr_in.sin_addr.s_addr = htonl(INADDR_ANY);
-		conf->bind_addr_in.sin_port = htons(l);
+	fastd_bind_address *addr = calloc(1, sizeof(fastd_bind_address));
+	addr->next = conf->bind_addrs;
+	conf->bind_addrs = addr;
 
-		conf->bind_addr_in6.sin6_addr = in6addr_any;
-		conf->bind_addr_in6.sin6_port = htons(l);
+	if (strcmp(addrstr, "any") == 0) {
+		/* nothing to do */
 	}
 	else if (arg[0] == '[') {
-		conf->bind_addr_in6.sin6_family = AF_INET6;
-		if (inet_pton(AF_INET6, addrstr, &conf->bind_addr_in6.sin6_addr) != 1)
+		addr->addr.in6.sin6_family = AF_INET6;
+		addr->addr.in6.sin6_port = htons(l);
+
+		if (inet_pton(AF_INET6, addrstr, &addr->addr.in6.sin6_addr) != 1)
 			exit_error(ctx, "invalid bind address `%s'", addrstr);
-		conf->bind_addr_in6.sin6_port = htons(l);
 	}
 	else {
-		conf->bind_addr_in.sin_family = AF_INET;
-		if (inet_pton(AF_INET, addrstr, &conf->bind_addr_in.sin_addr) != 1)
+		addr->addr.in.sin_family = AF_INET;
+		addr->addr.in.sin_port = htons(l);
+
+		if (inet_pton(AF_INET, addrstr, &addr->addr.in.sin_addr) != 1)
 			exit_error(ctx, "invalid bind address `%s'", addrstr);
-		conf->bind_addr_in.sin_port = htons(l);
 	}
+
+	if (!conf->bind_addr_default_v4 && addr->addr.sa.sa_family != AF_INET6)
+		conf->bind_addr_default_v4 = addr;
+
+	if (!conf->bind_addr_default_v6 && addr->addr.sa.sa_family != AF_INET)
+		conf->bind_addr_default_v6 = addr;
 
 	free(addrstr);
 }
@@ -884,6 +892,13 @@ void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
 		free(conf->log_files->filename);
 		free(conf->log_files);
 		conf->log_files = next;
+	}
+
+	while (conf->bind_addrs) {
+		fastd_bind_address *next = conf->bind_addrs->next;
+		free(conf->bind_addrs->bindtodev);
+		free(conf->bind_addrs);
+		conf->bind_addrs = next;
 	}
 
 	free(conf->ifname);

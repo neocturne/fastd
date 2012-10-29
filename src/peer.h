@@ -35,6 +35,7 @@ struct _fastd_peer {
 
 	const fastd_peer_config *config;
 
+	const fastd_socket *sock;
 	fastd_peer_address address;
 
 	bool established;
@@ -87,7 +88,7 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
 void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
 void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer);
-bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *peer, const fastd_peer_address *addr);
+bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *peer, const fastd_socket *sock, const fastd_peer_address *addr);
 
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer);
 const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);

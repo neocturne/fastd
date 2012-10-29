@@ -180,7 +180,7 @@ static fastd_string_stack* parse_string_list(uint8_t *data, size_t len) {
 	return ret;
 }
 
-void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer) {
+void fastd_handshake_handle(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer) {
 	if (buffer.len < sizeof(fastd_packet)) {
 		pr_warn(ctx, "received a short handshake from %I", address);
 		goto end_free;
@@ -304,10 +304,10 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *addres
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_ERROR_DETAIL, error_detail);
 
-			fastd_send_handshake(ctx, address, reply_buffer);
+			fastd_send_handshake(ctx, sock, address, reply_buffer);
 		}
 		else {
-			ctx->conf->protocol->handshake_handle(ctx, address, peer_conf, &handshake, method);
+			ctx->conf->protocol->handshake_handle(ctx, sock, address, peer_conf, &handshake, method);
 		}
 	}
 	else {
@@ -334,7 +334,7 @@ void fastd_handshake_handle(fastd_context *ctx, const fastd_peer_address *addres
 				goto end_free;
 			}
 
-			ctx->conf->protocol->handshake_handle(ctx, address, peer_conf, &handshake, method);
+			ctx->conf->protocol->handshake_handle(ctx, sock, address, peer_conf, &handshake, method);
 		}
 		else {
 			const char *error_field_str;

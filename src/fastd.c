@@ -146,62 +146,141 @@ static void crypto_free(fastd_context *ctx) {
 #endif
 }
 
+
+static unsigned max_sockets(const fastd_config *conf) {
+	unsigned n = 0;
+	fastd_bind_address *addr;
+
+	for (addr = conf->bind_addrs; addr; addr = addr->next)
+		n++;
+
+	return n;
+}
+
 static void init_sockets(fastd_context *ctx) {
-	struct sockaddr_in addr_in = ctx->conf->bind_addr_in;
-	struct sockaddr_in6 addr_in6 = ctx->conf->bind_addr_in6;
+	static const fastd_bind_address bind_any = {};
 
-	if (addr_in.sin_family == AF_UNSPEC && addr_in6.sin6_family == AF_UNSPEC) {
-		if (ctx->conf->peer_dirs || ctx->conf->n_floating || ctx->conf->n_v4 || ctx->conf->n_dynamic || ctx->conf->n_dynamic_v4)
-			addr_in.sin_family = AF_INET;
+	const fastd_bind_address *addr = ctx->conf->bind_addrs;
+	const fastd_bind_address *default_v4 = ctx->conf->bind_addr_default_v4;
+	const fastd_bind_address *default_v6 = ctx->conf->bind_addr_default_v6;
 
-		if (ctx->conf->peer_dirs || ctx->conf->n_floating || ctx->conf->n_v6 || ctx->conf->n_dynamic || ctx->conf->n_dynamic_v6)
-			addr_in6.sin6_family = AF_INET6;
-	}
+	if (!addr)
+		addr = default_v4 = default_v6 = &bind_any;
 
-	if (addr_in.sin_family == AF_UNSPEC && ctx->conf->n_v4)
-		pr_warn(ctx, "there are IPv4 peers defined, but bind is explicitly set to IPv6");
+	unsigned n_v4 = 0, n_v6 = 0;
+	bool info_ipv6 = true;
 
-	if (addr_in6.sin6_family == AF_UNSPEC && ctx->conf->n_v6)
-		pr_warn(ctx, "there are IPv6 peers defined, but bind is explicitly set to IPv4");
+	ctx->socks = calloc(max_sockets(ctx->conf), sizeof(fastd_socket));
 
-	if (addr_in.sin_family == AF_INET) {
-		pr_debug(ctx, "initializing IPv4 socket...");
+	while (addr) {
+		int fd = -1;
+		int af = AF_UNSPEC;
 
-		if ((ctx->sockfd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-			exit_errno(ctx, "socket");
+		if (addr->addr.sa.sa_family != AF_INET) {
+			fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+			if (fd < 0) {
+				if (info_ipv6) {
+					pr_warn(ctx, "there seems to be no IPv6 support; explicitely bind to an IPv4 address (or 0.0.0.0) to disable this warning");
+					info_ipv6 = false;
+				}
+			}
+			else {
+				af = AF_INET6;
 
-		if (bind(ctx->sockfd, (struct sockaddr*)&addr_in, sizeof(struct sockaddr_in)))
-			exit_errno(ctx, "bind");
-
-		pr_debug(ctx, "IPv4 socket initialized.");
-	}
-	else {
-		ctx->sockfd = -1;
-	}
-
-	if (addr_in6.sin6_family == AF_INET6) {
-		pr_debug(ctx, "initializing IPv6 socket...");
-
-		if ((ctx->sock6fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-			if (ctx->sockfd >= 0)
-				pr_warn_errno(ctx, "socket");
+				int val = (addr->addr.sa.sa_family == AF_INET6);
+				if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val))) {
+					pr_warn_errno(ctx, "setsockopt");
+					goto error;
+				}
+			}
+		}
+		if (fd < 0 && addr->addr.sa.sa_family != AF_INET6) {
+			fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+			if (fd < 0)
+				exit_errno(ctx, "unable to create socket");
 			else
-				exit_errno(ctx, "socket");
+				af = AF_INET;
+		}
+
+		if (fd < 0)
+			goto error;
+
+		if (addr->bindtodev) {
+			if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
+				pr_warn_errno(ctx, "setsockopt: unable to bind to device");
+				goto error;
+			}
+		}
+
+		fastd_peer_address bind_address = addr->addr;
+
+		if (bind_address.sa.sa_family == AF_UNSPEC) {
+			memset(&bind_address, 0, sizeof(bind_address));
+			bind_address.sa.sa_family = af;
+
+			if (af == AF_INET6)
+				bind_address.in6.sin6_port = addr->addr.in.sin_port;
+			else
+				bind_address.in.sin_port = addr->addr.in.sin_port;
+		}
+
+		if (bind(fd, (struct sockaddr*)&bind_address, af == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
+			pr_warn(ctx, "bind");
+			goto error;
+		}
+
+		ctx->socks[ctx->n_socks] = (fastd_socket){fd, addr};
+
+		if (af == AF_INET6) {
+			if (addr == default_v6)
+				ctx->sock_default_v6 = &ctx->socks[ctx->n_socks];
+
+			n_v6++;
+
+			if (addr->addr.sa.sa_family == AF_UNSPEC) {
+				if (addr == default_v4)
+					ctx->sock_default_v4 = &ctx->socks[ctx->n_socks];
+
+				n_v4++;
+			}
 		}
 		else {
-			int val = 1;
-			if (setsockopt(ctx->sock6fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val)))
-				exit_errno(ctx, "setsockopt");
+			if (addr == default_v4)
+				ctx->sock_default_v4 = &ctx->socks[ctx->n_socks];
 
-			if (bind(ctx->sock6fd, (struct sockaddr*)&addr_in6, sizeof(struct sockaddr_in6)))
-				exit_errno(ctx, "bind");
-
-			pr_debug(ctx, "IPv6 socket initialized.");
+			n_v4++;
 		}
+
+		ctx->n_socks++;
+
+		addr = addr->next;
+		continue;
+
+	error:
+		if (fd >= 0) {
+			if (close(fd))
+				pr_error_errno(ctx, "close");
+		}
+
+		if (addr->bindtodev)
+			pr_warn(ctx, "unable to bind to %I on `%s'", addr->addr, addr->bindtodev);
+		else
+			pr_warn(ctx, "unable to bind to %I", addr->addr);
+
+		if (addr == default_v4 || addr == default_v6)
+			exit_error(ctx, "unable to bind to default address");
+
+		addr = addr->next;
 	}
-	else {
-		ctx->sock6fd = -1;
-	}
+
+	if (!ctx->n_socks)
+		exit_error(ctx, "all bind attempts failed");
+
+	if (!n_v4 && ctx->conf->n_v4)
+		pr_warn(ctx, "there are IPv4 peers defined, but there was no successful IPv4 bind");
+
+	if (!n_v6 && ctx->conf->n_v6)
+		pr_warn(ctx, "there are IPv6 peers defined, but there was no successful IPv4 bind");
 }
 
 static void init_tuntap(fastd_context *ctx) {
@@ -236,9 +315,7 @@ static void init_tuntap(fastd_context *ctx) {
 
 	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ);
 
-	int ctl_sock = ctx->sockfd;
-	if (ctl_sock < 0)
-		ctl_sock = ctx->sock6fd;
+	int ctl_sock = ctx->socks[0].fd;
 
 	ifr.ifr_mtu = ctx->conf->mtu;
 	if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
@@ -255,15 +332,13 @@ static void close_tuntap(fastd_context *ctx) {
 }
 
 static void close_sockets(fastd_context *ctx) {
-	if (ctx->sockfd >= 0) {
-		if(close(ctx->sockfd))
+	unsigned i;
+	for (i = 0; i < ctx->n_socks; i++) {
+		if(close(ctx->socks[i].fd))
 			pr_warn_errno(ctx, "closing IPv4 socket: close");
 	}
 
-	if (ctx->sock6fd >= 0) {
-		if(close(ctx->sock6fd))
-			pr_warn_errno(ctx, "closing IPv6 socket: close");
-	}
+	free(ctx->socks);
 }
 
 static size_t methods_max_packet_size(fastd_context *ctx) {
@@ -347,8 +422,10 @@ static size_t methods_min_decrypt_tail_space(fastd_context *ctx) {
 	return ret;
 }
 
-static void fastd_send_type(fastd_context *ctx, const fastd_peer_address *address, uint8_t packet_type, fastd_buffer buffer) {
-	int sockfd;
+static void fastd_send_type(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, uint8_t packet_type, fastd_buffer buffer) {
+	if (!sock)
+		exit_bug(ctx, "send: sock == NULL");
+
 	struct msghdr msg;
 	memset(&msg, 0, sizeof(msg));
 
@@ -356,13 +433,11 @@ static void fastd_send_type(fastd_context *ctx, const fastd_peer_address *addres
 	case AF_INET:
 		msg.msg_name = (void*)&address->in;
 		msg.msg_namelen = sizeof(struct sockaddr_in);
-		sockfd = ctx->sockfd;
 		break;
 
 	case AF_INET6:
 		msg.msg_name = (void*)&address->in6;
 		msg.msg_namelen = sizeof(struct sockaddr_in6);
-		sockfd = ctx->sock6fd;
 		break;
 
 	default:
@@ -379,7 +454,7 @@ static void fastd_send_type(fastd_context *ctx, const fastd_peer_address *addres
 
 	int ret;
 	do {
-		ret = sendmsg(sockfd, &msg, 0);
+		ret = sendmsg(sock->fd, &msg, 0);
 	} while (ret < 0 && errno == EINTR);
 
 	if (ret < 0)
@@ -388,12 +463,12 @@ static void fastd_send_type(fastd_context *ctx, const fastd_peer_address *addres
 	fastd_buffer_free(buffer);
 }
 
-void fastd_send(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer) {
-	fastd_send_type(ctx, address, PACKET_DATA, buffer);
+void fastd_send(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer) {
+	fastd_send_type(ctx, sock, address, PACKET_DATA, buffer);
 }
 
-void fastd_send_handshake(fastd_context *ctx, const fastd_peer_address *address, fastd_buffer buffer) {
-	fastd_send_type(ctx, address, PACKET_HANDSHAKE, buffer);
+void fastd_send_handshake(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer) {
+	fastd_send_type(ctx, sock, address, PACKET_HANDSHAKE, buffer);
 }
 
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
@@ -514,7 +589,7 @@ static inline void update_time(fastd_context *ctx) {
 }
 
 static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
-	if (peer->address.sa.sa_family != AF_UNSPEC) {
+	if (peer->address.sa.sa_family && peer->sock) {
 		if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
 		    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
 			pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
@@ -523,7 +598,7 @@ static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
 			pr_debug(ctx, "sending handshake to %P...", peer);
 			peer->last_handshake = ctx->now;
 			peer->last_handshake_address = peer->address;
-			ctx->conf->protocol->handshake_init(ctx, &peer->address, peer->config);
+			ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->address, peer->config);
 		}
 	}
 
@@ -603,7 +678,7 @@ static void handle_tun(fastd_context *ctx) {
 	}
 }
 
-static void handle_socket(fastd_context *ctx, int sockfd) {
+static void handle_socket(fastd_context *ctx, const fastd_socket *sock) {
 	size_t max_len = PACKET_TYPE_LEN + methods_max_packet_size(ctx);
 	fastd_buffer buffer = fastd_buffer_alloc(max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
 	uint8_t *packet_type;
@@ -611,7 +686,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 	fastd_peer_address recvaddr;
 	socklen_t recvaddrlen = sizeof(recvaddr);
 			
-	ssize_t len = recvfrom(sockfd, buffer.data, buffer.len, 0, (struct sockaddr*)&recvaddr, &recvaddrlen);
+	ssize_t len = recvfrom(sock->fd, buffer.data, buffer.len, 0, (struct sockaddr*)&recvaddr, &recvaddrlen);
 	if (len < 0) {
 		if (errno != EINTR)
 			pr_warn(ctx, "recvfrom: %s", strerror(errno));
@@ -638,7 +713,7 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 			break;
 
 		case PACKET_HANDSHAKE:
-			fastd_handshake_handle(ctx, &recvaddr, peer->config, buffer);
+			fastd_handshake_handle(ctx, sock, &recvaddr, peer->config, buffer);
 			break;
 
 		default:
@@ -651,11 +726,11 @@ static void handle_socket(fastd_context *ctx, int sockfd) {
 		switch (*packet_type) {
 		case PACKET_DATA:
 			fastd_buffer_free(buffer);
-			ctx->conf->protocol->handshake_init(ctx, &recvaddr, NULL);
+			ctx->conf->protocol->handshake_init(ctx, sock, &recvaddr, NULL);
 			break;
 
 		case PACKET_HANDSHAKE:
-			fastd_handshake_handle(ctx, &recvaddr, NULL, buffer);
+			fastd_handshake_handle(ctx, sock, &recvaddr, NULL, buffer);
 			break;
 
 		default:
@@ -691,7 +766,18 @@ static void handle_resolv_returns(fastd_context *ctx) {
 
 		peer->last_resolve_return = ctx->now;
 
-		if (fastd_peer_claim_address(ctx, peer, &resolve_return.addr)) {
+		if (fastd_peer_claim_address(ctx, peer, NULL, &resolve_return.addr)) {
+			if (!peer->sock) {
+				switch(resolve_return.addr.sa.sa_family) {
+				case AF_INET:
+					peer->sock = ctx->sock_default_v4;
+					break;
+
+				case AF_INET6:
+					peer->sock = ctx->sock_default_v6;
+				}
+			}
+
 			send_handshake(ctx, peer);
 		}
 		else {
@@ -705,22 +791,24 @@ static void handle_resolv_returns(fastd_context *ctx) {
 }
 
 static void handle_input(fastd_context *ctx) {
-	struct pollfd fds[4];
+	struct pollfd fds[ctx->n_socks + 2];
 	fds[0].fd = ctx->tunfd;
 	fds[0].events = POLLIN;
-	fds[1].fd = ctx->sockfd;
+	fds[1].fd = ctx->resolverfd;
 	fds[1].events = POLLIN;
-	fds[2].fd = ctx->sock6fd;
-	fds[2].events = POLLIN;
-	fds[3].fd = ctx->resolverfd;
-	fds[3].events = POLLIN;
+
+	unsigned i;
+	for (i = 0; i < ctx->n_socks; i++) {
+		fds[i+2].fd = ctx->socks[i].fd;
+		fds[i+2].events = POLLIN;
+	}
 
 	int timeout = fastd_task_timeout(ctx);
 
 	if (timeout < 0 || timeout > 60000)
 		timeout = 60000; /* call maintenance at least once a minute */
 
-	int ret = poll(fds, 4, timeout);
+	int ret = poll(fds, ctx->n_socks + 2, timeout);
 	if (ret < 0) {
 		if (errno == EINTR)
 			return;
@@ -731,13 +819,14 @@ static void handle_input(fastd_context *ctx) {
 	update_time(ctx);
 
 	if (fds[0].revents & POLLIN)
-	  handle_tun(ctx);
+		handle_tun(ctx);
 	if (fds[1].revents & POLLIN)
-		handle_socket(ctx, ctx->sockfd);
-	if (fds[2].revents & POLLIN)
-		handle_socket(ctx, ctx->sock6fd);
-	if (fds[3].revents & POLLIN)
 		handle_resolv_returns(ctx);
+
+	for (i = 0; i < ctx->n_socks; i++) {
+		if (fds[i+2].revents & POLLIN)
+			handle_socket(ctx, &ctx->socks[i]);
+	}
 }
 
 static void cleanup_peers(fastd_context *ctx) {
@@ -875,7 +964,6 @@ int main(int argc, char *argv[]) {
 			init_log(&ctx);
 
 			fastd_reconfigure(&ctx, &conf);
-
 		}
 
 		pthread_sigmask(SIG_SETMASK, &oldset, NULL);

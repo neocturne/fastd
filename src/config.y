@@ -187,21 +187,32 @@ log_level:	TOK_FATAL	{ $$ = LOG_CRIT; }
 interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
 	;
 
-bind:		TOK_ADDR maybe_port {
-			conf->bind_addr_in.sin_family = AF_INET;
-			conf->bind_addr_in.sin_addr = $1;
-			conf->bind_addr_in.sin_port = htons($2);
+bind_new:	{
+			fastd_bind_address *addr = calloc(1, sizeof(fastd_bind_address));
+			addr->next = conf->bind_addrs;
+			conf->bind_addrs = addr;
 		}
-	|	TOK_ADDR6 maybe_port {
-			conf->bind_addr_in6.sin6_family = AF_INET6;
-			conf->bind_addr_in6.sin6_addr = $1;
-			conf->bind_addr_in6.sin6_port = htons($2);
+
+bind:		bind_new TOK_ADDR maybe_port {
+			conf->bind_addrs->addr.in.sin_family = AF_INET;
+			conf->bind_addrs->addr.in.sin_addr = $2;
+			conf->bind_addrs->addr.in.sin_port = htons($3);
+			if (!conf->bind_addr_default_v4)
+				conf->bind_addr_default_v4 = conf->bind_addrs;
 		}
-	|	TOK_ANY maybe_port {
-			conf->bind_addr_in.sin_addr.s_addr = htonl(INADDR_ANY);
-			conf->bind_addr_in.sin_port = htons($2);
-			conf->bind_addr_in6.sin6_addr = in6addr_any;
-			conf->bind_addr_in6.sin6_port = htons($2);
+	|	bind_new TOK_ADDR6 maybe_port {
+			conf->bind_addrs->addr.in6.sin6_family = AF_INET6;
+			conf->bind_addrs->addr.in6.sin6_addr = $2;
+			conf->bind_addrs->addr.in6.sin6_port = htons($3);
+			if (!conf->bind_addr_default_v6)
+				conf->bind_addr_default_v6 = conf->bind_addrs;
+		}
+	|	bind_new TOK_ANY maybe_port {
+			conf->bind_addrs->addr.in.sin_port = htons($3);
+			if (!conf->bind_addr_default_v4)
+				conf->bind_addr_default_v4 = conf->bind_addrs;
+			if (!conf->bind_addr_default_v6)
+				conf->bind_addr_default_v6 = conf->bind_addrs;
 		}
 	;
 
