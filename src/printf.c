@@ -44,7 +44,7 @@ static int snprint_peer_address(const fastd_context *ctx, char *buffer, size_t s
 
 	switch (address->sa.sa_family) {
 	case AF_UNSPEC:
-		return snprintf(buffer, size, "floating");
+		return snprintf(buffer, size, "any");
 
 	case AF_INET:
 		if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))

@@ -263,9 +263,9 @@ static void init_sockets(fastd_context *ctx) {
 		}
 
 		if (addr->bindtodev)
-			pr_warn(ctx, "unable to bind to %I on `%s'", addr->addr, addr->bindtodev);
+			pr_warn(ctx, "unable to bind to %I on `%s'", &addr->addr, addr->bindtodev);
 		else
-			pr_warn(ctx, "unable to bind to %I", addr->addr);
+			pr_warn(ctx, "unable to bind to %I", &addr->addr);
 
 		if (addr == default_v4 || addr == default_v6)
 			exit_error(ctx, "unable to bind to default address");
