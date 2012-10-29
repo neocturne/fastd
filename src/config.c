@@ -85,10 +85,11 @@ static const fastd_crypto_ghash *fastd_crypto_ghash_default = &fastd_crypto_ghas
 #endif
 
 static void default_config(fastd_config *conf) {
+	memset(conf, 0, sizeof(fastd_config));
+
 	conf->log_stderr_level = -1;
 	conf->log_syslog_level = -1;
 	conf->log_syslog_ident = strdup("fastd");
-	conf->log_files = NULL;
 
 	conf->keepalive_interval = 20;
 	conf->peer_stale_time = 90;
@@ -100,20 +101,11 @@ static void default_config(fastd_config *conf) {
 	conf->min_handshake_interval = 15;
 	conf->min_resolve_interval = 15;
 
-	conf->ifname = NULL;
-
-	memset(&conf->bind_addr_in, 0, sizeof(struct sockaddr_in));
-	memset(&conf->bind_addr_in6, 0, sizeof(struct sockaddr_in6));
-
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
 
-	conf->forward = false;
-
 	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	conf->method_default = &fastd_method_null;
-	memset(conf->methods, 0, sizeof(conf->methods));
-	conf->secret = NULL;
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_refresh = 3300;	/* 55 minutes */
 
@@ -123,28 +115,6 @@ static void default_config(fastd_config *conf) {
 #ifdef USE_CRYPTO_GHASH
 	conf->crypto_ghash = fastd_crypto_ghash_default;
 #endif
-
-	conf->peer_dirs = NULL;
-	conf->peers = NULL;
-
-	conf->on_up = NULL;
-	conf->on_up_dir = NULL;
-
-	conf->on_down = NULL;
-	conf->on_down_dir = NULL;
-
-	conf->on_establish = NULL;
-	conf->on_establish_dir = NULL;
-
-	conf->on_disestablish = NULL;
-	conf->on_disestablish_dir = NULL;
-
-	conf->daemon = false;
-	conf->pid_file = NULL;
-
-	conf->machine_readable = false;
-	conf->generate_key = false;
-	conf->show_key = false;
 }
 
 static bool config_match(const char *opt, ...) {
