@@ -104,12 +104,12 @@ default		{ TOKEN(TOK_DEFAULT); }
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;
 
-			if (!inet_pton(AF_INET, yytext, &yylval->addr)) {
+			if (!inet_pton(AF_INET, yytext, &yylval->addr4)) {
 				yylval->error = "invalid address";
 				return -1;
 			}
 
-			return TOK_ADDR;
+			return TOK_ADDR4;
 		}
 
 [;:\{\}]	{ UPDATE_LOCATION; return yytext[0]; }

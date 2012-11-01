@@ -147,140 +147,114 @@ static void crypto_free(fastd_context *ctx) {
 }
 
 
-static unsigned max_sockets(const fastd_config *conf) {
-	unsigned n = 0;
-	fastd_bind_address *addr;
-
-	for (addr = conf->bind_addrs; addr; addr = addr->next)
-		n++;
-
-	return n;
-}
-
 static void init_sockets(fastd_context *ctx) {
-	static const fastd_bind_address bind_any = {};
+	ctx->socks = malloc(ctx->conf->n_bind_addrs * sizeof(fastd_socket));
 
-	const fastd_bind_address *addr = ctx->conf->bind_addrs;
-	const fastd_bind_address *default_v4 = ctx->conf->bind_addr_default_v4;
-	const fastd_bind_address *default_v6 = ctx->conf->bind_addr_default_v6;
+	unsigned i;
+	fastd_bind_address *addr = ctx->conf->bind_addrs;
+	for (i = 0; i < ctx->conf->n_bind_addrs; i++) {
+		ctx->socks[i] = (fastd_socket){-2, addr};
 
-	if (!addr)
-		addr = default_v4 = default_v6 = &bind_any;
+		if (addr == ctx->conf->bind_addr_default_v4)
+			ctx->sock_default_v4 = &ctx->socks[i];
 
-	unsigned n_v4 = 0, n_v6 = 0;
-	bool info_ipv6 = true;
-
-	ctx->socks = calloc(max_sockets(ctx->conf), sizeof(fastd_socket));
-
-	while (addr) {
-		int fd = -1;
-		int af = AF_UNSPEC;
-
-		if (addr->addr.sa.sa_family != AF_INET) {
-			fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-			if (fd < 0) {
-				if (info_ipv6) {
-					pr_warn(ctx, "there seems to be no IPv6 support; explicitely bind to an IPv4 address (or 0.0.0.0) to disable this warning");
-					info_ipv6 = false;
-				}
-			}
-			else {
-				af = AF_INET6;
-
-				int val = (addr->addr.sa.sa_family == AF_INET6);
-				if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val))) {
-					pr_warn_errno(ctx, "setsockopt");
-					goto error;
-				}
-			}
-		}
-		if (fd < 0 && addr->addr.sa.sa_family != AF_INET6) {
-			fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-			if (fd < 0)
-				exit_errno(ctx, "unable to create socket");
-			else
-				af = AF_INET;
-		}
-
-		if (fd < 0)
-			goto error;
-
-		if (addr->bindtodev) {
-			if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
-				pr_warn_errno(ctx, "setsockopt: unable to bind to device");
-				goto error;
-			}
-		}
-
-		fastd_peer_address bind_address = addr->addr;
-
-		if (bind_address.sa.sa_family == AF_UNSPEC) {
-			memset(&bind_address, 0, sizeof(bind_address));
-			bind_address.sa.sa_family = af;
-
-			if (af == AF_INET6)
-				bind_address.in6.sin6_port = addr->addr.in.sin_port;
-			else
-				bind_address.in.sin_port = addr->addr.in.sin_port;
-		}
-
-		if (bind(fd, (struct sockaddr*)&bind_address, af == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
-			pr_warn(ctx, "bind");
-			goto error;
-		}
-
-		ctx->socks[ctx->n_socks] = (fastd_socket){fd, addr};
-
-		if (af == AF_INET6) {
-			if (addr == default_v6)
-				ctx->sock_default_v6 = &ctx->socks[ctx->n_socks];
-
-			n_v6++;
-
-			if (addr->addr.sa.sa_family == AF_UNSPEC) {
-				if (addr == default_v4)
-					ctx->sock_default_v4 = &ctx->socks[ctx->n_socks];
-
-				n_v4++;
-			}
-		}
-		else {
-			if (addr == default_v4)
-				ctx->sock_default_v4 = &ctx->socks[ctx->n_socks];
-
-			n_v4++;
-		}
-
-		ctx->n_socks++;
-
-		addr = addr->next;
-		continue;
-
-	error:
-		if (fd >= 0) {
-			if (close(fd))
-				pr_error_errno(ctx, "close");
-		}
-
-		if (addr->bindtodev)
-			pr_warn(ctx, "unable to bind to %I on `%s'", &addr->addr, addr->bindtodev);
-		else
-			pr_warn(ctx, "unable to bind to %I", &addr->addr);
-
-		if (addr == default_v4 || addr == default_v6)
-			exit_error(ctx, "unable to bind to default address");
+		if (addr == ctx->conf->bind_addr_default_v6)
+			ctx->sock_default_v6 = &ctx->socks[i];
 
 		addr = addr->next;
 	}
 
-	if (!ctx->n_socks)
-		exit_error(ctx, "all bind attempts failed");
+	ctx->n_socks = ctx->conf->n_bind_addrs;
+}
 
-	if (!n_v4 && ctx->conf->n_v4)
-		pr_warn(ctx, "there are IPv4 peers defined, but there was no successful IPv4 bind");
+static int bind_socket(fastd_context *ctx, const fastd_bind_address *addr, bool warn) {
+	int fd = -1;
+	int af = AF_UNSPEC;
 
-	if (!n_v6 && ctx->conf->n_v6)
-		pr_warn(ctx, "there are IPv6 peers defined, but there was no successful IPv4 bind");
+	if (addr->addr.sa.sa_family != AF_INET) {
+		fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+		if (fd >= 0) {
+			af = AF_INET6;
+
+			int val = (addr->addr.sa.sa_family == AF_INET6);
+			if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val))) {
+				if (warn)
+					pr_warn_errno(ctx, "setsockopt");
+				goto error;
+			}
+		}
+	}
+	if (fd < 0 && addr->addr.sa.sa_family != AF_INET6) {
+		fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+		if (fd < 0)
+			exit_errno(ctx, "unable to create socket");
+		else
+			af = AF_INET;
+	}
+
+	if (fd < 0)
+		goto error;
+
+	if (addr->bindtodev) {
+		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
+			if (warn)
+				pr_warn_errno(ctx, "setsockopt: unable to bind to device");
+			goto error;
+		}
+	}
+
+	fastd_peer_address bind_address = addr->addr;
+
+	if (bind_address.sa.sa_family == AF_UNSPEC) {
+		memset(&bind_address, 0, sizeof(bind_address));
+		bind_address.sa.sa_family = af;
+
+		if (af == AF_INET6)
+			bind_address.in6.sin6_port = addr->addr.in.sin_port;
+		else
+			bind_address.in.sin_port = addr->addr.in.sin_port;
+	}
+
+	if (bind(fd, (struct sockaddr*)&bind_address, af == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
+		if (warn)
+			pr_warn(ctx, "bind");
+		goto error;
+	}
+
+	return fd;
+
+ error:
+	if (fd >= 0) {
+		if (close(fd))
+			pr_error_errno(ctx, "close");
+	}
+
+	if (warn) {
+		if (addr->bindtodev)
+			pr_warn(ctx, "unable to bind to %I on `%s'", &addr->addr, addr->bindtodev);
+                else
+			pr_warn(ctx, "unable to bind to %I", &addr->addr);
+	}
+
+	return -1;
+}
+
+static void bind_sockets(fastd_context *ctx) {
+	unsigned i;
+
+	for (i = 0; i < ctx->n_socks; i++) {
+		if (ctx->socks[i].fd >= 0)
+			continue;
+
+		ctx->socks[i].fd = bind_socket(ctx, ctx->socks[i].addr, ctx->socks[i].fd < -1);
+
+		if (ctx->socks[i].fd >= 0) {
+			if (ctx->socks[i].addr->bindtodev)
+				pr_info(ctx, "successfully bound to %I on `%s'", &ctx->socks[i].addr->addr, ctx->socks[i].addr->bindtodev);
+			else
+				pr_info(ctx, "successfully bound to %I", &ctx->socks[i].addr->addr);
+		}
+	}
 }
 
 static void init_tuntap(fastd_context *ctx) {
@@ -315,11 +289,16 @@ static void init_tuntap(fastd_context *ctx) {
 
 	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ);
 
-	int ctl_sock = ctx->socks[0].fd;
+	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (ctl_sock < 0)
+		exit_errno(ctx, "socket");
 
 	ifr.ifr_mtu = ctx->conf->mtu;
 	if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
 		exit_errno(ctx, "SIOCSIFMTU ioctl failed");
+
+	if (close(ctl_sock))
+		pr_error_errno(ctx, "close");
 
 	pr_debug(ctx, "tun/tap device initialized.");
 }
@@ -924,6 +903,8 @@ int main(int argc, char *argv[]) {
 	pr_info(&ctx, "fastd " FASTD_VERSION " starting");
 
 	init_sockets(&ctx);
+	bind_sockets(&ctx);
+
 	init_tuntap(&ctx);
 
 	init_peers(&ctx);
@@ -949,6 +930,8 @@ int main(int argc, char *argv[]) {
 
 	while (!terminate) {
 		handle_tasks(&ctx);
+
+		bind_sockets(&ctx);
 		handle_input(&ctx);
 
 		maintenance(&ctx);

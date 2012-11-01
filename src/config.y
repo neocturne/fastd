@@ -45,8 +45,9 @@
 	fastd_string_stack *str;
 	char *error;
 	bool boolean;
-	struct in_addr addr;
+	struct in_addr addr4;
 	struct in6_addr addr6;
+	fastd_peer_address addr;
 }
 
 %token START_CONFIG
@@ -99,7 +100,7 @@
 %token TOK_USE
 %token TOK_DEFAULT
 
-%token <addr> TOK_ADDR
+%token <addr4> TOK_ADDR4
 %token <addr6> TOK_ADDR6
 
 
@@ -121,6 +122,10 @@
 %type <str> maybe_as
 %type <num> maybe_af
 %type <boolean> maybe_float
+%type <addr> bind_address
+%type <str> maybe_bind_interface
+%type <num> maybe_bind_default
+%type <num> bind_default
 
 %%
 start:		START_CONFIG config
@@ -188,70 +193,50 @@ log_level:	TOK_FATAL	{ $$ = LOG_CRIT; }
 interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
 	;
 
-bind_new:	{
-			fastd_bind_address *addr = calloc(1, sizeof(fastd_bind_address));
-			addr->next = conf->bind_addrs;
-			conf->bind_addrs = addr;
+bind:		bind_address maybe_bind_interface maybe_bind_default {
+			fastd_config_bind_address(ctx, conf, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
 		}
 	;
 
-bind:		bind_new TOK_ADDR maybe_port maybe_bind_to_device maybe_bind_default {
-			conf->bind_addrs->addr.in.sin_family = AF_INET;
-			conf->bind_addrs->addr.in.sin_addr = $2;
-			conf->bind_addrs->addr.in.sin_port = htons($3);
-			if (!conf->bind_addr_default_v4)
-				conf->bind_addr_default_v4 = conf->bind_addrs;
+bind_address:
+		TOK_ADDR4 maybe_port {
+			$$ = (fastd_peer_address){ .in = { .sin_family = AF_INET, .sin_addr = $1, .sin_port = htons($2) } };
 		}
-	|	bind_new TOK_ADDR6 maybe_port maybe_bind_to_device maybe_bind_default {
-			conf->bind_addrs->addr.in6.sin6_family = AF_INET6;
-			conf->bind_addrs->addr.in6.sin6_addr = $2;
-			conf->bind_addrs->addr.in6.sin6_port = htons($3);
-			if (!conf->bind_addr_default_v6)
-				conf->bind_addr_default_v6 = conf->bind_addrs;
+	|	TOK_ADDR6 maybe_port {
+			$$ = (fastd_peer_address){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1, .sin6_port = htons($2) } };
 		}
-	|	bind_new TOK_ANY maybe_port maybe_bind_to_device maybe_bind_default {
-			conf->bind_addrs->addr.in.sin_port = htons($3);
-			if (!conf->bind_addr_default_v4)
-				conf->bind_addr_default_v4 = conf->bind_addrs;
-			if (!conf->bind_addr_default_v6)
-				conf->bind_addr_default_v6 = conf->bind_addrs;
+	|	TOK_ANY maybe_port {
+			$$ = (fastd_peer_address){ .in = { .sin_family = AF_UNSPEC, .sin_port = htons($2) } };
 		}
 	;
 
-maybe_bind_to_device:
+maybe_bind_interface:
 		TOK_INTERFACE TOK_STRING {
-			conf->bind_addrs->bindtodev = strdup($2->str);
+			$$ = $2;
 		}
-	|
+	|	{
+			$$ = NULL;
+		}
 	;
 
 maybe_bind_default:
-		TOK_DEFAULT bind_default
-	|
+		TOK_DEFAULT bind_default {
+			$$ = $2;
+		}
+	|	{
+			$$ = -1;
+		}
 	;
 
 bind_default:
 		TOK_IPV4 {
-			if (conf->bind_addrs->addr.sa.sa_family == AF_INET6) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "tried to set IPv6 bind as IPv4 default");
-				YYERROR;
-			}
-
-			conf->bind_addr_default_v4 = conf->bind_addrs;
+			$$ = AF_INET;
 		}
 	|	TOK_IPV6 {
-			if (conf->bind_addrs->addr.sa.sa_family == AF_INET) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "tried to set IPv4 bind as IPv6 default");
-				YYERROR;
-			}
-
-			conf->bind_addr_default_v6 = conf->bind_addrs;
+			$$ = AF_INET6;
 		}
 	|	{
-			if (conf->bind_addrs->addr.sa.sa_family != AF_INET6)
-				conf->bind_addr_default_v4 = conf->bind_addrs;
-			if (conf->bind_addrs->addr.sa.sa_family != AF_INET)
-				conf->bind_addr_default_v6 = conf->bind_addrs;
+			$$ = AF_UNSPEC;
 		}
 	;
 
@@ -340,7 +325,7 @@ peer_statement: TOK_REMOTE peer_remote ';'
 	|	TOK_INCLUDE peer_include  ';'
 	;
 
-peer_remote:	TOK_ADDR port {
+peer_remote:	TOK_ADDR4 port {
 			free(conf->peers->hostname);
 			conf->peers->hostname = NULL;
 

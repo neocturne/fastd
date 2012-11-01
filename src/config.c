@@ -224,6 +224,22 @@ bool fastd_config_crypto(fastd_context *ctx, fastd_config *conf, const char *alg
 	return false;
 }
 
+void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fastd_peer_address *address, const char *bindtodev, bool default_v4, bool default_v6) {
+	fastd_bind_address *addr = malloc(sizeof(fastd_bind_address));
+	addr->next = conf->bind_addrs;
+	conf->bind_addrs = addr;
+	conf->n_bind_addrs++;
+
+	addr->addr = *address;
+	addr->bindtodev = bindtodev ? strdup(bindtodev) : NULL;
+
+	if (address->sa.sa_family != AF_INET6 && (default_v4 || !conf->bind_addr_default_v4))
+		conf->bind_addr_default_v4 = addr;
+
+	if (address->sa.sa_family != AF_INET && (default_v6 || !conf->bind_addr_default_v6))
+		conf->bind_addr_default_v6 = addr;
+}
+
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level) {
 	char *name2 = strdup(name);
 	char *name3 = strdup(name);
@@ -418,6 +434,7 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 }
 
 static void count_peers(fastd_context *ctx, fastd_config *conf) {
+	conf->n_peers = 0;
 	conf->n_floating = 0;
 	conf->n_v4 = 0;
 	conf->n_v6 = 0;
@@ -427,6 +444,8 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 
 	fastd_peer_config *peer;
 	for (peer = conf->peers; peer; peer = peer->next) {
+		conf->n_peers++;
+
 		switch (peer->address.sa.sa_family) {
 		case AF_UNSPEC:
 			if (peer->hostname)
@@ -629,35 +648,29 @@ static void option_bind(fastd_context *ctx, fastd_config *conf, const char *arg)
 		l = 0;
 	}
 
-	fastd_bind_address *addr = calloc(1, sizeof(fastd_bind_address));
-	addr->next = conf->bind_addrs;
-	conf->bind_addrs = addr;
+	fastd_peer_address addr = {};
 
 	if (strcmp(addrstr, "any") == 0) {
 		/* nothing to do */
 	}
 	else if (arg[0] == '[') {
-		addr->addr.in6.sin6_family = AF_INET6;
-		addr->addr.in6.sin6_port = htons(l);
+		addr.in6.sin6_family = AF_INET6;
+		addr.in6.sin6_port = htons(l);
 
-		if (inet_pton(AF_INET6, addrstr, &addr->addr.in6.sin6_addr) != 1)
+		if (inet_pton(AF_INET6, addrstr, &addr.in6.sin6_addr) != 1)
 			exit_error(ctx, "invalid bind address `%s'", addrstr);
 	}
 	else {
-		addr->addr.in.sin_family = AF_INET;
-		addr->addr.in.sin_port = htons(l);
+		addr.in.sin_family = AF_INET;
+		addr.in.sin_port = htons(l);
 
-		if (inet_pton(AF_INET, addrstr, &addr->addr.in.sin_addr) != 1)
+		if (inet_pton(AF_INET, addrstr, &addr.in.sin_addr) != 1)
 			exit_error(ctx, "invalid bind address `%s'", addrstr);
 	}
 
-	if (!conf->bind_addr_default_v4 && addr->addr.sa.sa_family != AF_INET6)
-		conf->bind_addr_default_v4 = addr;
-
-	if (!conf->bind_addr_default_v6 && addr->addr.sa.sa_family != AF_INET)
-		conf->bind_addr_default_v6 = addr;
-
 	free(addrstr);
+
+	fastd_config_bind_address(ctx, conf, &addr, NULL, false, false);
 }
 
 static void option_protocol(fastd_context *ctx, fastd_config *conf, const char *arg) {

@@ -160,6 +160,7 @@ struct _fastd_config {
 
 	char *ifname;
 
+	unsigned n_bind_addrs;
 	fastd_bind_address *bind_addrs;
 
 	fastd_bind_address *bind_addr_default_v4;
@@ -187,6 +188,7 @@ struct _fastd_config {
 	fastd_string_stack *peer_dirs;
 	fastd_peer_config *peers;
 
+	unsigned n_peers;
 	unsigned n_floating;
 	unsigned n_v4;
 	unsigned n_v6;
@@ -277,6 +279,7 @@ bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *n
 bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name);
 bool fastd_config_crypto(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl);
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level);
+void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fastd_peer_address *address, const char *bindtodev, bool default_v4, bool default_v6);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);
 void fastd_config_release(fastd_context *ctx, fastd_config *conf);
