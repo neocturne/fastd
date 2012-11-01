@@ -256,6 +256,21 @@ static void bind_sockets(fastd_context *ctx) {
 	}
 }
 
+fastd_socket* fastd_socket_open(fastd_context *ctx, int af) {
+	const fastd_bind_address any_address = { .addr.sa.sa_family = af };
+
+	int fd = bind_socket(ctx, &any_address, true);
+	if (fd < 0)
+		return NULL;
+
+	fastd_socket *sock = malloc(sizeof(fastd_socket));
+
+	sock->fd = fd;
+	sock->addr = NULL;
+
+	return sock;
+}
+
 static void init_tuntap(fastd_context *ctx) {
 	struct ifreq ifr;
 
@@ -309,19 +324,10 @@ static void close_tuntap(fastd_context *ctx) {
 	free(ctx->ifname);
 }
 
-static void close_socket(fastd_context *ctx, fastd_socket *sock) {
-	if (sock->fd >= 0) {
-		if(close(sock->fd))
-			pr_error_errno(ctx, "closing socket: close");
-
-		sock->fd = -2;
-	}
-}
-
 static void close_sockets(fastd_context *ctx) {
 	unsigned i;
 	for (i = 0; i < ctx->n_socks; i++)
-		close_socket(ctx, &ctx->socks[i]);
+		fastd_socket_close(ctx, &ctx->socks[i]);
 
 	free(ctx->socks);
 }
@@ -555,8 +561,10 @@ static void init_peers(fastd_context *ctx) {
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
 		ctx->conf->protocol->peer_configure(ctx, peer_conf);
 
-		if (peer_conf->enabled)
+		if (peer_conf->enabled) {
 			fastd_peer_add(ctx, peer_conf);
+			ctx->n_peers++;
+		}
 	}
 }
 
@@ -574,7 +582,10 @@ static inline void update_time(fastd_context *ctx) {
 }
 
 static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
-	if (peer->address.sa.sa_family && peer->sock) {
+	if (!fastd_peer_is_established(peer))
+		fastd_peer_reset_socket(ctx, peer);
+
+	if (peer->sock) {
 		if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
 		    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
 			pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
@@ -663,7 +674,7 @@ static void handle_tun(fastd_context *ctx) {
 	}
 }
 
-static void handle_socket(fastd_context *ctx, const fastd_socket *sock) {
+static void handle_socket(fastd_context *ctx, fastd_socket *sock) {
 	size_t max_len = PACKET_TYPE_LEN + methods_max_packet_size(ctx);
 	fastd_buffer buffer = fastd_buffer_alloc(max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
 	uint8_t *packet_type;
@@ -752,17 +763,6 @@ static void handle_resolv_returns(fastd_context *ctx) {
 		peer->last_resolve_return = ctx->now;
 
 		if (fastd_peer_claim_address(ctx, peer, NULL, &resolve_return.addr)) {
-			if (!peer->sock) {
-				switch(resolve_return.addr.sa.sa_family) {
-				case AF_INET:
-					peer->sock = ctx->sock_default_v4;
-					break;
-
-				case AF_INET6:
-					peer->sock = ctx->sock_default_v6;
-				}
-			}
-
 			send_handshake(ctx, peer);
 		}
 		else {
@@ -781,28 +781,44 @@ static inline void handle_socket_error(fastd_context *ctx, fastd_socket *sock) {
 	else
 		pr_warn(ctx, "socket bind %I lost", &sock->addr->addr);
 
-	close_socket(ctx, sock);
+	fastd_socket_close(ctx, sock);
 }
 
 static void handle_input(fastd_context *ctx) {
-	struct pollfd fds[ctx->n_socks + 2];
+	const size_t n_fds = 2 + ctx->n_socks + ctx->n_peers;
+	struct pollfd fds[n_fds];
 	fds[0].fd = ctx->tunfd;
 	fds[0].events = POLLIN;
 	fds[1].fd = ctx->resolverfd;
 	fds[1].events = POLLIN;
 
 	unsigned i;
-	for (i = 0; i < ctx->n_socks; i++) {
-		fds[i+2].fd = ctx->socks[i].fd;
-		fds[i+2].events = POLLIN;
+	for (i = 2; i < ctx->n_socks+2; i++) {
+		fds[i].fd = ctx->socks[i-2].fd;
+		fds[i].events = POLLIN;
 	}
+
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (peer->sock && fastd_peer_is_socket_dynamic(peer))
+			fds[i].fd = peer->sock->fd;
+		else
+			fds[i].fd = -1;
+
+		fds[i].events = POLLIN;
+
+		i++;
+	}
+
+	if (i != n_fds)
+		exit_bug(ctx, "fd count mismatch");
 
 	int timeout = fastd_task_timeout(ctx);
 
 	if (timeout < 0 || timeout > 60000)
 		timeout = 60000; /* call maintenance at least once a minute */
 
-	int ret = poll(fds, ctx->n_socks + 2, timeout);
+	int ret = poll(fds, n_fds, timeout);
 	if (ret < 0) {
 		if (errno == EINTR)
 			return;
@@ -817,15 +833,24 @@ static void handle_input(fastd_context *ctx) {
 	if (fds[1].revents & POLLIN)
 		handle_resolv_returns(ctx);
 
-	for (i = 0; i < ctx->n_socks; i++) {
-		if (fds[i+2].revents & (POLLERR|POLLHUP|POLLNVAL)) {
-			handle_socket_error(ctx, &ctx->socks[i]);
-			continue;
-		}
-
-		if (fds[i+2].revents & POLLIN)
-			handle_socket(ctx, &ctx->socks[i]);
+	for (i = 2; i < ctx->n_socks+2; i++) {
+		if (fds[i].revents & (POLLERR|POLLHUP|POLLNVAL))
+			handle_socket_error(ctx, &ctx->socks[i-2]);
+		else if (fds[i].revents & POLLIN)
+			handle_socket(ctx, &ctx->socks[i-2]);
 	}
+
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (fds[i].revents & (POLLERR|POLLHUP|POLLNVAL))
+			fastd_peer_reset_socket(ctx, peer);
+		else if (fds[i].revents & POLLIN)
+			handle_socket(ctx, peer->sock);
+
+		i++;
+	}
+
+	if (i != n_fds)
+		exit_bug(ctx, "fd count mismatch");
 }
 
 static void cleanup_peers(fastd_context *ctx) {

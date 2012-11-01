@@ -146,9 +146,45 @@ static void on_disestablish(fastd_context *ctx, fastd_peer *peer) {
 	free(cwd);
 }
 
-static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
+static inline void free_socket(fastd_context *ctx, fastd_peer *peer) {
+	if (peer->sock) {
+		if (fastd_peer_is_socket_dynamic(peer)) {
+			fastd_socket_close(ctx, peer->sock);
+			free(peer->sock);
+		}
+		peer->sock = NULL;
+	}
+}
+
+void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer) {
+	if (!fastd_peer_is_socket_dynamic(peer))
+		return;
+
+	pr_debug(ctx, "resetting socket for peer %P", peer);
+
+	free_socket(ctx, peer);
+
+	switch (peer->address.sa.sa_family) {
+	case AF_INET:
+		if (ctx->sock_default_v4)
+			peer->sock = ctx->sock_default_v4;
+		else
+			peer->sock = fastd_socket_open(ctx, AF_INET);
+		break;
+
+	case AF_INET6:
+		if (ctx->sock_default_v6)
+			peer->sock = ctx->sock_default_v6;
+		else
+			peer->sock = fastd_socket_open(ctx, AF_INET6);
+	}
+}
+
+static void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (peer->established)
 		on_disestablish(ctx, peer);
+
+	free_socket(ctx, peer);
 
 	ctx->conf->protocol->reset_peer_state(ctx, peer);
 
@@ -167,26 +203,13 @@ static inline void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 	fastd_task_delete_peer(ctx, peer);
 }
 
-static inline void setup_peer(fastd_context *ctx, fastd_peer *peer) {
+static void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (peer->config->hostname)
 		peer->address.sa.sa_family = AF_UNSPEC;
 	else
 		peer->address = peer->config->address;
 
 	peer->established = false;
-
-	switch (peer->address.sa.sa_family) {
-	case AF_INET:
-		peer->sock = ctx->sock_default_v4;
-		break;
-
-	case AF_INET6:
-		peer->sock = ctx->sock_default_v6;
-		break;
-
-	default:
-		peer->sock = NULL;
-	}
 
 	peer->last_resolve = (struct timespec){0, 0};
 	peer->last_resolve_return = (struct timespec){0, 0};
@@ -292,7 +315,7 @@ bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_
 	return true;
 }
 
-bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, const fastd_socket *sock, const fastd_peer_address *addr) {
+bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_socket *sock, const fastd_peer_address *addr) {
 	if (addr->sa.sa_family != AF_UNSPEC) {
 		fastd_peer *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
@@ -316,8 +339,10 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, const fa
 	}
 
 	new_peer->address = *addr;
-	if (sock)
+	if (sock && sock->addr && sock != new_peer->sock) {
+		free_socket(ctx, new_peer);
 		new_peer->sock = sock;
+	}
 
 	return true;
 }
@@ -358,6 +383,7 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 
 	peer->config = peer_conf;
 	peer->protocol_state = NULL;
+	peer->sock = NULL;
 	setup_peer(ctx, peer);
 
 	pr_verbose(ctx, "adding peer %P", peer);

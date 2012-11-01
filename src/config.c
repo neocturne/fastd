@@ -434,7 +434,6 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 }
 
 static void count_peers(fastd_context *ctx, fastd_config *conf) {
-	conf->n_peers = 0;
 	conf->n_floating = 0;
 	conf->n_v4 = 0;
 	conf->n_v6 = 0;
@@ -444,8 +443,6 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 
 	fastd_peer_config *peer;
 	for (peer = conf->peers; peer; peer = peer->next) {
-		conf->n_peers++;
-
 		switch (peer->address.sa.sa_family) {
 		case AF_UNSPEC:
 			if (peer->hostname)

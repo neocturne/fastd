@@ -73,7 +73,7 @@ struct _fastd_protocol {
 	void (*peer_configure)(fastd_context *ctx, fastd_peer_config *peer_conf);
 
 	void (*handshake_init)(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf);
-	void (*handshake_handle)(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake, const fastd_method *method);
+	void (*handshake_handle)(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake, const fastd_method *method);
 
 	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
@@ -189,7 +189,6 @@ struct _fastd_config {
 	fastd_string_stack *peer_dirs;
 	fastd_peer_config *peers;
 
-	unsigned n_peers;
 	unsigned n_floating;
 	unsigned n_v4;
 	unsigned n_v6;
@@ -228,6 +227,7 @@ struct _fastd_context {
 
 	struct timespec now;
 
+	unsigned n_peers;
 	fastd_peer *peers;
 	fastd_queue task_queue;
 
@@ -267,6 +267,8 @@ struct _fastd_string_stack {
 void fastd_send(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer);
 void fastd_send_handshake(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer);
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+
+fastd_socket* fastd_socket_open(fastd_context *ctx, int af);
 
 void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer);
 
@@ -391,6 +393,15 @@ static inline void fastd_string_stack_free(fastd_string_stack *str) {
 		fastd_string_stack *next = str->next;
 		free(str);
 		str = next;
+	}
+}
+
+static inline void fastd_socket_close(fastd_context *ctx, fastd_socket *sock) {
+	if (sock->fd >= 0) {
+		if(close(sock->fd))
+			pr_error_errno(ctx, "closing socket: close");
+
+		sock->fd = -2;
 	}
 }
 

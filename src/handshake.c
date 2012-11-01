@@ -180,7 +180,7 @@ static fastd_string_stack* parse_string_list(uint8_t *data, size_t len) {
 	return ret;
 }
 
-void fastd_handshake_handle(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer) {
+void fastd_handshake_handle(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer) {
 	if (buffer.len < sizeof(fastd_packet)) {
 		pr_warn(ctx, "received a short handshake from %I", address);
 		goto end_free;
