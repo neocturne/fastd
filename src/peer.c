@@ -30,7 +30,6 @@
 #include "task.h"
 
 #include <arpa/inet.h>
-#include <unistd.h>
 
 
 static void on_establish(fastd_context *ctx, fastd_peer *peer) {

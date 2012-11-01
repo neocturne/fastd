@@ -44,6 +44,7 @@
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <time.h>
+#include <unistd.h>
 
 
 #define FASTD_VERSION "0.5"

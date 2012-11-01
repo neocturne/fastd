@@ -28,7 +28,6 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 
 void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure) {

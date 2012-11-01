@@ -27,8 +27,6 @@
 #include "fastd.h"
 #include "crypto.h"
 
-#include <unistd.h>
-
 
 #define KEYBYTES 16
 #define NONCEBYTES 7

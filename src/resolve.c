@@ -31,7 +31,6 @@
 
 #include <netdb.h>
 #include <pthread.h>
-#include <unistd.h>
 
 
 typedef struct _resolv_arg {

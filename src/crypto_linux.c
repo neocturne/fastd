@@ -29,7 +29,6 @@
 
 #include <alloca.h>
 #include <linux/if_alg.h>
-#include <unistd.h>
 
 
 #ifndef SOL_ALG

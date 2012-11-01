@@ -42,7 +42,6 @@
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
-#include <unistd.h>
 
 
 static volatile bool sighup = false;
