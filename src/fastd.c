@@ -217,7 +217,7 @@ static int bind_socket(fastd_context *ctx, const fastd_bind_address *addr, bool 
 
 	if (bind(fd, (struct sockaddr*)&bind_address, af == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
 		if (warn)
-			pr_warn(ctx, "bind");
+			pr_warn_errno(ctx, "bind");
 		goto error;
 	}
 
@@ -310,12 +310,19 @@ static void close_tuntap(fastd_context *ctx) {
 	free(ctx->ifname);
 }
 
+static void close_socket(fastd_context *ctx, fastd_socket *sock) {
+	if (sock->fd >= 0) {
+		if(close(sock->fd))
+			pr_error_errno(ctx, "closing socket: close");
+
+		sock->fd = -2;
+	}
+}
+
 static void close_sockets(fastd_context *ctx) {
 	unsigned i;
-	for (i = 0; i < ctx->n_socks; i++) {
-		if(close(ctx->socks[i].fd))
-			pr_warn_errno(ctx, "closing IPv4 socket: close");
-	}
+	for (i = 0; i < ctx->n_socks; i++)
+		close_socket(ctx, &ctx->socks[i]);
 
 	free(ctx->socks);
 }
@@ -769,6 +776,15 @@ static void handle_resolv_returns(fastd_context *ctx) {
 	free(resolve_return.hostname);
 }
 
+static inline void handle_socket_error(fastd_context *ctx, fastd_socket *sock) {
+	if (sock->addr->bindtodev)
+		pr_warn(ctx, "socket bind %I on `%s' lost", &sock->addr->addr, sock->addr->bindtodev);
+	else
+		pr_warn(ctx, "socket bind %I lost", &sock->addr->addr);
+
+	close_socket(ctx, sock);
+}
+
 static void handle_input(fastd_context *ctx) {
 	struct pollfd fds[ctx->n_socks + 2];
 	fds[0].fd = ctx->tunfd;
@@ -803,6 +819,11 @@ static void handle_input(fastd_context *ctx) {
 		handle_resolv_returns(ctx);
 
 	for (i = 0; i < ctx->n_socks; i++) {
+		if (fds[i+2].revents & (POLLERR|POLLHUP|POLLNVAL)) {
+			handle_socket_error(ctx, &ctx->socks[i]);
+			continue;
+		}
+
 		if (fds[i+2].revents & POLLIN)
 			handle_socket(ctx, &ctx->socks[i]);
 	}
@@ -823,8 +844,9 @@ static void cleanup_peers(fastd_context *ctx) {
 
 static void maintenance(fastd_context *ctx) {
 	cleanup_peers(ctx);
-
 	fastd_peer_eth_addr_cleanup(ctx);
+
+	bind_sockets(ctx);
 }
 
 
@@ -931,7 +953,6 @@ int main(int argc, char *argv[]) {
 	while (!terminate) {
 		handle_tasks(&ctx);
 
-		bind_sockets(&ctx);
 		handle_input(&ctx);
 
 		maintenance(&ctx);
