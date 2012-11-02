@@ -488,31 +488,49 @@ static void handle_finish_handshake(fastd_context *ctx, fastd_socket *sock, cons
 		  &ctx->conf->protocol_config->public_key, &sigma, handshake_key->serial);
 }
 
+static bool check_peer_config_match(const fastd_peer_config *config, const fastd_peer_address *address, const unsigned char key[32]) {
+	if (!config->enabled || !config->protocol_config)
+		return false;
+
+	if (!fastd_peer_config_is_floating(config) && !fastd_peer_config_matches_dynamic(config, address))
+		return false;
+
+	return (memcmp(config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0);
+}
+
 static const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const unsigned char key[32]) {
-	if (peer_conf) {
-		if (memcmp(peer_conf->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0)
-			return peer_conf;
+	if (sock->peer) {
+		if (peer_conf != sock->peer->config) {
+			if (peer_conf && !fastd_peer_config_is_floating(peer_conf) && !fastd_peer_config_is_dynamic(peer_conf))
+				return NULL;
+
+			peer_conf = sock->peer->config;
+		}
 	}
 
-	if (!peer_conf || fastd_peer_config_is_floating(peer_conf) || fastd_peer_config_is_dynamic(peer_conf)) {
-		fastd_peer_config *config;
-		for (config = ctx->conf->peers; config; config = config->next) {
-			if (!config->enabled || !config->protocol_config)
-				continue;
+	if (peer_conf) {
+		if (memcmp(peer_conf->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
+			if (sock->peer && sock->peer->config != peer_conf)
+				return NULL;
 
-			if (!fastd_peer_config_is_floating(config) && !fastd_peer_config_matches_dynamic(config, address))
-				continue;
-
-			if (memcmp(config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
-				if (fastd_peer_config_is_floating(config)) {
-					return config;
-				}
-				else { /* matches dynamic */
-					fastd_resolve_peer(ctx, get_peer(ctx, config));
-					return NULL;
-				}
-			}
+			return peer_conf;
 		}
+	}
+
+	if (peer_conf && !fastd_peer_config_is_floating(peer_conf) && !fastd_peer_config_is_dynamic(peer_conf))
+		return NULL;
+
+	const fastd_peer_config *config;
+	for (config = ctx->conf->peers; config; config = config->next) {
+		if (!check_peer_config_match(config, address, key))
+			continue;
+
+		if (!fastd_peer_config_is_floating(config)) { /* matches dynamic */
+			fastd_resolve_peer(ctx, get_peer(ctx, config));
+			return NULL;
+		}
+
+		return config;
 	}
 
 	return NULL;
