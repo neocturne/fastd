@@ -149,6 +149,9 @@ static void on_disestablish(fastd_context *ctx, fastd_peer *peer) {
 static inline void free_socket(fastd_context *ctx, fastd_peer *peer) {
 	if (peer->sock) {
 		if (fastd_peer_is_socket_dynamic(peer)) {
+			if (peer->sock->peer != peer)
+				exit_bug(ctx, "dynamic peer socket mismatch");
+
 			fastd_socket_close(ctx, peer->sock);
 			free(peer->sock);
 		}
@@ -169,14 +172,14 @@ void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer) {
 		if (ctx->sock_default_v4)
 			peer->sock = ctx->sock_default_v4;
 		else
-			peer->sock = fastd_socket_open(ctx, AF_INET);
+			peer->sock = fastd_socket_open(ctx, peer, AF_INET);
 		break;
 
 	case AF_INET6:
 		if (ctx->sock_default_v6)
 			peer->sock = ctx->sock_default_v6;
 		else
-			peer->sock = fastd_socket_open(ctx, AF_INET6);
+			peer->sock = fastd_socket_open(ctx, peer, AF_INET6);
 	}
 }
 

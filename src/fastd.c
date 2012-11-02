@@ -152,7 +152,7 @@ static void init_sockets(fastd_context *ctx) {
 	unsigned i;
 	fastd_bind_address *addr = ctx->conf->bind_addrs;
 	for (i = 0; i < ctx->conf->n_bind_addrs; i++) {
-		ctx->socks[i] = (fastd_socket){-2, addr};
+		ctx->socks[i] = (fastd_socket){-2, addr, NULL};
 
 		if (addr == ctx->conf->bind_addr_default_v4)
 			ctx->sock_default_v4 = &ctx->socks[i];
@@ -256,7 +256,7 @@ static void bind_sockets(fastd_context *ctx) {
 	}
 }
 
-fastd_socket* fastd_socket_open(fastd_context *ctx, int af) {
+fastd_socket* fastd_socket_open(fastd_context *ctx, const fastd_peer *peer, int af) {
 	const fastd_bind_address any_address = { .addr.sa.sa_family = af };
 
 	int fd = bind_socket(ctx, &any_address, true);
@@ -267,6 +267,7 @@ fastd_socket* fastd_socket_open(fastd_context *ctx, int af) {
 
 	sock->fd = fd;
 	sock->addr = NULL;
+	sock->peer = peer;
 
 	return sock;
 }
