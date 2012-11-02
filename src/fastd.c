@@ -256,7 +256,7 @@ static void bind_sockets(fastd_context *ctx) {
 	}
 }
 
-fastd_socket* fastd_socket_open(fastd_context *ctx, const fastd_peer *peer, int af) {
+fastd_socket* fastd_socket_open(fastd_context *ctx, fastd_peer *peer, int af) {
 	const fastd_bind_address any_address = { .addr.sa.sa_family = af };
 
 	int fd = bind_socket(ctx, &any_address, true);
@@ -697,10 +697,18 @@ static void handle_socket(fastd_context *ctx, fastd_socket *sock) {
 
 	fastd_buffer_push_head(&buffer, 1);
 
-	fastd_peer *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (fastd_peer_address_equal(&peer->address, &recvaddr))
-			break;
+	fastd_peer *peer = NULL;
+
+	if (sock->peer) {
+		if (fastd_peer_address_equal(&sock->peer->address, &recvaddr)) {
+			peer = sock->peer;
+		}
+	}
+	else {
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (fastd_peer_address_equal(&peer->address, &recvaddr))
+				break;
+		}
 	}
 
 	if (peer) {

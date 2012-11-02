@@ -141,7 +141,7 @@ struct _fastd_bind_address {
 struct _fastd_socket {
 	int fd;
 	const fastd_bind_address *addr;
-	const fastd_peer *peer;
+	fastd_peer *peer;
 };
 
 struct _fastd_config {
@@ -269,7 +269,7 @@ void fastd_send(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_a
 void fastd_send_handshake(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer);
 void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
 
-fastd_socket* fastd_socket_open(fastd_context *ctx, const fastd_peer *peer, int af);
+fastd_socket* fastd_socket_open(fastd_context *ctx, fastd_peer *peer, int af);
 
 void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer);
 
