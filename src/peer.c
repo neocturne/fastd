@@ -319,7 +319,11 @@ bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_
 }
 
 bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_socket *sock, const fastd_peer_address *addr) {
-	if (addr->sa.sa_family != AF_UNSPEC) {
+	if (addr->sa.sa_family == AF_UNSPEC) {
+		if (fastd_peer_is_established(new_peer))
+			fastd_peer_reset(ctx, new_peer);
+	}
+	else {
 		fastd_peer *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
 			if (fastd_peer_address_equal(&peer->address, addr)) {
