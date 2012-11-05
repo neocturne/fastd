@@ -115,6 +115,8 @@ static void default_config(fastd_config *conf) {
 #ifdef USE_CRYPTO_GHASH
 	conf->crypto_ghash = fastd_crypto_ghash_default;
 #endif
+
+	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config));
 }
 
 static bool config_match(const char *opt, ...) {
@@ -240,6 +242,47 @@ void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fas
 		conf->bind_addr_default_v6 = addr;
 }
 
+void fastd_config_peer_group_push(fastd_context *ctx, fastd_config *conf, const char *name) {
+	fastd_peer_group_config *group = calloc(1, sizeof(fastd_peer_group_config));
+	group->name = strdup(name);
+
+	group->parent = conf->peer_group;
+	group->next = group->parent->children;
+
+	group->parent->children = group;
+
+	conf->peer_group = group;
+}
+
+void fastd_config_peer_group_pop(fastd_context *ctx, fastd_config *conf) {
+	conf->peer_group = conf->peer_group->parent;
+}
+
+static void free_peer_group(fastd_peer_group_config *group) {
+	while (group->children) {
+		fastd_peer_group_config *next = group->children->next;
+		free_peer_group(group->children);
+		group->children = next;
+	}
+
+	fastd_string_stack_free(group->peer_dirs);
+	free(group->name);
+	free(group);
+}
+
+static bool has_peer_group_peer_dirs(const fastd_peer_group_config *group) {
+	if (group->peer_dirs)
+		return true;
+
+	const fastd_peer_group_config *child;
+	for (child = group->children; child; child = child->next) {
+		if (has_peer_group_peer_dirs(child))
+			return true;
+	}
+
+	return false;
+}
+
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level) {
 	char *name2 = strdup(name);
 	char *name3 = strdup(name);
@@ -328,10 +371,10 @@ void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir
 
 	if (!chdir(dir)) {
 		char *newdir = get_current_dir_name();
-		conf->peer_dirs = fastd_string_stack_push(conf->peer_dirs, newdir);
+		conf->peer_group->peer_dirs = fastd_string_stack_push(conf->peer_group->peer_dirs, newdir);
 		free(newdir);
 
-		read_peer_dir(ctx, conf, conf->peer_dirs->str);
+		read_peer_dir(ctx, conf, conf->peer_group->peer_dirs->str);
 
 		if(chdir(oldcwd))
 			pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
@@ -778,11 +821,11 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 	if (conf->mode == MODE_TUN) {
 		if (!conf->peers || conf->peers->next)
 			exit_error(ctx, "config error: for tun mode exactly one peer must be configured");
-		if (conf->peer_dirs)
+		if (has_peer_group_peer_dirs(conf->peer_group))
 			exit_error(ctx, "config error: for tun mode peer directories can't be used");
 	}
 
-	if (!conf->peers && !conf->peer_dirs)
+	if (!conf->peers && !has_peer_group_peer_dirs(conf->peer_group))
 		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
 
 	count_peers(ctx, conf);
@@ -807,6 +850,16 @@ static void reconfigure_read_peer_dirs(fastd_context *ctx, fastd_config *new_con
 		pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
 
 	free(oldcwd);
+}
+
+static void reconfigure_read_peer_group(fastd_context *ctx, fastd_config *new_conf) {
+	reconfigure_read_peer_dirs(ctx, new_conf, new_conf->peer_group->peer_dirs);
+
+	fastd_peer_group_config *group;
+	for (group = new_conf->peer_group->children; group; group = group->next) {
+		new_conf->peer_group = group;
+		reconfigure_read_peer_group(ctx, new_conf);
+	}
 }
 
 static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config **old_peers, fastd_peer_config **new_peers) {
@@ -879,9 +932,10 @@ void fastd_reconfigure(fastd_context *ctx, fastd_config *conf) {
 	pr_info(ctx, "reconfigure triggered");
 
 	fastd_config temp_conf;
+	temp_conf.peer_group = conf->peer_group;
 	temp_conf.peers = NULL;
 
-	reconfigure_read_peer_dirs(ctx, &temp_conf, conf->peer_dirs);
+	reconfigure_read_peer_group(ctx, &temp_conf);
 	reconfigure_handle_old_peers(ctx, &conf->peers, &temp_conf.peers);
 
 	reconfigure_reset_waiting(ctx);
@@ -894,8 +948,6 @@ void fastd_reconfigure(fastd_context *ctx, fastd_config *conf) {
 void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
 	while (conf->peers)
 		fastd_peer_config_delete(ctx, conf);
-
-	fastd_string_stack_free(conf->peer_dirs);
 
 	while (conf->log_files) {
 		fastd_log_file *next = conf->log_files->next;
@@ -910,6 +962,8 @@ void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
 		free(conf->bind_addrs);
 		conf->bind_addrs = next;
 	}
+
+	free_peer_group(conf->peer_group);
 
 	free(conf->ifname);
 	free(conf->secret);

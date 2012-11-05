@@ -99,6 +99,7 @@
 %token TOK_CRYPTO
 %token TOK_USE
 %token TOK_DEFAULT
+%token TOK_GROUP
 
 %token <addr4> TOK_ADDR4
 %token <addr6> TOK_ADDR6
@@ -150,6 +151,7 @@ statement:	TOK_LOG log ';'
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_PEER peer '{' peer_conf '}'
+	|	TOK_PEER TOK_GROUP peer_group '{' config '}' peer_group_after
 	|	TOK_FORWARD forward ';'
 	|	TOK_INCLUDE include ';'
 	;
@@ -362,6 +364,17 @@ peer_include:	TOK_STRING {
 		}
 	;
 
+
+peer_group:	TOK_STRING {
+			fastd_config_peer_group_push(ctx, conf, $1->str);
+		}
+	;
+
+peer_group_after:
+		{
+			fastd_config_peer_group_pop(ctx, conf);
+		}
+	;
 
 forward:	boolean		{ conf->forward = $1; }
 	;

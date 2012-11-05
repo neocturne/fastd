@@ -100,6 +100,7 @@ float		{ TOKEN(TOK_FLOAT); }
 crypto		{ TOKEN(TOK_CRYPTO); }
 use		{ TOKEN(TOK_USE); }
 default		{ TOKEN(TOK_DEFAULT); }
+group		{ TOKEN(TOK_GROUP); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

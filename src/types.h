@@ -46,6 +46,8 @@ typedef struct _fastd_buffer fastd_buffer;
 typedef union _fastd_peer_address fastd_peer_address;
 typedef struct _fastd_bind_address fastd_bind_address;
 typedef struct _fastd_socket fastd_socket;
+typedef struct _fastd_peer_group_config fastd_peer_group_config;
+typedef struct _fastd_peer_group fastd_peer_group;
 typedef struct _fastd_peer_config fastd_peer_config;
 typedef struct _fastd_eth_addr fastd_eth_addr;
 typedef struct _fastd_peer fastd_peer;

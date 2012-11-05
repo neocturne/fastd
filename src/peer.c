@@ -259,6 +259,7 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 
 	peer->name = NULL;
 	peer->key = NULL;
+	peer->group = conf->peer_group;
 	peer->protocol_config = NULL;
 
 	peer->next = conf->peers;
@@ -358,6 +359,9 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_so
 }
 
 bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_config *peer2) {
+	if (peer1->group != peer2->group)
+		return false;
+
 	if (!strequal(peer1->hostname, peer2->hostname))
 		return false;
 
@@ -385,6 +389,21 @@ void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
 	delete_peer(ctx, peer);
 }
 
+static inline fastd_peer_group* find_peer_group(fastd_peer_group *group, const fastd_peer_group_config *config) {
+	if (group->conf == config)
+		return group;
+
+	fastd_peer_group *child;
+	for (child = group->children; child; child = child->next) {
+		fastd_peer_group *ret = find_peer_group(child, config);
+
+		if (ret)
+			return ret;
+	}
+
+	return NULL;
+}
+
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	fastd_peer *peer = malloc(sizeof(fastd_peer));
 
@@ -392,11 +411,12 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	ctx->peers = peer;
 
 	peer->config = peer_conf;
+	peer->group = find_peer_group(ctx->peer_group, peer_conf->group);
 	peer->protocol_state = NULL;
 	peer->sock = NULL;
 	setup_peer(ctx, peer);
 
-	pr_verbose(ctx, "adding peer %P", peer);
+	pr_verbose(ctx, "adding peer %P (group `%s')", peer, peer->group->conf->name);
 
 	return peer;
 }

@@ -557,6 +557,42 @@ static void on_down(fastd_context *ctx) {
 	free(cwd);
 }
 
+static fastd_peer_group* init_peer_group(const fastd_peer_group_config *config, fastd_peer_group *parent) {
+	fastd_peer_group *ret = calloc(1, sizeof(fastd_peer_group));
+
+	ret->conf = config;
+	ret->parent = parent;
+
+	fastd_peer_group **children = &ret->children;
+	fastd_peer_group_config *child_config;
+
+	for (child_config = config->children; child_config; child_config = child_config->next) {
+		*children = init_peer_group(child_config, ret);
+		children = &(*children)->next;
+	}
+
+	return ret;
+}
+
+static void init_peer_groups(fastd_context *ctx) {
+	ctx->peer_group = init_peer_group(ctx->conf->peer_group, NULL);
+}
+
+static void free_peer_group(fastd_peer_group *group) {
+	while (group->children) {
+		fastd_peer_group *child = group->children;
+		group->children = group->children->next;
+
+		free_peer_group(child);
+	}
+
+	free(group);
+}
+
+static void delete_peer_groups(fastd_context *ctx) {
+	free_peer_group(ctx->peer_group);
+}
+
 static void init_peers(fastd_context *ctx) {
 	fastd_peer_config *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
@@ -962,6 +998,7 @@ int main(int argc, char *argv[]) {
 
 	init_tuntap(&ctx);
 
+	init_peer_groups(&ctx);
 	init_peers(&ctx);
 
 	if (conf.daemon) {
@@ -1009,6 +1046,7 @@ int main(int argc, char *argv[]) {
 	on_down(&ctx);
 
 	delete_peers(&ctx);
+	delete_peer_groups(&ctx);
 
 	close_tuntap(&ctx);
 	close_sockets(&ctx);

@@ -34,6 +34,7 @@ struct _fastd_peer {
 	fastd_peer *next;
 
 	const fastd_peer_config *config;
+	fastd_peer_group *group;
 
 	fastd_socket *sock;
 	fastd_peer_address address;
@@ -65,6 +66,7 @@ struct _fastd_peer_config {
 	fastd_peer_address address;
 	bool dynamic_float;
 	char *key;
+	const fastd_peer_group_config *group;
 
 	fastd_protocol_peer_config *protocol_config;
 };

@@ -144,6 +144,28 @@ struct _fastd_socket {
 	fastd_peer *peer;
 };
 
+struct _fastd_peer_group_config {
+	fastd_peer_group_config *next;
+	fastd_peer_group_config *parent;
+	fastd_peer_group_config *children;
+
+	char *name;
+	fastd_string_stack *peer_dirs;
+
+	/* contraints */
+	unsigned max_connections;
+};
+
+struct _fastd_peer_group {
+	fastd_peer_group *next;
+	fastd_peer_group *parent;
+	fastd_peer_group *children;
+
+	const fastd_peer_group_config *conf;
+
+	unsigned n_connections;
+};
+
 struct _fastd_config {
 	int log_stderr_level;
 	int log_syslog_level;
@@ -187,7 +209,7 @@ struct _fastd_config {
 	const fastd_crypto_ghash *crypto_ghash;
 #endif
 
-	fastd_string_stack *peer_dirs;
+	fastd_peer_group_config *peer_group;
 	fastd_peer_config *peers;
 
 	unsigned n_floating;
@@ -229,6 +251,7 @@ struct _fastd_context {
 	struct timespec now;
 
 	unsigned n_peers;
+	fastd_peer_group *peer_group;
 	fastd_peer *peers;
 	fastd_queue task_queue;
 
@@ -284,6 +307,8 @@ bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *nam
 bool fastd_config_crypto(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl);
 bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level);
 void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fastd_peer_address *address, const char *bindtodev, bool default_v4, bool default_v6);
+void fastd_config_peer_group_push(fastd_context *ctx, fastd_config *conf, const char *name);
+void fastd_config_peer_group_pop(fastd_context *ctx, fastd_config *conf);
 void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
 void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);
 void fastd_config_release(fastd_context *ctx, fastd_config *conf);
