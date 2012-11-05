@@ -618,26 +618,33 @@ static inline void update_time(fastd_context *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
-static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
-	if (fastd_peer_may_connect(ctx, peer)) {
-		if (!fastd_peer_is_established(peer))
-			fastd_peer_reset_socket(ctx, peer);
+static inline void schedule_new_handshake(fastd_context *ctx, fastd_peer *peer) {
+	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
+}
 
-		if (peer->sock) {
-			if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
-			    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
-				pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
-			}
-			else {
-				pr_debug(ctx, "sending handshake to %P...", peer);
-				peer->last_handshake = ctx->now;
-				peer->last_handshake_address = peer->address;
-				ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->address, peer->config);
-			}
+static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
+	if (!fastd_peer_may_connect(ctx, peer)) {
+		schedule_new_handshake(ctx, peer);
+		return;
+	}
+
+	if (!fastd_peer_is_established(peer))
+		fastd_peer_reset_socket(ctx, peer);
+
+	if (peer->sock) {
+		if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
+		    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
+			pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
+		}
+		else {
+			pr_debug(ctx, "sending handshake to %P...", peer);
+			peer->last_handshake = ctx->now;
+			peer->last_handshake_address = peer->address;
+			ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->address, peer->config);
 		}
 	}
 
-	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
+	schedule_new_handshake(ctx, peer);
 }
 
 static void handle_tasks(fastd_context *ctx) {
@@ -645,10 +652,15 @@ static void handle_tasks(fastd_context *ctx) {
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
-			if (fastd_peer_is_dynamic(task->peer) && !(fastd_peer_is_floating(task->peer) && fastd_peer_is_established(task->peer)))
-				fastd_resolve_peer(ctx, task->peer);
-			else
+			if (fastd_peer_is_dynamic(task->peer) && !(fastd_peer_is_floating(task->peer) && fastd_peer_is_established(task->peer))) {
+				if (fastd_peer_may_connect(ctx, task->peer))
+					fastd_resolve_peer(ctx, task->peer);
+				else
+					schedule_new_handshake(ctx, task->peer);
+			}
+			else {
 				send_handshake(ctx, task->peer);
+			}
 			break;
 
 		case TASK_KEEPALIVE:
