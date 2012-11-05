@@ -618,7 +618,7 @@ static inline void update_time(fastd_context *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
-static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
+static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
 	if (fastd_peer_may_connect(ctx, peer)) {
 		if (!fastd_peer_is_established(peer))
 			fastd_peer_reset_socket(ctx, peer);
