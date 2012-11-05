@@ -326,22 +326,25 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_so
 	else {
 		fastd_peer *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (fastd_peer_address_equal(&peer->address, addr)) {
-				if (peer == new_peer)
-					break;
+			if (!fastd_peer_address_equal(&peer->address, addr))
+				continue;
 
-				if (fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer)) {
-					if (fastd_peer_is_established(peer))
-						fastd_peer_reset(ctx, peer);
+			if (peer == new_peer)
+				break;
 
-					memset(&peer->address, 0, sizeof(fastd_peer_address));
-					break;
-				}
-				else {
-					memset(&new_peer->address, 0, sizeof(fastd_peer_address));
-					return false;
-				}
+			if (!fastd_peer_is_floating(peer)) {
+				if (fastd_peer_is_established(new_peer))
+					fastd_peer_reset(ctx, new_peer);
+
+				memset(&new_peer->address, 0, sizeof(fastd_peer_address));
+				return false;
 			}
+
+			if (fastd_peer_is_established(peer))
+				fastd_peer_reset(ctx, peer);
+
+			memset(&peer->address, 0, sizeof(fastd_peer_address));
+			break;
 		}
 	}
 
