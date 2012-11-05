@@ -159,6 +159,15 @@ static inline void free_socket(fastd_context *ctx, fastd_peer *peer) {
 	}
 }
 
+static bool has_group_config_constraints(const fastd_peer_group_config *group) {
+	for (; group; group = group->parent) {
+		if (group->max_connections)
+			return true;
+	}
+
+	return false;
+}
+
 void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer) {
 	if (!fastd_peer_is_socket_dynamic(peer))
 		return;
@@ -181,6 +190,36 @@ void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer) {
 		else
 			peer->sock = fastd_socket_open(ctx, peer, AF_INET6);
 	}
+}
+
+static inline fastd_peer_group* find_peer_group(fastd_peer_group *group, const fastd_peer_group_config *config) {
+	if (group->conf == config)
+		return group;
+
+	fastd_peer_group *child;
+	for (child = group->children; child; child = child->next) {
+		fastd_peer_group *ret = find_peer_group(child, config);
+
+		if (ret)
+			return ret;
+	}
+
+	return NULL;
+}
+
+static inline bool is_group_in(fastd_peer_group *group1, fastd_peer_group *group2) {
+	while (group1) {
+		if (group1 == group2)
+			return true;
+
+		group1 = group1->parent;
+	}
+
+	return false;
+}
+
+static bool is_peer_in_group(fastd_peer *peer, fastd_peer_group *group) {
+	return is_group_in(peer->group, group);
 }
 
 static void reset_peer(fastd_context *ctx, fastd_peer *peer) {
@@ -227,8 +266,13 @@ static void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (!peer->protocol_state)
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
-	if (!fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer))
-		fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 0, 3000));
+	if (!fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer)) {
+		unsigned delay = 0;
+		if (has_group_config_constraints(peer->group->conf))
+			delay = fastd_rand(ctx, 0, 3000);
+
+		fastd_task_schedule_handshake(ctx, peer, delay);
+	}
 }
 
 static void delete_peer(fastd_context *ctx, fastd_peer *peer) {
@@ -387,36 +431,6 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
 void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
 	reset_peer(ctx, peer);
 	delete_peer(ctx, peer);
-}
-
-static inline fastd_peer_group* find_peer_group(fastd_peer_group *group, const fastd_peer_group_config *config) {
-	if (group->conf == config)
-		return group;
-
-	fastd_peer_group *child;
-	for (child = group->children; child; child = child->next) {
-		fastd_peer_group *ret = find_peer_group(child, config);
-
-		if (ret)
-			return ret;
-	}
-
-	return NULL;
-}
-
-static inline bool is_group_in(fastd_peer_group *group1, fastd_peer_group *group2) {
-	while (group1) {
-		if (group1 == group2)
-			return true;
-
-		group1 = group1->parent;
-	}
-
-	return false;
-}
-
-static bool is_peer_in_group(fastd_peer *peer, fastd_peer_group *group) {
-	return is_group_in(peer->group, group);
 }
 
 static inline unsigned count_established_group_peers(fastd_context *ctx, fastd_peer_group *group) {
