@@ -101,6 +101,7 @@ crypto		{ TOKEN(TOK_CRYPTO); }
 use		{ TOKEN(TOK_USE); }
 default		{ TOKEN(TOK_DEFAULT); }
 group		{ TOKEN(TOK_GROUP); }
+limit		{ TOKEN(TOK_LIMIT); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

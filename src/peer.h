@@ -90,6 +90,7 @@ void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
 void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer);
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
 void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer);
+bool fastd_peer_may_connect(fastd_context *ctx, fastd_peer *peer);
 bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *peer, fastd_socket *sock, const fastd_peer_address *addr);
 void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer);
 

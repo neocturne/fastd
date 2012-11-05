@@ -100,6 +100,7 @@
 %token TOK_USE
 %token TOK_DEFAULT
 %token TOK_GROUP
+%token TOK_LIMIT
 
 %token <addr4> TOK_ADDR4
 %token <addr6> TOK_ADDR6
@@ -152,6 +153,7 @@ statement:	TOK_LOG log ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_PEER peer '{' peer_conf '}'
 	|	TOK_PEER TOK_GROUP peer_group '{' config '}' peer_group_after
+	|	TOK_PEER TOK_LIMIT peer_limit ';'
 	|	TOK_FORWARD forward ';'
 	|	TOK_INCLUDE include ';'
 	;
@@ -373,6 +375,11 @@ peer_group:	TOK_STRING {
 peer_group_after:
 		{
 			fastd_config_peer_group_pop(ctx, conf);
+		}
+	;
+
+peer_limit:	TOK_INTEGER {
+			conf->peer_group->max_connections = $1;
 		}
 	;
 

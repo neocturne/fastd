@@ -404,6 +404,49 @@ static inline fastd_peer_group* find_peer_group(fastd_peer_group *group, const f
 	return NULL;
 }
 
+static inline bool is_group_in(fastd_peer_group *group1, fastd_peer_group *group2) {
+	while (group1) {
+		if (group1 == group2)
+			return true;
+
+		group1 = group1->parent;
+	}
+
+	return false;
+}
+
+static bool is_peer_in_group(fastd_peer *peer, fastd_peer_group *group) {
+	return is_group_in(peer->group, group);
+}
+
+static inline unsigned count_established_group_peers(fastd_context *ctx, fastd_peer_group *group) {
+	unsigned ret = 0;
+	fastd_peer *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (fastd_peer_is_established(peer) && is_peer_in_group(peer, group))
+			ret++;
+	}
+
+	return ret;
+}
+
+bool fastd_peer_may_connect(fastd_context *ctx, fastd_peer *peer) {
+	if (fastd_peer_is_established(peer))
+		return true;
+
+	fastd_peer_group *group;
+
+	for (group = peer->group; group; group = group->parent) {
+		if (!group->conf->max_connections)
+			continue;
+
+		if (count_established_group_peers(ctx, group) >= group->conf->max_connections)
+			return false;
+	}
+
+	return true;
+}
+
 fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	fastd_peer *peer = malloc(sizeof(fastd_peer));
 
@@ -427,6 +470,8 @@ void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
 		on_establish(ctx, peer);
 		pr_info(ctx, "connection with %P established.", peer);
 	}
+
+	return;
 }
 
 const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {

@@ -619,19 +619,21 @@ static inline void update_time(fastd_context *ctx) {
 }
 
 static inline void send_handshake(fastd_context *ctx, fastd_peer *peer) {
-	if (!fastd_peer_is_established(peer))
-		fastd_peer_reset_socket(ctx, peer);
+	if (fastd_peer_may_connect(ctx, peer)) {
+		if (!fastd_peer_is_established(peer))
+			fastd_peer_reset_socket(ctx, peer);
 
-	if (peer->sock) {
-		if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
-		    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
-			pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
-		}
-		else {
-			pr_debug(ctx, "sending handshake to %P...", peer);
-			peer->last_handshake = ctx->now;
-			peer->last_handshake_address = peer->address;
-			ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->address, peer->config);
+		if (peer->sock) {
+			if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
+			    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
+				pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
+			}
+			else {
+				pr_debug(ctx, "sending handshake to %P...", peer);
+				peer->last_handshake = ctx->now;
+				peer->last_handshake_address = peer->address;
+				ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->address, peer->config);
+			}
 		}
 	}
 
@@ -748,6 +750,11 @@ static void handle_socket(fastd_context *ctx, fastd_socket *sock) {
 	}
 
 	if (peer) {
+		if (!fastd_peer_may_connect(ctx, peer)) {
+			fastd_buffer_free(buffer);
+			return;
+		}
+
 		switch (*packet_type) {
 		case PACKET_DATA:
 			ctx->conf->protocol->handle_recv(ctx, peer, buffer);

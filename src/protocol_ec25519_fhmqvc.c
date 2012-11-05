@@ -559,6 +559,11 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_socket *sock, co
 
 	fastd_peer *peer = get_peer(ctx, peer_conf);
 
+	if (!fastd_peer_may_connect(ctx, peer)) {
+		pr_debug(ctx, "ignoring handshake from %P[%I] because of local constraints", peer, address);
+		return;
+	}
+
 	if (backoff(ctx, peer)) {
 		pr_debug(ctx, "received repeated handshakes from %P[%I], ignoring", peer, address);
 		return;
@@ -726,7 +731,7 @@ static void session_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buff
 }
 
 static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
-	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session)) {
+	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !is_session_valid(ctx, &peer->protocol_state->session)) {
 		fastd_buffer_free(buffer);
 		return;
 	}
