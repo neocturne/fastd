@@ -964,7 +964,7 @@ static void write_pid(fastd_context *ctx, pid_t pid) {
 	if (!ctx->conf->pid_file)
 		return;
 
-	int fd = open(ctx->conf->pid_file, O_WRONLY|O_CREAT, 0666);
+	int fd = open(ctx->conf->pid_file, O_WRONLY|O_CREAT|O_TRUNC, 0666);
 	if (fd < 0) {
 		pr_error_errno(ctx, "can't write PID file: open");
 		return;
