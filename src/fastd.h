@@ -47,7 +47,7 @@
 #include <unistd.h>
 
 
-#define FASTD_VERSION "6-rc1"
+#define FASTD_VERSION "6"
 
 
 /* This must be adjusted when new methods are added */
