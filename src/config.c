@@ -435,7 +435,7 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	if (peer_config)
 		token = START_PEER_CONFIG;
 	else
-		token = START_CONFIG;
+		token = conf->peer_group->parent ? START_PEER_GROUP_CONFIG : START_CONFIG;
 
 	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1);
 

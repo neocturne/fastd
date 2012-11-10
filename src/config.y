@@ -51,6 +51,7 @@
 }
 
 %token START_CONFIG
+%token START_PEER_GROUP_CONFIG
 %token START_PEER_CONFIG
 
 %token <num> TOK_INTEGER
@@ -131,6 +132,7 @@
 
 %%
 start:		START_CONFIG config
+	|	START_PEER_GROUP_CONFIG peer_group_config
 	|	START_PEER_CONFIG peer_conf
 	;
 
@@ -138,7 +140,13 @@ config:		config statement
 	|
 	;
 
-statement:	TOK_LOG log ';'
+peer_group_config:
+		peer_group_config peer_group_statement
+	|
+	;
+
+statement:	peer_group_statement
+	|	TOK_LOG log ';'
 	| 	TOK_INTERFACE interface ';'
 	| 	TOK_BIND bind ';'
 	|	TOK_MTU mtu ';'
@@ -151,10 +159,13 @@ statement:	TOK_LOG log ';'
 	|	TOK_ON TOK_DOWN on_down ';'
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
-	|	TOK_PEER peer '{' peer_conf '}'
-	|	TOK_PEER TOK_GROUP peer_group '{' config '}' peer_group_after
-	|	TOK_PEER TOK_LIMIT peer_limit ';'
 	|	TOK_FORWARD forward ';'
+	;
+
+peer_group_statement:
+		TOK_PEER peer '{' peer_conf '}'
+	|	TOK_PEER TOK_GROUP peer_group '{' peer_group_config '}' peer_group_after
+	|	TOK_PEER TOK_LIMIT peer_limit ';'
 	|	TOK_INCLUDE include ';'
 	;
 
