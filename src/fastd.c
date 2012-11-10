@@ -598,10 +598,8 @@ static void init_peers(fastd_context *ctx) {
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
 		ctx->conf->protocol->peer_configure(ctx, peer_conf);
 
-		if (peer_conf->enabled) {
+		if (peer_conf->enabled)
 			fastd_peer_add(ctx, peer_conf);
-			ctx->n_peers++;
-		}
 	}
 }
 

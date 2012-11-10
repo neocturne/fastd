@@ -288,6 +288,7 @@ static void delete_peer(fastd_context *ctx, fastd_peer *peer) {
 
 	ctx->conf->protocol->free_peer_state(ctx, peer);
 	free(peer);
+	ctx->n_peers--;
 }
 
 
@@ -474,6 +475,7 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	setup_peer(ctx, peer);
 
 	pr_verbose(ctx, "adding peer %P (group `%s')", peer, peer->group->conf->name);
+	ctx->n_peers++;
 
 	return peer;
 }
