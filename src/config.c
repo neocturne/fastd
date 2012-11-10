@@ -117,6 +117,7 @@ static void default_config(fastd_config *conf) {
 #endif
 
 	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config));
+	conf->peer_group->name = strdup("default");
 }
 
 static bool config_match(const char *opt, ...) {
