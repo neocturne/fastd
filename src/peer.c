@@ -366,7 +366,7 @@ bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_
 
 bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_socket *sock, const fastd_peer_address *addr) {
 	if (addr->sa.sa_family == AF_UNSPEC) {
-		if (new_peer->address.sa.sa_family != AF_UNSPEC)
+		if (fastd_peer_is_established(new_peer))
 			fastd_peer_reset(ctx, new_peer);
 	}
 	else {
@@ -379,14 +379,14 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_so
 				break;
 
 			if (!fastd_peer_is_floating(peer)) {
-				if (new_peer->address.sa.sa_family != AF_UNSPEC)
+				if (fastd_peer_is_established(new_peer))
 					fastd_peer_reset(ctx, new_peer);
 
 				memset(&new_peer->address, 0, sizeof(fastd_peer_address));
 				return false;
 			}
 
-			if (peer->address.sa.sa_family != AF_UNSPEC)
+			if (fastd_peer_is_established(peer))
 				fastd_peer_reset(ctx, peer);
 
 			memset(&peer->address, 0, sizeof(fastd_peer_address));
