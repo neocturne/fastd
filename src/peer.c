@@ -169,6 +169,11 @@ static bool has_group_config_constraints(const fastd_peer_group_config *group) {
 }
 
 void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer) {
+	if (peer->address.sa.sa_family == AF_UNSPEC) {
+		free_socket(ctx, peer);
+		return;
+	}
+
 	if (!fastd_peer_is_socket_dynamic(peer))
 		return;
 
