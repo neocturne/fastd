@@ -308,9 +308,14 @@ static void init_tuntap(fastd_context *ctx) {
 	if (ctl_sock < 0)
 		exit_errno(ctx, "socket");
 
-	ifr.ifr_mtu = ctx->conf->mtu;
-	if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
-		exit_errno(ctx, "SIOCSIFMTU ioctl failed");
+	if (ioctl(ctl_sock, SIOCGIFMTU, &ifr) < 0)
+		exit_errno(ctx, "SIOCGIFMTU ioctl failed");
+
+	if (ifr.ifr_mtu != ctx->conf->mtu) {
+		ifr.ifr_mtu = ctx->conf->mtu;
+		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
+			exit_errno(ctx, "SIOCSIFMTU ioctl failed");
+	}
 
 	if (close(ctl_sock))
 		pr_error_errno(ctx, "close");
