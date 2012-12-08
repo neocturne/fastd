@@ -283,7 +283,7 @@ static void init_tuntap(fastd_context *ctx) {
 	memset(&ifr, 0, sizeof(ifr));
 
 	if (ctx->conf->ifname)
-		strncpy(ifr.ifr_name, ctx->conf->ifname, IFNAMSIZ);
+		strncpy(ifr.ifr_name, ctx->conf->ifname, IFNAMSIZ-1);
 
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
@@ -302,7 +302,7 @@ static void init_tuntap(fastd_context *ctx) {
 	if (ioctl(ctx->tunfd, TUNSETIFF, &ifr) < 0)
 		exit_errno(ctx, "TUNSETIFF ioctl failed");
 
-	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ);
+	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
 
 	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (ctl_sock < 0)
