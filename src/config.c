@@ -236,10 +236,12 @@ void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fas
 	addr->addr = *address;
 	addr->bindtodev = bindtodev ? strdup(bindtodev) : NULL;
 
-	if (address->sa.sa_family != AF_INET6 && (default_v4 || !conf->bind_addr_default_v4))
+	fastd_peer_address_simplify(&addr->addr);
+
+	if (addr->addr.sa.sa_family != AF_INET6 && (default_v4 || !conf->bind_addr_default_v4))
 		conf->bind_addr_default_v4 = addr;
 
-	if (address->sa.sa_family != AF_INET && (default_v6 || !conf->bind_addr_default_v6))
+	if (addr->addr.sa.sa_family != AF_INET && (default_v6 || !conf->bind_addr_default_v6))
 		conf->bind_addr_default_v6 = addr;
 }
 

@@ -347,6 +347,7 @@ peer_remote:	TOK_ADDR4 port {
 			conf->peers->address.in.sin_family = AF_INET;
 			conf->peers->address.in.sin_addr = $1;
 			conf->peers->address.in.sin_port = htons($2);
+			fastd_peer_address_simplify(&conf->peers->address);
 		}
 	|	TOK_ADDR6 port {
 			free(conf->peers->hostname);
@@ -355,6 +356,7 @@ peer_remote:	TOK_ADDR4 port {
 			conf->peers->address.in6.sin6_family = AF_INET6;
 			conf->peers->address.in6.sin6_addr = $1;
 			conf->peers->address.in6.sin6_port = htons($2);
+			fastd_peer_address_simplify(&conf->peers->address);
 		}
 	|	maybe_af TOK_STRING port maybe_float {
 			free(conf->peers->hostname);

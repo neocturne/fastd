@@ -78,6 +78,7 @@ static void* resolve_peer(void *varg) {
 	if (!error) {
 		pr_verbose(arg->ctx, "resolved host `%s' successfully", arg->hostname);
 		memcpy(&ret.addr, res->ai_addr, res->ai_addrlen);
+		fastd_peer_address_simplify(&ret.addr);
 	}
 	else {
 		ret.addr.sa.sa_family = AF_UNSPEC;
