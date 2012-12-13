@@ -369,6 +369,18 @@ bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_
 	return true;
 }
 
+void fastd_peer_address_simplify(fastd_peer_address *addr) {
+	if (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&addr->in6.sin6_addr)) {
+		struct sockaddr_in6 mapped = addr->in6;
+
+		memset(addr, 0, sizeof(fastd_peer_address));
+		addr->in.sin_family = AF_INET;
+		addr->in.sin_port = mapped.sin6_port;
+		memcpy(&addr->in.sin_addr.s_addr, &mapped.sin6_addr.s6_addr[12], 4);
+	}
+}
+
+
 bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_socket *sock, const fastd_peer_address *addr) {
 	if (addr->sa.sa_family == AF_UNSPEC) {
 		if (fastd_peer_is_established(new_peer))

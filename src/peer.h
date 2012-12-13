@@ -79,6 +79,7 @@ struct _fastd_peer_eth_addr {
 
 
 bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2);
+void fastd_peer_address_simplify(fastd_peer_address *addr);
 
 fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf);
 void fastd_peer_config_free(fastd_peer_config *peer);

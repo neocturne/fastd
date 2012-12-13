@@ -748,14 +748,7 @@ static void handle_socket(fastd_context *ctx, fastd_socket *sock) {
 	packet_type = buffer.data;
 	buffer.len = len;
 
-	if (recvaddr.sa.sa_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&recvaddr.in6.sin6_addr)) {
-		struct sockaddr_in6 mapped = recvaddr.in6;
-
-		memset(&recvaddr, 0, sizeof(recvaddr));
-		recvaddr.in.sin_family = AF_INET;
-		recvaddr.in.sin_port = mapped.sin6_port;
-		memcpy(&recvaddr.in.sin_addr.s_addr, &mapped.sin6_addr.s6_addr[12], 4);
-	}
+	fastd_peer_address_simplify(&recvaddr);
 
 	fastd_buffer_push_head(&buffer, 1);
 
