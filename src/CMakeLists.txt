@@ -33,4 +33,4 @@ add_executable(fastd
 set_target_properties(fastd PROPERTIES COMPILE_FLAGS -pthread LINK_FLAGS -pthread)
 target_link_libraries(fastd rt ${UECC_LIBRARY} ${NACL_LIBRARY})
 
-install(TARGETS fastd RUNTIME DESTINATION sbin)
+install(TARGETS fastd RUNTIME DESTINATION bin)
