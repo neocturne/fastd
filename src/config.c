@@ -40,52 +40,52 @@
 #include <sys/types.h>
 
 
-extern const fastd_protocol fastd_protocol_ec25519_fhmqvc;
+extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
-extern const fastd_method fastd_method_null;
+extern const fastd_method_t fastd_method_null;
 
 #ifdef WITH_METHOD_XSALSA20_POLY1305
-extern const fastd_method fastd_method_xsalsa20_poly1305;
+extern const fastd_method_t fastd_method_xsalsa20_poly1305;
 #endif
 #ifdef WITH_METHOD_AES128_GCM
-extern const fastd_method fastd_method_aes128_gcm;
+extern const fastd_method_t fastd_method_aes128_gcm;
 #endif
 
 
 #ifdef USE_CRYPTO_AES128CTR
 #ifdef WITH_CRYPTO_AES128CTR_NACL
-extern const fastd_crypto_aes128ctr fastd_crypto_aes128ctr_nacl;
+extern const fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_nacl;
 #endif
 #ifdef WITH_CRYPTO_AES128CTR_LINUX
-extern const fastd_crypto_aes128ctr fastd_crypto_aes128ctr_linux;
+extern const fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_linux;
 #endif
 
 #ifdef WITH_CRYPTO_AES128CTR_NACL
-static const fastd_crypto_aes128ctr *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_nacl;
+static const fastd_crypto_aes128ctr_t *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_nacl;
 #else
-static const fastd_crypto_aes128ctr *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_linux;
+static const fastd_crypto_aes128ctr_t *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_linux;
 #endif
 
 #endif
 
 #ifdef USE_CRYPTO_GHASH
 #ifdef WITH_CRYPTO_GHASH_BUILTIN
-extern const fastd_crypto_ghash fastd_crypto_ghash_builtin;
+extern const fastd_crypto_ghash_t fastd_crypto_ghash_builtin;
 #endif
 #ifdef WITH_CRYPTO_GHASH_LINUX
-extern const fastd_crypto_ghash fastd_crypto_ghash_linux;
+extern const fastd_crypto_ghash_t fastd_crypto_ghash_linux;
 #endif
 
 #ifdef WITH_CRYPTO_GHASH_BUILTIN
-static const fastd_crypto_ghash *fastd_crypto_ghash_default = &fastd_crypto_ghash_builtin;
+static const fastd_crypto_ghash_t *fastd_crypto_ghash_default = &fastd_crypto_ghash_builtin;
 #else
-static const fastd_crypto_ghash *fastd_crypto_ghash_default = &fastd_crypto_ghash_linux;
+static const fastd_crypto_ghash_t *fastd_crypto_ghash_default = &fastd_crypto_ghash_linux;
 #endif
 
 #endif
 
-static void default_config(fastd_config *conf) {
-	memset(conf, 0, sizeof(fastd_config));
+static void default_config(fastd_config_t *conf) {
+	memset(conf, 0, sizeof(fastd_config_t));
 
 	conf->log_stderr_level = -1;
 	conf->log_syslog_level = -1;
@@ -116,7 +116,7 @@ static void default_config(fastd_config *conf) {
 	conf->crypto_ghash = fastd_crypto_ghash_default;
 #endif
 
-	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config));
+	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
 	conf->peer_group->name = strdup("default");
 }
 
@@ -139,7 +139,7 @@ static bool config_match(const char *opt, ...) {
 	return match;
 }
 
-bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *name) {
+bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
 	if (!strcmp(name, "ec25519-fhmqvc"))
 		conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	else
@@ -148,7 +148,7 @@ bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *n
 	return true;
 }
 
-static inline const fastd_method* parse_method_name(const char *name) {
+static inline const fastd_method_t* parse_method_name(const char *name) {
 	if (!strcmp(name, "null"))
 		return &fastd_method_null;
 #ifdef WITH_METHOD_XSALSA20_POLY1305
@@ -163,8 +163,8 @@ static inline const fastd_method* parse_method_name(const char *name) {
 		return NULL;
 }
 
-bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name) {
-	const fastd_method *method = parse_method_name(name);
+bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
+	const fastd_method_t *method = parse_method_name(name);
 
 	if (!method)
 		return false;
@@ -185,7 +185,7 @@ bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *nam
 	exit_bug(ctx, "MAX_METHODS too low");
 }
 
-bool fastd_config_crypto(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl) {
+bool fastd_config_crypto(fastd_context_t *ctx, fastd_config_t *conf, const char *alg, const char *impl) {
 #ifdef USE_CRYPTO_AES128CTR
 	if (!strcasecmp(alg, "aes128-ctr") || !strcasecmp(alg, "aes128") || !strcasecmp(alg, "aes-ctr") || !strcasecmp(alg, "aes")) {
 		if (!strcasecmp(impl, "default"))
@@ -227,8 +227,8 @@ bool fastd_config_crypto(fastd_context *ctx, fastd_config *conf, const char *alg
 	return false;
 }
 
-void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fastd_peer_address *address, const char *bindtodev, bool default_v4, bool default_v6) {
-	fastd_bind_address *addr = malloc(sizeof(fastd_bind_address));
+void fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+	fastd_bind_address_t *addr = malloc(sizeof(fastd_bind_address_t));
 	addr->next = conf->bind_addrs;
 	conf->bind_addrs = addr;
 	conf->n_bind_addrs++;
@@ -245,8 +245,8 @@ void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fas
 		conf->bind_addr_default_v6 = addr;
 }
 
-void fastd_config_peer_group_push(fastd_context *ctx, fastd_config *conf, const char *name) {
-	fastd_peer_group_config *group = calloc(1, sizeof(fastd_peer_group_config));
+void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
+	fastd_peer_group_config_t *group = calloc(1, sizeof(fastd_peer_group_config_t));
 	group->name = strdup(name);
 
 	group->parent = conf->peer_group;
@@ -257,13 +257,13 @@ void fastd_config_peer_group_push(fastd_context *ctx, fastd_config *conf, const 
 	conf->peer_group = group;
 }
 
-void fastd_config_peer_group_pop(fastd_context *ctx, fastd_config *conf) {
+void fastd_config_peer_group_pop(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->peer_group = conf->peer_group->parent;
 }
 
-static void free_peer_group(fastd_peer_group_config *group) {
+static void free_peer_group(fastd_peer_group_config_t *group) {
 	while (group->children) {
-		fastd_peer_group_config *next = group->children->next;
+		fastd_peer_group_config_t *next = group->children->next;
 		free_peer_group(group->children);
 		group->children = next;
 	}
@@ -273,11 +273,11 @@ static void free_peer_group(fastd_peer_group_config *group) {
 	free(group);
 }
 
-static bool has_peer_group_peer_dirs(const fastd_peer_group_config *group) {
+static bool has_peer_group_peer_dirs(const fastd_peer_group_config_t *group) {
 	if (group->peer_dirs)
 		return true;
 
-	const fastd_peer_group_config *child;
+	const fastd_peer_group_config_t *child;
 	for (child = group->children; child; child = child->next) {
 		if (has_peer_group_peer_dirs(child))
 			return true;
@@ -286,7 +286,7 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_config *group) {
 	return false;
 }
 
-bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level) {
+bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, int level) {
 	char *name2 = strdup(name);
 	char *name3 = strdup(name);
 
@@ -298,7 +298,7 @@ bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const cha
 	if (!chdir(dir)) {
 		char *logdir = get_current_dir_name();
 
-		fastd_log_file *file = malloc(sizeof(fastd_log_file));
+		fastd_log_file_t *file = malloc(sizeof(fastd_log_file_t));
 		file->filename = malloc(strlen(logdir) + 1 + strlen(base) + 1);
 
 		strcpy(file->filename, logdir);
@@ -323,7 +323,7 @@ bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const cha
 	return true;
 }
 
-static void read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir) {
+static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir) {
 	DIR *dirh = opendir(".");
 
 	if (dirh) {
@@ -369,7 +369,7 @@ static void read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *di
 	}
 }
 
-void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir) {
+void fastd_read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir) {
 	char *oldcwd = get_current_dir_name();
 
 	if (!chdir(dir)) {
@@ -389,7 +389,7 @@ void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir
 	free(oldcwd);
 }
 
-bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth) {
+bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error(ctx, "maximum config include depth exceeded");
 
@@ -400,7 +400,7 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	FILE *file;
 	yyscan_t scanner;
 	fastd_config_pstate *ps;
-	fastd_string_stack *strings = NULL;
+	fastd_string_stack_t *strings = NULL;
 
 	fastd_config_yylex_init(&scanner);
 	ps = fastd_config_pstate_new();
@@ -479,7 +479,7 @@ bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filen
 	return ret;
 }
 
-static void count_peers(fastd_context *ctx, fastd_config *conf) {
+static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->n_floating = 0;
 	conf->n_v4 = 0;
 	conf->n_v6 = 0;
@@ -487,7 +487,7 @@ static void count_peers(fastd_context *ctx, fastd_config *conf) {
 	conf->n_dynamic_v4 = 0;
 	conf->n_dynamic_v6 = 0;
 
-	fastd_peer_config *peer;
+	fastd_peer_config_t *peer;
 	for (peer = conf->peers; peer; peer = peer->next) {
 		switch (peer->address.sa.sa_family) {
 		case AF_UNSPEC:
@@ -561,7 +561,7 @@ static void print_usage(const char *options, const char *message) {
 	puts(message);
 }
 
-static void usage(fastd_context *ctx, fastd_config *conf) {
+static void usage(fastd_context_t *ctx, fastd_config_t *conf) {
 #define OR ", "
 #define OPTION(func, options, message) print_usage("  " options, message);
 #define OPTION_ARG(func, options, arg, message) print_usage("  " options " " arg, message);
@@ -576,12 +576,12 @@ static void usage(fastd_context *ctx, fastd_config *conf) {
 #undef OPTION_ARG
 }
 
-static void version(fastd_context *ctx, fastd_config *conf) {
+static void version(fastd_context_t *ctx, fastd_config_t *conf) {
 	puts("fastd " FASTD_VERSION);
 	exit(0);
 }
 
-static int parse_log_level(fastd_context *ctx, const char *arg) {
+static int parse_log_level(fastd_context_t *ctx, const char *arg) {
 	if (!strcmp(arg, "fatal"))
 		return LOG_CRIT;
 	else if (!strcmp(arg, "error"))
@@ -600,20 +600,20 @@ static int parse_log_level(fastd_context *ctx, const char *arg) {
 
 
 
-static void option_log_level(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_log_level(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	conf->log_stderr_level = parse_log_level(ctx, arg);
 }
 
-static void option_syslog_level(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_syslog_level(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	conf->log_syslog_level = parse_log_level(ctx, arg);
 }
 
-static void option_syslog_ident(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_syslog_ident(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->log_syslog_ident);
 	conf->log_syslog_ident = strdup(arg);
 }
 
-static void option_config(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_config(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	if (!strcmp(arg, "-"))
 		arg = NULL;
 
@@ -621,18 +621,18 @@ static void option_config(fastd_context *ctx, fastd_config *conf, const char *ar
 		exit(1);
 }
 
-static void option_config_peer(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_config_peer(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	fastd_peer_config_new(ctx, conf);
 
 	if(!fastd_read_config(ctx, conf, arg, true, 0))
 		exit(1);
 }
 
-static void option_config_peer_dir(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_config_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	fastd_read_peer_dir(ctx, conf, arg);
 }
 
-static void option_mode(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_mode(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	if (!strcmp(arg, "tap"))
 		conf->mode = MODE_TAP;
 	else if (!strcmp(arg, "tun"))
@@ -641,12 +641,12 @@ static void option_mode(fastd_context *ctx, fastd_config *conf, const char *arg)
 		exit_error(ctx, "invalid mode `%s'", arg);
 }
 
-static void option_interface(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_interface(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->ifname);
 	conf->ifname = strdup(arg);
 }
 
-static void option_mtu(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_mtu(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	char *endptr;
 
 	conf->mtu = strtol(arg, &endptr, 10);
@@ -654,7 +654,7 @@ static void option_mtu(fastd_context *ctx, fastd_config *conf, const char *arg) 
 		exit_error(ctx, "invalid mtu `%s'", arg);
 }
 
-static void option_bind(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	long l;
 	char *charptr;
 	char *endptr;
@@ -691,7 +691,7 @@ static void option_bind(fastd_context *ctx, fastd_config *conf, const char *arg)
 		l = 0;
 	}
 
-	fastd_peer_address addr = {};
+	fastd_peer_address_t addr = {};
 
 	if (strcmp(addrstr, "any") == 0) {
 		/* nothing to do */
@@ -716,21 +716,21 @@ static void option_bind(fastd_context *ctx, fastd_config *conf, const char *arg)
 	fastd_config_bind_address(ctx, conf, &addr, NULL, false, false);
 }
 
-static void option_protocol(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	if (!fastd_config_protocol(ctx, conf, arg))
 		exit_error(ctx, "invalid protocol `%s'", arg);
 }
 
-static void option_method(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_method(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	if (!fastd_config_method(ctx, conf, arg))
 		exit_error(ctx, "invalid method `%s'", arg);
 }
 
-static void option_forward(fastd_context *ctx, fastd_config *conf) {
+static void option_forward(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->forward = true;
 }
 
-static void option_on_up(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_on_up(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->on_up);
 	free(conf->on_up_dir);
 
@@ -738,7 +738,7 @@ static void option_on_up(fastd_context *ctx, fastd_config *conf, const char *arg
 	conf->on_up_dir = get_current_dir_name();
 }
 
-static void option_on_down(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_on_down(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->on_down);
 	free(conf->on_down_dir);
 
@@ -746,7 +746,7 @@ static void option_on_down(fastd_context *ctx, fastd_config *conf, const char *a
 	conf->on_down_dir = get_current_dir_name();
 }
 
-static void option_on_establish(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_on_establish(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->on_establish);
 	free(conf->on_establish_dir);
 
@@ -754,7 +754,7 @@ static void option_on_establish(fastd_context *ctx, fastd_config *conf, const ch
 	conf->on_establish_dir = get_current_dir_name();
 }
 
-static void option_on_disestablish(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_on_disestablish(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->on_disestablish);
 	free(conf->on_disestablish_dir);
 
@@ -762,31 +762,31 @@ static void option_on_disestablish(fastd_context *ctx, fastd_config *conf, const
 	conf->on_disestablish_dir = get_current_dir_name();
 }
 
-static void option_daemon(fastd_context *ctx, fastd_config *conf) {
+static void option_daemon(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->daemon = true;
 }
 
-static void option_pid_file(fastd_context *ctx, fastd_config *conf, const char *arg) {
+static void option_pid_file(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->pid_file);
 	conf->pid_file = strdup(arg);
 }
 
-static void option_generate_key(fastd_context *ctx, fastd_config *conf) {
+static void option_generate_key(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->generate_key = true;
 	conf->show_key = false;
 }
 
-static void option_show_key(fastd_context *ctx, fastd_config *conf) {
+static void option_show_key(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->generate_key = false;
 	conf->show_key = true;
 }
 
-static void option_machine_readable(fastd_context *ctx, fastd_config *conf) {
+static void option_machine_readable(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->machine_readable = true;
 }
 
 
-void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]) {
+void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]) {
 #define OR ,
 #define OPTION(func, options, message) \
 	if(config_match(argv[i], options, NULL)) {	\
@@ -838,10 +838,10 @@ void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *con
 #undef OPTION_ARG
 }
 
-static void reconfigure_read_peer_dirs(fastd_context *ctx, fastd_config *new_conf, fastd_string_stack *dirs) {
+static void reconfigure_read_peer_dirs(fastd_context_t *ctx, fastd_config_t *new_conf, fastd_string_stack_t *dirs) {
 	char *oldcwd = get_current_dir_name();
 
-	fastd_string_stack *dir;
+	fastd_string_stack_t *dir;
 	for (dir = dirs; dir; dir = dir->next) {
 		if (!chdir(dir->str))
 			read_peer_dir(ctx, new_conf, dir->str);
@@ -855,18 +855,18 @@ static void reconfigure_read_peer_dirs(fastd_context *ctx, fastd_config *new_con
 	free(oldcwd);
 }
 
-static void reconfigure_read_peer_group(fastd_context *ctx, fastd_config *new_conf) {
+static void reconfigure_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {
 	reconfigure_read_peer_dirs(ctx, new_conf, new_conf->peer_group->peer_dirs);
 
-	fastd_peer_group_config *group;
+	fastd_peer_group_config_t *group;
 	for (group = new_conf->peer_group->children; group; group = group->next) {
 		new_conf->peer_group = group;
 		reconfigure_read_peer_group(ctx, new_conf);
 	}
 }
 
-static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config **old_peers, fastd_peer_config **new_peers) {
-	fastd_peer_config **peer, **next, **new_peer, **new_next;
+static void reconfigure_handle_old_peers(fastd_context_t *ctx, fastd_peer_config_t **old_peers, fastd_peer_config_t **new_peers) {
+	fastd_peer_config_t **peer, **next, **new_peer, **new_next;
 	for (peer = old_peers; *peer; peer = next) {
 		next = &(*peer)->next;
 
@@ -882,7 +882,7 @@ static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config *
 				if (fastd_peer_config_equal(*peer, *new_peer)) {
 					pr_verbose(ctx, "peer `%s' unchanged", (*peer)->name);
 
-					fastd_peer_config *free_peer = *new_peer;
+					fastd_peer_config_t *free_peer = *new_peer;
 					*new_peer = *new_next;
 					fastd_peer_config_free(free_peer);
 					peer = NULL;
@@ -900,7 +900,7 @@ static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config *
 		if (peer && (!new_peer || !*new_peer)) {
 			pr_verbose(ctx, "removing peer `%s'", (*peer)->name);
 
-			fastd_peer_config *free_peer = *peer;
+			fastd_peer_config_t *free_peer = *peer;
 			*peer = *next;
 			next = peer;
 
@@ -909,16 +909,16 @@ static void reconfigure_handle_old_peers(fastd_context *ctx, fastd_peer_config *
 	}
 }
 
-static void reconfigure_reset_waiting(fastd_context *ctx) {
-	fastd_peer *peer;
+static void reconfigure_reset_waiting(fastd_context_t *ctx) {
+	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
 		if (!fastd_peer_is_established(peer))
 			fastd_peer_reset(ctx, peer);
 	}
 }
 
-static void reconfigure_handle_new_peers(fastd_context *ctx, fastd_peer_config **peers, fastd_peer_config *new_peers) {
-	fastd_peer_config *peer, *next;
+static void reconfigure_handle_new_peers(fastd_context_t *ctx, fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
+	fastd_peer_config_t *peer, *next;
 	for (peer = new_peers; peer; peer = next) {
 		next = peer->next;
 
@@ -931,10 +931,10 @@ static void reconfigure_handle_new_peers(fastd_context *ctx, fastd_peer_config *
 	}
 }
 
-void fastd_reconfigure(fastd_context *ctx, fastd_config *conf) {
+void fastd_reconfigure(fastd_context_t *ctx, fastd_config_t *conf) {
 	pr_info(ctx, "reconfigure triggered");
 
-	fastd_config temp_conf;
+	fastd_config_t temp_conf;
 	temp_conf.peer_group = conf->peer_group;
 	temp_conf.peers = NULL;
 
@@ -948,19 +948,19 @@ void fastd_reconfigure(fastd_context *ctx, fastd_config *conf) {
 	count_peers(ctx, conf);
 }
 
-void fastd_config_release(fastd_context *ctx, fastd_config *conf) {
+void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 	while (conf->peers)
 		fastd_peer_config_delete(ctx, conf);
 
 	while (conf->log_files) {
-		fastd_log_file *next = conf->log_files->next;
+		fastd_log_file_t *next = conf->log_files->next;
 		free(conf->log_files->filename);
 		free(conf->log_files);
 		conf->log_files = next;
 	}
 
 	while (conf->bind_addrs) {
-		fastd_bind_address *next = conf->bind_addrs->next;
+		fastd_bind_address_t *next = conf->bind_addrs->next;
 		free(conf->bind_addrs->bindtodev);
 		free(conf->bind_addrs);
 		conf->bind_addrs = next;

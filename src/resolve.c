@@ -33,16 +33,16 @@
 #include <pthread.h>
 
 
-typedef struct _resolv_arg {
-	fastd_context *ctx;
+typedef struct resolv_arg {
+	fastd_context_t *ctx;
 	pthread_t master_thread;
 	char *hostname;
-	fastd_peer_address constraints;
-} resolv_arg;
+	fastd_peer_address_t constraints;
+} resolv_arg_t;
 
 
 static void* resolve_peer(void *varg) {
-	resolv_arg *arg = varg;
+	resolv_arg_t *arg = varg;
 
 	struct addrinfo hints;
 	struct addrinfo *res = NULL;
@@ -64,12 +64,12 @@ static void* resolve_peer(void *varg) {
 		pr_verbose(arg->ctx, "resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
 		error = true;
 	}
-	else if (res->ai_addrlen > sizeof(fastd_peer_address) || (res->ai_addr->sa_family != AF_INET && res->ai_addr->sa_family != AF_INET6)) {
+	else if (res->ai_addrlen > sizeof(fastd_peer_address_t) || (res->ai_addr->sa_family != AF_INET && res->ai_addr->sa_family != AF_INET6)) {
 		pr_warn(arg->ctx, "resolving host `%s': unsupported address returned", arg->hostname);
 		error = true;
 	}
 
-	fastd_resolve_return ret;
+	fastd_resolve_return_t ret;
 	memset(&ret, 0, sizeof(ret));
 
 	ret.hostname = arg->hostname;
@@ -93,7 +93,7 @@ static void* resolve_peer(void *varg) {
 	return NULL;
 }
 
-void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer) {
+void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (timespec_after(&peer->last_resolve, &peer->last_resolve_return)) {
 		pr_debug(ctx, "not resolving %P as there is already a resolve running", peer);
 		return;
@@ -102,7 +102,7 @@ void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer) {
 	if (timespec_diff(&ctx->now, &peer->last_resolve) < ctx->conf->min_resolve_interval*1000) {
 		pr_debug(ctx, "not resolving %P as it has been resolved a short time ago", peer);
 
-		fastd_resolve_return ret;
+		fastd_resolve_return_t ret;
 		memset(&ret, 0, sizeof(ret));
 
 		ret.hostname = strdup(peer->config->hostname);
@@ -118,7 +118,7 @@ void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer) {
 	pr_verbose(ctx, "resolving host `%s' for peer %P...", peer->config->hostname, peer);
 	peer->last_resolve = ctx->now;
 
-	resolv_arg *arg = malloc(sizeof(resolv_arg));
+	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
 
 	arg->ctx = ctx;
 	arg->master_thread = pthread_self();

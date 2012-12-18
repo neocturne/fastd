@@ -28,8 +28,8 @@
 %define api.push-pull push
 %name-prefix "fastd_config_"
 %locations
-%parse-param {fastd_context *ctx}
-%parse-param {fastd_config *conf}
+%parse-param {fastd_context_t *ctx}
+%parse-param {fastd_config_t *conf}
 %parse-param {const char *filename}
 %parse-param {int depth}
 
@@ -42,12 +42,12 @@
 
 %union {
 	int num;
-	fastd_string_stack *str;
+	fastd_string_stack_t *str;
 	char *error;
 	bool boolean;
 	struct in_addr addr4;
 	struct in6_addr addr6;
-	fastd_peer_address addr;
+	fastd_peer_address_t addr;
 }
 
 %token START_CONFIG
@@ -113,7 +113,7 @@
 	#include <stdint.h>
 	#include <unistd.h>
 
-	void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s);
+	void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, char *s);
 }
 
 
@@ -215,13 +215,13 @@ bind:		bind_address maybe_bind_interface maybe_bind_default {
 
 bind_address:
 		TOK_ADDR4 maybe_port {
-			$$ = (fastd_peer_address){ .in = { .sin_family = AF_INET, .sin_addr = $1, .sin_port = htons($2) } };
+			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_INET, .sin_addr = $1, .sin_port = htons($2) } };
 		}
 	|	TOK_ADDR6 maybe_port {
-			$$ = (fastd_peer_address){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1, .sin6_port = htons($2) } };
+			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1, .sin6_port = htons($2) } };
 		}
 	|	TOK_ANY maybe_port {
-			$$ = (fastd_peer_address){ .in = { .sin_family = AF_UNSPEC, .sin_port = htons($2) } };
+			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_UNSPEC, .sin_port = htons($2) } };
 		}
 	;
 
@@ -453,6 +453,6 @@ port:		colon_or_port TOK_INTEGER {
 		}
 	;
 %%
-void fastd_config_error(YYLTYPE *loc, fastd_context *ctx, fastd_config *conf, const char *filename, int depth, char *s) {
+void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, char *s) {
 	pr_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
 }

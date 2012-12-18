@@ -30,7 +30,7 @@
 #include "fastd.h"
 
 
-typedef enum _fastd_handshake_record_type {
+typedef enum fastd_handshake_record_type {
 	RECORD_HANDSHAKE_TYPE = 0,
 	RECORD_REPLY_CODE,
 	RECORD_ERROR_DETAIL,
@@ -47,34 +47,34 @@ typedef enum _fastd_handshake_record_type {
 	RECORD_VERSION_NAME,
 	RECORD_METHOD_LIST,
 	RECORD_MAX,
-} fastd_handshake_record_type;
+} fastd_handshake_record_type_t;
 
-typedef enum _fastd_reply_code {
+typedef enum fastd_reply_code {
 	REPLY_SUCCESS = 0,
 	REPLY_MANDATORY_MISSING,
 	REPLY_UNACCEPTABLE_VALUE,
 	REPLY_MAX,
-} fastd_reply_code;
+} fastd_reply_code_t;
 
 
-typedef struct _fastd_handshake_record {
+typedef struct fastd_handshake_record {
 	size_t length;
 	void *data;
-} fastd_handshake_record;
+} fastd_handshake_record_t;
 
-struct _fastd_handshake {
+struct fastd_handshake {
 	uint8_t type;
-	fastd_handshake_record records[RECORD_MAX];
+	fastd_handshake_record_t records[RECORD_MAX];
 };
 
 
-fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space);
-fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, const fastd_method *method, size_t tail_space);
+fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space);
+fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_handshake_t *handshake, const fastd_method_t *method, size_t tail_space);
 
-void fastd_handshake_handle(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer);
+void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf, fastd_buffer_t buffer);
 
 
-static inline void fastd_handshake_add(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, size_t len, const void *data) {
+static inline void fastd_handshake_add(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len, const void *data) {
 	if ((uint8_t*)buffer->data + buffer->len + 4 + len > (uint8_t*)buffer->base + buffer->base_len)
 		exit_bug(ctx, "not enough buffer allocated for handshake");
 
@@ -89,7 +89,7 @@ static inline void fastd_handshake_add(fastd_context *ctx, fastd_buffer *buffer,
 	buffer->len += 4 + len;
 }
 
-static inline void fastd_handshake_add_uint8(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, uint8_t value) {
+static inline void fastd_handshake_add_uint8(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint8_t value) {
 	if ((uint8_t*)buffer->data + buffer->len + 5 > (uint8_t*)buffer->base + buffer->base_len)
 		exit_bug(ctx, "not enough buffer allocated for handshake");
 
@@ -104,7 +104,7 @@ static inline void fastd_handshake_add_uint8(fastd_context *ctx, fastd_buffer *b
 	buffer->len += 5;
 }
 
-static inline void fastd_handshake_add_uint16(fastd_context *ctx, fastd_buffer *buffer, fastd_handshake_record_type type, uint16_t value) {
+static inline void fastd_handshake_add_uint16(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint16_t value) {
 	if ((uint8_t*)buffer->data + buffer->len + 6 > (uint8_t*)buffer->base + buffer->base_len)
 		exit_bug(ctx, "not enough buffer allocated for handshake");
 

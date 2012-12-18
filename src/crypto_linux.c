@@ -39,15 +39,15 @@
 #ifdef USE_CRYPTO_AES128CTR
 #ifdef WITH_CRYPTO_AES128CTR_LINUX
 
-struct _fastd_crypto_aes128ctr_context {
+struct fastd_crypto_aes128ctr_context {
 	int fd;
 };
 
-struct _fastd_crypto_aes128ctr_state {
+struct fastd_crypto_aes128ctr_state {
 	int fd;
 };
 
-static fastd_crypto_aes128ctr_context* aes128ctr_init(fastd_context *ctx) {
+static fastd_crypto_aes128ctr_context_t* aes128ctr_init(fastd_context_t *ctx) {
 	int fd = socket(AF_ALG, SOCK_SEQPACKET, 0);
 	if (fd < 0)
 		goto error;
@@ -59,7 +59,7 @@ static fastd_crypto_aes128ctr_context* aes128ctr_init(fastd_context *ctx) {
 	if (bind(fd, (struct sockaddr*)&sa, sizeof(sa)) < 0)
 		goto error;
 
-	fastd_crypto_aes128ctr_context *cctx = malloc(sizeof(fastd_crypto_aes128ctr_context));
+	fastd_crypto_aes128ctr_context_t *cctx = malloc(sizeof(fastd_crypto_aes128ctr_context_t));
 	cctx->fd = fd;
 	return cctx;
 
@@ -71,7 +71,7 @@ static fastd_crypto_aes128ctr_context* aes128ctr_init(fastd_context *ctx) {
 	return NULL;
 }
 
-static fastd_crypto_aes128ctr_state* aes128ctr_set_key(fastd_context *ctx, const fastd_crypto_aes128ctr_context *cctx, const fastd_block128 *key) {
+static fastd_crypto_aes128ctr_state_t* aes128ctr_set_key(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx, const fastd_block128_t *key) {
 	if (setsockopt(cctx->fd, SOL_ALG, ALG_SET_KEY, key->b, 16) < 0) {
 		pr_error_errno(ctx, "aes128ctr_set_key(linux): setsockopt");
 		return NULL;
@@ -84,13 +84,13 @@ static fastd_crypto_aes128ctr_state* aes128ctr_set_key(fastd_context *ctx, const
 		return NULL;
 	}
 
-	fastd_crypto_aes128ctr_state *cstate = malloc(sizeof(fastd_crypto_aes128ctr_state));
+	fastd_crypto_aes128ctr_state_t *cstate = malloc(sizeof(fastd_crypto_aes128ctr_state_t));
 	cstate->fd = fd;
 
 	return cstate;
 }
 
-static bool aes128ctr_crypt(fastd_context *ctx, const fastd_crypto_aes128ctr_state *cstate, fastd_block128 *out, const fastd_block128 *in, size_t len, const fastd_block128 *iv) {
+static bool aes128ctr_crypt(fastd_context_t *ctx, const fastd_crypto_aes128ctr_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv) {
 	if (!len)
 		return false;
 
@@ -130,21 +130,21 @@ static bool aes128ctr_crypt(fastd_context *ctx, const fastd_crypto_aes128ctr_sta
 	return true;
 }
 
-static void aes128ctr_free_state(fastd_context *ctx, fastd_crypto_aes128ctr_state *cstate) {
+static void aes128ctr_free_state(fastd_context_t *ctx, fastd_crypto_aes128ctr_state_t *cstate) {
 	if (cstate) {
 		close(cstate->fd);
 		free(cstate);
 	}
 }
 
-static void aes128ctr_free(fastd_context *ctx, fastd_crypto_aes128ctr_context *cctx) {
+static void aes128ctr_free(fastd_context_t *ctx, fastd_crypto_aes128ctr_context_t *cctx) {
 	if (cctx) {
 		close(cctx->fd);
 		free(cctx);
 	}
 }
 
-fastd_crypto_aes128ctr fastd_crypto_aes128ctr_linux = {
+fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_linux = {
 	.name = "linux",
 
 	.init = aes128ctr_init,
@@ -161,15 +161,15 @@ fastd_crypto_aes128ctr fastd_crypto_aes128ctr_linux = {
 #ifdef USE_CRYPTO_GHASH
 #ifdef WITH_CRYPTO_GHASH_LINUX
 
-struct _fastd_crypto_ghash_context {
+struct fastd_crypto_ghash_context {
 	int fd;
 };
 
-struct _fastd_crypto_ghash_state {
+struct fastd_crypto_ghash_state {
 	int fd;
 };
 
-static fastd_crypto_ghash_context* ghash_init(fastd_context *ctx) {
+static fastd_crypto_ghash_context_t* ghash_init(fastd_context_t *ctx) {
 	int fd = socket(AF_ALG, SOCK_SEQPACKET, 0);
 	if (fd < 0)
 		goto error;
@@ -181,7 +181,7 @@ static fastd_crypto_ghash_context* ghash_init(fastd_context *ctx) {
 	if (bind(fd, (struct sockaddr*)&sa, sizeof(sa)) < 0)
 		goto error;
 
-	fastd_crypto_ghash_context *cctx = malloc(sizeof(fastd_crypto_ghash_context));
+	fastd_crypto_ghash_context_t *cctx = malloc(sizeof(fastd_crypto_ghash_context_t));
 	cctx->fd = fd;
 	return cctx;
 
@@ -193,7 +193,7 @@ static fastd_crypto_ghash_context* ghash_init(fastd_context *ctx) {
 	return NULL;
 }
 
-static fastd_crypto_ghash_state* ghash_set_h(fastd_context *ctx, const fastd_crypto_ghash_context *cctx, const fastd_block128 *h) {
+static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx, const fastd_crypto_ghash_context_t *cctx, const fastd_block128_t *h) {
 	if (setsockopt(cctx->fd, SOL_ALG, ALG_SET_KEY, h, 16) < 0) {
 		pr_error_errno(ctx, "ghash_set_h(linux): setsockopt");
 		return NULL;
@@ -206,13 +206,13 @@ static fastd_crypto_ghash_state* ghash_set_h(fastd_context *ctx, const fastd_cry
 		return NULL;
 	}
 
-	fastd_crypto_ghash_state *cstate = malloc(sizeof(fastd_crypto_ghash_state));
+	fastd_crypto_ghash_state_t *cstate = malloc(sizeof(fastd_crypto_ghash_state_t));
 	cstate->fd = fd;
 
 	return cstate;
 }
 
-static bool ghash_hash(fastd_context *ctx, const fastd_crypto_ghash_state *cstate, fastd_block128 *out, const fastd_block128 *in, size_t n_blocks) {
+static bool ghash_hash(fastd_context_t *ctx, const fastd_crypto_ghash_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
 	if (!n_blocks)
 		return false;
 
@@ -229,21 +229,21 @@ static bool ghash_hash(fastd_context *ctx, const fastd_crypto_ghash_state *cstat
 	return true;
 }
 
-static void ghash_free_state(fastd_context *ctx, fastd_crypto_ghash_state *cstate) {
+static void ghash_free_state(fastd_context_t *ctx, fastd_crypto_ghash_state_t *cstate) {
 	if (cstate) {
 		close(cstate->fd);
 		free(cstate);
 	}
 }
 
-static void ghash_free(fastd_context *ctx, fastd_crypto_ghash_context *cctx) {
+static void ghash_free(fastd_context_t *ctx, fastd_crypto_ghash_context_t *cctx) {
 	if (cctx) {
 		close(cctx->fd);
 		free(cctx);
 	}
 }
 
-fastd_crypto_ghash fastd_crypto_ghash_linux = {
+fastd_crypto_ghash_t fastd_crypto_ghash_linux = {
 	.name = "linux",
 
 	.init = ghash_init,

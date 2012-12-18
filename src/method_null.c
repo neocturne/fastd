@@ -27,42 +27,42 @@
 #include "fastd.h"
 
 
-static size_t method_max_packet_size(fastd_context *ctx) {
+static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return fastd_max_packet_size(ctx);
 }
 
-static size_t method_min_head_tail_space(fastd_context *ctx) {
+static size_t method_min_head_tail_space(fastd_context_t *ctx) {
 	return 0;
 }
 
-static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
 	if (initiator)
-		return (fastd_method_session_state*)1;
+		return (fastd_method_session_state_t*)1;
 	else
-		return (fastd_method_session_state*)2;
+		return (fastd_method_session_state_t*)2;
 }
 
-static bool method_session_is_valid(fastd_context *ctx, fastd_method_session_state *session) {
+static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	return session;
 }
 
-static bool method_session_is_initiator(fastd_context *ctx, fastd_method_session_state *session) {
-	return (session == (fastd_method_session_state*)1);
+static bool method_session_is_initiator(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+	return (session == (fastd_method_session_state_t*)1);
 }
 
-static bool method_session_want_refresh(fastd_context *ctx, fastd_method_session_state *session) {
+static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	return false;
 }
 
-static void method_session_free(fastd_context *ctx, fastd_method_session_state *session) {
+static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 }
 
-static bool method_passthrough(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
+static bool method_passthrough(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	*out = in;
 	return true;
 }
 
-const fastd_method fastd_method_null = {
+const fastd_method_t fastd_method_null = {
 	.name = "null",
 
 	.max_packet_size = method_max_packet_size,

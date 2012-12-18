@@ -34,22 +34,22 @@
 #include <time.h>
 
 
-typedef struct _fastd_queue_entry fastd_queue_entry;
+typedef struct fastd_queue_entry fastd_queue_entry_t;
 
-struct _fastd_queue_entry {
-	fastd_queue_entry *next;
+struct fastd_queue_entry {
+	fastd_queue_entry_t *next;
 	struct timespec timeout;
 };
 
-typedef struct _fastd_queue {
-	fastd_queue_entry *head;
-} fastd_queue;
+typedef struct fastd_queue {
+	fastd_queue_entry_t *head;
+} fastd_queue_t;
 
 
-void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *entry, int timeout);
-fastd_queue_entry* fastd_queue_get(fastd_context *ctx, fastd_queue *queue);
-int fastd_queue_timeout(fastd_context *ctx, fastd_queue *queue);
-void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fastd_queue_entry*, void*), void *extra);
-bool fastd_queue_has_entry(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fastd_queue_entry*, void*), void *extra);
+void fastd_queue_put(fastd_context_t *ctx, fastd_queue_t *queue, fastd_queue_entry_t *entry, int timeout);
+fastd_queue_entry_t* fastd_queue_get(fastd_context_t *ctx, fastd_queue_t *queue);
+int fastd_queue_timeout(fastd_context_t *ctx, fastd_queue_t *queue);
+void fastd_queue_filter(fastd_context_t *ctx, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra);
+bool fastd_queue_has_entry(fastd_context_t *ctx, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra);
 
-#endif /* _FASTD_QUEUE_H_ */
+#endif /* _FASTD_QUEUE_T_H_ */

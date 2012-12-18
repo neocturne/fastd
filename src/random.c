@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 
 
-void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure) {
+void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure) {
 	int fd;
 	size_t read_bytes = 0;
 

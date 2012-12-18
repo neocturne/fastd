@@ -30,14 +30,14 @@
 #include "fastd.h"
 
 
-struct _fastd_peer {
-	fastd_peer *next;
+struct fastd_peer {
+	fastd_peer_t *next;
 
-	const fastd_peer_config *config;
-	fastd_peer_group *group;
+	const fastd_peer_config_t *config;
+	fastd_peer_group_t *group;
 
-	fastd_socket *sock;
-	fastd_peer_address address;
+	fastd_socket_t *sock;
+	fastd_peer_address_t address;
 
 	bool established;
 
@@ -46,16 +46,16 @@ struct _fastd_peer {
 	struct timespec seen;
 
 	struct timespec last_handshake;
-	fastd_peer_address last_handshake_address;
+	fastd_peer_address_t last_handshake_address;
 
 	struct timespec last_handshake_response;
-	fastd_peer_address last_handshake_response_address;
+	fastd_peer_address_t last_handshake_response_address;
 
-	fastd_protocol_peer_state *protocol_state;
+	fastd_protocol_peer_state_t *protocol_state;
 };
 
-struct _fastd_peer_config {
-	fastd_peer_config *next;
+struct fastd_peer_config {
+	fastd_peer_config_t *next;
 
 	const char *config_source_dir;
 
@@ -63,77 +63,77 @@ struct _fastd_peer_config {
 	char *name;
 
 	char *hostname;
-	fastd_peer_address address;
+	fastd_peer_address_t address;
 	bool dynamic_float;
 	char *key;
-	const fastd_peer_group_config *group;
+	const fastd_peer_group_config_t *group;
 
-	fastd_protocol_peer_config *protocol_config;
+	fastd_protocol_peer_config_t *protocol_config;
 };
 
-struct _fastd_peer_eth_addr {
-	fastd_eth_addr addr;
-	fastd_peer *peer;
+struct fastd_peer_eth_addr {
+	fastd_eth_addr_t addr;
+	fastd_peer_t *peer;
 	struct timespec seen;
 };
 
 
-bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2);
-void fastd_peer_address_simplify(fastd_peer_address *addr);
+bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2);
+void fastd_peer_address_simplify(fastd_peer_address_t *addr);
 
-fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf);
-void fastd_peer_config_free(fastd_peer_config *peer);
-void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf);
-void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf);
-bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_config *peer2);
+fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx, fastd_config_t *conf);
+void fastd_peer_config_free(fastd_peer_config_t *peer);
+void fastd_peer_config_delete(fastd_context_t *ctx, fastd_config_t *conf);
+void fastd_peer_config_purge(fastd_context_t *ctx, fastd_peer_config_t *conf);
+bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2);
 
-void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer);
-void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer);
-fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *conf);
-void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer);
-bool fastd_peer_may_connect(fastd_context *ctx, fastd_peer *peer);
-bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *peer, fastd_socket *sock, const fastd_peer_address *addr);
-void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer);
+void fastd_peer_reset(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_peer_delete(fastd_context_t *ctx, fastd_peer_t *peer);
+fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *conf);
+void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer);
+bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer);
+bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *addr);
+void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer);
 
-const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer);
-const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer);
+const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
+const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
 
-static inline bool fastd_peer_config_is_floating(const fastd_peer_config *config) {
+static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *config) {
 	return ((config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC) || config->dynamic_float);
 }
 
-static inline bool fastd_peer_config_is_dynamic(const fastd_peer_config *config) {
+static inline bool fastd_peer_config_is_dynamic(const fastd_peer_config_t *config) {
 	return (config->hostname != NULL);
 }
 
-bool fastd_peer_config_matches_dynamic(const fastd_peer_config *config, const fastd_peer_address *addr);
+bool fastd_peer_config_matches_dynamic(const fastd_peer_config_t *config, const fastd_peer_address_t *addr);
 
-static inline bool fastd_peer_is_floating(const fastd_peer *peer) {
+static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 	return fastd_peer_config_is_floating(peer->config);
 }
 
-static inline bool fastd_peer_is_dynamic(const fastd_peer *peer) {
+static inline bool fastd_peer_is_dynamic(const fastd_peer_t *peer) {
 	return fastd_peer_config_is_dynamic(peer->config);
 }
 
-static inline bool fastd_peer_is_established(const fastd_peer *peer) {
+static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 	return peer->established;
 }
 
-static inline void fastd_peer_seen(fastd_context *ctx, fastd_peer *peer) {
+static inline void fastd_peer_seen(fastd_context_t *ctx, fastd_peer_t *peer) {
 	peer->seen = ctx->now;
 }
 
-static inline bool fastd_peer_is_socket_dynamic(const fastd_peer *peer) {
+static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {
 	return (!peer->sock || !peer->sock->addr);
 }
 
-static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr *addr) {
+static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr_t *addr) {
 	return ((addr->data[0] & 1) == 0);
 }
 
-void fastd_peer_eth_addr_add(fastd_context *ctx, fastd_peer *peer, const fastd_eth_addr *addr);
-void fastd_peer_eth_addr_cleanup(fastd_context *ctx);
-fastd_peer* fastd_peer_find_by_eth_addr(fastd_context *ctx, const fastd_eth_addr *addr);
+void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_eth_addr_t *addr);
+void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx);
+fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, const fastd_eth_addr_t *addr);
 
 #endif /* _FASTD_PEER_H_ */

@@ -54,7 +54,7 @@
 #define MAX_METHODS 3
 
 
-struct _fastd_buffer {
+struct fastd_buffer {
 	void *base;
 	size_t base_len;
 
@@ -62,115 +62,115 @@ struct _fastd_buffer {
 	size_t len;
 };
 
-struct _fastd_eth_addr {
+struct fastd_eth_addr {
 	uint8_t data[ETH_ALEN];
 };
 
-struct _fastd_protocol {
+struct fastd_protocol {
 	const char *name;
 
-	fastd_protocol_config* (*init)(fastd_context *ctx);
-	void (*peer_configure)(fastd_context *ctx, fastd_peer_config *peer_conf);
+	fastd_protocol_config_t* (*init)(fastd_context_t *ctx);
+	void (*peer_configure)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
 
-	void (*handshake_init)(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf);
-	void (*handshake_handle)(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake, const fastd_method *method);
+	void (*handshake_init)(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf);
+	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf, const fastd_handshake_t *handshake, const fastd_method_t *method);
 
-	void (*handle_recv)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
-	void (*send)(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+	void (*handle_recv)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
+	void (*send)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 
-	void (*init_peer_state)(fastd_context *ctx, fastd_peer *peer);
-	void (*reset_peer_state)(fastd_context *ctx, fastd_peer *peer);
-	void (*free_peer_state)(fastd_context *ctx, fastd_peer *peer);
+	void (*init_peer_state)(fastd_context_t *ctx, fastd_peer_t *peer);
+	void (*reset_peer_state)(fastd_context_t *ctx, fastd_peer_t *peer);
+	void (*free_peer_state)(fastd_context_t *ctx, fastd_peer_t *peer);
 
-	void (*generate_key)(fastd_context *ctx);
-	void (*show_key)(fastd_context *ctx);
+	void (*generate_key)(fastd_context_t *ctx);
+	void (*show_key)(fastd_context_t *ctx);
 };
 
-struct _fastd_method {
+struct fastd_method {
 	const char *name;
 
-	size_t (*max_packet_size)(fastd_context *ctx);
-	size_t (*min_encrypt_head_space)(fastd_context *ctx);
-	size_t (*min_decrypt_head_space)(fastd_context *ctx);
-	size_t (*min_encrypt_tail_space)(fastd_context *ctx);
-	size_t (*min_decrypt_tail_space)(fastd_context *ctx);
+	size_t (*max_packet_size)(fastd_context_t *ctx);
+	size_t (*min_encrypt_head_space)(fastd_context_t *ctx);
+	size_t (*min_decrypt_head_space)(fastd_context_t *ctx);
+	size_t (*min_encrypt_tail_space)(fastd_context_t *ctx);
+	size_t (*min_decrypt_tail_space)(fastd_context_t *ctx);
 
-	fastd_method_session_state* (*session_init)(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator);
-	bool (*session_is_valid)(fastd_context *ctx, fastd_method_session_state *session);
-	bool (*session_is_initiator)(fastd_context *ctx, fastd_method_session_state *session);
-	bool (*session_want_refresh)(fastd_context *ctx, fastd_method_session_state *session);
-	void (*session_free)(fastd_context *ctx, fastd_method_session_state *session);
+	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator);
+	bool (*session_is_valid)(fastd_context_t *ctx, fastd_method_session_state_t *session);
+	bool (*session_is_initiator)(fastd_context_t *ctx, fastd_method_session_state_t *session);
+	bool (*session_want_refresh)(fastd_context_t *ctx, fastd_method_session_state_t *session);
+	void (*session_free)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 
-	bool (*encrypt)(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
-	bool (*decrypt)(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in);
+	bool (*encrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
+	bool (*decrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
 };
 
-union _fastd_peer_address {
+union fastd_peer_address {
 	struct sockaddr sa;
 	struct sockaddr_in in;
 	struct sockaddr_in6 in6;
 };
 
-struct _fastd_resolve_return {
+struct fastd_resolve_return {
 	char *hostname;
-	fastd_peer_address constraints;
+	fastd_peer_address_t constraints;
 
-	fastd_peer_address addr;
+	fastd_peer_address_t addr;
 };
 
-struct _fastd_log_file {
-	fastd_log_file *next;
+struct fastd_log_file {
+	fastd_log_file_t *next;
 
 	int level;
 	char *filename;
 };
 
-struct _fastd_log_fd {
-	fastd_log_fd *next;
+struct fastd_log_fd {
+	fastd_log_fd_t *next;
 
-	fastd_log_file *config;
+	fastd_log_file_t *config;
 	int fd;
 };
 
-struct _fastd_bind_address {
-	fastd_bind_address *next;
-	fastd_peer_address addr;
+struct fastd_bind_address {
+	fastd_bind_address_t *next;
+	fastd_peer_address_t addr;
 	char *bindtodev;
 };
 
-struct _fastd_socket {
+struct fastd_socket {
 	int fd;
-	const fastd_bind_address *addr;
-	fastd_peer *peer;
+	const fastd_bind_address_t *addr;
+	fastd_peer_t *peer;
 };
 
-struct _fastd_peer_group_config {
-	fastd_peer_group_config *next;
-	fastd_peer_group_config *parent;
-	fastd_peer_group_config *children;
+struct fastd_peer_group_config {
+	fastd_peer_group_config_t *next;
+	fastd_peer_group_config_t *parent;
+	fastd_peer_group_config_t *children;
 
 	char *name;
-	fastd_string_stack *peer_dirs;
+	fastd_string_stack_t *peer_dirs;
 
 	/* contraints */
 	unsigned max_connections;
 };
 
-struct _fastd_peer_group {
-	fastd_peer_group *next;
-	fastd_peer_group *parent;
-	fastd_peer_group *children;
+struct fastd_peer_group {
+	fastd_peer_group_t *next;
+	fastd_peer_group_t *parent;
+	fastd_peer_group_t *children;
 
-	const fastd_peer_group_config *conf;
+	const fastd_peer_group_config_t *conf;
 
 	unsigned n_connections;
 };
 
-struct _fastd_config {
+struct fastd_config {
 	int log_stderr_level;
 	int log_syslog_level;
 	char *log_syslog_ident;
-	fastd_log_file *log_files;
+	fastd_log_file_t *log_files;
 
 	unsigned keepalive_interval;
 	unsigned peer_stale_time;
@@ -185,32 +185,32 @@ struct _fastd_config {
 	char *ifname;
 
 	unsigned n_bind_addrs;
-	fastd_bind_address *bind_addrs;
+	fastd_bind_address_t *bind_addrs;
 
-	fastd_bind_address *bind_addr_default_v4;
-	fastd_bind_address *bind_addr_default_v6;
+	fastd_bind_address_t *bind_addr_default_v4;
+	fastd_bind_address_t *bind_addr_default_v6;
 
 	uint16_t mtu;
-	fastd_mode mode;
+	fastd_mode_t mode;
 
 	bool forward;
 
-	const fastd_protocol *protocol;
-	const fastd_method *methods[MAX_METHODS];
-	const fastd_method *method_default;
+	const fastd_protocol_t *protocol;
+	const fastd_method_t *methods[MAX_METHODS];
+	const fastd_method_t *method_default;
 	char *secret;
 	unsigned key_valid;
 	unsigned key_refresh;
 
 #ifdef USE_CRYPTO_AES128CTR
-	const fastd_crypto_aes128ctr *crypto_aes128ctr;
+	const fastd_crypto_aes128ctr_t *crypto_aes128ctr;
 #endif
 #ifdef USE_CRYPTO_GHASH
-	const fastd_crypto_ghash *crypto_ghash;
+	const fastd_crypto_ghash_t *crypto_ghash;
 #endif
 
-	fastd_peer_group_config *peer_group;
-	fastd_peer_config *peers;
+	fastd_peer_group_config_t *peer_group;
+	fastd_peer_config_t *peers;
 
 	unsigned n_floating;
 	unsigned n_v4;
@@ -219,7 +219,7 @@ struct _fastd_config {
 	unsigned n_dynamic_v4;
 	unsigned n_dynamic_v6;
 
-	fastd_protocol_config *protocol_config;
+	fastd_protocol_config_t *protocol_config;
 
 	char *on_up;
 	char *on_up_dir;
@@ -241,19 +241,19 @@ struct _fastd_config {
 	bool show_key;
 };
 
-struct _fastd_context {
-	const fastd_config *conf;
+struct fastd_context {
+	const fastd_config_t *conf;
 
-	fastd_log_fd *log_files;
+	fastd_log_fd_t *log_files;
 
 	char *ifname;
 
 	struct timespec now;
 
 	unsigned n_peers;
-	fastd_peer_group *peer_group;
-	fastd_peer *peers;
-	fastd_queue task_queue;
+	fastd_peer_group_t *peer_group;
+	fastd_peer_t *peers;
+	fastd_queue_t task_queue;
 
 	int resolverfd;
 	int resolvewfd;
@@ -261,61 +261,61 @@ struct _fastd_context {
 	int tunfd;
 
 	unsigned n_socks;
-	fastd_socket *socks;
+	fastd_socket_t *socks;
 
-	fastd_socket *sock_default_v4;
-	fastd_socket *sock_default_v6;
+	fastd_socket_t *sock_default_v4;
+	fastd_socket_t *sock_default_v6;
 
 #ifdef USE_CRYPTO_AES128CTR
-	fastd_crypto_aes128ctr_context *crypto_aes128ctr;
+	fastd_crypto_aes128ctr_context_t *crypto_aes128ctr;
 #endif
 #ifdef USE_CRYPTO_GHASH
-	fastd_crypto_ghash_context *crypto_ghash;
+	fastd_crypto_ghash_context_t *crypto_ghash;
 #endif
 
 	size_t eth_addr_size;
 	size_t n_eth_addr;
-	fastd_peer_eth_addr *eth_addr;
+	fastd_peer_eth_addr_t *eth_addr;
 
 	unsigned int randseed;
 
-	fastd_protocol_state *protocol_state;
+	fastd_protocol_state_t *protocol_state;
 };
 
-struct _fastd_string_stack {
-	fastd_string_stack *next;
+struct fastd_string_stack {
+	fastd_string_stack_t *next;
 	char str[];
 };
 
 
-void fastd_send(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer);
-void fastd_send_handshake(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer);
-void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer);
+void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_buffer_t buffer);
+void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_buffer_t buffer);
+void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 
-fastd_socket* fastd_socket_open(fastd_context *ctx, fastd_peer *peer, int af);
+fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int af);
 
-void fastd_resolve_peer(fastd_context *ctx, fastd_peer *peer);
+void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer);
 
-int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const char *format, va_list ap);
-void fastd_logf(const fastd_context *ctx, int level, const char *format, ...);
+int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
+void fastd_logf(const fastd_context_t *ctx, int level, const char *format, ...);
 
-void fastd_read_peer_dir(fastd_context *ctx, fastd_config *conf, const char *dir);
-bool fastd_read_config(fastd_context *ctx, fastd_config *conf, const char *filename, bool peer_config, int depth);
+void fastd_read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
+bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
 
-bool fastd_config_protocol(fastd_context *ctx, fastd_config *conf, const char *name);
-bool fastd_config_method(fastd_context *ctx, fastd_config *conf, const char *name);
-bool fastd_config_crypto(fastd_context *ctx, fastd_config *conf, const char *alg, const char *impl);
-bool fastd_config_add_log_file(fastd_context *ctx, fastd_config *conf, const char *name, int level);
-void fastd_config_bind_address(fastd_context *ctx, fastd_config *conf, const fastd_peer_address *address, const char *bindtodev, bool default_v4, bool default_v6);
-void fastd_config_peer_group_push(fastd_context *ctx, fastd_config *conf, const char *name);
-void fastd_config_peer_group_pop(fastd_context *ctx, fastd_config *conf);
-void fastd_configure(fastd_context *ctx, fastd_config *conf, int argc, char *const argv[]);
-void fastd_reconfigure(fastd_context *ctx, fastd_config *conf);
-void fastd_config_release(fastd_context *ctx, fastd_config *conf);
+bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
+bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
+bool fastd_config_crypto(fastd_context_t *ctx, fastd_config_t *conf, const char *alg, const char *impl);
+bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, int level);
+void fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);
+void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
+void fastd_config_peer_group_pop(fastd_context_t *ctx, fastd_config_t *conf);
+void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf);
+void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
+void fastd_reconfigure(fastd_context_t *ctx, fastd_config_t *conf);
 
-void fastd_random_bytes(fastd_context *ctx, void *buffer, size_t len, bool secure);
+void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure);
 
-static inline int fastd_rand(fastd_context *ctx, int min, int max) {
+static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 	unsigned int r = (unsigned int)rand_r(&ctx->randseed);
 	return (r%(max-min) + min);
 }
@@ -348,20 +348,20 @@ static inline size_t alignto(size_t l, size_t a) {
 	return ((l+a-1)/a)*a;
 }
 
-static inline fastd_buffer fastd_buffer_alloc(size_t len, size_t head_space, size_t tail_space) {
+static inline fastd_buffer_t fastd_buffer_alloc(size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
 	void *ptr;
 	if (posix_memalign(&ptr, 16, base_len))
-		return (fastd_buffer){ .base = NULL, .base_len = 0, .data = NULL, .len = 0 };
+		return (fastd_buffer_t){ .base = NULL, .base_len = 0, .data = NULL, .len = 0 };
 
-	return (fastd_buffer){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
+	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
 }
 
-static inline void fastd_buffer_free(fastd_buffer buffer) {
+static inline void fastd_buffer_free(fastd_buffer_t buffer) {
 	free(buffer.base);
 }
 
-static inline void fastd_buffer_pull_head(fastd_buffer *buffer, size_t len) {
+static inline void fastd_buffer_pull_head(fastd_buffer_t *buffer, size_t len) {
 	buffer->data -= len;
 	buffer->len += len;
 
@@ -369,7 +369,7 @@ static inline void fastd_buffer_pull_head(fastd_buffer *buffer, size_t len) {
 		abort();
 }
 
-static inline void fastd_buffer_push_head(fastd_buffer *buffer, size_t len) {
+static inline void fastd_buffer_push_head(fastd_buffer_t *buffer, size_t len) {
 	if (buffer->len < len)
 		abort();
 
@@ -377,7 +377,7 @@ static inline void fastd_buffer_push_head(fastd_buffer *buffer, size_t len) {
 	buffer->len -= len;
 }
 
-static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
+static inline size_t fastd_max_packet_size(const fastd_context_t *ctx) {
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
 		return ctx->conf->mtu+ETH_HLEN;
@@ -388,17 +388,17 @@ static inline size_t fastd_max_packet_size(const fastd_context *ctx) {
 	}
 }
 
-static inline fastd_string_stack* fastd_string_stack_dup(const char *str) {
-	fastd_string_stack *ret = malloc(sizeof(fastd_string_stack) + strlen(str) + 1);
+static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
+	fastd_string_stack_t *ret = malloc(sizeof(fastd_string_stack_t) + strlen(str) + 1);
 	ret->next = NULL;
 	strcpy(ret->str, str);
 
 	return ret;
 }
 
-static inline fastd_string_stack* fastd_string_stack_dupn(const char *str, size_t len) {
+static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, size_t len) {
 	size_t str_len = strnlen(str, len);
-	fastd_string_stack *ret = malloc(sizeof(fastd_string_stack) + str_len + 1);
+	fastd_string_stack_t *ret = malloc(sizeof(fastd_string_stack_t) + str_len + 1);
 	ret->next = NULL;
 	strncpy(ret->str, str, str_len);
 	ret->str[str_len] = 0;
@@ -406,23 +406,23 @@ static inline fastd_string_stack* fastd_string_stack_dupn(const char *str, size_
 	return ret;
 }
 
-static inline fastd_string_stack* fastd_string_stack_push(fastd_string_stack *stack, const char *str) {
-	fastd_string_stack *ret = malloc(sizeof(fastd_string_stack) + strlen(str) + 1);
+static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
+	fastd_string_stack_t *ret = malloc(sizeof(fastd_string_stack_t) + strlen(str) + 1);
 	ret->next = stack;
 	strcpy(ret->str, str);
 
 	return ret;
 }
 
-static inline void fastd_string_stack_free(fastd_string_stack *str) {
+static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 	while(str) {
-		fastd_string_stack *next = str->next;
+		fastd_string_stack_t *next = str->next;
 		free(str);
 		str = next;
 	}
 }
 
-static inline void fastd_socket_close(fastd_context *ctx, fastd_socket *sock) {
+static inline void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock) {
 	if (sock->fd >= 0) {
 		if(close(sock->fd))
 			pr_error_errno(ctx, "closing socket: close");

@@ -60,7 +60,7 @@ static const char const *REPLY_TYPES[REPLY_MAX] = {
 #define AS_UINT16(ptr) ((*(uint8_t*)(ptr).data) + (*((uint8_t*)(ptr).data+1) << 8))
 
 
-static uint8_t* create_method_list(fastd_context *ctx, size_t *len) {
+static uint8_t* create_method_list(fastd_context_t *ctx, size_t *len) {
 	*len = strlen(ctx->conf->methods[0]->name);
 
 	int i;
@@ -84,7 +84,7 @@ static uint8_t* create_method_list(fastd_context *ctx, size_t *len) {
 	return ret;
 }
 
-fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
+fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space) {
 	size_t version_len = strlen(FASTD_VERSION);
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
 	size_t method_len = strlen(ctx->conf->method_default->name);
@@ -92,7 +92,7 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
 	size_t method_list_len;
 	uint8_t *method_list = create_method_list(ctx, &method_list_len);
 
-	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
+	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_packet_t), 0,
 						 2*5 +               /* handshake type, mode */
 						 6 +		     /* MTU */
 						 4+version_len +     /* version name */
@@ -101,7 +101,7 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
 						 4+method_list_len + /* supported method name list */
 						 tail_space
 						 );
-	fastd_packet *request = buffer.data;
+	fastd_packet_t *request = buffer.data;
 
 	request->rsv1 = 0;
 	request->rsv2 = 0;
@@ -120,7 +120,7 @@ fastd_buffer fastd_handshake_new_init(fastd_context *ctx, size_t tail_space) {
 	return buffer;
 }
 
-static const fastd_method* method_from_name(fastd_context *ctx, const char *name, size_t n) {
+static const fastd_method_t* method_from_name(fastd_context_t *ctx, const char *name, size_t n) {
 	int i;
 	for (i = 0; i < MAX_METHODS; i++) {
 		if (!ctx->conf->methods[i])
@@ -133,7 +133,7 @@ static const fastd_method* method_from_name(fastd_context *ctx, const char *name
 	return NULL;
 }
 
-fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake *handshake, const fastd_method *method, size_t tail_space) {
+fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_handshake_t *handshake, const fastd_method_t *method, size_t tail_space) {
 	bool first = (AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE]) == 1);
 	size_t version_len = strlen(FASTD_VERSION);
 	size_t method_len = strlen(method->name);
@@ -143,13 +143,13 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake
 		extra_size = 6 +            /* MTU */
 			     4+version_len; /* version name */
 
-	fastd_buffer buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0,
+	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_packet_t), 0,
 						 2*5 +           /* handshake type, reply code */
 						 4+method_len +  /* method name */
 						 extra_size +
 						 tail_space
 						 );
-	fastd_packet *request = buffer.data;
+	fastd_packet_t *request = buffer.data;
 
 	request->rsv1 = 0;
 	request->rsv2 = 0;
@@ -166,12 +166,12 @@ fastd_buffer fastd_handshake_new_reply(fastd_context *ctx, const fastd_handshake
 	return buffer;
 }
 
-static fastd_string_stack* parse_string_list(uint8_t *data, size_t len) {
+static fastd_string_stack_t* parse_string_list(uint8_t *data, size_t len) {
 	uint8_t *end = data+len;
-	fastd_string_stack *ret = NULL;
+	fastd_string_stack_t *ret = NULL;
 
 	while (data < end) {
-		fastd_string_stack *part = fastd_string_stack_dupn((char*)data, end-data);
+		fastd_string_stack_t *part = fastd_string_stack_dupn((char*)data, end-data);
 		part->next = ret;
 		ret = part;
 		data += strlen(part->str) + 1;
@@ -180,16 +180,16 @@ static fastd_string_stack* parse_string_list(uint8_t *data, size_t len) {
 	return ret;
 }
 
-void fastd_handshake_handle(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, fastd_buffer buffer) {
-	if (buffer.len < sizeof(fastd_packet)) {
+void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf, fastd_buffer_t buffer) {
+	if (buffer.len < sizeof(fastd_packet_t)) {
 		pr_warn(ctx, "received a short handshake from %I", address);
 		goto end_free;
 	}
 
-	fastd_handshake handshake;
+	fastd_handshake_t handshake;
 	memset(&handshake, 0, sizeof(handshake));
 
-	fastd_packet *packet = buffer.data;
+	fastd_packet_t *packet = buffer.data;
 
 	uint8_t *ptr = packet->tlv_data;
 	while (true) {
@@ -253,14 +253,14 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_socket *sock, const fastd_
 			goto send_reply;
 		}
 
-		const fastd_method *method = NULL;
+		const fastd_method_t *method = NULL;
 
 		if (handshake.records[RECORD_METHOD_LIST].data && handshake.records[RECORD_METHOD_LIST].length) {
-			fastd_string_stack *method_list = parse_string_list(handshake.records[RECORD_METHOD_LIST].data, handshake.records[RECORD_METHOD_LIST].length);
+			fastd_string_stack_t *method_list = parse_string_list(handshake.records[RECORD_METHOD_LIST].data, handshake.records[RECORD_METHOD_LIST].length);
 
-			fastd_string_stack *method_name = method_list;
+			fastd_string_stack_t *method_name = method_list;
 			while (method_name) {
-				const fastd_method *cur_method = method_from_name(ctx, method_name->str, SIZE_MAX);
+				const fastd_method_t *cur_method = method_from_name(ctx, method_name->str, SIZE_MAX);
 
 				if (cur_method)
 					method = cur_method;
@@ -294,8 +294,8 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_socket *sock, const fastd_
 
 	send_reply:
 		if (reply_code) {
-			fastd_buffer reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
-			fastd_packet *reply = reply_buffer.data;
+			fastd_buffer_t reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
+			fastd_packet_t *reply = reply_buffer.data;
 
 			reply->rsv1 = 0;
 			reply->rsv2 = 0;
@@ -319,7 +319,7 @@ void fastd_handshake_handle(fastd_context *ctx, fastd_socket *sock, const fastd_
 		uint8_t reply_code = AS_UINT8(handshake.records[RECORD_REPLY_CODE]);
 
 		if (reply_code == REPLY_SUCCESS) {
-			const fastd_method *method = ctx->conf->method_default;
+			const fastd_method_t *method = ctx->conf->method_default;
 
 			if (handshake.records[RECORD_METHOD_NAME].data) {
 				method = method_from_name(ctx, handshake.records[RECORD_METHOD_NAME].data, handshake.records[RECORD_METHOD_NAME].length);

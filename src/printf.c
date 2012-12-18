@@ -39,7 +39,7 @@ static inline int snprintf_safe(char *buffer, size_t size, const char *format, .
 	return ret < 0 ? 0 : ret > size ? size : ret;
 }
 
-static int snprint_peer_address(const fastd_context *ctx, char *buffer, size_t size, const fastd_peer_address *address) {
+static int snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
 	switch (address->sa.sa_family) {
@@ -63,14 +63,14 @@ static int snprint_peer_address(const fastd_context *ctx, char *buffer, size_t s
 	}
 }
 
-static int snprint_peer_str(const fastd_context *ctx, char *buffer, size_t size, const fastd_peer *peer) {
+static int snprint_peer_str(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_t *peer) {
 	if (peer->config && peer->config->name)
 		return snprintf_safe(buffer, size, "<%s>", peer->config->name);
 	else
 		return snprintf_safe(buffer, size, "<(null)>");
 }
 
-int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const char *format, va_list ap) {
+int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap) {
 	char *buffer_start = buffer;
 	char *buffer_end = buffer+size;
 
@@ -78,7 +78,7 @@ int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const c
 
 	for (; *format; format++) {
 		const void *p;
-		const fastd_eth_addr *eth_addr;
+		const fastd_eth_addr_t *eth_addr;
 
 		if (buffer >= buffer_end)
 			break;
@@ -109,7 +109,7 @@ int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const c
 			break;
 
 		case 'E':
-			eth_addr = va_arg(ap, const fastd_eth_addr*);
+			eth_addr = va_arg(ap, const fastd_eth_addr_t*);
 
 			if (eth_addr) {
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -122,19 +122,19 @@ int fastd_vsnprintf(const fastd_context *ctx, char *buffer, size_t size, const c
 			break;
 
 		case 'P':
-			p = va_arg(ap, const fastd_peer*);
+			p = va_arg(ap, const fastd_peer_t*);
 
 			if (p)
-				buffer += snprint_peer_str(ctx, buffer, buffer_end-buffer, (const fastd_peer*)p);
+				buffer += snprint_peer_str(ctx, buffer, buffer_end-buffer, (const fastd_peer_t*)p);
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;
 
 		case 'I':
-			p = va_arg(ap, const fastd_peer_address*);
+			p = va_arg(ap, const fastd_peer_address_t*);
 
 			if (p)
-				buffer += snprint_peer_address(ctx, buffer, buffer_end-buffer, (const fastd_peer_address*)p);
+				buffer += snprint_peer_address(ctx, buffer, buffer_end-buffer, (const fastd_peer_address_t*)p);
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;
@@ -171,7 +171,7 @@ static inline const char* get_log_prefix(int log_level) {
 	}
 }
 
-void fastd_logf(const fastd_context *ctx, int level, const char *format, ...) {
+void fastd_logf(const fastd_context_t *ctx, int level, const char *format, ...) {
 	char buffer[1024];
 	char timestr[100] = "";
 	va_list ap;
@@ -199,7 +199,7 @@ void fastd_logf(const fastd_context *ctx, int level, const char *format, ...) {
 	if (ctx->conf != NULL && level <= ctx->conf->log_syslog_level)
 		syslog(level, "%s", buffer);
 
-	fastd_log_fd *file;
+	fastd_log_fd_t *file;
 	for (file = ctx->log_files; file; file = file->next) {
 		if (level <= file->config->level)
 			dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);

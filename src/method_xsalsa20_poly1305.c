@@ -31,7 +31,7 @@
 #define NONCEBYTES 7
 
 
-struct _fastd_method_session_state {
+struct fastd_method_session_state {
 	struct timespec valid_till;
 	struct timespec refresh_after;
 
@@ -74,29 +74,29 @@ static inline bool is_nonce_valid(const uint8_t nonce[NONCEBYTES], const uint8_t
 	return true;
 }
 
-static size_t method_max_packet_size(fastd_context *ctx) {
+static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return (fastd_max_packet_size(ctx) + NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 }
 
-static size_t method_min_encrypt_head_space(fastd_context *ctx) {
+static size_t method_min_encrypt_head_space(fastd_context_t *ctx) {
 	return crypto_secretbox_xsalsa20poly1305_ZEROBYTES;
 }
 
-static size_t method_min_decrypt_head_space(fastd_context *ctx) {
+static size_t method_min_decrypt_head_space(fastd_context_t *ctx) {
 	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
-static size_t method_min_tail_space(fastd_context *ctx) {
+static size_t method_min_tail_space(fastd_context_t *ctx) {
 	return 0;
 }
 
-static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
 	int i;
 
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
 
-	fastd_method_session_state *session = malloc(sizeof(fastd_method_session_state));
+	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	session->valid_till = ctx->now;
 	session->valid_till.tv_sec += ctx->conf->key_valid;
@@ -117,26 +117,26 @@ static fastd_method_session_state* method_session_init(fastd_context *ctx, uint8
 	return session;
 }
 
-static bool method_session_is_valid(fastd_context *ctx, fastd_method_session_state *session) {
+static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	return (session && timespec_after(&session->valid_till, &ctx->now));
 }
 
-static bool method_session_is_initiator(fastd_context *ctx, fastd_method_session_state *session) {
+static bool method_session_is_initiator(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	return (session->send_nonce[0] & 1);
 }
 
-static bool method_session_want_refresh(fastd_context *ctx, fastd_method_session_state *session) {
+static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	return timespec_after(&ctx->now, &session->refresh_after);
 }
 
-static void method_session_free(fastd_context *ctx, fastd_method_session_state *session) {
+static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	if(session) {
-		memset(session, 0, sizeof(fastd_method_session_state));
+		memset(session, 0, sizeof(fastd_method_session_state_t));
 		free(session);
 	}
 }
 
-static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
+static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_pull_head(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
@@ -158,7 +158,7 @@ static bool method_encrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	return true;
 }
 
-static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_session_state *session, fastd_buffer *out, fastd_buffer in) {
+static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	if (in.len < NONCEBYTES)
 		return false;
 
@@ -218,7 +218,7 @@ static bool method_decrypt(fastd_context *ctx, fastd_peer *peer, fastd_method_se
 	return true;
 }
 
-const fastd_method fastd_method_xsalsa20_poly1305 = {
+const fastd_method_t fastd_method_xsalsa20_poly1305 = {
 	.name = "xsalsa20-poly1305",
 
 	.max_packet_size = method_max_packet_size,

@@ -53,42 +53,42 @@
 #endif
 
 
-struct _fastd_protocol_config {
+struct fastd_protocol_config {
 	ecc_secret_key_256 secret_key;
 	ecc_public_key_256 public_key;
 };
 
-typedef struct _handshake_key {
+typedef struct handshake_key {
 	uint64_t serial;
 	struct timespec preferred_till;
 	struct timespec valid_till;
 
 	ecc_secret_key_256 secret_key;
 	ecc_public_key_256 public_key;
-} handshake_key;
+} handshake_key_t;
 
-struct _fastd_protocol_state {
-	handshake_key prev_handshake_key;
-	handshake_key handshake_key;
+struct fastd_protocol_state {
+	handshake_key_t prev_handshake_key;
+	handshake_key_t handshake_key;
 };
 
-struct _fastd_protocol_peer_config {
+struct fastd_protocol_peer_config {
 	ecc_public_key_256 public_key;
 };
 
-typedef struct _protocol_session {
+typedef struct protocol_session {
 	struct timespec established;
 
 	bool handshakes_cleaned;
 	bool refreshing;
 
-	const fastd_method *method;
-	fastd_method_session_state *method_state;
-} protocol_session;
+	const fastd_method_t *method;
+	fastd_method_session_state_t *method_state;
+} protocol_session_t;
 
-struct _fastd_protocol_peer_state {
-	protocol_session old_session;
-	protocol_session session;
+struct fastd_protocol_peer_state {
+	protocol_session_t old_session;
+	protocol_session_t session;
 
 	uint64_t last_serial;
 };
@@ -101,7 +101,7 @@ struct _fastd_protocol_peer_state {
 #define RECORD_T RECORD_PROTOCOL5
 
 
-static void send_empty(fastd_context *ctx, fastd_peer *peer, protocol_session *session);
+static void send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session);
 
 
 static inline bool read_key(uint8_t key[32], const char *hexkey) {
@@ -115,20 +115,20 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 	return true;
 }
 
-static inline bool is_handshake_key_valid(fastd_context *ctx, const handshake_key *handshake_key) {
+static inline bool is_handshake_key_valid(fastd_context_t *ctx, const handshake_key_t *handshake_key) {
 	return timespec_after(&handshake_key->valid_till, &ctx->now);
 }
 
-static inline bool is_handshake_key_preferred(fastd_context *ctx, const handshake_key *handshake_key) {
+static inline bool is_handshake_key_preferred(fastd_context_t *ctx, const handshake_key_t *handshake_key) {
 	return timespec_after(&handshake_key->preferred_till, &ctx->now);
 }
 
-static inline bool is_session_valid(fastd_context *ctx, const protocol_session *session) {
+static inline bool is_session_valid(fastd_context_t *ctx, const protocol_session_t *session) {
 	return (session->method && session->method->session_is_valid(ctx, session->method_state));
 }
 
-static fastd_peer* get_peer(fastd_context *ctx, const fastd_peer_config *peer_conf) {
-	fastd_peer *peer;
+static fastd_peer_t* get_peer(fastd_context_t *ctx, const fastd_peer_config_t *peer_conf) {
+	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
 		if (peer->config == peer_conf)
 			break;
@@ -139,13 +139,13 @@ static fastd_peer* get_peer(fastd_context *ctx, const fastd_peer_config *peer_co
 	return peer;
 }
 
-static bool backoff(fastd_context *ctx, const fastd_peer *peer) {
+static bool backoff(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	return (peer->protocol_state && is_session_valid(ctx, &peer->protocol_state->session)
 		&& timespec_diff(&ctx->now, &peer->protocol_state->session.established) < 15000);
 }
 
-static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
-	protocol_session *session = &peer->protocol_state->session;
+static inline void check_session_refresh(fastd_context_t *ctx, fastd_peer_t *peer) {
+	protocol_session_t *session = &peer->protocol_state->session;
 
 	if (!session->refreshing && session->method->session_is_initiator(ctx, session->method_state) && session->method->session_want_refresh(ctx, session->method_state)) {
 		pr_verbose(ctx, "refreshing session with %P", peer);
@@ -155,8 +155,8 @@ static inline void check_session_refresh(fastd_context *ctx, fastd_peer *peer) {
 	}
 }
 
-static fastd_protocol_config* protocol_init(fastd_context *ctx) {
-	fastd_protocol_config *protocol_config = malloc(sizeof(fastd_protocol_config));
+static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
+	fastd_protocol_config_t *protocol_config = malloc(sizeof(fastd_protocol_config_t));
 
 	if (!ctx->conf->secret)
 		exit_error(ctx, "no secret key configured");
@@ -171,7 +171,7 @@ static fastd_protocol_config* protocol_init(fastd_context *ctx) {
 	return protocol_config;
 }
 
-static void protocol_peer_configure(fastd_context *ctx, fastd_peer_config *peer_conf) {
+static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
 	ecc_public_key_256 key;
 
 	if (!peer_conf->key) {
@@ -192,18 +192,16 @@ static void protocol_peer_configure(fastd_context *ctx, fastd_peer_config *peer_
 		return;
 	}
 
-	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config));
+	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
 	peer_conf->protocol_config->public_key = key;
 }
 
-static void init_protocol_state(fastd_context *ctx) {
-	if (!ctx->protocol_state) {
-		ctx->protocol_state = malloc(sizeof(fastd_protocol_state));
-		memset(ctx->protocol_state, 0, sizeof(fastd_protocol_state));
-	}
+static void init_protocol_state(fastd_context_t *ctx) {
+	if (!ctx->protocol_state)
+		ctx->protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
 }
 
-static void maintenance(fastd_context *ctx) {
+static void maintenance(fastd_context_t *ctx) {
 	init_protocol_state(ctx);
 
 	if (!is_handshake_key_preferred(ctx, &ctx->protocol_state->handshake_key)) {
@@ -228,10 +226,10 @@ static void maintenance(fastd_context *ctx) {
 	}
 }
 
-static void protocol_handshake_init(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf) {
+static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf) {
 	maintenance(ctx);
 
-	fastd_buffer buffer = fastd_handshake_new_init(ctx, 3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
+	fastd_buffer_t buffer = fastd_handshake_new_init(ctx, 3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
 
@@ -245,8 +243,8 @@ static void protocol_handshake_init(fastd_context *ctx, const fastd_socket *sock
 	fastd_send_handshake(ctx, sock, address, buffer);
 }
 
-static void respond_handshake(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer *peer, const handshake_key *handshake_key, const ecc_public_key_256 *peer_handshake_key,
-			      const fastd_handshake *handshake, const fastd_method *method) {
+static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_public_key_256 *peer_handshake_key,
+			      const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "responding handshake with %P[%I]...", peer, address);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
@@ -294,7 +292,7 @@ static void respond_handshake(fastd_context *ctx, const fastd_socket *sock, cons
 
 	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key);
 
-	fastd_buffer buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
+	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->config->protocol_config->public_key.p);
@@ -305,7 +303,7 @@ static void respond_handshake(fastd_context *ctx, const fastd_socket *sock, cons
 	fastd_send_handshake(ctx, sock, address, buffer);
 }
 
-static bool establish(fastd_context *ctx, fastd_peer *peer, const fastd_method *method, fastd_socket *sock, const fastd_peer_address *address, bool initiator,
+static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, fastd_socket_t *sock, const fastd_peer_address_t *address, bool initiator,
 		      const ecc_public_key_256 *A, const ecc_public_key_256 *B, const ecc_public_key_256 *X,
 		      const ecc_public_key_256 *Y, const ecc_public_key_256 *sigma, uint64_t serial) {
 	uint8_t hashinput[5*PUBLICKEYBYTES];
@@ -362,8 +360,8 @@ static bool establish(fastd_context *ctx, fastd_peer *peer, const fastd_method *
 	return true;
 }
 
-static void finish_handshake(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, fastd_peer *peer, const handshake_key *handshake_key, const ecc_public_key_256 *peer_handshake_key,
-			     const fastd_handshake *handshake, const fastd_method *method) {
+static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_public_key_256 *peer_handshake_key,
+			     const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, address);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
@@ -422,7 +420,7 @@ static void finish_handshake(fastd_context *ctx, fastd_socket *sock, const fastd
 		       &peer->config->protocol_config->public_key, &sigma, handshake_key->serial))
 		return;
 
-	fastd_buffer buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
+	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->config->protocol_config->public_key.p);
@@ -433,8 +431,8 @@ static void finish_handshake(fastd_context *ctx, fastd_socket *sock, const fastd
 	fastd_send_handshake(ctx, sock, address, buffer);
 }
 
-static void handle_finish_handshake(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, fastd_peer *peer, const handshake_key *handshake_key, const ecc_public_key_256 *peer_handshake_key,
-				    const fastd_handshake *handshake, const fastd_method *method) {
+static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_public_key_256 *peer_handshake_key,
+				    const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, address);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
@@ -488,7 +486,7 @@ static void handle_finish_handshake(fastd_context *ctx, fastd_socket *sock, cons
 		  &ctx->conf->protocol_config->public_key, &sigma, handshake_key->serial);
 }
 
-static bool check_peer_config_match(const fastd_peer_config *config, const fastd_peer_address *address, const unsigned char key[32]) {
+static bool check_peer_config_match(const fastd_peer_config_t *config, const fastd_peer_address_t *address, const unsigned char key[32]) {
 	if (!config->enabled || !config->protocol_config)
 		return false;
 
@@ -498,7 +496,7 @@ static bool check_peer_config_match(const fastd_peer_config *config, const fastd
 	return (memcmp(config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0);
 }
 
-static const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const unsigned char key[32]) {
+static const fastd_peer_config_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf, const unsigned char key[32]) {
 	if (sock->peer) {
 		if (peer_conf != sock->peer->config) {
 			if (peer_conf && !fastd_peer_config_is_floating(peer_conf) && !fastd_peer_config_is_dynamic(peer_conf))
@@ -520,7 +518,7 @@ static const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd
 	if (peer_conf && !fastd_peer_config_is_floating(peer_conf) && !fastd_peer_config_is_dynamic(peer_conf))
 		return NULL;
 
-	const fastd_peer_config *config;
+	const fastd_peer_config_t *config;
 	for (config = ctx->conf->peers; config; config = config->next) {
 		if (!check_peer_config_match(config, address, key))
 			continue;
@@ -536,12 +534,12 @@ static const fastd_peer_config* match_sender_key(fastd_context *ctx, const fastd
 	return NULL;
 }
 
-static inline bool has_field(const fastd_handshake *handshake, uint8_t type, size_t length) {
+static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, size_t length) {
 	return (handshake->records[type].length == length);
 }
 
-static void protocol_handshake_handle(fastd_context *ctx, fastd_socket *sock, const fastd_peer_address *address, const fastd_peer_config *peer_conf, const fastd_handshake *handshake, const fastd_method *method) {
-	handshake_key *handshake_key;
+static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf, const fastd_handshake_t *handshake, const fastd_method_t *method) {
+	handshake_key_t *handshake_key;
 	char *peer_version_name = NULL;
 
 	maintenance(ctx);
@@ -557,7 +555,7 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_socket *sock, co
 		return;
 	}
 
-	fastd_peer *peer = get_peer(ctx, peer_conf);
+	fastd_peer_t *peer = get_peer(ctx, peer_conf);
 
 	if (!fastd_peer_may_connect(ctx, peer)) {
 		pr_debug(ctx, "ignoring handshake from %P[%I] because of local constraints", peer, address);
@@ -657,7 +655,7 @@ static void protocol_handshake_handle(fastd_context *ctx, fastd_socket *sock, co
 	}
 }
 
-static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!fastd_peer_is_established(peer)) {
 		pr_debug(ctx, "received unexpected packet from %P, scheduling handshake", peer);
 		fastd_task_schedule_handshake(ctx, peer, 0);
@@ -668,7 +666,7 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session))
 		goto fail;
 
-	fastd_buffer recv_buffer;
+	fastd_buffer_t recv_buffer;
 	bool ok = false;
 
 	if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
@@ -717,8 +715,8 @@ static void protocol_handle_recv(fastd_context *ctx, fastd_peer *peer, fastd_buf
 	fastd_buffer_free(buffer);
 }
 
-static void session_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer, protocol_session *session) {
-	fastd_buffer send_buffer;
+static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer, protocol_session_t *session) {
+	fastd_buffer_t send_buffer;
 	if (!session->method->encrypt(ctx, peer, session->method_state, &send_buffer, buffer)) {
 		fastd_buffer_free(buffer);
 		return;
@@ -730,7 +728,7 @@ static void session_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buff
 	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
 }
 
-static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !is_session_valid(ctx, &peer->protocol_state->session)) {
 		fastd_buffer_free(buffer);
 		return;
@@ -747,28 +745,27 @@ static void protocol_send(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 	}
 }
 
-static void send_empty(fastd_context *ctx, fastd_peer *peer, protocol_session *session) {
+static void send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session) {
 	session_send(ctx, peer, fastd_buffer_alloc(0, alignto(session->method->min_encrypt_head_space(ctx), 8), session->method->min_encrypt_tail_space(ctx)), session);
 }
 
-static void protocol_init_peer_state(fastd_context *ctx, fastd_peer *peer) {
+static void protocol_init_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
 	init_protocol_state(ctx);
 
 	if (peer->protocol_state)
 		exit_bug(ctx, "tried to reinit peer state");
 
-	peer->protocol_state = malloc(sizeof(fastd_protocol_peer_state));
-	memset(peer->protocol_state, 0, sizeof(fastd_protocol_peer_state));
+	peer->protocol_state = calloc(1, sizeof(fastd_protocol_peer_state_t));
 	peer->protocol_state->last_serial = ctx->protocol_state->handshake_key.serial;
 }
 
-static void reset_session(fastd_context *ctx, protocol_session *session) {
+static void reset_session(fastd_context_t *ctx, protocol_session_t *session) {
 	if (session->method)
 		session->method->session_free(ctx, session->method_state);
-	memset(session, 0, sizeof(protocol_session));
+	memset(session, 0, sizeof(protocol_session_t));
 }
 
-static void protocol_reset_peer_state(fastd_context *ctx, fastd_peer *peer) {
+static void protocol_reset_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		return;
 
@@ -776,7 +773,7 @@ static void protocol_reset_peer_state(fastd_context *ctx, fastd_peer *peer) {
 	reset_session(ctx, &peer->protocol_state->session);
 }
 
-static void protocol_free_peer_state(fastd_context *ctx, fastd_peer *peer) {
+static void protocol_free_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (peer->protocol_state) {
 		reset_session(ctx, &peer->protocol_state->old_session);
 		reset_session(ctx, &peer->protocol_state->session);
@@ -795,7 +792,7 @@ static void hexdump(const char *desc, unsigned char d[32]) {
 	printf("\n");
 }
 
-static void protocol_generate_key(fastd_context *ctx) {
+static void protocol_generate_key(fastd_context_t *ctx) {
 	ecc_secret_key_256 secret_key;
 	ecc_public_key_256 public_key;
 
@@ -818,7 +815,7 @@ static void protocol_generate_key(fastd_context *ctx) {
 	}
 }
 
-static void protocol_show_key(fastd_context *ctx) {
+static void protocol_show_key(fastd_context_t *ctx) {
 	if (ctx->conf->machine_readable)
 		hexdump("", ctx->conf->protocol_config->public_key.p);
 	else
@@ -826,7 +823,7 @@ static void protocol_show_key(fastd_context *ctx) {
 }
 
 
-const fastd_protocol fastd_protocol_ec25519_fhmqvc = {
+const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.name = "ec25519-fhmqvc",
 
 	.init = protocol_init,

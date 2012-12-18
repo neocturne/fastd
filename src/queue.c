@@ -30,7 +30,7 @@
 #include <stdint.h>
 
 
-void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *entry, int timeout) {
+void fastd_queue_put(fastd_context_t *ctx, fastd_queue_t *queue, fastd_queue_entry_t *entry, int timeout) {
 	entry->timeout = ctx->now;
 
 	if (timeout) {
@@ -43,7 +43,7 @@ void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *
 		}
 	}
 
-	fastd_queue_entry **current;
+	fastd_queue_entry_t **current;
 	for (current = &queue->head;; current = &(*current)->next) {
 		if (!(*current) || timespec_after(&(*current)->timeout, &entry->timeout)) {
 			entry->next = *current;
@@ -53,17 +53,17 @@ void fastd_queue_put(fastd_context *ctx, fastd_queue *queue, fastd_queue_entry *
 	}
 }
 
-fastd_queue_entry* fastd_queue_get(fastd_context *ctx, fastd_queue *queue) {
+fastd_queue_entry_t* fastd_queue_get(fastd_context_t *ctx, fastd_queue_t *queue) {
 	if (!queue->head || fastd_queue_timeout(ctx, queue) > 0)
 		return NULL;
 
-	fastd_queue_entry *entry = queue->head;
+	fastd_queue_entry_t *entry = queue->head;
 	queue->head = entry->next;
 
 	return entry;
 }
 
-int fastd_queue_timeout(fastd_context *ctx, fastd_queue *queue) {
+int fastd_queue_timeout(fastd_context_t *ctx, fastd_queue_t *queue) {
 	if (!queue->head)
 		return -1;
 
@@ -74,8 +74,8 @@ int fastd_queue_timeout(fastd_context *ctx, fastd_queue *queue) {
 		return diff_msec;
 }
 
-void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fastd_queue_entry*, void*), void *extra) {
-	fastd_queue_entry **entry, *next;
+void fastd_queue_filter(fastd_context_t *ctx, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra) {
+	fastd_queue_entry_t **entry, *next;
 	for (entry = &queue->head; *entry;) {
 		next = (*entry)->next;
 
@@ -86,8 +86,8 @@ void fastd_queue_filter(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fas
 	}
 }
 
-bool fastd_queue_has_entry(fastd_context *ctx, fastd_queue *queue, bool (*pred)(fastd_queue_entry*, void*), void *extra) {
-	fastd_queue_entry *entry;
+bool fastd_queue_has_entry(fastd_context_t *ctx, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra) {
+	fastd_queue_entry_t *entry;
 	for (entry = queue->head; entry; entry = entry->next) {
 		if (pred(entry, extra))
 			return true;

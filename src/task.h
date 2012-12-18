@@ -33,35 +33,32 @@
 #include <sys/uio.h>
 
 
-typedef enum _fastd_task_type {
+typedef enum fastd_task_type {
 	TASK_HANDSHAKE,
 	TASK_KEEPALIVE,
-} fastd_task_type;
+} fastd_task_type_t;
 
-typedef struct _fastd_task_any {
-} fastd_task_any;
+typedef struct fastd_task {
+	fastd_queue_entry_t entry;
 
-typedef struct _fastd_task {
-	fastd_queue_entry entry;
-
-	fastd_task_type type;
-	fastd_peer *peer;
-} fastd_task;
+	fastd_task_type_t type;
+	fastd_peer_t *peer;
+} fastd_task_t;
 
 
-static inline int fastd_task_timeout(fastd_context *ctx) {	
+static inline int fastd_task_timeout(fastd_context_t *ctx) {	
 	return fastd_queue_timeout(ctx, &ctx->task_queue);
 }
 
 
-fastd_task* fastd_task_get(fastd_context *ctx);
+fastd_task_t* fastd_task_get(fastd_context_t *ctx);
 
-void fastd_task_schedule_handshake(fastd_context *ctx, fastd_peer *peer, int timeout);
-void fastd_task_schedule_keepalive(fastd_context *ctx, fastd_peer *peer, int timeout);
+void fastd_task_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer, int timeout);
+void fastd_task_schedule_keepalive(fastd_context_t *ctx, fastd_peer_t *peer, int timeout);
 
-void fastd_task_replace_peer(fastd_context *ctx, fastd_peer *old_peer, fastd_peer *new_peer);
-void fastd_task_delete_peer(fastd_context *ctx, fastd_peer *peer);
-void fastd_task_delete_peer_handshakes(fastd_context *ctx, fastd_peer *peer);
-void fastd_task_delete_peer_keepalives(fastd_context *ctx, fastd_peer *peer);
+void fastd_task_replace_peer(fastd_context_t *ctx, fastd_peer_t *old_peer, fastd_peer_t *new_peer);
+void fastd_task_delete_peer(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_task_delete_peer_handshakes(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_task_delete_peer_keepalives(fastd_context_t *ctx, fastd_peer_t *peer);
 
 #endif /* _FASTD_TASK_H_ */

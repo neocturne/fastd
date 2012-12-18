@@ -34,17 +34,17 @@
 #include <crypto_stream_aes128ctr.h>
 
 
-struct _fastd_crypto_aes128ctr_state {
-	fastd_buffer d;
+struct fastd_crypto_aes128ctr_state {
+	fastd_buffer_t d;
 };
 
 
-static fastd_crypto_aes128ctr_context* aes128ctr_init(fastd_context *ctx) {
-	return (fastd_crypto_aes128ctr_context*)1;
+static fastd_crypto_aes128ctr_context_t* aes128ctr_init(fastd_context_t *ctx) {
+	return (fastd_crypto_aes128ctr_context_t*)1;
 }
 
-static fastd_crypto_aes128ctr_state* aes128ctr_set_key(fastd_context *ctx, const fastd_crypto_aes128ctr_context *cctx, const fastd_block128 *key) {
-	fastd_crypto_aes128ctr_state *cstate = malloc(sizeof(fastd_crypto_aes128ctr_state));
+static fastd_crypto_aes128ctr_state_t* aes128ctr_set_key(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx, const fastd_block128_t *key) {
+	fastd_crypto_aes128ctr_state_t *cstate = malloc(sizeof(fastd_crypto_aes128ctr_state_t));
 
 	cstate->d = fastd_buffer_alloc(crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
 	crypto_stream_aes128ctr_beforenm(cstate->d.data, key->b);
@@ -52,22 +52,22 @@ static fastd_crypto_aes128ctr_state* aes128ctr_set_key(fastd_context *ctx, const
 	return cstate;
 }
 
-static bool aes128ctr_crypt(fastd_context *ctx, const fastd_crypto_aes128ctr_state *cstate, fastd_block128 *out, const fastd_block128 *in, size_t len, const fastd_block128 *iv) {
+static bool aes128ctr_crypt(fastd_context_t *ctx, const fastd_crypto_aes128ctr_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv) {
 	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv->b, cstate->d.data);
 	return true;
 }
 
-static void aes128ctr_free_state(fastd_context *ctx, fastd_crypto_aes128ctr_state *cstate) {
+static void aes128ctr_free_state(fastd_context_t *ctx, fastd_crypto_aes128ctr_state_t *cstate) {
 	if (cstate) {
 		fastd_buffer_free(cstate->d);
 		free(cstate);
 	}
 }
 
-static void aes128ctr_free(fastd_context *ctx, fastd_crypto_aes128ctr_context *cctx) {
+static void aes128ctr_free(fastd_context_t *ctx, fastd_crypto_aes128ctr_context_t *cctx) {
 }
 
-fastd_crypto_aes128ctr fastd_crypto_aes128ctr_nacl = {
+fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_nacl = {
 	.name = "nacl",
 
 	.init = aes128ctr_init,
@@ -84,19 +84,19 @@ fastd_crypto_aes128ctr fastd_crypto_aes128ctr_nacl = {
 #ifdef USE_CRYPTO_GHASH
 #ifdef WITH_CRYPTO_GHASH_BUILTIN
 
-struct _fastd_crypto_ghash_state {
-	fastd_block128 H[32][16];
+struct fastd_crypto_ghash_state {
+	fastd_block128_t H[32][16];
 };
 
 
-static const fastd_block128 r = { .b = {0xe1} };
+static const fastd_block128_t r = { .b = {0xe1} };
 
 
-static inline uint8_t shr(fastd_block128 *out, const fastd_block128 *in, int n) {
+static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int n) {
 	int i;
 	uint8_t c = 0;
 
-	for (i = 0; i < sizeof(fastd_block128); i++) {
+	for (i = 0; i < sizeof(fastd_block128_t); i++) {
 		uint8_t c2 = in->b[i] << (8-n);
 		out->b[i] = (in->b[i] >> n) | c;
 		c = c2;
@@ -105,8 +105,8 @@ static inline uint8_t shr(fastd_block128 *out, const fastd_block128 *in, int n) 
 	return (c >> (8-n));
 }
 
-static inline void mulH_a(fastd_block128 *x, const fastd_crypto_ghash_state *cstate) {
-	fastd_block128 out = {};
+static inline void mulH_a(fastd_block128_t *x, const fastd_crypto_ghash_state_t *cstate) {
+	fastd_block128_t out = {};
 
 	int i;
 	for (i = 0; i < 16; i++) {
@@ -118,15 +118,15 @@ static inline void mulH_a(fastd_block128 *x, const fastd_crypto_ghash_state *cst
 }
 
 
-static fastd_crypto_ghash_context* ghash_init(fastd_context *ctx) {
-	return (fastd_crypto_ghash_context*)1;
+static fastd_crypto_ghash_context_t* ghash_init(fastd_context_t *ctx) {
+	return (fastd_crypto_ghash_context_t*)1;
 }
 
-static fastd_crypto_ghash_state* ghash_set_h(fastd_context *ctx, const fastd_crypto_ghash_context *cctx, const fastd_block128 *h) {
-	fastd_crypto_ghash_state *cstate = malloc(sizeof(fastd_crypto_ghash_state));
+static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx, const fastd_crypto_ghash_context_t *cctx, const fastd_block128_t *h) {
+	fastd_crypto_ghash_state_t *cstate = malloc(sizeof(fastd_crypto_ghash_state_t));
 
-	fastd_block128 Hbase[4];
-	fastd_block128 Rbase[4];
+	fastd_block128_t Hbase[4];
+	fastd_block128_t Rbase[4];
 
 	Hbase[0] = *h;
 	Rbase[0] = r;
@@ -140,7 +140,7 @@ static fastd_crypto_ghash_state* ghash_set_h(fastd_context *ctx, const fastd_cry
 		shr(&Rbase[i], &Rbase[i-1], 1);
 	}
 
-	fastd_block128 R[16];
+	fastd_block128_t R[16];
 	memset(cstate->H, 0, sizeof(cstate->H));
 	memset(R, 0, sizeof(R));
 
@@ -166,8 +166,8 @@ static fastd_crypto_ghash_state* ghash_set_h(fastd_context *ctx, const fastd_cry
 	return cstate;
 }
 
-static bool ghash_hash(fastd_context *ctx, const fastd_crypto_ghash_state *cstate, fastd_block128 *out, const fastd_block128 *in, size_t n_blocks) {
-	memset(out, 0, sizeof(fastd_block128));
+static bool ghash_hash(fastd_context_t *ctx, const fastd_crypto_ghash_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
+	memset(out, 0, sizeof(fastd_block128_t));
 
 	int i;
 	for (i = 0; i < n_blocks; i++) {
@@ -178,14 +178,14 @@ static bool ghash_hash(fastd_context *ctx, const fastd_crypto_ghash_state *cstat
 	return true;
 }
 
-static void ghash_free_state(fastd_context *ctx, fastd_crypto_ghash_state *cstate) {
+static void ghash_free_state(fastd_context_t *ctx, fastd_crypto_ghash_state_t *cstate) {
 	free(cstate);
 }
 
-static void ghash_free(fastd_context *ctx, fastd_crypto_ghash_context *cctx) {
+static void ghash_free(fastd_context_t *ctx, fastd_crypto_ghash_context_t *cctx) {
 }
 
-fastd_crypto_ghash fastd_crypto_ghash_builtin = {
+fastd_crypto_ghash_t fastd_crypto_ghash_builtin = {
 	.name = "builtin",
 
 	.init = ghash_init,

@@ -57,7 +57,7 @@ static void on_terminate(int signo) {
 	terminate = true;
 }
 
-static void init_signals(fastd_context *ctx) {
+static void init_signals(fastd_context_t *ctx) {
 	struct sigaction action;
 
 	action.sa_flags = 0;
@@ -80,7 +80,7 @@ static void init_signals(fastd_context *ctx) {
 		exit_errno(ctx, "sigaction");
 }
 
-static void init_pipes(fastd_context *ctx) {
+static void init_pipes(fastd_context_t *ctx) {
 	int pipefd[2];
 
 	if (pipe(pipefd))
@@ -90,13 +90,13 @@ static void init_pipes(fastd_context *ctx) {
 	ctx->resolvewfd = pipefd[1];
 }
 
-static void init_log(fastd_context *ctx) {
+static void init_log(fastd_context_t *ctx) {
 	if (ctx->conf->log_syslog_level >= 0)
 		openlog(ctx->conf->log_syslog_ident, LOG_PID, LOG_DAEMON);
 
-	fastd_log_file *config;
+	fastd_log_file_t *config;
 	for (config = ctx->conf->log_files; config; config = config->next) {
-		fastd_log_fd *file = malloc(sizeof(fastd_log_fd));
+		fastd_log_fd_t *file = malloc(sizeof(fastd_log_fd_t));
 
 		file->config = config;
 		file->fd = open(config->filename, O_WRONLY|O_APPEND|O_CREAT, 0600);
@@ -106,9 +106,9 @@ static void init_log(fastd_context *ctx) {
 	}
 }
 
-static void close_log(fastd_context *ctx) {
+static void close_log(fastd_context_t *ctx) {
 	while (ctx->log_files) {
-		fastd_log_fd *next = ctx->log_files->next;
+		fastd_log_fd_t *next = ctx->log_files->next;
 
 		close(ctx->log_files->fd);
 		free(ctx->log_files);
@@ -119,7 +119,7 @@ static void close_log(fastd_context *ctx) {
 	closelog();
 }
 
-static void crypto_init(fastd_context *ctx) {
+static void crypto_init(fastd_context_t *ctx) {
 #ifdef USE_CRYPTO_AES128CTR
 	ctx->crypto_aes128ctr = ctx->conf->crypto_aes128ctr->init(ctx);
 	if (!ctx->crypto_aes128ctr)
@@ -133,7 +133,7 @@ static void crypto_init(fastd_context *ctx) {
 #endif
 }
 
-static void crypto_free(fastd_context *ctx) {
+static void crypto_free(fastd_context_t *ctx) {
 #ifdef USE_CRYPTO_AES128CTR
 	ctx->conf->crypto_aes128ctr->free(ctx, ctx->crypto_aes128ctr);
 	ctx->crypto_aes128ctr = NULL;
@@ -146,13 +146,13 @@ static void crypto_free(fastd_context *ctx) {
 }
 
 
-static void init_sockets(fastd_context *ctx) {
-	ctx->socks = malloc(ctx->conf->n_bind_addrs * sizeof(fastd_socket));
+static void init_sockets(fastd_context_t *ctx) {
+	ctx->socks = malloc(ctx->conf->n_bind_addrs * sizeof(fastd_socket_t));
 
 	unsigned i;
-	fastd_bind_address *addr = ctx->conf->bind_addrs;
+	fastd_bind_address_t *addr = ctx->conf->bind_addrs;
 	for (i = 0; i < ctx->conf->n_bind_addrs; i++) {
-		ctx->socks[i] = (fastd_socket){-2, addr, NULL};
+		ctx->socks[i] = (fastd_socket_t){-2, addr, NULL};
 
 		if (addr == ctx->conf->bind_addr_default_v4)
 			ctx->sock_default_v4 = &ctx->socks[i];
@@ -166,7 +166,7 @@ static void init_sockets(fastd_context *ctx) {
 	ctx->n_socks = ctx->conf->n_bind_addrs;
 }
 
-static int bind_socket(fastd_context *ctx, const fastd_bind_address *addr, bool warn) {
+static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, bool warn) {
 	int fd = -1;
 	int af = AF_UNSPEC;
 
@@ -202,7 +202,7 @@ static int bind_socket(fastd_context *ctx, const fastd_bind_address *addr, bool 
 		}
 	}
 
-	fastd_peer_address bind_address = addr->addr;
+	fastd_peer_address_t bind_address = addr->addr;
 
 	if (bind_address.sa.sa_family == AF_UNSPEC) {
 		memset(&bind_address, 0, sizeof(bind_address));
@@ -238,7 +238,7 @@ static int bind_socket(fastd_context *ctx, const fastd_bind_address *addr, bool 
 	return -1;
 }
 
-static void bind_sockets(fastd_context *ctx) {
+static void bind_sockets(fastd_context_t *ctx) {
 	unsigned i;
 
 	for (i = 0; i < ctx->n_socks; i++) {
@@ -256,14 +256,14 @@ static void bind_sockets(fastd_context *ctx) {
 	}
 }
 
-fastd_socket* fastd_socket_open(fastd_context *ctx, fastd_peer *peer, int af) {
-	const fastd_bind_address any_address = { .addr.sa.sa_family = af };
+fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int af) {
+	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
 
 	int fd = bind_socket(ctx, &any_address, true);
 	if (fd < 0)
 		return NULL;
 
-	fastd_socket *sock = malloc(sizeof(fastd_socket));
+	fastd_socket_t *sock = malloc(sizeof(fastd_socket_t));
 
 	sock->fd = fd;
 	sock->addr = NULL;
@@ -272,7 +272,7 @@ fastd_socket* fastd_socket_open(fastd_context *ctx, fastd_peer *peer, int af) {
 	return sock;
 }
 
-static void init_tuntap(fastd_context *ctx) {
+static void init_tuntap(fastd_context_t *ctx) {
 	struct ifreq ifr;
 
 	pr_debug(ctx, "initializing tun/tap device...");
@@ -323,14 +323,14 @@ static void init_tuntap(fastd_context *ctx) {
 	pr_debug(ctx, "tun/tap device initialized.");
 }
 
-static void close_tuntap(fastd_context *ctx) {
+static void close_tuntap(fastd_context_t *ctx) {
 	if(close(ctx->tunfd))
 		pr_warn_errno(ctx, "closing tun/tap: close");
 
 	free(ctx->ifname);
 }
 
-static void close_sockets(fastd_context *ctx) {
+static void close_sockets(fastd_context_t *ctx) {
 	unsigned i;
 	for (i = 0; i < ctx->n_socks; i++)
 		fastd_socket_close(ctx, &ctx->socks[i]);
@@ -338,7 +338,7 @@ static void close_sockets(fastd_context *ctx) {
 	free(ctx->socks);
 }
 
-static size_t methods_max_packet_size(fastd_context *ctx) {
+static size_t methods_max_packet_size(fastd_context_t *ctx) {
 	size_t ret = ctx->conf->methods[0]->max_packet_size(ctx);
 
 	int i;
@@ -354,7 +354,7 @@ static size_t methods_max_packet_size(fastd_context *ctx) {
 	return ret;
 }
 
-static size_t methods_min_encrypt_head_space(fastd_context *ctx) {
+static size_t methods_min_encrypt_head_space(fastd_context_t *ctx) {
 	size_t ret = ctx->conf->methods[0]->min_encrypt_head_space(ctx);
 
 	int i;
@@ -370,7 +370,7 @@ static size_t methods_min_encrypt_head_space(fastd_context *ctx) {
 	return alignto(ret, 16);
 }
 
-static size_t methods_min_decrypt_head_space(fastd_context *ctx) {
+static size_t methods_min_decrypt_head_space(fastd_context_t *ctx) {
 	size_t ret = ctx->conf->methods[0]->min_decrypt_head_space(ctx);
 
 	int i;
@@ -387,7 +387,7 @@ static size_t methods_min_decrypt_head_space(fastd_context *ctx) {
 	return alignto(ret, 16) + 8;
 }
 
-static size_t methods_min_encrypt_tail_space(fastd_context *ctx) {
+static size_t methods_min_encrypt_tail_space(fastd_context_t *ctx) {
 	size_t ret = ctx->conf->methods[0]->min_encrypt_tail_space(ctx);
 
 	int i;
@@ -403,7 +403,7 @@ static size_t methods_min_encrypt_tail_space(fastd_context *ctx) {
 	return ret;
 }
 
-static size_t methods_min_decrypt_tail_space(fastd_context *ctx) {
+static size_t methods_min_decrypt_tail_space(fastd_context_t *ctx) {
 	size_t ret = ctx->conf->methods[0]->min_decrypt_tail_space(ctx);
 
 	int i;
@@ -419,7 +419,7 @@ static size_t methods_min_decrypt_tail_space(fastd_context *ctx) {
 	return ret;
 }
 
-static void fastd_send_type(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, uint8_t packet_type, fastd_buffer buffer) {
+static void fastd_send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, uint8_t packet_type, fastd_buffer_t buffer) {
 	if (!sock)
 		exit_bug(ctx, "send: sock == NULL");
 
@@ -460,17 +460,17 @@ static void fastd_send_type(fastd_context *ctx, const fastd_socket *sock, const 
 	fastd_buffer_free(buffer);
 }
 
-void fastd_send(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer) {
+void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_buffer_t buffer) {
 	fastd_send_type(ctx, sock, address, PACKET_DATA, buffer);
 }
 
-void fastd_send_handshake(fastd_context *ctx, const fastd_socket *sock, const fastd_peer_address *address, fastd_buffer buffer) {
+void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_buffer_t buffer) {
 	fastd_send_type(ctx, sock, address, PACKET_HANDSHAKE, buffer);
 }
 
-void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buffer) {
+void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (ctx->conf->mode == MODE_TAP) {
-		const fastd_eth_addr *src_addr = fastd_get_source_address(ctx, buffer);
+		const fastd_eth_addr_t *src_addr = fastd_get_source_address(ctx, buffer);
 
 		if (fastd_eth_addr_is_unicast(src_addr))
 			fastd_peer_eth_addr_add(ctx, peer, src_addr);
@@ -480,10 +480,10 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 		pr_warn_errno(ctx, "write");
 
 	if (ctx->conf->mode == MODE_TAP && ctx->conf->forward) {
-		const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, buffer);
+		const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, buffer);
 
 		if (fastd_eth_addr_is_unicast(dest_addr)) {
-			fastd_peer *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
+			fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
 			if (dest_peer && dest_peer != peer && fastd_peer_is_established(dest_peer)) {
 				ctx->conf->protocol->send(ctx, dest_peer, buffer);
@@ -493,10 +493,10 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 			}
 		}
 		else {
-			fastd_peer *dest_peer;
+			fastd_peer_t *dest_peer;
 			for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
 				if (dest_peer != peer && fastd_peer_is_established(dest_peer)) {
-					fastd_buffer send_buffer = fastd_buffer_alloc(buffer.len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
+					fastd_buffer_t send_buffer = fastd_buffer_alloc(buffer.len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
 					memcpy(send_buffer.data, buffer.data, buffer.len);
 					ctx->conf->protocol->send(ctx, dest_peer, send_buffer);
 				}
@@ -510,7 +510,7 @@ void fastd_handle_receive(fastd_context *ctx, fastd_peer *peer, fastd_buffer buf
 	}
 }
 
-static void on_up(fastd_context *ctx) {
+static void on_up(fastd_context_t *ctx) {
 	if (!ctx->conf->on_up)
 		return;
 
@@ -536,7 +536,7 @@ static void on_up(fastd_context *ctx) {
 	free(cwd);
 }
 
-static void on_down(fastd_context *ctx) {
+static void on_down(fastd_context_t *ctx) {
 	if (!ctx->conf->on_down)
 		return;
 
@@ -562,14 +562,14 @@ static void on_down(fastd_context *ctx) {
 	free(cwd);
 }
 
-static fastd_peer_group* init_peer_group(const fastd_peer_group_config *config, fastd_peer_group *parent) {
-	fastd_peer_group *ret = calloc(1, sizeof(fastd_peer_group));
+static fastd_peer_group_t* init_peer_group(const fastd_peer_group_config_t *config, fastd_peer_group_t *parent) {
+	fastd_peer_group_t *ret = calloc(1, sizeof(fastd_peer_group_t));
 
 	ret->conf = config;
 	ret->parent = parent;
 
-	fastd_peer_group **children = &ret->children;
-	fastd_peer_group_config *child_config;
+	fastd_peer_group_t **children = &ret->children;
+	fastd_peer_group_config_t *child_config;
 
 	for (child_config = config->children; child_config; child_config = child_config->next) {
 		*children = init_peer_group(child_config, ret);
@@ -579,13 +579,13 @@ static fastd_peer_group* init_peer_group(const fastd_peer_group_config *config, 
 	return ret;
 }
 
-static void init_peer_groups(fastd_context *ctx) {
+static void init_peer_groups(fastd_context_t *ctx) {
 	ctx->peer_group = init_peer_group(ctx->conf->peer_group, NULL);
 }
 
-static void free_peer_group(fastd_peer_group *group) {
+static void free_peer_group(fastd_peer_group_t *group) {
 	while (group->children) {
-		fastd_peer_group *child = group->children;
+		fastd_peer_group_t *child = group->children;
 		group->children = group->children->next;
 
 		free_peer_group(child);
@@ -594,12 +594,12 @@ static void free_peer_group(fastd_peer_group *group) {
 	free(group);
 }
 
-static void delete_peer_groups(fastd_context *ctx) {
+static void delete_peer_groups(fastd_context_t *ctx) {
 	free_peer_group(ctx->peer_group);
 }
 
-static void init_peers(fastd_context *ctx) {
-	fastd_peer_config *peer_conf;
+static void init_peers(fastd_context_t *ctx) {
+	fastd_peer_config_t *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
 		ctx->conf->protocol->peer_configure(ctx, peer_conf);
 
@@ -608,8 +608,8 @@ static void init_peers(fastd_context *ctx) {
 	}
 }
 
-static void delete_peers(fastd_context *ctx) {
-	fastd_peer *peer, *next;
+static void delete_peers(fastd_context_t *ctx) {
+	fastd_peer_t *peer, *next;
 	for (peer = ctx->peers; peer; peer = next) {
 		next = peer->next;
 
@@ -617,15 +617,15 @@ static void delete_peers(fastd_context *ctx) {
 	}
 }
 
-static inline void update_time(fastd_context *ctx) {
+static inline void update_time(fastd_context_t *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
-static inline void schedule_new_handshake(fastd_context *ctx, fastd_peer *peer) {
+static inline void schedule_new_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
 }
 
-static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
+static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!fastd_peer_may_connect(ctx, peer)) {
 		schedule_new_handshake(ctx, peer);
 		return;
@@ -650,8 +650,8 @@ static void send_handshake(fastd_context *ctx, fastd_peer *peer) {
 	schedule_new_handshake(ctx, peer);
 }
 
-static void handle_tasks(fastd_context *ctx) {
-	fastd_task *task;
+static void handle_tasks(fastd_context_t *ctx) {
+	fastd_task_t *task;
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
@@ -679,9 +679,9 @@ static void handle_tasks(fastd_context *ctx) {
 	}
 }
 
-static void handle_tun(fastd_context *ctx) {
+static void handle_tun(fastd_context_t *ctx) {
 	size_t max_len = fastd_max_packet_size(ctx);
-	fastd_buffer buffer = fastd_buffer_alloc(max_len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
+	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
 
 	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
 	if (len < 0) {
@@ -695,10 +695,10 @@ static void handle_tun(fastd_context *ctx) {
 
 	buffer.len = len;
 
-	fastd_peer *peer = NULL;
+	fastd_peer_t *peer = NULL;
 
 	if (ctx->conf->mode == MODE_TAP) {
-		const fastd_eth_addr *dest_addr = fastd_get_dest_address(ctx, buffer);
+		const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, buffer);
 		if (fastd_eth_addr_is_unicast(dest_addr)) {
 			peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
@@ -718,7 +718,7 @@ static void handle_tun(fastd_context *ctx) {
 	if (peer == NULL) {
 		for (peer = ctx->peers; peer; peer = peer->next) {
 			if (fastd_peer_is_established(peer)) {
-				fastd_buffer send_buffer = fastd_buffer_alloc(len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
+				fastd_buffer_t send_buffer = fastd_buffer_alloc(len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
 				memcpy(send_buffer.data, buffer.data, len);
 				ctx->conf->protocol->send(ctx, peer, send_buffer);
 			}
@@ -728,12 +728,12 @@ static void handle_tun(fastd_context *ctx) {
 	}
 }
 
-static void handle_socket(fastd_context *ctx, fastd_socket *sock) {
+static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 	size_t max_len = PACKET_TYPE_LEN + methods_max_packet_size(ctx);
-	fastd_buffer buffer = fastd_buffer_alloc(max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
+	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
 	uint8_t *packet_type;
 
-	fastd_peer_address recvaddr;
+	fastd_peer_address_t recvaddr;
 	socklen_t recvaddrlen = sizeof(recvaddr);
 			
 	ssize_t len = recvfrom(sock->fd, buffer.data, buffer.len, 0, (struct sockaddr*)&recvaddr, &recvaddrlen);
@@ -752,7 +752,7 @@ static void handle_socket(fastd_context *ctx, fastd_socket *sock) {
 
 	fastd_buffer_push_head(&buffer, 1);
 
-	fastd_peer *peer = NULL;
+	fastd_peer_t *peer = NULL;
 
 	if (sock->peer) {
 		if (fastd_peer_address_equal(&sock->peer->address, &recvaddr)) {
@@ -808,8 +808,8 @@ static void handle_socket(fastd_context *ctx, fastd_socket *sock) {
 	}
 }
 
-static void handle_resolv_returns(fastd_context *ctx) {
-	fastd_resolve_return resolve_return;
+static void handle_resolv_returns(fastd_context_t *ctx) {
+	fastd_resolve_return_t resolve_return;
 
 	if (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
 		if (errno != EINTR)
@@ -818,7 +818,7 @@ static void handle_resolv_returns(fastd_context *ctx) {
 		return;
 	}
 
-	fastd_peer *peer;
+	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
 		if (!peer->config)
 			continue;
@@ -844,7 +844,7 @@ static void handle_resolv_returns(fastd_context *ctx) {
 	free(resolve_return.hostname);
 }
 
-static inline void handle_socket_error(fastd_context *ctx, fastd_socket *sock) {
+static inline void handle_socket_error(fastd_context_t *ctx, fastd_socket_t *sock) {
 	if (sock->addr->bindtodev)
 		pr_warn(ctx, "socket bind %I on `%s' lost", &sock->addr->addr, sock->addr->bindtodev);
 	else
@@ -853,7 +853,7 @@ static inline void handle_socket_error(fastd_context *ctx, fastd_socket *sock) {
 	fastd_socket_close(ctx, sock);
 }
 
-static void handle_input(fastd_context *ctx) {
+static void handle_input(fastd_context_t *ctx) {
 	const size_t n_fds = 2 + ctx->n_socks + ctx->n_peers;
 	struct pollfd fds[n_fds];
 	fds[0].fd = ctx->tunfd;
@@ -867,7 +867,7 @@ static void handle_input(fastd_context *ctx) {
 		fds[i].events = POLLIN;
 	}
 
-	fastd_peer *peer;
+	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
 		if (peer->sock && fastd_peer_is_socket_dynamic(peer))
 			fds[i].fd = peer->sock->fd;
@@ -922,8 +922,8 @@ static void handle_input(fastd_context *ctx) {
 		exit_bug(ctx, "fd count mismatch");
 }
 
-static void cleanup_peers(fastd_context *ctx) {
-	fastd_peer *peer, *next;
+static void cleanup_peers(fastd_context_t *ctx) {
+	fastd_peer_t *peer, *next;
 
 	for (peer = ctx->peers; peer; peer = next) {
 		next = peer->next;
@@ -935,7 +935,7 @@ static void cleanup_peers(fastd_context *ctx) {
 	}
 }
 
-static void maintenance(fastd_context *ctx) {
+static void maintenance(fastd_context_t *ctx) {
 	cleanup_peers(ctx);
 	fastd_peer_eth_addr_cleanup(ctx);
 
@@ -943,7 +943,7 @@ static void maintenance(fastd_context *ctx) {
 }
 
 
-static void close_fds(fastd_context *ctx) {
+static void close_fds(fastd_context_t *ctx) {
 	struct rlimit rl;
 	int fd, maxfd;
 
@@ -965,7 +965,7 @@ static void close_fds(fastd_context *ctx) {
 	}
 }
 
-static void write_pid(fastd_context *ctx, pid_t pid) {
+static void write_pid(fastd_context_t *ctx, pid_t pid) {
 	if (!ctx->conf->pid_file)
 		return;
 
@@ -983,7 +983,7 @@ static void write_pid(fastd_context *ctx, pid_t pid) {
 }
 
 int main(int argc, char *argv[]) {
-	fastd_context ctx;
+	fastd_context_t ctx;
 	memset(&ctx, 0, sizeof(ctx));
 
 	close_fds(&ctx);
@@ -993,7 +993,7 @@ int main(int argc, char *argv[]) {
 	init_signals(&ctx);
 	init_pipes(&ctx);
 
-	fastd_config conf;
+	fastd_config_t conf;
 	fastd_configure(&ctx, &conf, argc, argv);
 	ctx.conf = &conf;
 

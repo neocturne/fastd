@@ -32,7 +32,7 @@
 #include <arpa/inet.h>
 
 
-static void on_establish(fastd_context *ctx, fastd_peer *peer) {
+static void on_establish(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!ctx->conf->on_establish)
 		return;
 
@@ -89,7 +89,7 @@ static void on_establish(fastd_context *ctx, fastd_peer *peer) {
 	free(cwd);
 }
 
-static void on_disestablish(fastd_context *ctx, fastd_peer *peer) {
+static void on_disestablish(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!ctx->conf->on_disestablish)
 		return;
 
@@ -146,7 +146,7 @@ static void on_disestablish(fastd_context *ctx, fastd_peer *peer) {
 	free(cwd);
 }
 
-static inline void free_socket(fastd_context *ctx, fastd_peer *peer) {
+static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (peer->sock) {
 		if (fastd_peer_is_socket_dynamic(peer)) {
 			if (peer->sock->peer != peer)
@@ -159,7 +159,7 @@ static inline void free_socket(fastd_context *ctx, fastd_peer *peer) {
 	}
 }
 
-static bool has_group_config_constraints(const fastd_peer_group_config *group) {
+static bool has_group_config_constraints(const fastd_peer_group_config_t *group) {
 	for (; group; group = group->parent) {
 		if (group->max_connections)
 			return true;
@@ -168,7 +168,7 @@ static bool has_group_config_constraints(const fastd_peer_group_config *group) {
 	return false;
 }
 
-void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer) {
+void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (peer->address.sa.sa_family == AF_UNSPEC) {
 		free_socket(ctx, peer);
 		return;
@@ -197,13 +197,13 @@ void fastd_peer_reset_socket(fastd_context *ctx, fastd_peer *peer) {
 	}
 }
 
-static inline fastd_peer_group* find_peer_group(fastd_peer_group *group, const fastd_peer_group_config *config) {
+static inline fastd_peer_group_t* find_peer_group(fastd_peer_group_t *group, const fastd_peer_group_config_t *config) {
 	if (group->conf == config)
 		return group;
 
-	fastd_peer_group *child;
+	fastd_peer_group_t *child;
 	for (child = group->children; child; child = child->next) {
-		fastd_peer_group *ret = find_peer_group(child, config);
+		fastd_peer_group_t *ret = find_peer_group(child, config);
 
 		if (ret)
 			return ret;
@@ -212,7 +212,7 @@ static inline fastd_peer_group* find_peer_group(fastd_peer_group *group, const f
 	return NULL;
 }
 
-static inline bool is_group_in(fastd_peer_group *group1, fastd_peer_group *group2) {
+static inline bool is_group_in(fastd_peer_group_t *group1, fastd_peer_group_t *group2) {
 	while (group1) {
 		if (group1 == group2)
 			return true;
@@ -223,11 +223,11 @@ static inline bool is_group_in(fastd_peer_group *group1, fastd_peer_group *group
 	return false;
 }
 
-static bool is_peer_in_group(fastd_peer *peer, fastd_peer_group *group) {
+static bool is_peer_in_group(fastd_peer_t *peer, fastd_peer_group_t *group) {
 	return is_group_in(peer->group, group);
 }
 
-static void reset_peer(fastd_context *ctx, fastd_peer *peer) {
+static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (peer->established)
 		on_disestablish(ctx, peer);
 
@@ -250,7 +250,7 @@ static void reset_peer(fastd_context *ctx, fastd_peer *peer) {
 	fastd_task_delete_peer(ctx, peer);
 }
 
-static void setup_peer(fastd_context *ctx, fastd_peer *peer) {
+static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (peer->config->hostname)
 		peer->address.sa.sa_family = AF_UNSPEC;
 	else
@@ -280,10 +280,10 @@ static void setup_peer(fastd_context *ctx, fastd_peer *peer) {
 	}
 }
 
-static void delete_peer(fastd_context *ctx, fastd_peer *peer) {
+static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	pr_debug(ctx, "deleting peer %P", peer);
 
-	fastd_peer **cur_peer;
+	fastd_peer_t **cur_peer;
 	for (cur_peer = &ctx->peers; *cur_peer; cur_peer = &(*cur_peer)->next) {
 		if ((*cur_peer) == peer) {
 			*cur_peer = peer->next;
@@ -297,12 +297,12 @@ static void delete_peer(fastd_context *ctx, fastd_peer *peer) {
 }
 
 
-fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf) {
-	fastd_peer_config *peer = malloc(sizeof(fastd_peer_config));
+fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx, fastd_config_t *conf) {
+	fastd_peer_config_t *peer = malloc(sizeof(fastd_peer_config_t));
 	peer->enabled = true;
 
 	peer->hostname = NULL;
-	memset(&peer->address, 0, sizeof(fastd_peer_address));
+	memset(&peer->address, 0, sizeof(fastd_peer_address_t));
 	peer->dynamic_float = false;
 
 	peer->config_source_dir = NULL;
@@ -318,7 +318,7 @@ fastd_peer_config* fastd_peer_config_new(fastd_context *ctx, fastd_config *conf)
 	return peer;
 }
 
-void fastd_peer_config_free(fastd_peer_config *peer) {
+void fastd_peer_config_free(fastd_peer_config_t *peer) {
 	free(peer->name);
 	free(peer->hostname);
 	free(peer->key);
@@ -326,14 +326,14 @@ void fastd_peer_config_free(fastd_peer_config *peer) {
 	free(peer);
 }
 
-void fastd_peer_config_delete(fastd_context *ctx, fastd_config *conf) {
-	fastd_peer_config *peer = conf->peers, *next = peer->next;
+void fastd_peer_config_delete(fastd_context_t *ctx, fastd_config_t *conf) {
+	fastd_peer_config_t *peer = conf->peers, *next = peer->next;
 	fastd_peer_config_free(peer);
 	conf->peers = next;
 }
 
-void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf) {
-	fastd_peer *peer, *next;
+void fastd_peer_config_purge(fastd_context_t *ctx, fastd_peer_config_t *conf) {
+	fastd_peer_t *peer, *next;
 	for (peer = ctx->peers; peer; peer = next) {
 		next = peer->next;
 
@@ -344,7 +344,7 @@ void fastd_peer_config_purge(fastd_context *ctx, fastd_peer_config *conf) {
 	fastd_peer_config_free(conf);
 }
 
-bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_address *addr2) {
+bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2) {
 	if (addr1->sa.sa_family != addr2->sa.sa_family)
 		return false;
 
@@ -369,11 +369,11 @@ bool fastd_peer_address_equal(const fastd_peer_address *addr1, const fastd_peer_
 	return true;
 }
 
-void fastd_peer_address_simplify(fastd_peer_address *addr) {
+void fastd_peer_address_simplify(fastd_peer_address_t *addr) {
 	if (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&addr->in6.sin6_addr)) {
 		struct sockaddr_in6 mapped = addr->in6;
 
-		memset(addr, 0, sizeof(fastd_peer_address));
+		memset(addr, 0, sizeof(fastd_peer_address_t));
 		addr->in.sin_family = AF_INET;
 		addr->in.sin_port = mapped.sin6_port;
 		memcpy(&addr->in.sin_addr.s_addr, &mapped.sin6_addr.s6_addr[12], 4);
@@ -381,13 +381,13 @@ void fastd_peer_address_simplify(fastd_peer_address *addr) {
 }
 
 
-bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_socket *sock, const fastd_peer_address *addr) {
+bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fastd_socket_t *sock, const fastd_peer_address_t *addr) {
 	if (addr->sa.sa_family == AF_UNSPEC) {
 		if (fastd_peer_is_established(new_peer))
 			fastd_peer_reset(ctx, new_peer);
 	}
 	else {
-		fastd_peer *peer;
+		fastd_peer_t *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
 			if (!fastd_peer_address_equal(&peer->address, addr))
 				continue;
@@ -399,14 +399,14 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_so
 				if (fastd_peer_is_established(new_peer))
 					fastd_peer_reset(ctx, new_peer);
 
-				memset(&new_peer->address, 0, sizeof(fastd_peer_address));
+				memset(&new_peer->address, 0, sizeof(fastd_peer_address_t));
 				return false;
 			}
 
 			if (fastd_peer_is_established(peer))
 				fastd_peer_reset(ctx, peer);
 
-			memset(&peer->address, 0, sizeof(fastd_peer_address));
+			memset(&peer->address, 0, sizeof(fastd_peer_address_t));
 			break;
 		}
 	}
@@ -420,7 +420,7 @@ bool fastd_peer_claim_address(fastd_context *ctx, fastd_peer *new_peer, fastd_so
 	return true;
 }
 
-bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_config *peer2) {
+bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2) {
 	if (peer1->group != peer2->group)
 		return false;
 
@@ -439,21 +439,21 @@ bool fastd_peer_config_equal(const fastd_peer_config *peer1, const fastd_peer_co
 	return true;
 }
 
-void fastd_peer_reset(fastd_context *ctx, fastd_peer *peer) {
+void fastd_peer_reset(fastd_context_t *ctx, fastd_peer_t *peer) {
 	pr_debug(ctx, "resetting peer %P", peer);
 
 	reset_peer(ctx, peer);
 	setup_peer(ctx, peer);
 }
 
-void fastd_peer_delete(fastd_context *ctx, fastd_peer *peer) {
+void fastd_peer_delete(fastd_context_t *ctx, fastd_peer_t *peer) {
 	reset_peer(ctx, peer);
 	delete_peer(ctx, peer);
 }
 
-static inline unsigned count_established_group_peers(fastd_context *ctx, fastd_peer_group *group) {
+static inline unsigned count_established_group_peers(fastd_context_t *ctx, fastd_peer_group_t *group) {
 	unsigned ret = 0;
-	fastd_peer *peer;
+	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
 		if (fastd_peer_is_established(peer) && is_peer_in_group(peer, group))
 			ret++;
@@ -462,11 +462,11 @@ static inline unsigned count_established_group_peers(fastd_context *ctx, fastd_p
 	return ret;
 }
 
-bool fastd_peer_may_connect(fastd_context *ctx, fastd_peer *peer) {
+bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (fastd_peer_is_established(peer))
 		return true;
 
-	fastd_peer_group *group;
+	fastd_peer_group_t *group;
 
 	for (group = peer->group; group; group = group->parent) {
 		if (!group->conf->max_connections)
@@ -479,8 +479,8 @@ bool fastd_peer_may_connect(fastd_context *ctx, fastd_peer *peer) {
 	return true;
 }
 
-fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
-	fastd_peer *peer = malloc(sizeof(fastd_peer));
+fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
+	fastd_peer_t *peer = malloc(sizeof(fastd_peer_t));
 
 	peer->next = ctx->peers;
 	ctx->peers = peer;
@@ -497,7 +497,7 @@ fastd_peer* fastd_peer_add(fastd_context *ctx, fastd_peer_config *peer_conf) {
 	return peer;
 }
 
-void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
+void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->established) {
 		peer->established = true;
 		on_establish(ctx, peer);
@@ -507,25 +507,25 @@ void fastd_peer_set_established(fastd_context *ctx, fastd_peer *peer) {
 	return;
 }
 
-const fastd_eth_addr* fastd_get_source_address(const fastd_context *ctx, fastd_buffer buffer) {
+const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
-		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_source;
+		return (fastd_eth_addr_t*)&((struct ethhdr*)buffer.data)->h_source;
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
 }
 
-const fastd_eth_addr* fastd_get_dest_address(const fastd_context *ctx, fastd_buffer buffer) {
+const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
-		return (fastd_eth_addr*)&((struct ethhdr*)buffer.data)->h_dest;
+		return (fastd_eth_addr_t*)&((struct ethhdr*)buffer.data)->h_dest;
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
 }
 
-bool fastd_peer_config_matches_dynamic(const fastd_peer_config *config, const fastd_peer_address *addr) {
+bool fastd_peer_config_matches_dynamic(const fastd_peer_config_t *config, const fastd_peer_address_t *addr) {
 	if (!config->hostname)
 		return false;
 
@@ -545,20 +545,20 @@ bool fastd_peer_config_matches_dynamic(const fastd_peer_config *config, const fa
 	return true;
 }
 
-static inline int fastd_eth_addr_cmp(const fastd_eth_addr *addr1, const fastd_eth_addr *addr2) {
+static inline int fastd_eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_eth_addr_t *addr2) {
 	return memcmp(addr1->data, addr2->data, ETH_ALEN);
 }
 
-static inline int fastd_peer_eth_addr_cmp(const fastd_peer_eth_addr *addr1, const fastd_peer_eth_addr *addr2) {
+static inline int fastd_peer_eth_addr_cmp(const fastd_peer_eth_addr_t *addr1, const fastd_peer_eth_addr_t *addr2) {
 	return fastd_eth_addr_cmp(&addr1->addr, &addr2->addr);
 }
 
-static inline fastd_peer_eth_addr* peer_get_by_addr(fastd_context *ctx, const fastd_eth_addr *addr) {
-	return bsearch(container_of(addr, fastd_peer_eth_addr, addr), ctx->eth_addr, ctx->n_eth_addr, sizeof(fastd_peer_eth_addr),
+static inline fastd_peer_eth_addr_t* peer_get_by_addr(fastd_context_t *ctx, const fastd_eth_addr_t *addr) {
+	return bsearch(container_of(addr, fastd_peer_eth_addr_t, addr), ctx->eth_addr, ctx->n_eth_addr, sizeof(fastd_peer_eth_addr_t),
 		       (int (*)(const void *, const void *))fastd_peer_eth_addr_cmp);
 }
 
-void fastd_peer_eth_addr_add(fastd_context *ctx, fastd_peer *peer, const fastd_eth_addr *addr) {
+void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_eth_addr_t *addr) {
 	int min = 0, max = ctx->n_eth_addr;
 
 	while (max > min) {
@@ -585,19 +585,19 @@ void fastd_peer_eth_addr_add(fastd_context *ctx, fastd_peer *peer, const fastd_e
 		else
 			ctx->eth_addr_size *= 2;
 
-		ctx->eth_addr = realloc(ctx->eth_addr, ctx->eth_addr_size*sizeof(fastd_peer_eth_addr));
+		ctx->eth_addr = realloc(ctx->eth_addr, ctx->eth_addr_size*sizeof(fastd_peer_eth_addr_t));
 	}
 
 	int i;
 	for (i = ctx->n_eth_addr-1; i > min; i--)
 		ctx->eth_addr[i] = ctx->eth_addr[i-1];
 	
-	ctx->eth_addr[min] = (fastd_peer_eth_addr){ *addr, peer, ctx->now };
+	ctx->eth_addr[min] = (fastd_peer_eth_addr_t){ *addr, peer, ctx->now };
 
 	pr_debug(ctx, "learned new MAC address %E on peer %P", addr, peer);
 }
 
-void fastd_peer_eth_addr_cleanup(fastd_context *ctx) {
+void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx) {
 	int i, deleted = 0;
 
 	for (i = 0; i < ctx->n_eth_addr; i++) {
@@ -614,8 +614,8 @@ void fastd_peer_eth_addr_cleanup(fastd_context *ctx) {
 	ctx->n_eth_addr -= deleted;
 }
 
-fastd_peer *fastd_peer_find_by_eth_addr(fastd_context *ctx, const fastd_eth_addr *addr) {
-	fastd_peer_eth_addr *peer_eth_addr = peer_get_by_addr(ctx, addr);
+fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, const fastd_eth_addr_t *addr) {
+	fastd_peer_eth_addr_t *peer_eth_addr = peer_get_by_addr(ctx, addr);
 
 	if (peer_eth_addr)
 		return peer_eth_addr->peer;

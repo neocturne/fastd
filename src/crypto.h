@@ -32,45 +32,45 @@
 #include <stdint.h>
 
 
-typedef union _fastd_block128 {
+typedef union fastd_block128 {
 	uint8_t b[16];
 	uint64_t qw[2];
-} __attribute__((aligned(16))) fastd_block128;
+} __attribute__((aligned(16))) fastd_block128_t;
 
 
 #ifdef USE_CRYPTO_AES128CTR
-struct _fastd_crypto_aes128ctr {
+struct fastd_crypto_aes128ctr {
 	const char *name;
 
-	fastd_crypto_aes128ctr_context* (*init)(fastd_context *ctx);
-	fastd_crypto_aes128ctr_state* (*set_key)(fastd_context *ctx, const fastd_crypto_aes128ctr_context *cctx, const fastd_block128 *key);
-	bool (*crypt)(fastd_context *ctx, const fastd_crypto_aes128ctr_state *cstate, fastd_block128 *out, const fastd_block128 *in, size_t len, const fastd_block128 *iv);
+	fastd_crypto_aes128ctr_context_t* (*init)(fastd_context_t *ctx);
+	fastd_crypto_aes128ctr_state_t* (*set_key)(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx, const fastd_block128_t *key);
+	bool (*crypt)(fastd_context_t *ctx, const fastd_crypto_aes128ctr_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv);
 
-	void (*free_state)(fastd_context *ctx, fastd_crypto_aes128ctr_state *cstate);
-	void (*free)(fastd_context *ctx, fastd_crypto_aes128ctr_context *cctx);
+	void (*free_state)(fastd_context_t *ctx, fastd_crypto_aes128ctr_state_t *cstate);
+	void (*free)(fastd_context_t *ctx, fastd_crypto_aes128ctr_context_t *cctx);
 };
 #endif
 
 #ifdef USE_CRYPTO_GHASH
-struct _fastd_crypto_ghash {
+struct fastd_crypto_ghash {
 	const char *name;
 
-	fastd_crypto_ghash_context* (*init)(fastd_context *ctx);
-	fastd_crypto_ghash_state* (*set_h)(fastd_context *ctx, const fastd_crypto_ghash_context *cctx, const fastd_block128 *h);
-	bool (*hash)(fastd_context *ctx, const fastd_crypto_ghash_state *cstate, fastd_block128 *out, const fastd_block128 *in, size_t n_blocks);
+	fastd_crypto_ghash_context_t* (*init)(fastd_context_t *ctx);
+	fastd_crypto_ghash_state_t* (*set_h)(fastd_context_t *ctx, const fastd_crypto_ghash_context_t *cctx, const fastd_block128_t *h);
+	bool (*hash)(fastd_context_t *ctx, const fastd_crypto_ghash_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
 
-	void (*free_state)(fastd_context *ctx, fastd_crypto_ghash_state *cstate);
-	void (*free)(fastd_context *ctx, fastd_crypto_ghash_context *cctx);
+	void (*free_state)(fastd_context_t *ctx, fastd_crypto_ghash_state_t *cstate);
+	void (*free)(fastd_context_t *ctx, fastd_crypto_ghash_context_t *cctx);
 };
 #endif
 
 
-static inline void xor(fastd_block128 *x, const fastd_block128 *a, const fastd_block128 *b) {
+static inline void xor(fastd_block128_t *x, const fastd_block128_t *a, const fastd_block128_t *b) {
 	x->qw[0] = a->qw[0] ^ b->qw[0];
 	x->qw[1] = a->qw[1] ^ b->qw[1];
 }
 
-static inline void xor_a(fastd_block128 *x, const fastd_block128 *a) {
+static inline void xor_a(fastd_block128_t *x, const fastd_block128_t *a) {
 	xor(x, x, a);
 }
 
