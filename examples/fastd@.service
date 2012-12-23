@@ -1,0 +1,11 @@
+[Unit]
+Description=Fastd and Secure Tunneling Daemon (connection %i)
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/fastd -c /etc/fastd/%i/fastd.conf --daemon
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
