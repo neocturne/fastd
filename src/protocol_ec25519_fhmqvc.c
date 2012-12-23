@@ -54,8 +54,8 @@
 
 
 struct fastd_protocol_config {
-	ecc_secret_key_256 secret_key;
-	ecc_public_key_256 public_key;
+	ecc_int256_t secret_key;
+	ecc_int256_t public_key;
 };
 
 typedef struct handshake_key {
@@ -63,8 +63,8 @@ typedef struct handshake_key {
 	struct timespec preferred_till;
 	struct timespec valid_till;
 
-	ecc_secret_key_256 secret_key;
-	ecc_public_key_256 public_key;
+	ecc_int256_t secret_key;
+	ecc_int256_t public_key;
 } handshake_key_t;
 
 struct fastd_protocol_state {
@@ -73,7 +73,7 @@ struct fastd_protocol_state {
 };
 
 struct fastd_protocol_peer_config {
-	ecc_public_key_256 public_key;
+	ecc_int256_t public_key;
 };
 
 typedef struct protocol_session {
@@ -161,18 +161,18 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 	if (!ctx->conf->secret)
 		exit_error(ctx, "no secret key configured");
 
-	if (!read_key(protocol_config->secret_key.s, ctx->conf->secret))
+	if (!read_key(protocol_config->secret_key.p, ctx->conf->secret))
 		exit_error(ctx, "invalid secret key");
 
-	ecc_25519_work work;
+	ecc_25519_work_t work;
 	ecc_25519_scalarmult_base(&work, &protocol_config->secret_key);
-	ecc_25519_store(&protocol_config->public_key, &work);
+	ecc_25519_store_packed(&protocol_config->public_key, &work);
 
 	return protocol_config;
 }
 
 static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
-	ecc_public_key_256 key;
+	ecc_int256_t key;
 
 	if (!peer_conf->key) {
 		pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
@@ -211,12 +211,12 @@ static void maintenance(fastd_context_t *ctx) {
 
 		ctx->protocol_state->handshake_key.serial++;
 
-		fastd_random_bytes(ctx, ctx->protocol_state->handshake_key.secret_key.s, 32, false);
-		ecc_25519_secret_sanitize(&ctx->protocol_state->handshake_key.secret_key, &ctx->protocol_state->handshake_key.secret_key);
+		fastd_random_bytes(ctx, ctx->protocol_state->handshake_key.secret_key.p, 32, false);
+		ecc_25519_gf_sanitize_secret(&ctx->protocol_state->handshake_key.secret_key, &ctx->protocol_state->handshake_key.secret_key);
 
-		ecc_25519_work work;
+		ecc_25519_work_t work;
 		ecc_25519_scalarmult_base(&work, &ctx->protocol_state->handshake_key.secret_key);
-		ecc_25519_store(&ctx->protocol_state->handshake_key.public_key, &work);
+		ecc_25519_store_packed(&ctx->protocol_state->handshake_key.public_key, &work);
 
 		ctx->protocol_state->handshake_key.preferred_till = ctx->now;
 		ctx->protocol_state->handshake_key.preferred_till.tv_sec += 15;
@@ -243,7 +243,7 @@ static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *
 	fastd_send_handshake(ctx, sock, address, buffer);
 }
 
-static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_public_key_256 *peer_handshake_key,
+static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
 			      const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "responding handshake with %P[%I]...", peer, address);
 
@@ -258,20 +258,20 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 
 	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
 
-	ecc_secret_key_256 d = {{0}}, e = {{0}}, eb, s;
+	ecc_int256_t d = {{0}}, e = {{0}}, eb, s;
 
-	memcpy(d.s, hashbuf, HASHBYTES/2);
-	memcpy(e.s, hashbuf+HASHBYTES/2, HASHBYTES/2);
+	memcpy(d.p, hashbuf, HASHBYTES/2);
+	memcpy(e.p, hashbuf+HASHBYTES/2, HASHBYTES/2);
 
-	d.s[15] |= 0x80;
-	e.s[15] |= 0x80;
+	d.p[15] |= 0x80;
+	e.p[15] |= 0x80;
 
-	ecc_25519_secret_mult(&eb, &e, &ctx->conf->protocol_config->secret_key);
-	ecc_25519_secret_add(&s, &eb, &handshake_key->secret_key);
+	ecc_25519_gf_mult(&eb, &e, &ctx->conf->protocol_config->secret_key);
+	ecc_25519_gf_add(&s, &eb, &handshake_key->secret_key);
 
-	ecc_25519_work work, workX;
-	ecc_25519_load(&work, &peer->config->protocol_config->public_key);
-	ecc_25519_load(&workX, peer_handshake_key);
+	ecc_25519_work_t work, workX;
+	ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key);
+	ecc_25519_load_packed(&workX, peer_handshake_key);
 
 	ecc_25519_scalarmult(&work, &d, &work);
 	ecc_25519_add(&work, &workX, &work);
@@ -280,8 +280,8 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	if (ecc_25519_is_identity(&work))
 		return;
 
-	ecc_public_key_256 sigma;
-	ecc_25519_store(&sigma, &work);
+	ecc_int256_t sigma;
+	ecc_25519_store_packed(&sigma, &work);
 
 	uint8_t shared_handshake_key[HASHBYTES];
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
@@ -304,8 +304,8 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 }
 
 static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, fastd_socket_t *sock, const fastd_peer_address_t *address, bool initiator,
-		      const ecc_public_key_256 *A, const ecc_public_key_256 *B, const ecc_public_key_256 *X,
-		      const ecc_public_key_256 *Y, const ecc_public_key_256 *sigma, uint64_t serial) {
+		      const ecc_int256_t *A, const ecc_int256_t *B, const ecc_int256_t *X,
+		      const ecc_int256_t *Y, const ecc_int256_t *sigma, uint64_t serial) {
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hash[HASHBYTES];
 
@@ -360,7 +360,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 	return true;
 }
 
-static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_public_key_256 *peer_handshake_key,
+static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
 			     const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, address);
 
@@ -375,20 +375,20 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 
 	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
 
-	ecc_secret_key_256 d = {{0}}, e = {{0}}, da, s;
+	ecc_int256_t d = {{0}}, e = {{0}}, da, s;
 
-	memcpy(d.s, hashbuf, HASHBYTES/2);
-	memcpy(e.s, hashbuf+HASHBYTES/2, HASHBYTES/2);
+	memcpy(d.p, hashbuf, HASHBYTES/2);
+	memcpy(e.p, hashbuf+HASHBYTES/2, HASHBYTES/2);
 
-	d.s[15] |= 0x80;
-	e.s[15] |= 0x80;
+	d.p[15] |= 0x80;
+	e.p[15] |= 0x80;
 
-	ecc_25519_secret_mult(&da, &d, &ctx->conf->protocol_config->secret_key);
-	ecc_25519_secret_add(&s, &da, &handshake_key->secret_key);
+	ecc_25519_gf_mult(&da, &d, &ctx->conf->protocol_config->secret_key);
+	ecc_25519_gf_add(&s, &da, &handshake_key->secret_key);
 
-	ecc_25519_work work, workY;
-	ecc_25519_load(&work, &peer->config->protocol_config->public_key);
-	ecc_25519_load(&workY, peer_handshake_key);
+	ecc_25519_work_t work, workY;
+	ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key);
+	ecc_25519_load_packed(&workY, peer_handshake_key);
 
 	ecc_25519_scalarmult(&work, &e, &work);
 	ecc_25519_add(&work, &workY, &work);
@@ -397,8 +397,8 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	if (ecc_25519_is_identity(&work))
 		return;
 
-	ecc_public_key_256 sigma;
-	ecc_25519_store(&sigma, &work);
+	ecc_int256_t sigma;
+	ecc_25519_store_packed(&sigma, &work);
 
 	uint8_t shared_handshake_key[HASHBYTES];
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
@@ -431,7 +431,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	fastd_send_handshake(ctx, sock, address, buffer);
 }
 
-static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_public_key_256 *peer_handshake_key,
+static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
 				    const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, address);
 
@@ -445,20 +445,20 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 
 	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
 
-	ecc_secret_key_256 d = {{0}}, e = {{0}}, eb, s;
+	ecc_int256_t d = {{0}}, e = {{0}}, eb, s;
 
-	memcpy(d.s, hashbuf, HASHBYTES/2);
-	memcpy(e.s, hashbuf+HASHBYTES/2, HASHBYTES/2);
+	memcpy(d.p, hashbuf, HASHBYTES/2);
+	memcpy(e.p, hashbuf+HASHBYTES/2, HASHBYTES/2);
 
-	d.s[15] |= 0x80;
-	e.s[15] |= 0x80;
+	d.p[15] |= 0x80;
+	e.p[15] |= 0x80;
 
-	ecc_25519_secret_mult(&eb, &e, &ctx->conf->protocol_config->secret_key);
-	ecc_25519_secret_add(&s, &eb, &handshake_key->secret_key);
+	ecc_25519_gf_mult(&eb, &e, &ctx->conf->protocol_config->secret_key);
+	ecc_25519_gf_add(&s, &eb, &handshake_key->secret_key);
 
-	ecc_25519_work work, workX;
-	ecc_25519_load(&work, &peer->config->protocol_config->public_key);
-	ecc_25519_load(&workX, peer_handshake_key);
+	ecc_25519_work_t work, workX;
+	ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key);
+	ecc_25519_load_packed(&workX, peer_handshake_key);
 
 	ecc_25519_scalarmult(&work, &d, &work);
 	ecc_25519_add(&work, &workX, &work);
@@ -467,8 +467,8 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	if (ecc_25519_is_identity(&work))
 		return;
 
-	ecc_public_key_256 sigma;
-	ecc_25519_store(&sigma, &work);
+	ecc_int256_t sigma;
+	ecc_25519_store_packed(&sigma, &work);
 
 	uint8_t shared_handshake_key[HASHBYTES];
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
@@ -793,24 +793,24 @@ static void hexdump(const char *desc, unsigned char d[32]) {
 }
 
 static void protocol_generate_key(fastd_context_t *ctx) {
-	ecc_secret_key_256 secret_key;
-	ecc_public_key_256 public_key;
+	ecc_int256_t secret_key;
+	ecc_int256_t public_key;
 
 	if (!ctx->conf->machine_readable)
 		pr_info(ctx, "Reading 32 bytes from /dev/random...");
 
-	fastd_random_bytes(ctx, secret_key.s, 32, true);
-	ecc_25519_secret_sanitize(&secret_key, &secret_key);
+	fastd_random_bytes(ctx, secret_key.p, 32, true);
+	ecc_25519_gf_sanitize_secret(&secret_key, &secret_key);
 
-	ecc_25519_work work;
+	ecc_25519_work_t work;
 	ecc_25519_scalarmult_base(&work, &secret_key);
-	ecc_25519_store(&public_key, &work);
+	ecc_25519_store_packed(&public_key, &work);
 
 	if (ctx->conf->machine_readable) {
-		hexdump("", secret_key.s);
+		hexdump("", secret_key.p);
 	}
 	else {
-		hexdump("Secret: ", secret_key.s);
+		hexdump("Secret: ", secret_key.p);
 		hexdump("Public: ", public_key.p);
 	}
 }
