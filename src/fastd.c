@@ -86,6 +86,9 @@ static void init_pipes(fastd_context_t *ctx) {
 	if (pipe(pipefd))
 		exit_errno(ctx, "pipe");
 
+	fastd_setfd(ctx, pipefd[0], FD_CLOEXEC, 0);
+	fastd_setfd(ctx, pipefd[1], FD_CLOEXEC, 0);
+
 	ctx->resolverfd = pipefd[0];
 	ctx->resolvewfd = pipefd[1];
 }
@@ -194,6 +197,9 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	if (fd < 0)
 		goto error;
 
+	fastd_setfd(ctx, fd, FD_CLOEXEC, 0);
+	fastd_setfl(ctx, fd, O_NONBLOCK, 0);
+
 	if (addr->bindtodev) {
 		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
 			if (warn)
@@ -272,12 +278,30 @@ fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int 
 	return sock;
 }
 
+void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset) {
+	int flags = fcntl(fd, F_GETFD);
+	if (flags < 0)
+		exit_errno(ctx, "Getting file descriptor flags failed: fcntl");
+
+	if (fcntl(fd, F_SETFD, (flags|set) & (~unset)) < 0)
+		exit_errno(ctx, "Setting file descriptor flags failed: fcntl");
+}
+
+void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset) {
+	int flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		exit_errno(ctx, "Getting file status flags failed: fcntl");
+
+	if (fcntl(fd, F_SETFL, (flags|set) & (~unset)) < 0)
+		exit_errno(ctx, "Setting file status flags failed: fcntl");
+}
+
 static void init_tuntap(fastd_context_t *ctx) {
 	struct ifreq ifr;
 
 	pr_debug(ctx, "initializing tun/tap device...");
 
-	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR)) < 0)
+	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
 		exit_errno(ctx, "could not open tun/tap device file");
 
 	memset(&ifr, 0, sizeof(ifr));
