@@ -12,7 +12,9 @@ if(NOT CMAKE_USE_PTHREADS_INIT)
   MESSAGE(FATAL_ERROR "No pthread support found.")
 endif(NOT CMAKE_USE_PTHREADS_INIT)
 
-find_package(UECC REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(UECC REQUIRED libuecc>=2)
+
 find_package(NaCl REQUIRED)
 
 
