@@ -41,6 +41,12 @@ typedef enum fastd_mode {
 	MODE_TUN,
 } fastd_mode_t;
 
+typedef enum fastd_drop_caps {
+	DROP_CAPS_OFF,
+	DROP_CAPS_ON,
+	DROP_CAPS_EARLY,
+} fastd_drop_caps_t;
+
 typedef struct fastd_buffer fastd_buffer_t;
 
 typedef union fastd_peer_address fastd_peer_address_t;

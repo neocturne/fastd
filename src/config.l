@@ -100,7 +100,12 @@ float		{ TOKEN(TOK_FLOAT); }
 crypto		{ TOKEN(TOK_CRYPTO); }
 use		{ TOKEN(TOK_USE); }
 default		{ TOKEN(TOK_DEFAULT); }
+user		{ TOKEN(TOK_USER); }
 group		{ TOKEN(TOK_GROUP); }
+drop		{ TOKEN(TOK_DROP); }
+capabilities	{ TOKEN(TOK_CAPABILITIES); }
+early		{ TOKEN(TOK_EARLY); }
+lock		{ TOKEN(TOK_LOCK); }
 limit		{ TOKEN(TOK_LIMIT); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {

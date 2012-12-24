@@ -195,6 +195,14 @@ struct fastd_config {
 
 	bool forward;
 
+	fastd_drop_caps_t drop_caps;
+	bool lock_caps;
+
+	char *user;
+	char *group;
+	uid_t uid;
+	gid_t gid;
+
 	const fastd_protocol_t *protocol;
 	const fastd_method_t *methods[MAX_METHODS];
 	const fastd_method_t *method_default;
@@ -316,6 +324,10 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
 void fastd_reconfigure(fastd_context_t *ctx, fastd_config_t *conf);
 
+void fastd_cap_init(fastd_context_t *ctx);
+void fastd_cap_lock(fastd_context_t *ctx);
+void fastd_cap_drop(fastd_context_t *ctx);
+
 void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure);
 
 static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
@@ -334,8 +346,10 @@ static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 #define pr_verbose(ctx, args...) fastd_logf(ctx, LOG_INFO, args)
 #define pr_debug(ctx, args...) fastd_logf(ctx, LOG_DEBUG, args)
 
+#define pr_error_errno(ctx, message) pr_error(ctx, "%s: %s", message, strerror(errno))
 #define pr_warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
-#define pr_error_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
+#define pr_debug_errno(ctx, message) pr_debug(ctx, "%s: %s", message, strerror(errno))
+
 #define exit_fatal(ctx, args...) do { pr_fatal(ctx, args); abort(); } while(0)
 #define exit_bug(ctx, message) exit_fatal(ctx, "BUG: %s", message)
 #define exit_error(ctx, args...) do { pr_error(ctx, args); exit(1); } while(0)

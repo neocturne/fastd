@@ -33,6 +33,7 @@
 #include "task.h"
 
 #include <fcntl.h>
+#include <grp.h>
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <poll.h>
@@ -94,6 +95,15 @@ static void init_pipes(fastd_context_t *ctx) {
 }
 
 static void init_log(fastd_context_t *ctx) {
+	uid_t uid = geteuid();
+	gid_t gid = getegid();
+
+	if (ctx->conf->user || ctx->conf->group) {
+		/* We don't care about errors here */
+		setegid(ctx->conf->gid);
+		seteuid(ctx->conf->uid);
+	}
+
 	if (ctx->conf->log_syslog_level >= 0)
 		openlog(ctx->conf->log_syslog_ident, LOG_PID, LOG_DAEMON);
 
@@ -107,6 +117,9 @@ static void init_log(fastd_context_t *ctx) {
 		file->next = ctx->log_files;
 		ctx->log_files = file;
 	}
+
+	seteuid(uid);
+	setegid(gid);
 }
 
 static void close_log(fastd_context_t *ctx) {
@@ -993,10 +1006,19 @@ static void write_pid(fastd_context_t *ctx, pid_t pid) {
 	if (!ctx->conf->pid_file)
 		return;
 
+	uid_t uid = geteuid();
+	gid_t gid = getegid();
+
+	if (ctx->conf->user || ctx->conf->group) {
+		/* We don't care about errors here */
+		setegid(ctx->conf->gid);
+		seteuid(ctx->conf->uid);
+	}
+
 	int fd = open(ctx->conf->pid_file, O_WRONLY|O_CREAT|O_TRUNC, 0666);
 	if (fd < 0) {
 		pr_error_errno(ctx, "can't write PID file: open");
-		return;
+		goto end;
 	}
 
 	if (dprintf(fd, "%i", pid) < 0)
@@ -1004,6 +1026,36 @@ static void write_pid(fastd_context_t *ctx, pid_t pid) {
 
 	if (close(fd) < 0)
 		pr_warn_errno(ctx, "close");
+
+ end:
+	seteuid(uid);
+	setegid(gid);
+}
+
+static void set_user(fastd_context_t *ctx) {
+	if (ctx->conf->user || ctx->conf->group) {
+		if (setgid(ctx->conf->gid) < 0)
+			exit_errno(ctx, "setgid");
+
+		if (setgroups(1, &ctx->conf->gid) < 0) {
+			if (errno != EPERM)
+				pr_debug_errno(ctx, "setgroups");
+		}
+
+		if (setuid(ctx->conf->uid) < 0)
+			exit_errno(ctx, "setuid");
+
+		pr_info(ctx, "Changed to UID %i, GID %i.", ctx->conf->uid, ctx->conf->gid);
+	}
+}
+
+static void drop_caps(fastd_context_t *ctx) {
+	if (ctx->conf->lock_caps)
+		fastd_cap_lock(ctx);
+
+	set_user(ctx);
+
+	fastd_cap_drop(ctx);
 }
 
 int main(int argc, char *argv[]) {
@@ -1023,8 +1075,6 @@ int main(int argc, char *argv[]) {
 
 	init_log(&ctx);
 
-	crypto_init(&ctx);
-
 	if (conf.generate_key) {
 		conf.protocol->generate_key(&ctx);
 		exit(0);
@@ -1040,6 +1090,10 @@ int main(int argc, char *argv[]) {
 	update_time(&ctx);
 
 	pr_info(&ctx, "fastd " FASTD_VERSION " starting");
+
+	fastd_cap_init(&ctx);
+
+	crypto_init(&ctx);
 
 	init_sockets(&ctx);
 	bind_sockets(&ctx);
@@ -1066,7 +1120,15 @@ int main(int argc, char *argv[]) {
 		write_pid(&ctx, getpid());
 	}
 
+	if (conf.drop_caps == DROP_CAPS_EARLY)
+		drop_caps(&ctx);
+
 	on_up(&ctx);
+
+	if (conf.drop_caps == DROP_CAPS_ON)
+		drop_caps(&ctx);
+	else if (conf.drop_caps == DROP_CAPS_OFF)
+		set_user(&ctx);
 
 	while (!terminate) {
 		handle_tasks(&ctx);

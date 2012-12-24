@@ -31,11 +31,15 @@
 #include <config.ll.h>
 #include <config.yy.h>
 
-#include <arpa/inet.h>
 #include <dirent.h>
+#include <grp.h>
 #include <libgen.h>
+#include <pwd.h>
 #include <stdarg.h>
 #include <strings.h>
+
+#include <arpa/inet.h>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -103,6 +107,8 @@ static void default_config(fastd_config_t *conf) {
 
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
+
+	conf->drop_caps = DROP_CAPS_ON;
 
 	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	conf->method_default = &fastd_method_null;
@@ -522,6 +528,8 @@ static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 	OPTION(usage, "--help" OR "-h", "Shows this help text") \
 	OPTION(version, "--version" OR "-v", "Shows the fastd version") \
 	OPTION(option_daemon, "--daemon" OR "-d", "Runs fastd in the background") \
+	OPTION_ARG(option_user, "--user", "<user>", "Sets the user to run fastd as") \
+	OPTION_ARG(option_group, "--group", "<group>", "Sets the group to run fastd as") \
 	OPTION_ARG(option_pid_file, "--pid-file", "<filename>", "Writes fastd's PID to the specified file") \
 	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the stderr log level; default is info, if no alternative log destination ist configured") \
 	OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug", "Sets the log level for syslog output; default is not to use syslog") \
@@ -599,6 +607,16 @@ static int parse_log_level(fastd_context_t *ctx, const char *arg) {
 }
 
 
+
+static void option_user(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	free(conf->user);
+	conf->user = strdup(arg);
+}
+
+static void option_group(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	free(conf->group);
+	conf->group = strdup(arg);
+}
 
 static void option_log_level(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	conf->log_stderr_level = parse_log_level(ctx, arg);
@@ -786,6 +804,52 @@ static void option_machine_readable(fastd_context_t *ctx, fastd_config_t *conf) 
 }
 
 
+static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
+	conf->uid = getuid();
+	conf->gid = getgid();
+
+	if (conf->user) {
+		struct passwd pwd, *pwdr;
+		size_t bufspace = 1024;
+		int error;
+
+		do {
+			char buf[bufspace];
+			error = getpwnam_r(conf->user, &pwd, buf, bufspace, &pwdr);
+			bufspace *= 2;
+		} while(error == ERANGE);
+
+		if (error)
+			exit_errno(ctx, "getpwnam_r");
+
+		if (!pwdr)
+			exit_error(ctx, "Unable to find user `%s'.", conf->user);
+
+		conf->uid = pwdr->pw_uid;
+		conf->gid = pwdr->pw_gid;
+	}
+
+	if (conf->group) {
+		struct group grp, *grpr;
+		size_t bufspace = 1024;
+		int error;
+
+		do {
+			char buf[bufspace];
+			error = getgrnam_r(conf->group, &grp, buf, bufspace, &grpr);
+			bufspace *= 2;
+		} while(error == ERANGE);
+
+		if (error)
+			exit_errno(ctx, "getgrnam_r");
+
+		if (!grpr)
+			exit_error(ctx, "Unable to find group `%s'.", conf->group);
+
+		conf->gid = grpr->gr_gid;
+	}
+}
+
 void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]) {
 #define OR ,
 #define OPTION(func, options, message) \
@@ -830,6 +894,8 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 
 	if (!conf->peers && !has_peer_group_peer_dirs(conf->peer_group))
 		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
+
+	configure_user(ctx, conf);
 
 	count_peers(ctx, conf);
 
@@ -968,6 +1034,8 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 
 	free_peer_group(conf->peer_group);
 
+	free(conf->user);
+	free(conf->group);
 	free(conf->ifname);
 	free(conf->secret);
 	free(conf->on_up);

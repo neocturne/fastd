@@ -100,7 +100,12 @@
 %token TOK_CRYPTO
 %token TOK_USE
 %token TOK_DEFAULT
+%token TOK_USER
 %token TOK_GROUP
+%token TOK_DROP
+%token TOK_CAPABILITIES
+%token TOK_EARLY
+%token TOK_LOCK
 %token TOK_LIMIT
 
 %token <addr4> TOK_ADDR4
@@ -129,6 +134,8 @@
 %type <str> maybe_bind_interface
 %type <num> maybe_bind_default
 %type <num> bind_default
+%type <num> drop_capabilities_enabled
+%type <boolean> drop_capabilities_lock
 
 %%
 start:		START_CONFIG config
@@ -146,6 +153,9 @@ peer_group_config:
 	;
 
 statement:	peer_group_statement
+	|	TOK_USER user ';'
+	|	TOK_GROUP group ';'
+	|	TOK_DROP TOK_CAPABILITIES drop_capabilities ';'
 	|	TOK_LOG log ';'
 	| 	TOK_INTERFACE interface ';'
 	| 	TOK_BIND bind ';'
@@ -168,6 +178,38 @@ peer_group_statement:
 	|	TOK_PEER TOK_LIMIT peer_limit ';'
 	|	TOK_INCLUDE include ';'
 	;
+
+user:		TOK_STRING {
+			free(conf->user);
+			conf->user = strdup($1->str);
+		}
+
+group:		TOK_STRING {
+			free(conf->group);
+			conf->group = strdup($1->str);
+		}
+
+drop_capabilities:
+		drop_capabilities_enabled drop_capabilities_lock {
+			conf->drop_caps = $1;
+			conf->lock_caps = $2;
+		}
+
+drop_capabilities_enabled:
+		TOK_EARLY {
+			$$ = DROP_CAPS_EARLY;
+		}
+	|	boolean {
+			$$ = $1 ? DROP_CAPS_ON : DROP_CAPS_OFF;
+		}
+
+drop_capabilities_lock:
+		TOK_LOCK {
+			$$ = true;
+		}
+	|	{
+			$$ = false;
+		}
 
 log:		TOK_LEVEL log_level {
 			conf->log_stderr_level = $2;
