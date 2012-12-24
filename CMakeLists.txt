@@ -17,6 +17,14 @@ pkg_check_modules(UECC REQUIRED libuecc>=2)
 
 find_package(NaCl REQUIRED)
 
+set(WITH_CAPABILITIES TRUE CACHE BOOL "Include support for POSIX capabilities")
+
+if(WITH_CAPABILITIES)
+  find_package(CAP REQUIRED)
+else(WITH_CAPABILITIES)
+  set(CAP_INCLUDE_DIR "")
+  set(CAP_LIBRARY "")
+endif(WITH_CAPABILITIES)
 
 set(WITH_CRYPTO_AES128CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implementation from the NaCl library")
 set(WITH_CRYPTO_AES128CTR_LINUX TRUE CACHE BOOL "Support using the AES128-CTR implementation in the Linux kernel")

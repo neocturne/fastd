@@ -28,6 +28,8 @@
 #ifndef _FASTD_CONFIG_H_
 #define _FASTD_CONFIG_H_
 
+#cmakedefine WITH_CAPABILITIES
+
 #cmakedefine USE_CRYPTO_AES128CTR
 #cmakedefine USE_CRYPTO_GHASH
 
