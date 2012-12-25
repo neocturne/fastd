@@ -1050,11 +1050,7 @@ static void set_user(fastd_context_t *ctx) {
 }
 
 static void drop_caps(fastd_context_t *ctx) {
-	if (ctx->conf->lock_caps)
-		fastd_cap_lock(ctx);
-
 	set_user(ctx);
-
 	fastd_cap_drop(ctx);
 }
 

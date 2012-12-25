@@ -196,7 +196,6 @@ struct fastd_config {
 	bool forward;
 
 	fastd_drop_caps_t drop_caps;
-	bool lock_caps;
 
 	char *user;
 	char *group;
@@ -325,7 +324,6 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 void fastd_reconfigure(fastd_context_t *ctx, fastd_config_t *conf);
 
 void fastd_cap_init(fastd_context_t *ctx);
-void fastd_cap_lock(fastd_context_t *ctx);
 void fastd_cap_drop(fastd_context_t *ctx);
 
 void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure);

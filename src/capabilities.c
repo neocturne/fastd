@@ -72,17 +72,6 @@ void fastd_cap_init(fastd_context_t *ctx) {
 	try_cap(ctx, CAP_NET_RAW);
 }
 
-void fastd_cap_lock(fastd_context_t *ctx) {
-	if (prctl(PR_SET_SECUREBITS,
-		  SECBIT_KEEP_CAPS_LOCKED |
-		  SECBIT_NO_SETUID_FIXUP |
-		  SECBIT_NO_SETUID_FIXUP_LOCKED |
-		  SECBIT_NOROOT |
-		  SECBIT_NOROOT_LOCKED) < 0) {
-		pr_debug_errno(ctx, "prctl");
-	}
-}
-
 void fastd_cap_drop(fastd_context_t *ctx) {
 	cap_t caps = cap_init();
 
@@ -101,9 +90,6 @@ void fastd_cap_drop(fastd_context_t *ctx) {
 #else /* WITH_CAPABILITIES */
 
 void fastd_cap_init(fastd_context_t *ctx) {
-}
-
-void fastd_cap_lock(fastd_context_t *ctx) {
 }
 
 void fastd_cap_drop(fastd_context_t *ctx) {

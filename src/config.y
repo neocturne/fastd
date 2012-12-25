@@ -105,7 +105,6 @@
 %token TOK_DROP
 %token TOK_CAPABILITIES
 %token TOK_EARLY
-%token TOK_LOCK
 %token TOK_LIMIT
 
 %token <addr4> TOK_ADDR4
@@ -135,7 +134,6 @@
 %type <num> maybe_bind_default
 %type <num> bind_default
 %type <num> drop_capabilities_enabled
-%type <boolean> drop_capabilities_lock
 
 %%
 start:		START_CONFIG config
@@ -190,9 +188,8 @@ group:		TOK_STRING {
 		}
 
 drop_capabilities:
-		drop_capabilities_enabled drop_capabilities_lock {
+		drop_capabilities_enabled {
 			conf->drop_caps = $1;
-			conf->lock_caps = $2;
 		}
 
 drop_capabilities_enabled:
@@ -201,14 +198,6 @@ drop_capabilities_enabled:
 		}
 	|	boolean {
 			$$ = $1 ? DROP_CAPS_ON : DROP_CAPS_OFF;
-		}
-
-drop_capabilities_lock:
-		TOK_LOCK {
-			$$ = true;
-		}
-	|	{
-			$$ = false;
 		}
 
 log:		TOK_LEVEL log_level {
