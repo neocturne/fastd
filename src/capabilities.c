@@ -28,8 +28,6 @@
 
 #ifdef WITH_CAPABILITIES
 
-#include <linux/securebits.h>
-
 #include <sys/capability.h>
 #include <sys/prctl.h>
 
