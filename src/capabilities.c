@@ -29,7 +29,6 @@
 #ifdef WITH_CAPABILITIES
 
 #include <sys/capability.h>
-#include <sys/prctl.h>
 
 
 static void try_cap(fastd_context_t *ctx, cap_value_t cap) {
