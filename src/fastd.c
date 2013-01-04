@@ -99,9 +99,10 @@ static void init_log(fastd_context_t *ctx) {
 	gid_t gid = getegid();
 
 	if (ctx->conf->user || ctx->conf->group) {
-		/* We don't care about errors here */
-		setegid(ctx->conf->gid);
-		seteuid(ctx->conf->uid);
+		if (setegid(ctx->conf->gid) < 0)
+			pr_debug_errno(ctx, "setegid");
+		if (seteuid(ctx->conf->uid) < 0)
+			pr_debug_errno(ctx, "seteuid");
 	}
 
 	if (ctx->conf->log_syslog_level >= 0)
@@ -118,8 +119,10 @@ static void init_log(fastd_context_t *ctx) {
 		ctx->log_files = file;
 	}
 
-	seteuid(uid);
-	setegid(gid);
+	if (seteuid(uid) < 0)
+		pr_debug_errno(ctx, "seteuid");
+	if (setegid(gid) < 0)
+		pr_debug_errno(ctx, "setegid");
 }
 
 static void close_log(fastd_context_t *ctx) {
@@ -1010,9 +1013,10 @@ static void write_pid(fastd_context_t *ctx, pid_t pid) {
 	gid_t gid = getegid();
 
 	if (ctx->conf->user || ctx->conf->group) {
-		/* We don't care about errors here */
-		setegid(ctx->conf->gid);
-		seteuid(ctx->conf->uid);
+		if (setegid(ctx->conf->gid) < 0)
+			pr_debug_errno(ctx, "setegid");
+		if (seteuid(ctx->conf->uid) < 0)
+			pr_debug_errno(ctx, "seteuid");
 	}
 
 	int fd = open(ctx->conf->pid_file, O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -1028,8 +1032,10 @@ static void write_pid(fastd_context_t *ctx, pid_t pid) {
 		pr_warn_errno(ctx, "close");
 
  end:
-	seteuid(uid);
-	setegid(gid);
+	if (seteuid(uid) < 0)
+		pr_debug_errno(ctx, "seteuid");
+	if (setegid(gid) < 0)
+		pr_debug_errno(ctx, "setegid");
 }
 
 static void set_user(fastd_context_t *ctx) {
