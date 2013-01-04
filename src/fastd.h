@@ -199,8 +199,11 @@ struct fastd_config {
 
 	char *user;
 	char *group;
+
 	uid_t uid;
 	gid_t gid;
+	size_t n_groups;
+	gid_t *groups;
 
 	const fastd_protocol_t *protocol;
 	const fastd_method_t *methods[MAX_METHODS];

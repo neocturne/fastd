@@ -848,6 +848,20 @@ static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
 
 		conf->gid = grpr->gr_gid;
 	}
+
+	if (conf->user) {
+		int ngroups = 0;
+		if (getgrouplist(conf->user, conf->gid, NULL, &ngroups) < 0) {
+			/* the user has supplementary groups */
+
+			conf->groups = calloc(ngroups, sizeof(gid_t));
+			if (getgrouplist(conf->user, conf->gid, conf->groups, &ngroups) < 0)
+				exit_errno(ctx, "getgrouplist");
+
+			conf->n_groups = ngroups;
+		}
+	}
+
 }
 
 void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]) {
@@ -1036,6 +1050,7 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 
 	free(conf->user);
 	free(conf->group);
+	free(conf->groups);
 	free(conf->ifname);
 	free(conf->secret);
 	free(conf->on_up);

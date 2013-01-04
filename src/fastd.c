@@ -1037,15 +1037,25 @@ static void set_user(fastd_context_t *ctx) {
 		if (setgid(ctx->conf->gid) < 0)
 			exit_errno(ctx, "setgid");
 
-		if (setgroups(1, &ctx->conf->gid) < 0) {
-			if (errno != EPERM)
-				pr_debug_errno(ctx, "setgroups");
-		}
-
 		if (setuid(ctx->conf->uid) < 0)
 			exit_errno(ctx, "setuid");
 
 		pr_info(ctx, "Changed to UID %i, GID %i.", ctx->conf->uid, ctx->conf->gid);
+	}
+}
+
+static void set_groups(fastd_context_t *ctx) {
+	if (ctx->conf->groups) {
+		if (setgroups(ctx->conf->n_groups, ctx->conf->groups) < 0) {
+			if (errno != EPERM)
+				pr_debug_errno(ctx, "setgroups");
+		}
+	}
+	else if (ctx->conf->user || ctx->conf->group) {
+		if (setgroups(1, &ctx->conf->gid) < 0) {
+			if (errno != EPERM)
+				pr_debug_errno(ctx, "setgroups");
+		}
 	}
 }
 
@@ -1088,6 +1098,9 @@ int main(int argc, char *argv[]) {
 	pr_info(&ctx, "fastd " FASTD_VERSION " starting");
 
 	fastd_cap_init(&ctx);
+
+	/* change groups early as the can be relevant for file access (for PID file & log files) */
+	set_groups(&ctx);
 
 	crypto_init(&ctx);
 
