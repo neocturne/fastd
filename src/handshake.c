@@ -32,7 +32,7 @@
 #include "task.h"
 
 
-static const char const *RECORD_TYPES[RECORD_MAX] = {
+static const char *const RECORD_TYPES[RECORD_MAX] = {
 	"handshake type",
 	"reply code",
 	"error detail",
@@ -50,7 +50,7 @@ static const char const *RECORD_TYPES[RECORD_MAX] = {
 	"method list",
 };
 
-static const char const *REPLY_TYPES[REPLY_MAX] = {
+static const char *const REPLY_TYPES[REPLY_MAX] = {
 	"success",
 	"mandatory field missing",
 	"unacceptable value",
