@@ -270,9 +270,14 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	ecc_25519_gf_add(&s, &eb, &handshake_key->secret_key);
 
 	ecc_25519_work_t work, workX;
-	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
-		return;
 	if (!ecc_25519_load_packed(&workX, peer_handshake_key))
+		return;
+
+	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, &workX);
+	if (!ecc_25519_is_identity(&work))
+		return;
+
+	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
 		return;
 
 	ecc_25519_scalarmult(&work, &d, &work);
@@ -389,9 +394,14 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	ecc_25519_gf_add(&s, &da, &handshake_key->secret_key);
 
 	ecc_25519_work_t work, workY;
-	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
-		return;
 	if (!ecc_25519_load_packed(&workY, peer_handshake_key))
+		return;
+
+	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, &workY);
+	if (!ecc_25519_is_identity(&work))
+		return;
+
+	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
 		return;
 
 	ecc_25519_scalarmult(&work, &e, &work);
@@ -461,9 +471,14 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	ecc_25519_gf_add(&s, &eb, &handshake_key->secret_key);
 
 	ecc_25519_work_t work, workX;
-	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
-		return;
 	if (!ecc_25519_load_packed(&workX, peer_handshake_key))
+		return;
+
+	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, &workX);
+	if (!ecc_25519_is_identity(&work))
+		return;
+
+	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
 		return;
 
 	ecc_25519_scalarmult(&work, &d, &work);
