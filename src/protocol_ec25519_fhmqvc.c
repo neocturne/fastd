@@ -270,8 +270,10 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	ecc_25519_gf_add(&s, &eb, &handshake_key->secret_key);
 
 	ecc_25519_work_t work, workX;
-	ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key);
-	ecc_25519_load_packed(&workX, peer_handshake_key);
+	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
+		return;
+	if (!ecc_25519_load_packed(&workX, peer_handshake_key))
+		return;
 
 	ecc_25519_scalarmult(&work, &d, &work);
 	ecc_25519_add(&work, &workX, &work);
@@ -387,8 +389,10 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	ecc_25519_gf_add(&s, &da, &handshake_key->secret_key);
 
 	ecc_25519_work_t work, workY;
-	ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key);
-	ecc_25519_load_packed(&workY, peer_handshake_key);
+	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
+		return;
+	if (!ecc_25519_load_packed(&workY, peer_handshake_key))
+		return;
 
 	ecc_25519_scalarmult(&work, &e, &work);
 	ecc_25519_add(&work, &workY, &work);
@@ -457,8 +461,10 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	ecc_25519_gf_add(&s, &eb, &handshake_key->secret_key);
 
 	ecc_25519_work_t work, workX;
-	ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key);
-	ecc_25519_load_packed(&workX, peer_handshake_key);
+	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
+		return;
+	if (!ecc_25519_load_packed(&workX, peer_handshake_key))
+		return;
 
 	ecc_25519_scalarmult(&work, &d, &work);
 	ecc_25519_add(&work, &workX, &work);

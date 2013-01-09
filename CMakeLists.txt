@@ -13,7 +13,7 @@ if(NOT CMAKE_USE_PTHREADS_INIT)
 endif(NOT CMAKE_USE_PTHREADS_INIT)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(UECC REQUIRED libuecc>=2)
+pkg_check_modules(UECC REQUIRED libuecc>=3)
 
 find_package(NaCl REQUIRED)
 
