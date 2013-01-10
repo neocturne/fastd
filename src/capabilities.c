@@ -33,13 +33,23 @@
 
 static void try_cap(fastd_context_t *ctx, cap_value_t cap) {
 	char *name = cap_to_name(cap);
-
 	if (!name)
 		return;
 
-	pr_debug(ctx, "Trying to acquire %s", name);
-
 	cap_t caps = cap_get_proc();
+	if (!caps)
+		goto end_free;
+
+	cap_flag_value_t val;
+	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &val) < 0) {
+		pr_debug_errno(ctx, "cap_get_flag");
+		goto end_free;
+	}
+
+	if (val == CAP_SET)
+		goto end_free;
+
+	pr_verbose(ctx, "Trying to acquire %s", name);
 
 	if (cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, CAP_SET) < 0) {
 		pr_debug_errno(ctx, "cap_set_flags");
