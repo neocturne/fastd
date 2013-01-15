@@ -47,9 +47,6 @@
 #include <unistd.h>
 
 
-#define FASTD_VERSION "7+"
-
-
 /* This must be adjusted when new methods are added */
 #define MAX_METHODS 3
 

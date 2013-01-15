@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(FASTD C)
+set(PROJECT_VERSION "7+")
 
 set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR})
 
