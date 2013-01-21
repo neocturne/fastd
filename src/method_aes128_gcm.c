@@ -169,7 +169,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	memset(in.data, 0, sizeof(fastd_block128_t));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
-	*out = fastd_buffer_alloc(in.len, alignto(NONCEBYTES, 16), sizeof(fastd_block128_t)+tail_len);
+	*out = fastd_buffer_alloc(ctx, in.len, alignto(NONCEBYTES, 16), sizeof(fastd_block128_t)+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
@@ -241,7 +241,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_buffer_push_head(&in, NONCEBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
-	*out = fastd_buffer_alloc(in.len, 0, tail_len);
+	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
 
 	int n_blocks = (in.len+sizeof(fastd_block128_t)-1)/sizeof(fastd_block128_t);
 
@@ -282,7 +282,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	else if (age == 0 || session->receive_reorder_seen & (1 << (age-1))) {
 		pr_debug(ctx, "dropping duplicate packet from %P (age %u)", peer, (unsigned)age);
 		fastd_buffer_free(*out);
-		*out = fastd_buffer_alloc(0, 0, 0);
+		*out = fastd_buffer_alloc(ctx, 0, 0, 0);
 	}
 	else {
 		pr_debug(ctx, "accepting reordered packet from %P (age %u)", peer, (unsigned)age);

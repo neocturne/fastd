@@ -92,7 +92,7 @@ fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space)
 	size_t method_list_len;
 	uint8_t *method_list = create_method_list(ctx, &method_list_len);
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_packet_t), 0,
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0,
 						 2*5 +               /* handshake type, mode */
 						 6 +		     /* MTU */
 						 4+version_len +     /* version name */
@@ -143,7 +143,7 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 		extra_size = 6 +            /* MTU */
 			     4+version_len; /* version name */
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_packet_t), 0,
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0,
 						 2*5 +           /* handshake type, reply code */
 						 4+method_len +  /* method name */
 						 extra_size +
@@ -294,7 +294,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 
 	send_reply:
 		if (reply_code) {
-			fastd_buffer_t reply_buffer = fastd_buffer_alloc(sizeof(fastd_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
+			fastd_buffer_t reply_buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
 			fastd_packet_t *reply = reply_buffer.data;
 
 			reply->rsv1 = 0;

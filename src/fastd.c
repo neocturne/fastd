@@ -536,7 +536,7 @@ void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 			fastd_peer_t *dest_peer;
 			for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
 				if (dest_peer != peer && fastd_peer_is_established(dest_peer)) {
-					fastd_buffer_t send_buffer = fastd_buffer_alloc(buffer.len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
+					fastd_buffer_t send_buffer = fastd_buffer_alloc(ctx, buffer.len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
 					memcpy(send_buffer.data, buffer.data, buffer.len);
 					ctx->conf->protocol->send(ctx, dest_peer, send_buffer);
 				}
@@ -708,7 +708,7 @@ static void handle_tasks(fastd_context_t *ctx) {
 
 		case TASK_KEEPALIVE:
 			pr_debug(ctx, "sending keepalive to %P", task->peer);
-			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(0, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
+			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(ctx, 0, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
 			break;
 
 		default:
@@ -721,7 +721,7 @@ static void handle_tasks(fastd_context_t *ctx) {
 
 static void handle_tun(fastd_context_t *ctx) {
 	size_t max_len = fastd_max_packet_size(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
 
 	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
 	if (len < 0) {
@@ -758,7 +758,7 @@ static void handle_tun(fastd_context_t *ctx) {
 	if (peer == NULL) {
 		for (peer = ctx->peers; peer; peer = peer->next) {
 			if (fastd_peer_is_established(peer)) {
-				fastd_buffer_t send_buffer = fastd_buffer_alloc(len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
+				fastd_buffer_t send_buffer = fastd_buffer_alloc(ctx, len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
 				memcpy(send_buffer.data, buffer.data, len);
 				ctx->conf->protocol->send(ctx, peer, send_buffer);
 			}
@@ -770,7 +770,7 @@ static void handle_tun(fastd_context_t *ctx) {
 
 static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 	size_t max_len = PACKET_TYPE_LEN + methods_max_packet_size(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
 	uint8_t *packet_type;
 
 	fastd_peer_address_t recvaddr;

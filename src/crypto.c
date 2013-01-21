@@ -46,7 +46,7 @@ static fastd_crypto_aes128ctr_context_t* aes128ctr_init(fastd_context_t *ctx) {
 static fastd_crypto_aes128ctr_state_t* aes128ctr_set_key(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx, const fastd_block128_t *key) {
 	fastd_crypto_aes128ctr_state_t *cstate = malloc(sizeof(fastd_crypto_aes128ctr_state_t));
 
-	cstate->d = fastd_buffer_alloc(crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
+	cstate->d = fastd_buffer_alloc(ctx, crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
 	crypto_stream_aes128ctr_beforenm(cstate->d.data, key->b);
 
 	return cstate;

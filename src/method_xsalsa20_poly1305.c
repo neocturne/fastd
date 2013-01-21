@@ -140,7 +140,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_buffer_pull_head(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
-	*out = fastd_buffer_alloc(in.len, 0, 0);
+	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
 
 	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
 	memcpy(nonce, session->send_nonce, NONCEBYTES);
@@ -184,7 +184,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_buffer_pull_head(&in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 
-	*out = fastd_buffer_alloc(in.len, 0, 0);
+	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
 
 	if (crypto_secretbox_xsalsa20poly1305_open(out->data, in.data, in.len, nonce, session->key) != 0) {
 		fastd_buffer_free(*out);
@@ -206,7 +206,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	else if (age == 0 || session->receive_reorder_seen & (1 << (age-1))) {
 		pr_debug(ctx, "dropping duplicate packet from %P (age %u)", peer, (unsigned)age);
 		fastd_buffer_free(*out);
-		*out = fastd_buffer_alloc(crypto_secretbox_xsalsa20poly1305_ZEROBYTES, 0, 0);
+		*out = fastd_buffer_alloc(ctx, crypto_secretbox_xsalsa20poly1305_ZEROBYTES, 0, 0);
 	}
 	else {
 		pr_debug(ctx, "accepting reordered packet from %P (age %u)", peer, (unsigned)age);
