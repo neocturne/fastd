@@ -395,7 +395,7 @@ static size_t methods_max_packet_size(fastd_context_t *ctx) {
 }
 
 static size_t methods_min_encrypt_head_space(fastd_context_t *ctx) {
-	size_t ret = ctx->conf->methods[0]->min_encrypt_head_space(ctx);
+	size_t ret = 0;
 
 	int i;
 	for (i = 0; i < MAX_METHODS; i++) {
@@ -411,7 +411,7 @@ static size_t methods_min_encrypt_head_space(fastd_context_t *ctx) {
 }
 
 static size_t methods_min_decrypt_head_space(fastd_context_t *ctx) {
-	size_t ret = ctx->conf->methods[0]->min_decrypt_head_space(ctx);
+	size_t ret = 0;
 
 	int i;
 	for (i = 0; i < MAX_METHODS; i++) {
@@ -428,7 +428,7 @@ static size_t methods_min_decrypt_head_space(fastd_context_t *ctx) {
 }
 
 static size_t methods_min_encrypt_tail_space(fastd_context_t *ctx) {
-	size_t ret = ctx->conf->methods[0]->min_encrypt_tail_space(ctx);
+	size_t ret = 0;
 
 	int i;
 	for (i = 0; i < MAX_METHODS; i++) {
@@ -444,7 +444,7 @@ static size_t methods_min_encrypt_tail_space(fastd_context_t *ctx) {
 }
 
 static size_t methods_min_decrypt_tail_space(fastd_context_t *ctx) {
-	size_t ret = ctx->conf->methods[0]->min_decrypt_tail_space(ctx);
+	size_t ret = 0;
 
 	int i;
 	for (i = 0; i < MAX_METHODS; i++) {
