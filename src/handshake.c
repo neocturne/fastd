@@ -93,14 +93,14 @@ fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space)
 	uint8_t *method_list = create_method_list(ctx, &method_list_len);
 
 	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0,
-						 2*5 +               /* handshake type, mode */
-						 6 +		     /* MTU */
-						 4+version_len +     /* version name */
-						 4+protocol_len +    /* protocol name */
-						 4+method_len +      /* method name */
-						 4+method_list_len + /* supported method name list */
-						 tail_space
-						 );
+						   2*5 +               /* handshake type, mode */
+						   6 +		     /* MTU */
+						   4+version_len +     /* version name */
+						   4+protocol_len +    /* protocol name */
+						   4+method_len +      /* method name */
+						   4+method_list_len + /* supported method name list */
+						   tail_space
+						   );
 	fastd_packet_t *request = buffer.data;
 
 	request->rsv1 = 0;
@@ -144,11 +144,11 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 			     4+version_len; /* version name */
 
 	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0,
-						 2*5 +           /* handshake type, reply code */
-						 4+method_len +  /* method name */
-						 extra_size +
-						 tail_space
-						 );
+						   2*5 +           /* handshake type, reply code */
+						   4+method_len +  /* method name */
+						   extra_size +
+						   tail_space
+						   );
 	fastd_packet_t *request = buffer.data;
 
 	request->rsv1 = 0;
