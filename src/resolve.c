@@ -69,25 +69,32 @@ static void* resolve_peer(void *varg) {
 		error = true;
 	}
 
-	fastd_resolve_return_t ret;
-	memset(&ret, 0, sizeof(ret));
+	size_t hostname_len = strlen(arg->hostname);
+	char buf[sizeof(fastd_resolve_return_t) + hostname_len];
 
-	ret.hostname = arg->hostname;
-	ret.constraints = arg->constraints;
+	fastd_resolve_return_t *ret = (void*)buf;
+	char *hostname = buf + sizeof(fastd_resolve_return_t);
+
+	memset(ret, 0, sizeof(fastd_resolve_return_t));
+
+	ret->constraints = arg->constraints;
+	ret->hostname_len = hostname_len;
+	memcpy(hostname, arg->hostname, hostname_len);
 
 	if (!error) {
 		pr_verbose(arg->ctx, "resolved host `%s' successfully", arg->hostname);
-		memcpy(&ret.addr, res->ai_addr, res->ai_addrlen);
-		fastd_peer_address_simplify(&ret.addr);
+		memcpy(&ret->addr, res->ai_addr, res->ai_addrlen);
+		fastd_peer_address_simplify(&ret->addr);
 	}
 	else {
-		ret.addr.sa.sa_family = AF_UNSPEC;
+		ret->addr.sa.sa_family = AF_UNSPEC;
 	}
 
-	if (write(arg->ctx->resolvewfd, &ret, sizeof(ret)) < 0)
+	if (write(arg->ctx->resolvewfd, buf, sizeof(buf)) < 0)
 		pr_error_errno(arg->ctx, "can't write resolve return");
 
 	freeaddrinfo(res);
+	free(arg->hostname);
 	free(arg);
 
 	return NULL;
@@ -102,14 +109,19 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (timespec_diff(&ctx->now, &peer->last_resolve) < ctx->conf->min_resolve_interval*1000) {
 		pr_debug(ctx, "not resolving %P as it has been resolved a short time ago", peer);
 
-		fastd_resolve_return_t ret;
-		memset(&ret, 0, sizeof(ret));
+		size_t hostname_len = strlen(peer->config->hostname);
+		char buf[sizeof(fastd_resolve_return_t) + hostname_len];
 
-		ret.hostname = strdup(peer->config->hostname);
-		ret.constraints = peer->config->address;
-		ret.addr = peer->address;
+		fastd_resolve_return_t *ret = (void*)buf;
+		char *hostname = buf + sizeof(fastd_resolve_return_t);
 
-		if (write(ctx->resolvewfd, &ret, sizeof(ret)) < 0)
+		memset(ret, 0, sizeof(fastd_resolve_return_t));
+
+		ret->constraints = peer->config->address;
+		ret->hostname_len = hostname_len;
+		memcpy(hostname, peer->config->hostname, hostname_len);
+
+		if (write(ctx->resolvewfd, buf, sizeof(buf)) < 0)
 			pr_error_errno(ctx, "can't write resolve return");
 
 		return;

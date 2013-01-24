@@ -851,19 +851,25 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 static void handle_resolv_returns(fastd_context_t *ctx) {
 	fastd_resolve_return_t resolve_return;
 
-	if (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
+	while (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
 		if (errno != EINTR)
-			pr_warn(ctx, "read: %s", strerror(errno));
-
-		return;
+			exit_errno(ctx, "handle_resolv_return: read");
 	}
+
+	char hostname[resolve_return.hostname_len+1];
+	while (read(ctx->resolverfd, hostname, resolve_return.hostname_len) < 0) {
+		if (errno != EINTR)
+			exit_errno(ctx, "handle_resolv_return: read");
+	}
+
+	hostname[resolve_return.hostname_len] = 0;
 
 	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
 		if (!peer->config)
 			continue;
 
-		if (!strequal(peer->config->hostname, resolve_return.hostname))
+		if (!strequal(peer->config->hostname, hostname))
 			continue;
 
 		if (!fastd_peer_config_matches_dynamic(peer->config, &resolve_return.constraints))
@@ -875,13 +881,11 @@ static void handle_resolv_returns(fastd_context_t *ctx) {
 			send_handshake(ctx, peer);
 		}
 		else {
-			pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", resolve_return.hostname, &resolve_return.addr);
+			pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", hostname, &resolve_return.addr);
 			fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
 		}
 		break;
 	}
-
-	free(resolve_return.hostname);
 }
 
 static inline void handle_socket_error(fastd_context_t *ctx, fastd_socket_t *sock) {
