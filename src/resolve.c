@@ -121,6 +121,8 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 		ret->hostname_len = hostname_len;
 		memcpy(hostname, peer->config->hostname, hostname_len);
 
+		ret->addr = peer->address;
+
 		if (write(ctx->resolvewfd, buf, sizeof(buf)) < 0)
 			pr_error_errno(ctx, "can't write resolve return");
 
