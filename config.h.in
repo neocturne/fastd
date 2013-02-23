@@ -27,7 +27,7 @@
 #ifndef _FASTD_CONFIG_H_
 #define _FASTD_CONFIG_H_
 
-#define FASTD_VERSION "@PROJECT_VERSION@"
+#define FASTD_VERSION "@FASTD_VERSION@"
 
 #cmakedefine WITH_CAPABILITIES
 
