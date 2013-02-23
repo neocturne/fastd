@@ -39,12 +39,15 @@ static inline int snprintf_safe(char *buffer, size_t size, const char *format, .
 	return ret < 0 ? 0 : ret > size ? size : ret;
 }
 
-static int snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address) {
+static int snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address, bool bind_address) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
 	switch (address->sa.sa_family) {
 	case AF_UNSPEC:
-		return snprintf(buffer, size, "any");
+		if (bind_address)
+			return snprintf_safe(buffer, size, "any:%u", ntohs(address->in.sin_port));
+		else
+			return snprintf(buffer, size, "any");
 
 	case AF_INET:
 		if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))
@@ -131,10 +134,11 @@ int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const
 			break;
 
 		case 'I':
+		case 'B':
 			p = va_arg(ap, const fastd_peer_address_t*);
 
 			if (p)
-				buffer += snprint_peer_address(ctx, buffer, buffer_end-buffer, (const fastd_peer_address_t*)p);
+				buffer += snprint_peer_address(ctx, buffer, buffer_end-buffer, (const fastd_peer_address_t*)p, *format == 'B');
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;

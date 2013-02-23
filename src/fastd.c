@@ -260,9 +260,9 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 
 	if (warn) {
 		if (addr->bindtodev)
-			pr_warn(ctx, "unable to bind to %I on `%s'", &addr->addr, addr->bindtodev);
+			pr_warn(ctx, "unable to bind to %B on `%s'", &addr->addr, addr->bindtodev);
                 else
-			pr_warn(ctx, "unable to bind to %I", &addr->addr);
+			pr_warn(ctx, "unable to bind to %B", &addr->addr);
 	}
 
 	return -1;
@@ -279,9 +279,9 @@ static void bind_sockets(fastd_context_t *ctx) {
 
 		if (ctx->socks[i].fd >= 0) {
 			if (ctx->socks[i].addr->bindtodev)
-				pr_info(ctx, "successfully bound to %I on `%s'", &ctx->socks[i].addr->addr, ctx->socks[i].addr->bindtodev);
+				pr_info(ctx, "successfully bound to %B on `%s'", &ctx->socks[i].addr->addr, ctx->socks[i].addr->bindtodev);
 			else
-				pr_info(ctx, "successfully bound to %I", &ctx->socks[i].addr->addr);
+				pr_info(ctx, "successfully bound to %B", &ctx->socks[i].addr->addr);
 		}
 	}
 }
