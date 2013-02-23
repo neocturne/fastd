@@ -69,8 +69,8 @@ struct fastd_protocol {
 	fastd_protocol_config_t* (*init)(fastd_context_t *ctx);
 	void (*peer_configure)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
 
-	void (*handshake_init)(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf);
-	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf, const fastd_handshake_t *handshake, const fastd_method_t *method);
+	void (*handshake_init)(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer);
+	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method);
 
 	void (*handle_recv)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 	void (*send)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);

@@ -71,7 +71,7 @@ struct fastd_handshake {
 fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space);
 fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_handshake_t *handshake, const fastd_method_t *method, size_t tail_space);
 
-void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_config_t *peer_conf, fastd_buffer_t buffer);
+void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, fastd_buffer_t buffer);
 
 
 static inline void fastd_handshake_add(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len, const void *data) {

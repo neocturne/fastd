@@ -683,7 +683,7 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 			pr_debug(ctx, "sending handshake to %P...", peer);
 			peer->last_handshake = ctx->now;
 			peer->last_handshake_address = peer->address;
-			ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->address, peer->config);
+			ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->address, peer);
 		}
 	}
 
@@ -818,7 +818,7 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 			break;
 
 		case PACKET_HANDSHAKE:
-			fastd_handshake_handle(ctx, sock, &recvaddr, peer->config, buffer);
+			fastd_handshake_handle(ctx, sock, &recvaddr, peer, buffer);
 			break;
 
 		default:
