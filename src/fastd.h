@@ -208,6 +208,7 @@ struct fastd_config {
 	char *secret;
 	unsigned key_valid;
 	unsigned key_refresh;
+	unsigned key_refresh_splay;
 
 #ifdef USE_CRYPTO_AES128CTR
 	const fastd_crypto_aes128ctr_t *crypto_aes128ctr;

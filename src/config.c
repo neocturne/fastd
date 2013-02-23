@@ -114,6 +114,7 @@ static void default_config(fastd_config_t *conf) {
 	conf->method_default = &fastd_method_null;
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_refresh = 3300;	/* 55 minutes */
+	conf->key_refresh_splay = 300;	/* 5 minutes */
 
 #ifdef USE_CRYPTO_AES128CTR
 	conf->crypto_aes128ctr = fastd_crypto_aes128ctr_default;

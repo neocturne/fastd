@@ -102,7 +102,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, u
 	session->valid_till.tv_sec += ctx->conf->key_valid;
 
 	session->refresh_after = ctx->now;
-	session->refresh_after.tv_sec += ctx->conf->key_refresh;
+	session->refresh_after.tv_sec += ctx->conf->key_refresh - fastd_rand(ctx, 0, ctx->conf->key_refresh_splay);
 
 	memcpy(session->key, secret, crypto_secretbox_xsalsa20poly1305_KEYBYTES);
 
