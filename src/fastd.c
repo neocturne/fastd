@@ -47,7 +47,7 @@
 
 static volatile bool sighup = false;
 static volatile bool terminate = false;
-
+static volatile bool dump = false;
 
 
 static void on_sighup(int signo) {
@@ -56,6 +56,10 @@ static void on_sighup(int signo) {
 
 static void on_terminate(int signo) {
 	terminate = true;
+}
+
+static void on_sigusr1(int signo) {
+	dump = true;
 }
 
 static void init_signals(fastd_context_t *ctx) {
@@ -74,6 +78,10 @@ static void init_signals(fastd_context_t *ctx) {
 	if(sigaction(SIGQUIT, &action, NULL))
 		exit_errno(ctx, "sigaction");
 	if(sigaction(SIGINT, &action, NULL))
+		exit_errno(ctx, "sigaction");
+
+	action.sa_handler = on_sigusr1;
+	if(sigaction(SIGUSR1, &action, NULL))
 		exit_errno(ctx, "sigaction");
 
 	action.sa_handler = SIG_IGN;
@@ -657,6 +665,34 @@ static void delete_peers(fastd_context_t *ctx) {
 	}
 }
 
+static void dump_peers(fastd_context_t *ctx) {
+	pr_info(ctx, "dumping peers...");
+
+	fastd_peer_t *peer;
+	for (peer = ctx->peers; peer; peer = peer->next) {
+		if (!fastd_peer_is_established(peer)) {
+			pr_info(ctx, "peer %P not connected, address: %I", peer, &peer->address);
+			continue;
+		}
+
+		if (ctx->conf->mode == MODE_TAP) {
+			unsigned int eth_addresses = 0;
+			size_t i;
+			for (i = 0; i < ctx->n_eth_addr; i++) {
+				if (ctx->eth_addr[i].peer == peer)
+					eth_addresses++;
+			}
+
+			pr_info(ctx, "peer %P connected, address: %I, associated MAC addresses: %u", peer, &peer->address, eth_addresses);
+		}
+		else {
+			pr_info(ctx, "peer %P connected, address: %I", peer, &peer->address);
+		}
+	}
+
+	pr_info(ctx, "peer dump finished.");
+}
+
 static inline void update_time(fastd_context_t *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
@@ -1167,6 +1203,11 @@ int main(int argc, char *argv[]) {
 			init_log(&ctx);
 
 			fastd_reconfigure(&ctx, &conf);
+		}
+
+		if (dump) {
+			dump = false;
+			dump_peers(&ctx);
 		}
 
 		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
