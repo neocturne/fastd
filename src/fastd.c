@@ -268,7 +268,7 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	return -1;
 }
 
-static void bind_sockets(fastd_context_t *ctx) {
+static bool bind_sockets(fastd_context_t *ctx) {
 	unsigned i;
 
 	for (i = 0; i < ctx->n_socks; i++) {
@@ -284,6 +284,11 @@ static void bind_sockets(fastd_context_t *ctx) {
 				pr_info(ctx, "successfully bound to %B", &ctx->socks[i].addr->addr);
 		}
 	}
+
+	if ((ctx->sock_default_v4 && ctx->sock_default_v4->fd < 0) || (ctx->sock_default_v6 && ctx->sock_default_v6->fd < 0))
+		return false;
+
+	return true;
 }
 
 fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int af) {
@@ -1151,7 +1156,9 @@ int main(int argc, char *argv[]) {
 	crypto_init(&ctx);
 
 	init_sockets(&ctx);
-	bind_sockets(&ctx);
+
+	if (!bind_sockets(&ctx))
+		exit_error(&ctx, "unable to bind default socket");
 
 	init_tuntap(&ctx);
 
