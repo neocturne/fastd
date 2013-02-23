@@ -495,21 +495,15 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 		  &ctx->conf->protocol_config->public_key, &sigma, handshake_key->serial);
 }
 
-static bool check_peer_config_match(const fastd_peer_config_t *config, const fastd_peer_address_t *address, const unsigned char key[32]) {
-	if (!config->enabled || !config->protocol_config)
-		return false;
-
-	if (!fastd_peer_config_is_floating(config) && !fastd_peer_config_matches_dynamic(config, address))
-		return false;
-
-	return (memcmp(config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0);
-}
-
 static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const unsigned char key[32]) {
+	errno = 0;
+
 	if (sock->peer) {
 		if (peer != sock->peer) {
-			if (peer && !fastd_peer_is_floating(peer) && !fastd_peer_is_dynamic(peer))
+			if (peer && !fastd_peer_is_floating(peer) && !fastd_peer_is_dynamic(peer)) {
+				errno = EPERM;
 				return NULL;
+			}
 
 			peer = sock->peer;
 		}
@@ -517,28 +511,38 @@ static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t
 
 	if (peer) {
 		if (memcmp(peer->config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
-			if (sock->peer && sock->peer != peer)
+			if (sock->peer && sock->peer != peer) {
+				errno = EPERM;
 				return NULL;
+			}
 
 			return peer;
 		}
 	}
 
-	if (peer && !fastd_peer_is_floating(peer) && !fastd_peer_is_dynamic(peer))
+	if (peer && !fastd_peer_is_floating(peer) && !fastd_peer_is_dynamic(peer)) {
+		errno = EPERM;
 		return NULL;
+	}
 
 	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (!check_peer_config_match(peer->config, address, key))
+		if (memcmp(peer->config->protocol_config->public_key.p, key, PUBLICKEYBYTES) != 0)
 			continue;
 
-		if (!fastd_peer_is_floating(peer)) { /* matches dynamic */
+		if (fastd_peer_config_matches_dynamic(peer->config, address)) {
 			fastd_resolve_peer(ctx, peer);
+			errno = EAGAIN;
 			return NULL;
 		}
 
-		return peer;
+		if (fastd_peer_is_floating(peer))
+			return peer;
+
+		errno = EPERM;
+		return NULL;
 	}
 
+	errno = ENOENT;
 	return NULL;
 }
 
@@ -559,8 +563,22 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 
 	peer = match_sender_key(ctx, sock, address, peer, handshake->records[RECORD_SENDER_KEY].data);
 	if (!peer) {
-		pr_debug(ctx, "ignoring handshake from %I (unknown key or unresolved host)", address);
-		return;
+		switch (errno) {
+		case EAGAIN:
+			pr_debug(ctx, "received handshake from %I, resolving host...", address);
+			return;
+
+		case EPERM:
+			pr_debug(ctx, "ignoring handshake from %I (incorrect source address)", address);
+			return;
+
+		case ENOENT:
+			pr_debug(ctx, "ignoring handshake from %I (unknown key)", address);
+			return;
+
+		default:
+			exit_bug(ctx, "match_sender_key: unknown error");
+		}
 	}
 
 	if (!fastd_peer_may_connect(ctx, peer)) {
