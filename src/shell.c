@@ -37,14 +37,44 @@ bool fastd_shell_exec(fastd_context_t *ctx, const fastd_peer_t *peer, const char
 	char *cwd = get_current_dir_name();
 
 	if(!chdir(dir)) {
+		char buf[INET6_ADDRSTRLEN];
+
+		snprintf(buf, sizeof(buf), "%u", (unsigned)getpid());
+		setenv("FASTD_PID", buf, 1);
+
 		setenv("INTERFACE", ctx->ifname, 1);
 
-		char buf[INET6_ADDRSTRLEN];
+		snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
+		setenv("INTERFACE_MTU", buf, 1);
 
 		if (peer && peer->config && peer->config->name)
 			setenv("PEER_NAME", peer->config->name, 1);
 		else
 			unsetenv("PEER_NAME");
+
+		switch((peer && peer->sock) ? peer->sock->addr->addr.sa.sa_family : AF_UNSPEC) {
+		case AF_INET:
+			inet_ntop(AF_INET, &peer->sock->addr->addr.in.sin_addr, buf, sizeof(buf));
+			setenv("LOCAL_ADDRESS", buf, 1);
+
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer->sock->addr->addr.in.sin_port));
+			setenv("LOCAL_PORT", buf, 1);
+
+			break;
+
+		case AF_INET6:
+			inet_ntop(AF_INET6, &peer->sock->addr->addr.in6.sin6_addr, buf, sizeof(buf));
+			setenv("LOCAL_ADDRESS", buf, 1);
+
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer->sock->addr->addr.in6.sin6_port));
+			setenv("LOCAL_PORT", buf, 1);
+
+			break;
+
+		default:
+			unsetenv("LOCAL_ADDRESS");
+			unsetenv("LOCAL_PORT");
+		}
 
 		switch(peer ? peer->address.sa.sa_family : AF_UNSPEC) {
 		case AF_INET:
