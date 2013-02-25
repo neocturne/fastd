@@ -2,13 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(FASTD C)
 
 set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR})
-
-include(GitVersion)
-
-git_version(FASTD_VERSION ${FASTD_SOURCE_DIR})
-if(NOT FASTD_VERSION)
-  set(FASTD_VERSION "v7+")
-endif(NOT FASTD_VERSION)
+set(FASTD_VERSION "v7+")
 
 find_package(BISON 2.5 REQUIRED)
 find_package(FLEX REQUIRED)

@@ -34,6 +34,7 @@
 #define _FASTD_TYPES_H_
 
 #include <config.h>
+#include <version.h>
 
 
 typedef enum fastd_mode {

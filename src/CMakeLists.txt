@@ -36,4 +36,17 @@ add_executable(fastd
 set_target_properties(fastd PROPERTIES COMPILE_FLAGS -pthread ${UECC_CFLAGS_OTHER} LINK_FLAGS -pthread ${UECC_LDFLAGS_OTHER})
 target_link_libraries(fastd rt ${CAP_LIBRARY} ${UECC_LIBRARIES} ${NACL_LIBRARY})
 
+add_custom_target(
+    version
+    COMMAND echo "#ifndef _FASTD_VERSION_H_" > ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
+    COMMAND echo "#define _FASTD_VERSION_H_" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
+    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"\$(git describe --dirty || echo ${FASTD_VERSION})\\\"\"" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
+    COMMAND echo "#endif /* _FASTD_VERSION_H_ */" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
+    COMMAND cmp -s ${CMAKE_CURRENT_BINARY_DIR}/version.h.new ${CMAKE_CURRENT_BINARY_DIR}/version.h && rm ${CMAKE_CURRENT_BINARY_DIR}/version.h.new || mv ${CMAKE_CURRENT_BINARY_DIR}/version.h.new ${CMAKE_CURRENT_BINARY_DIR}/version.h
+    WORKING_DIRECTORY "${FASTD_SOURCE_DIR}"
+    VERBATIM
+)
+
+add_dependencies(fastd version)
+
 install(TARGETS fastd RUNTIME DESTINATION bin)
