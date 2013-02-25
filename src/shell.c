@@ -100,6 +100,8 @@ bool fastd_shell_exec(fastd_context_t *ctx, const fastd_peer_t *peer, const char
 			unsetenv("PEER_PORT");
 		}
 
+		ctx->conf->protocol->set_shell_env(ctx, peer);
+
 		result = system(command);
 
 		if (ret) {

@@ -806,14 +806,17 @@ static void protocol_free_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
 	}
 }
 
-static void hexdump(const char *desc, unsigned char d[32]) {
-	printf("%s", desc);
-
+static inline void hexdump(char out[65], unsigned char d[32]) {
 	int i;
 	for (i = 0; i < 32; i++)
-		printf("%02x", d[i]);
+		snprintf(out+2*i, 3, "%02x", d[i]);
+}
 
-	printf("\n");
+static inline void print_hexdump(const char *desc, unsigned char d[32]) {
+	char buf[65];
+	hexdump(buf, d);
+
+	printf("%s%s\n", desc, buf);
 }
 
 static void protocol_generate_key(fastd_context_t *ctx) {
@@ -831,21 +834,35 @@ static void protocol_generate_key(fastd_context_t *ctx) {
 	ecc_25519_store_packed(&public_key, &work);
 
 	if (ctx->conf->machine_readable) {
-		hexdump("", secret_key.p);
+		print_hexdump("", secret_key.p);
 	}
 	else {
-		hexdump("Secret: ", secret_key.p);
-		hexdump("Public: ", public_key.p);
+		print_hexdump("Secret: ", secret_key.p);
+		print_hexdump("Public: ", public_key.p);
 	}
 }
 
 static void protocol_show_key(fastd_context_t *ctx) {
 	if (ctx->conf->machine_readable)
-		hexdump("", ctx->conf->protocol_config->public_key.p);
+		print_hexdump("", ctx->conf->protocol_config->public_key.p);
 	else
-		hexdump("Public: ", ctx->conf->protocol_config->public_key.p);
+		print_hexdump("Public: ", ctx->conf->protocol_config->public_key.p);
 }
 
+static void protocol_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *peer) {
+	char buf[65];
+
+	hexdump(buf, ctx->conf->protocol_config->public_key.p);
+	setenv("LOCAL_KEY", buf, 1);
+
+	if (peer && peer->config && peer->config->protocol_config) {
+		hexdump(buf, peer->config->protocol_config->public_key.p);
+		setenv("PEER_KEY", buf, 1);
+	}
+	else {
+		unsetenv("PEER_KEY");
+	}
+}
 
 const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.name = "ec25519-fhmqvc",
@@ -865,4 +882,5 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 
 	.generate_key = protocol_generate_key,
 	.show_key = protocol_show_key,
+	.set_shell_env = protocol_set_shell_env,
 };

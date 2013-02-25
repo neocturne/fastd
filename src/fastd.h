@@ -81,6 +81,7 @@ struct fastd_protocol {
 
 	void (*generate_key)(fastd_context_t *ctx);
 	void (*show_key)(fastd_context_t *ctx);
+	void (*set_shell_env)(fastd_context_t *ctx, const fastd_peer_t *peer);
 };
 
 struct fastd_method {
