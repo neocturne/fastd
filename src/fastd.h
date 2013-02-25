@@ -327,6 +327,8 @@ void fastd_reconfigure(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_cap_init(fastd_context_t *ctx);
 void fastd_cap_drop(fastd_context_t *ctx);
 
+bool fastd_shell_exec(fastd_context_t *ctx, const fastd_peer_t *peer, const char *command, const char *dir, int *ret);
+
 void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure);
 
 static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {

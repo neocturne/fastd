@@ -563,56 +563,18 @@ void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 	}
 }
 
-static void on_up(fastd_context_t *ctx) {
+static inline void on_up(fastd_context_t *ctx) {
 	if (!ctx->conf->on_up)
 		return;
 
-	char *cwd = get_current_dir_name();
-
-	if (!chdir(ctx->conf->on_up_dir)) {
-		setenv("INTERFACE", ctx->ifname, 1);
-
-		int ret = system(ctx->conf->on_up);
-
-		if (WIFSIGNALED(ret))
-			pr_error(ctx, "on-up command exited with signal %i", WTERMSIG(ret));
-		else if(ret)
-			pr_warn(ctx, "on-up command exited with status %i", WEXITSTATUS(ret));
-
-		if (chdir(cwd))
-			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
-	}
-	else {
-		pr_error(ctx, "can't chdir to `%s': %s", ctx->conf->on_up_dir, strerror(errno));
-	}
-
-	free(cwd);
+	fastd_shell_exec(ctx, NULL, ctx->conf->on_up, ctx->conf->on_up_dir, NULL);
 }
 
-static void on_down(fastd_context_t *ctx) {
+static inline void on_down(fastd_context_t *ctx) {
 	if (!ctx->conf->on_down)
 		return;
 
-	char *cwd = get_current_dir_name();
-
-	if(!chdir(ctx->conf->on_down_dir)) {
-		setenv("INTERFACE", ctx->ifname, 1);
-
-		int ret = system(ctx->conf->on_down);
-
-		if (WIFSIGNALED(ret))
-			pr_error(ctx, "on-down command exited with signal %i", WTERMSIG(ret));
-		else if(ret)
-			pr_warn(ctx, "on-down command exited with status %i", WEXITSTATUS(ret));
-
-		if (chdir(cwd))
-			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
-	}
-	else {
-		pr_error(ctx, "can't chdir to `%s': %s", ctx->conf->on_down_dir, strerror(errno));
-	}
-
-	free(cwd);
+	fastd_shell_exec(ctx, NULL, ctx->conf->on_down, ctx->conf->on_down_dir, NULL);
 }
 
 static fastd_peer_group_t* init_peer_group(const fastd_peer_group_config_t *config, fastd_peer_group_t *parent) {

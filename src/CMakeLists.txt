@@ -26,6 +26,7 @@ add_executable(fastd
   queue.c
   random.c
   resolve.c
+  shell.c
   task.c
   protocol_ec25519_fhmqvc.c
   ${FLEX_fastd_config_lex_OUTPUTS}
