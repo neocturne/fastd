@@ -112,7 +112,7 @@ bool fastd_shell_exec(fastd_context_t *ctx, const fastd_peer_t *peer, const char
 			if (WIFSIGNALED(result))
 				pr_error(ctx, "command exited with signal %i", WTERMSIG(result));
 			else if (WEXITSTATUS(result))
-				pr_warn(ctx, "command exited with status %i", WEXITSTATUS(ret));
+				pr_warn(ctx, "command exited with status %i", WEXITSTATUS(result));
 			else
 				ok = true;
 		}
