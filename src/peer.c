@@ -160,7 +160,6 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	peer->last_resolve = (struct timespec){0, 0};
 	peer->last_resolve_return = (struct timespec){0, 0};
-	peer->seen = (struct timespec){0, 0};
 
 	peer->last_handshake = (struct timespec){0, 0};
 	peer->last_handshake_address.sa.sa_family = AF_UNSPEC;
@@ -402,6 +401,7 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 	peer->protocol_config = peer_conf->protocol_config;
 	peer->protocol_state = NULL;
 	peer->sock = NULL;
+	peer->seen = (struct timespec){0, 0};
 	setup_peer(ctx, peer);
 
 	pr_verbose(ctx, "adding peer %P (group `%s')", peer, peer->group->conf->name);
@@ -423,6 +423,7 @@ fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx, fastd_socket_t *soc
 	peer->group = ctx->peer_group;
 	peer->protocol_state = NULL;
 	peer->sock = sock;
+	peer->seen = ctx->now;
 	setup_peer(ctx, peer);
 
 	peer->address = *addr;
