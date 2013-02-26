@@ -222,7 +222,7 @@ static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
 
 	if (peer)
-		fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->config->protocol_config->public_key.p);
+		fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
 	else
 		pr_debug(ctx, "sending handshake to unknown peer %I", address);
 
@@ -242,7 +242,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	memcpy(hashinput, handshake_key->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
 	memcpy(hashinput+2*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, peer->config->protocol_config->public_key.p, PUBLICKEYBYTES);
+	memcpy(hashinput+3*PUBLICKEYBYTES, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
 
 	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
 
@@ -265,7 +265,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	if (!ecc_25519_is_identity(&work))
 		return;
 
-	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
+	if (!ecc_25519_load_packed(&work, &peer->protocol_config->public_key))
 		return;
 
 	ecc_25519_scalarmult(&work, &d, &work);
@@ -290,7 +290,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
-	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->config->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake_key->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
@@ -365,7 +365,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 
 	memcpy(hashinput, peer_handshake_key->p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, handshake_key->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, peer->config->protocol_config->public_key.p, PUBLICKEYBYTES);
+	memcpy(hashinput+2*PUBLICKEYBYTES, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+3*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
 
 	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
@@ -389,7 +389,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	if (!ecc_25519_is_identity(&work))
 		return;
 
-	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
+	if (!ecc_25519_load_packed(&work, &peer->protocol_config->public_key))
 		return;
 
 	ecc_25519_scalarmult(&work, &e, &work);
@@ -406,7 +406,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
 	crypto_hash_sha256(shared_handshake_key, hashinput, 5*PUBLICKEYBYTES);
 
-	memcpy(hashinput, peer->config->protocol_config->public_key.p, PUBLICKEYBYTES);
+	memcpy(hashinput, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
 
 	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key) != 0) {
@@ -419,13 +419,13 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key);
 
 	if (!establish(ctx, peer, method, sock, address, true, &handshake_key->public_key, peer_handshake_key, &ctx->conf->protocol_config->public_key,
-		       &peer->config->protocol_config->public_key, &sigma, handshake_key->serial))
+		       &peer->protocol_config->public_key, &sigma, handshake_key->serial))
 		return;
 
 	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
-	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->config->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake_key->public_key.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
@@ -443,7 +443,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	memcpy(hashinput, handshake_key->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
 	memcpy(hashinput+2*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, peer->config->protocol_config->public_key.p, PUBLICKEYBYTES);
+	memcpy(hashinput+3*PUBLICKEYBYTES, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
 
 	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
 
@@ -466,7 +466,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	if (!ecc_25519_is_identity(&work))
 		return;
 
-	if (!ecc_25519_load_packed(&work, &peer->config->protocol_config->public_key))
+	if (!ecc_25519_load_packed(&work, &peer->protocol_config->public_key))
 		return;
 
 	ecc_25519_scalarmult(&work, &d, &work);
@@ -483,7 +483,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
 	crypto_hash_sha256(shared_handshake_key, hashinput, 5*PUBLICKEYBYTES);
 
-	memcpy(hashinput, peer->config->protocol_config->public_key.p, PUBLICKEYBYTES);
+	memcpy(hashinput, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
 
 	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key) != 0) {
@@ -491,8 +491,31 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 		return;
 	}
 
-	establish(ctx, peer, method, sock, address, false, peer_handshake_key, &handshake_key->public_key, &peer->config->protocol_config->public_key,
+	establish(ctx, peer, method, sock, address, false, peer_handshake_key, &handshake_key->public_key, &peer->protocol_config->public_key,
 		  &ctx->conf->protocol_config->public_key, &sigma, handshake_key->serial);
+}
+
+static fastd_peer_t* find_sender_key(fastd_context_t *ctx, const fastd_peer_address_t *address, const unsigned char key[32], fastd_peer_t *peers) {
+	fastd_peer_t *peer;
+	for (peer = peers; peer; peer = peer->next) {
+		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) != 0)
+			continue;
+
+		if (peer->config && fastd_peer_config_matches_dynamic(peer->config, address)) {
+			fastd_resolve_peer(ctx, peer);
+			errno = EAGAIN;
+			return NULL;
+		}
+
+		if (fastd_peer_is_floating(peer))
+			return peer;
+
+		errno = EPERM;
+		return NULL;
+	}
+
+	errno = ENOENT;
+	return NULL;
 }
 
 static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const unsigned char key[32]) {
@@ -510,7 +533,7 @@ static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t
 	}
 
 	if (peer) {
-		if (memcmp(peer->config->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
+		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
 			if (sock->peer && sock->peer != peer) {
 				errno = EPERM;
 				return NULL;
@@ -525,29 +548,40 @@ static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t
 		return NULL;
 	}
 
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (memcmp(peer->config->protocol_config->public_key.p, key, PUBLICKEYBYTES) != 0)
-			continue;
+	peer = find_sender_key(ctx, address, key, ctx->peers);
 
-		if (fastd_peer_config_matches_dynamic(peer->config, address)) {
-			fastd_resolve_peer(ctx, peer);
-			errno = EAGAIN;
-			return NULL;
-		}
-
-		if (fastd_peer_is_floating(peer))
-			return peer;
-
-		errno = EPERM;
-		return NULL;
+	if (!peer && errno == ENOENT) {
+		errno = 0;
+		peer = find_sender_key(ctx, address, key, ctx->peers_temp);
 	}
 
-	errno = ENOENT;
-	return NULL;
+	return peer;
 }
 
 static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, size_t length) {
 	return (handshake->records[type].length == length);
+}
+
+static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const unsigned char key[32]) {
+	if (!fastd_peer_allow_unknown(ctx)) {
+		pr_debug(ctx, "ignoring handshake from %I (unknown key)", address);
+		return NULL;
+	}
+
+	fastd_peer_t *peer = fastd_peer_add_temporary(ctx, sock, address);
+
+	peer->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
+	memcpy(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES);
+
+	/* Ugly hack */
+	peer->protocol_state->last_serial--;
+
+	if (!fastd_peer_verify_temporary(ctx, peer)) {
+		fastd_peer_delete(ctx, peer);
+		return NULL;
+	}
+
+	return peer;
 }
 
 static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method) {
@@ -573,7 +607,10 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 			return;
 
 		case ENOENT:
-			pr_debug(ctx, "ignoring handshake from %I (unknown key)", address);
+			peer = add_temporary(ctx, sock, address, handshake->records[RECORD_SENDER_KEY].data);
+			if (peer)
+				break;
+
 			return;
 
 		default:
@@ -855,8 +892,8 @@ static void protocol_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *pee
 	hexdump(buf, ctx->conf->protocol_config->public_key.p);
 	setenv("LOCAL_KEY", buf, 1);
 
-	if (peer && peer->config && peer->config->protocol_config) {
-		hexdump(buf, peer->config->protocol_config->public_key.p);
+	if (peer && peer->protocol_config) {
+		hexdump(buf, peer->protocol_config->public_key.p);
 		setenv("PEER_KEY", buf, 1);
 	}
 	else {

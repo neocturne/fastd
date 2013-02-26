@@ -549,6 +549,7 @@ static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 	OPTION_ARG(option_on_down, "--on-down", "<command>", "Sets a shell command to execute before interface destruction") \
 	OPTION_ARG(option_on_establish, "--on-establish", "<command>", "Sets a shell command to execute when a new connection is established") \
 	OPTION_ARG(option_on_disestablish, "--on-disestablish", "<command>", "Sets a shell command to execute when a connection is lost") \
+	OPTION_ARG(option_on_verify, "--on-verify", "<command>", "Sets a shell command to execute to check an connection attempt by an unknown peer") \
 	OPTION(option_generate_key, "--generate-key", "Generates a new keypair") \
 	OPTION(option_show_key, "--show-key", "Shows the public key corresponding to the configured secret") \
 	OPTION(option_machine_readable, "--machine-readable", "Suppresses output of explaining text in the --show-key and --generate-key commands")
@@ -779,6 +780,14 @@ static void option_on_disestablish(fastd_context_t *ctx, fastd_config_t *conf, c
 
 	conf->on_disestablish = strdup(arg);
 	conf->on_disestablish_dir = get_current_dir_name();
+}
+
+static void option_on_verify(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	free(conf->on_verify);
+	free(conf->on_verify_dir);
+
+	conf->on_verify = strdup(arg);
+	conf->on_verify_dir = get_current_dir_name();
 }
 
 static void option_daemon(fastd_context_t *ctx, fastd_config_t *conf) {
@@ -1062,6 +1071,8 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 	free(conf->on_establish_dir);
 	free(conf->on_disestablish);
 	free(conf->on_disestablish_dir);
+	free(conf->on_verify);
+	free(conf->on_verify_dir);
 	free(conf->protocol_config);
 	free(conf->log_syslog_ident);
 }

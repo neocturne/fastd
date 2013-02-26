@@ -79,6 +79,7 @@
 %token TOK_DOWN
 %token TOK_ESTABLISH
 %token TOK_DISESTABLISH
+%token TOK_VERIFY
 %token TOK_PEERS
 %token TOK_FROM
 %token TOK_LOG
@@ -167,6 +168,7 @@ statement:	peer_group_statement
 	|	TOK_ON TOK_DOWN on_down ';'
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
+	|	TOK_ON TOK_VERIFY on_verify ';'
 	|	TOK_FORWARD forward ';'
 	;
 
@@ -353,6 +355,15 @@ on_disestablish: TOK_STRING {
 
 			conf->on_disestablish = strdup($1->str);
 			conf->on_disestablish_dir = get_current_dir_name();
+		}
+	;
+
+on_verify: TOK_STRING {
+			free(conf->on_verify);
+			free(conf->on_verify_dir);
+
+			conf->on_verify = strdup($1->str);
+			conf->on_verify_dir = get_current_dir_name();
 		}
 	;
 

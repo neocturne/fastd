@@ -101,6 +101,9 @@ static void* resolve_peer(void *varg) {
 }
 
 void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
+	if (!peer->config)
+		exit_bug(ctx, "trying to resolve temporary peer");
+
 	if (timespec_after(&peer->last_resolve, &peer->last_resolve_return)) {
 		pr_debug(ctx, "not resolving %P as there is already a resolve running", peer);
 		return;

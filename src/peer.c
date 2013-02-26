@@ -151,7 +151,7 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 }
 
 static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (peer->config->hostname)
+	if (!peer->config || peer->config->hostname)
 		peer->address.sa.sa_family = AF_UNSPEC;
 	else
 		peer->address = peer->config->address;
@@ -187,13 +187,25 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	for (cur_peer = &ctx->peers; *cur_peer; cur_peer = &(*cur_peer)->next) {
 		if ((*cur_peer) == peer) {
 			*cur_peer = peer->next;
+			ctx->n_peers--;
 			break;
+		}
+	}
+	if (!*cur_peer) {
+		for (cur_peer = &ctx->peers_temp; *cur_peer; cur_peer = &(*cur_peer)->next) {
+			if ((*cur_peer) == peer) {
+				*cur_peer = peer->next;
+				break;
+			}
 		}
 	}
 
 	ctx->conf->protocol->free_peer_state(ctx, peer);
+
+	if (!peer->config)
+		free(peer->protocol_config);
+
 	free(peer);
-	ctx->n_peers--;
 }
 
 
@@ -387,6 +399,7 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 
 	peer->config = peer_conf;
 	peer->group = find_peer_group(ctx->peer_group, peer_conf->group);
+	peer->protocol_config = peer_conf->protocol_config;
 	peer->protocol_state = NULL;
 	peer->sock = NULL;
 	setup_peer(ctx, peer);
@@ -395,6 +408,57 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 	ctx->n_peers++;
 
 	return peer;
+}
+
+fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *addr) {
+	if (!ctx->conf->on_verify)
+		exit_bug(ctx, "tried to add temporary peer without on-verify command");
+
+	fastd_peer_t *peer = malloc(sizeof(fastd_peer_t));
+
+	peer->next = ctx->peers_temp;
+	ctx->peers_temp = peer;
+
+	peer->config = NULL;
+	peer->group = ctx->peer_group;
+	peer->protocol_state = NULL;
+	peer->sock = sock;
+	setup_peer(ctx, peer);
+
+	peer->address = *addr;
+
+	pr_debug(ctx, "adding temporary peer for %I", addr);
+
+	return peer;
+}
+
+bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
+	if (!ctx->conf->on_verify)
+		exit_bug(ctx, "tried to verify temporary peer without on-verify command");
+
+	int ret;
+	if (!fastd_shell_exec(ctx, peer, ctx->conf->on_verify, ctx->conf->on_verify_dir, &ret))
+		return false;
+
+	if (WIFSIGNALED(ret)) {
+		pr_error(ctx, "verify command exited with signal %i", WTERMSIG(ret));
+		return false;
+	}
+	else if (WEXITSTATUS(ret)) {
+		pr_debug(ctx, "verify command exited with status %i", WEXITSTATUS(ret));
+		return false;
+	}
+
+	return true;
+}
+
+void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
+	if (peer->config)
+		exit_bug(ctx, "trying to re-enable non-temporary peer");
+
+	peer->next = ctx->peers;
+	ctx->peers = peer;
+	ctx->n_peers++;
 }
 
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer) {

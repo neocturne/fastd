@@ -51,6 +51,7 @@ struct fastd_peer {
 	struct timespec last_handshake_response;
 	fastd_peer_address_t last_handshake_response_address;
 
+	fastd_protocol_peer_config_t *protocol_config;
 	fastd_protocol_peer_state_t *protocol_state;
 };
 
@@ -90,6 +91,9 @@ bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_
 void fastd_peer_reset(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_peer_delete(fastd_context_t *ctx, fastd_peer_t *peer);
 fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *conf);
+fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *addr);
+bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer);
 bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer);
 bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *addr);
@@ -97,6 +101,10 @@ void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer);
 
 const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
 const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
+
+static inline bool fastd_peer_allow_unknown(fastd_context_t *ctx) {
+	return ctx->conf->on_verify;
+}
 
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *config) {
 	return ((config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC) || config->dynamic_float);
@@ -109,11 +117,15 @@ static inline bool fastd_peer_config_is_dynamic(const fastd_peer_config_t *confi
 bool fastd_peer_config_matches_dynamic(const fastd_peer_config_t *config, const fastd_peer_address_t *addr);
 
 static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
-	return fastd_peer_config_is_floating(peer->config);
+	return peer->config ? fastd_peer_config_is_floating(peer->config) : true;
 }
 
 static inline bool fastd_peer_is_dynamic(const fastd_peer_t *peer) {
-	return fastd_peer_config_is_dynamic(peer->config);
+	return peer->config ? fastd_peer_config_is_dynamic(peer->config) : false;
+}
+
+static inline bool fastd_peer_is_temporary(const fastd_peer_t *peer) {
+	return (!peer->config);
 }
 
 static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {

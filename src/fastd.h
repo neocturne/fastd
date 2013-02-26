@@ -242,6 +242,9 @@ struct fastd_config {
 	char *on_disestablish;
 	char *on_disestablish_dir;
 
+	char *on_verify;
+	char *on_verify_dir;
+
 	bool daemon;
 	char *pid_file;
 
@@ -262,6 +265,7 @@ struct fastd_context {
 	unsigned n_peers;
 	fastd_peer_group_t *peer_group;
 	fastd_peer_t *peers;
+	fastd_peer_t *peers_temp;
 	fastd_queue_t task_queue;
 
 	int resolverfd;

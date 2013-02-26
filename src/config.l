@@ -79,6 +79,7 @@ up		{ TOKEN(TOK_UP); }
 down		{ TOKEN(TOK_DOWN); }
 establish	{ TOKEN(TOK_ESTABLISH); }
 disestablish	{ TOKEN(TOK_DISESTABLISH); }
+verify		{ TOKEN(TOK_VERIFY); }
 peers		{ TOKEN(TOK_PEERS); }
 from		{ TOKEN(TOK_FROM); }
 log		{ TOKEN(TOK_LOG); }

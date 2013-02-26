@@ -975,14 +975,27 @@ static void cleanup_peers(fastd_context_t *ctx) {
 	for (peer = ctx->peers; peer; peer = next) {
 		next = peer->next;
 
-		if (fastd_peer_is_established(peer)) {
-			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000)
-				fastd_peer_reset(ctx, peer);
+		if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
+			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000) {
+				if (fastd_peer_is_temporary(peer)) {
+					fastd_peer_delete(ctx, peer);
+				}
+				else {
+					fastd_peer_reset(ctx, peer);
+				}
+			}
 		}
 	}
 }
 
 static void maintenance(fastd_context_t *ctx) {
+	while (ctx->peers_temp) {
+		fastd_peer_t *peer = ctx->peers_temp;
+		ctx->peers_temp = ctx->peers_temp->next;
+
+		fastd_peer_enable_temporary(ctx, peer);
+	}
+
 	cleanup_peers(ctx);
 	fastd_peer_eth_addr_cleanup(ctx);
 
