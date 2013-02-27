@@ -28,11 +28,16 @@
 #include "crypto.h"
 
 #include <alloca.h>
-#include <linux/if_alg.h>
 
+
+#if (defined(USE_CRYPTO_AES128CTR) && defined(WITH_CRYPTO_AES128CTR_LINUX)) || (defined(USE_CRYPTO_GHASH) && defined(WITH_CRYPTO_GHASH_LINUX))
+
+#include <linux/if_alg.h>
 
 #ifndef SOL_ALG
 #define SOL_ALG 279
+#endif
+
 #endif
 
 
