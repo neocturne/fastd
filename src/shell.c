@@ -31,7 +31,7 @@
 #include <arpa/inet.h>
 
 
-bool fastd_shell_exec(fastd_context_t *ctx, const fastd_peer_t *peer, const char *command, const char *dir, int *ret) {
+bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
 	int result = -1;
 	bool ok = false;
 	char *cwd = get_current_dir_name();
@@ -52,21 +52,21 @@ bool fastd_shell_exec(fastd_context_t *ctx, const fastd_peer_t *peer, const char
 		else
 			unsetenv("PEER_NAME");
 
-		switch((peer && peer->sock) ? peer->sock->addr->addr.sa.sa_family : AF_UNSPEC) {
+		switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
 		case AF_INET:
-			inet_ntop(AF_INET, &peer->sock->addr->addr.in.sin_addr, buf, sizeof(buf));
+			inet_ntop(AF_INET, &local_addr->in.sin_addr, buf, sizeof(buf));
 			setenv("LOCAL_ADDRESS", buf, 1);
 
-			snprintf(buf, sizeof(buf), "%u", ntohs(peer->sock->addr->addr.in.sin_port));
+			snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in.sin_port));
 			setenv("LOCAL_PORT", buf, 1);
 
 			break;
 
 		case AF_INET6:
-			inet_ntop(AF_INET6, &peer->sock->addr->addr.in6.sin6_addr, buf, sizeof(buf));
+			inet_ntop(AF_INET6, &local_addr->in6.sin6_addr, buf, sizeof(buf));
 			setenv("LOCAL_ADDRESS", buf, 1);
 
-			snprintf(buf, sizeof(buf), "%u", ntohs(peer->sock->addr->addr.in6.sin6_port));
+			snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in6.sin6_port));
 			setenv("LOCAL_PORT", buf, 1);
 
 			break;
@@ -76,21 +76,21 @@ bool fastd_shell_exec(fastd_context_t *ctx, const fastd_peer_t *peer, const char
 			unsetenv("LOCAL_PORT");
 		}
 
-		switch(peer ? peer->address.sa.sa_family : AF_UNSPEC) {
+		switch(peer_addr ? peer_addr->sa.sa_family : AF_UNSPEC) {
 		case AF_INET:
-			inet_ntop(AF_INET, &peer->address.in.sin_addr, buf, sizeof(buf));
+			inet_ntop(AF_INET, &peer_addr->in.sin_addr, buf, sizeof(buf));
 			setenv("PEER_ADDRESS", buf, 1);
 
-			snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in.sin_port));
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in.sin_port));
 			setenv("PEER_PORT", buf, 1);
 
 			break;
 
 		case AF_INET6:
-			inet_ntop(AF_INET6, &peer->address.in6.sin6_addr, buf, sizeof(buf));
+			inet_ntop(AF_INET6, &peer_addr->in6.sin6_addr, buf, sizeof(buf));
 			setenv("PEER_ADDRESS", buf, 1);
 
-			snprintf(buf, sizeof(buf), "%u", ntohs(peer->address.in6.sin6_port));
+			snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in6.sin6_port));
 			setenv("PEER_PORT", buf, 1);
 
 			break;

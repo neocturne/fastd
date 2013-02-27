@@ -91,8 +91,8 @@ bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_
 void fastd_peer_reset(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_peer_delete(fastd_context_t *ctx, fastd_peer_t *peer);
 fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *conf);
-fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *addr);
-bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
+fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx);
+bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
 void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer);
 bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer);

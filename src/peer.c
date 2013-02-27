@@ -36,14 +36,14 @@ static inline void on_establish(fastd_context_t *ctx, const fastd_peer_t *peer) 
 	if (!ctx->conf->on_establish)
 		return;
 
-	fastd_shell_exec(ctx, peer, ctx->conf->on_establish, ctx->conf->on_establish_dir, NULL);
+	fastd_shell_exec(ctx, ctx->conf->on_establish, ctx->conf->on_establish_dir, peer, &peer->sock->addr->addr, &peer->address, NULL);
 }
 
 static inline void on_disestablish(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	if (!ctx->conf->on_disestablish)
 		return;
 
-	fastd_shell_exec(ctx, peer, ctx->conf->on_disestablish, ctx->conf->on_disestablish_dir, NULL);
+	fastd_shell_exec(ctx, ctx->conf->on_disestablish, ctx->conf->on_disestablish_dir, peer, &peer->sock->addr->addr, &peer->address, NULL);
 }
 
 static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
@@ -411,7 +411,7 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 	return peer;
 }
 
-fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *addr) {
+fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx) {
 	if (!ctx->conf->on_verify)
 		exit_bug(ctx, "tried to add temporary peer without on-verify command");
 
@@ -423,23 +423,21 @@ fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx, fastd_socket_t *soc
 	peer->config = NULL;
 	peer->group = ctx->peer_group;
 	peer->protocol_state = NULL;
-	peer->sock = sock;
+	peer->sock = NULL;
 	peer->seen = ctx->now;
 	setup_peer(ctx, peer);
 
-	peer->address = *addr;
-
-	pr_debug(ctx, "adding temporary peer for %I", addr);
+	pr_debug(ctx, "adding temporary peer");
 
 	return peer;
 }
 
-bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
+bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
 	if (!ctx->conf->on_verify)
 		exit_bug(ctx, "tried to verify temporary peer without on-verify command");
 
 	int ret;
-	if (!fastd_shell_exec(ctx, peer, ctx->conf->on_verify, ctx->conf->on_verify_dir, &ret))
+	if (!fastd_shell_exec(ctx, ctx->conf->on_verify, ctx->conf->on_verify_dir, peer, local_addr, peer_addr, &ret))
 		return false;
 
 	if (WIFSIGNALED(ret)) {

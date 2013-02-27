@@ -568,7 +568,7 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 		return NULL;
 	}
 
-	fastd_peer_t *peer = fastd_peer_add_temporary(ctx, sock, address);
+	fastd_peer_t *peer = fastd_peer_add_temporary(ctx);
 
 	peer->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
 	memcpy(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES);
@@ -576,7 +576,7 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 	/* Ugly hack */
 	peer->protocol_state->last_serial--;
 
-	if (!fastd_peer_verify_temporary(ctx, peer)) {
+	if (!fastd_peer_verify_temporary(ctx, peer, &sock->addr->addr, address)) {
 		fastd_peer_delete(ctx, peer);
 		return NULL;
 	}
