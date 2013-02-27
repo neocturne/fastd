@@ -828,7 +828,7 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 			fastd_buffer_free(buffer);
 		}
 	}
-	else if(ctx->conf->n_floating || ctx->conf->n_dynamic ||
+	else if(ctx->conf->n_floating || ctx->conf->n_dynamic || ctx->conf->on_verify ||
 		(recvaddr.sa.sa_family == AF_INET && ctx->conf->n_dynamic_v4) ||
 		(recvaddr.sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6)) {
 		switch (*packet_type) {
