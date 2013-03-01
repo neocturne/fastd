@@ -577,6 +577,7 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 	peer->protocol_state->last_serial--;
 
 	if (!fastd_peer_verify_temporary(ctx, peer, &sock->addr->addr, address)) {
+		pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, address);
 		fastd_peer_delete(ctx, peer);
 		return NULL;
 	}
@@ -587,6 +588,7 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	handshake_key_t *handshake_key;
 	char *peer_version_name = NULL;
+	bool temporary_added = false;
 
 	maintenance(ctx);
 
@@ -608,13 +610,22 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 
 		case ENOENT:
 			peer = add_temporary(ctx, sock, address, handshake->records[RECORD_SENDER_KEY].data);
-			if (peer)
+			if (peer) {
+				temporary_added = true;
 				break;
+			}
 
 			return;
 
 		default:
 			exit_bug(ctx, "match_sender_key: unknown error");
+		}
+	}
+
+	if (fastd_peer_is_temporary(peer) && !temporary_added) {
+		if (!fastd_peer_verify_temporary(ctx, peer, &sock->addr->addr, address)) {
+			pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, address);
+			return;
 		}
 	}
 
