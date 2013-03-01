@@ -901,6 +901,19 @@ static void protocol_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *pee
 	}
 }
 
+static bool protocol_describe_peer(const fastd_context_t *ctx, const fastd_peer_t *peer, char *buf, size_t len) {
+	if (peer && peer->protocol_config) {
+		char dumpbuf[65];
+
+		hexdump(dumpbuf, peer->protocol_config->public_key.p);
+		snprintf(buf, len, "%.16s", dumpbuf);
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.name = "ec25519-fhmqvc",
 
@@ -920,4 +933,5 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.generate_key = protocol_generate_key,
 	.show_key = protocol_show_key,
 	.set_shell_env = protocol_set_shell_env,
+	.describe_peer = protocol_describe_peer,
 };

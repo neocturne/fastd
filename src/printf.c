@@ -67,10 +67,16 @@ static int snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t
 }
 
 static int snprint_peer_str(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_t *peer) {
-	if (peer->config && peer->config->name)
+	if (peer->config && peer->config->name) {
 		return snprintf_safe(buffer, size, "<%s>", peer->config->name);
-	else
-		return snprintf_safe(buffer, size, "<(null)>");
+	}
+	else {
+		char buf[65];
+		if (ctx->conf->protocol->describe_peer(ctx, peer, buf, sizeof(buf)))
+			return snprintf_safe(buffer, size, "{%s}", buf);
+		else
+			return snprintf_safe(buffer, size, "(null)");
+	}
 }
 
 int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap) {
