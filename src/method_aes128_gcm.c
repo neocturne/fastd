@@ -165,7 +165,7 @@ static inline void put_size(fastd_block128_t *out, size_t len) {
 }
 
 static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head(&in, sizeof(fastd_block128_t));
+	fastd_buffer_pull_head(ctx, &in, sizeof(fastd_block128_t));
 	memset(in.data, 0, sizeof(fastd_block128_t));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
@@ -198,7 +198,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	if (!ok) {
 		/* restore original buffer */
-		fastd_buffer_push_head(&in, sizeof(fastd_block128_t));
+		fastd_buffer_push_head(ctx, &in, sizeof(fastd_block128_t));
 		fastd_buffer_free(*out);
 		return false;
 	}
@@ -207,7 +207,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_pull_head(out, NONCEBYTES);
+	fastd_buffer_pull_head(ctx, out, NONCEBYTES);
 	memcpy(out->data, session->send_nonce, NONCEBYTES);
 	increment_nonce(session->send_nonce);
 
@@ -238,7 +238,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 			return false;
 	}
 
-	fastd_buffer_push_head(&in, NONCEBYTES);
+	fastd_buffer_push_head(ctx, &in, NONCEBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
@@ -264,14 +264,14 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_pull_head(&in, NONCEBYTES);
+		fastd_buffer_pull_head(ctx, &in, NONCEBYTES);
 
 		return false;
 	}
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(out, sizeof(fastd_block128_t));
+	fastd_buffer_push_head(ctx, out, sizeof(fastd_block128_t));
 
 	if (age < 0) {
 		session->receive_reorder_seen >>= age;

@@ -793,7 +793,7 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 
 	fastd_peer_address_simplify(&recvaddr);
 
-	fastd_buffer_push_head(&buffer, 1);
+	fastd_buffer_push_head(ctx, &buffer, 1);
 
 	fastd_peer_t *peer = NULL;
 

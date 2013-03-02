@@ -385,17 +385,17 @@ static inline void fastd_buffer_free(fastd_buffer_t buffer) {
 	free(buffer.base);
 }
 
-static inline void fastd_buffer_pull_head(fastd_buffer_t *buffer, size_t len) {
+static inline void fastd_buffer_pull_head(const fastd_context_t *ctx, fastd_buffer_t *buffer, size_t len) {
 	buffer->data -= len;
 	buffer->len += len;
 
 	if (buffer->data < buffer->base)
-		abort();
+		exit_bug(ctx, "tried to pull buffer across head");
 }
 
-static inline void fastd_buffer_push_head(fastd_buffer_t *buffer, size_t len) {
+static inline void fastd_buffer_push_head(const fastd_context_t *ctx, fastd_buffer_t *buffer, size_t len) {
 	if (buffer->len < len)
-		abort();
+		exit_bug(ctx, "tried to push buffer across tail");
 
 	buffer->data += len;
 	buffer->len -= len;

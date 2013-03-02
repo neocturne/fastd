@@ -137,7 +137,7 @@ static void method_session_free(fastd_context_t *ctx, fastd_method_session_state
 }
 
 static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+	fastd_buffer_pull_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
@@ -150,7 +150,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(out, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
+	fastd_buffer_push_head(ctx, out, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
 	memcpy(out->data, session->send_nonce, NONCEBYTES);
 
 	increment_nonce(session->send_nonce);
@@ -181,7 +181,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 			return false;
 	}
 	
-	fastd_buffer_pull_head(&in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
+	fastd_buffer_pull_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 
 	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
@@ -190,7 +190,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_push_head(&in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
+		fastd_buffer_push_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
 		memcpy(in.data, nonce, NONCEBYTES);
 		return false;
 	}
@@ -213,7 +213,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		session->receive_reorder_seen |= (1 << (age-1));
 	}
 
-	fastd_buffer_push_head(out, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+	fastd_buffer_push_head(ctx, out, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	return true;
 }
