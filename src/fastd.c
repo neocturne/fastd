@@ -780,8 +780,8 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 	socklen_t recvaddrlen = sizeof(recvaddr);
 			
 	ssize_t len = recvfrom(sock->fd, buffer.data, buffer.len, 0, (struct sockaddr*)&recvaddr, &recvaddrlen);
-	if (len < 0) {
-		if (errno != EINTR)
+	if (len <= 0) {
+		if (len < 0 && errno != EINTR)
 			pr_warn(ctx, "recvfrom: %s", strerror(errno));
 
 		fastd_buffer_free(buffer);
