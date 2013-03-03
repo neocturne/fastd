@@ -532,7 +532,7 @@ static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 	OPTION_ARG(option_user, "--user", "<user>", "Sets the user to run fastd as") \
 	OPTION_ARG(option_group, "--group", "<group>", "Sets the group to run fastd as") \
 	OPTION_ARG(option_pid_file, "--pid-file", "<filename>", "Writes fastd's PID to the specified file") \
-	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the stderr log level; default is info, if no alternative log destination ist configured") \
+	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the stderr log level; default is info, if no alternative log destination is configured") \
 	OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug", "Sets the log level for syslog output; default is not to use syslog") \
 	OPTION_ARG(option_syslog_ident, "--syslog-ident", "<ident>", "Sets the syslog identification; default is 'fastd'") \
 	OPTION_ARG(option_config, "--config" OR "-c", "<filename>", "Loads a config file") \
