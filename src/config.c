@@ -576,7 +576,7 @@ static void usage(fastd_context_t *ctx, fastd_config_t *conf) {
 #define OPTION(func, options, message) print_usage("  " options, message);
 #define OPTION_ARG(func, options, arg, message) print_usage("  " options " " arg, message);
 
-	puts("fastd (Fast and Secure Tunneling Daemon) version " FASTD_VERSION " usage:\n");
+	puts("fastd (Fast and Secure Tunneling Daemon) " FASTD_VERSION " usage:\n");
 
 	OPTIONS
 	exit(0);
