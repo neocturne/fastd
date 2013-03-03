@@ -381,7 +381,7 @@ bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer) {
 	fastd_peer_group_t *group;
 
 	for (group = peer->group; group; group = group->parent) {
-		if (!group->conf->max_connections)
+		if (group->conf->max_connections < 0)
 			continue;
 
 		if (count_established_group_peers(ctx, group) >= group->conf->max_connections)

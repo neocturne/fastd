@@ -125,6 +125,7 @@ static void default_config(fastd_config_t *conf) {
 
 	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
 	conf->peer_group->name = strdup("default");
+	conf->peer_group->max_connections = -1;
 }
 
 static bool config_match(const char *opt, ...) {
@@ -255,6 +256,7 @@ void fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const
 void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
 	fastd_peer_group_config_t *group = calloc(1, sizeof(fastd_peer_group_config_t));
 	group->name = strdup(name);
+	group->max_connections = -1;
 
 	group->parent = conf->peer_group;
 	group->next = group->parent->children;

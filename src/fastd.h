@@ -151,8 +151,8 @@ struct fastd_peer_group_config {
 	char *name;
 	fastd_string_stack_t *peer_dirs;
 
-	/* contraints */
-	unsigned max_connections;
+	/* constraints */
+	int max_connections;
 };
 
 struct fastd_peer_group {
