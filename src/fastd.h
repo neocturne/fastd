@@ -316,7 +316,7 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer);
 int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
 void fastd_logf(const fastd_context_t *ctx, int level, const char *format, ...);
 
-void fastd_read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
+void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
 
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
@@ -328,7 +328,7 @@ void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, co
 void fastd_config_peer_group_pop(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
-void fastd_reconfigure(fastd_context_t *ctx, fastd_config_t *conf);
+void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf);
 
 void fastd_cap_init(fastd_context_t *ctx);
 void fastd_cap_drop(fastd_context_t *ctx);

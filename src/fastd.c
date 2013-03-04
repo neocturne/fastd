@@ -1139,6 +1139,7 @@ int main(int argc, char *argv[]) {
 
 	init_peer_groups(&ctx);
 	init_peers(&ctx);
+	fastd_config_load_peer_dirs(&ctx, &conf);
 
 	if (conf.daemon) {
 		pid_t pid = fork();
@@ -1181,10 +1182,12 @@ int main(int argc, char *argv[]) {
 		if (sighup) {
 			sighup = false;
 
+			pr_info(&ctx, "reconfigure triggered");
+
 			close_log(&ctx);
 			init_log(&ctx);
 
-			fastd_reconfigure(&ctx, &conf);
+			fastd_config_load_peer_dirs(&ctx, &conf);
 		}
 
 		if (dump) {

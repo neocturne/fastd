@@ -378,15 +378,30 @@ static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char
 	}
 }
 
-void fastd_read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir) {
+static void read_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf) {
+	char *oldcwd = get_current_dir_name();
+
+	fastd_string_stack_t *dir;
+	for (dir = conf->peer_group->peer_dirs; dir; dir = dir->next) {
+		if (!chdir(dir->str))
+			read_peer_dir(ctx, conf, dir->str);
+		else
+			pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir->str, strerror(errno));
+	}
+
+	if (chdir(oldcwd))
+		pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
+
+	free(oldcwd);
+}
+
+void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir) {
 	char *oldcwd = get_current_dir_name();
 
 	if (!chdir(dir)) {
 		char *newdir = get_current_dir_name();
 		conf->peer_group->peer_dirs = fastd_string_stack_push(conf->peer_group->peer_dirs, newdir);
 		free(newdir);
-
-		read_peer_dir(ctx, conf, conf->peer_group->peer_dirs->str);
 
 		if(chdir(oldcwd))
 			pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
@@ -651,7 +666,7 @@ static void option_config_peer(fastd_context_t *ctx, fastd_config_t *conf, const
 }
 
 static void option_config_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	fastd_read_peer_dir(ctx, conf, arg);
+	fastd_add_peer_dir(ctx, conf, arg);
 }
 
 static void option_mode(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
@@ -923,41 +938,24 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 
 	configure_user(ctx, conf);
 
-	count_peers(ctx, conf);
+	read_peer_dirs(ctx, conf);
 
 #undef OR
 #undef OPTION
 #undef OPTION_ARG
 }
 
-static void reconfigure_read_peer_dirs(fastd_context_t *ctx, fastd_config_t *new_conf, fastd_string_stack_t *dirs) {
-	char *oldcwd = get_current_dir_name();
-
-	fastd_string_stack_t *dir;
-	for (dir = dirs; dir; dir = dir->next) {
-		if (!chdir(dir->str))
-			read_peer_dir(ctx, new_conf, dir->str);
-		else
-			pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir->str, strerror(errno));
-	}
-
-	if (chdir(oldcwd))
-		pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
-
-	free(oldcwd);
-}
-
-static void reconfigure_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {
-	reconfigure_read_peer_dirs(ctx, new_conf, new_conf->peer_group->peer_dirs);
+static void peer_dirs_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {
+	read_peer_dirs(ctx, new_conf);
 
 	fastd_peer_group_config_t *group;
 	for (group = new_conf->peer_group->children; group; group = group->next) {
 		new_conf->peer_group = group;
-		reconfigure_read_peer_group(ctx, new_conf);
+		peer_dirs_read_peer_group(ctx, new_conf);
 	}
 }
 
-static void reconfigure_handle_old_peers(fastd_context_t *ctx, fastd_peer_config_t **old_peers, fastd_peer_config_t **new_peers) {
+static void peer_dirs_handle_old_peers(fastd_context_t *ctx, fastd_peer_config_t **old_peers, fastd_peer_config_t **new_peers) {
 	fastd_peer_config_t **peer, **next, **new_peer, **new_next;
 	for (peer = old_peers; *peer; peer = next) {
 		next = &(*peer)->next;
@@ -1001,15 +999,7 @@ static void reconfigure_handle_old_peers(fastd_context_t *ctx, fastd_peer_config
 	}
 }
 
-static void reconfigure_reset_waiting(fastd_context_t *ctx) {
-	fastd_peer_t *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (!fastd_peer_is_established(peer))
-			fastd_peer_reset(ctx, peer);
-	}
-}
-
-static void reconfigure_handle_new_peers(fastd_context_t *ctx, fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
+static void peer_dirs_handle_new_peers(fastd_context_t *ctx, fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
 	fastd_peer_config_t *peer, *next;
 	for (peer = new_peers; peer; peer = next) {
 		next = peer->next;
@@ -1023,19 +1013,14 @@ static void reconfigure_handle_new_peers(fastd_context_t *ctx, fastd_peer_config
 	}
 }
 
-void fastd_reconfigure(fastd_context_t *ctx, fastd_config_t *conf) {
-	pr_info(ctx, "reconfigure triggered");
-
+void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf) {
 	fastd_config_t temp_conf;
 	temp_conf.peer_group = conf->peer_group;
 	temp_conf.peers = NULL;
 
-	reconfigure_read_peer_group(ctx, &temp_conf);
-	reconfigure_handle_old_peers(ctx, &conf->peers, &temp_conf.peers);
-
-	reconfigure_reset_waiting(ctx);
-
-	reconfigure_handle_new_peers(ctx, &conf->peers, temp_conf.peers);
+	peer_dirs_read_peer_group(ctx, &temp_conf);
+	peer_dirs_handle_old_peers(ctx, &conf->peers, &temp_conf.peers);
+	peer_dirs_handle_new_peers(ctx, &conf->peers, temp_conf.peers);
 
 	count_peers(ctx, conf);
 }

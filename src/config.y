@@ -450,7 +450,7 @@ include:	TOK_PEER TOK_STRING maybe_as {
 				YYERROR;
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
-			fastd_read_peer_dir(ctx, conf, $3->str);
+			fastd_add_peer_dir(ctx, conf, $3->str);
 		}
 	|	TOK_STRING {
 			if (!fastd_read_config(ctx, conf, $1->str, false, depth))
