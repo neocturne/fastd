@@ -40,7 +40,7 @@ add_custom_target(
     version
     COMMAND echo "#ifndef _FASTD_VERSION_H_" > ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
     COMMAND echo "#define _FASTD_VERSION_H_" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
-    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"\$(git --git-dir=${FASTD_SOURCE_DIR}/.git --work-tree=${FASTD_SOURCE_DIR} describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
+    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"\$(git --git-dir=\"${FASTD_SOURCE_DIR}/.git\" --work-tree=\"${FASTD_SOURCE_DIR}\" describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
     COMMAND echo "#endif /* _FASTD_VERSION_H_ */" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
     COMMAND cmp -s ${CMAKE_CURRENT_BINARY_DIR}/version.h.new ${CMAKE_CURRENT_BINARY_DIR}/version.h && rm ${CMAKE_CURRENT_BINARY_DIR}/version.h.new || mv ${CMAKE_CURRENT_BINARY_DIR}/version.h.new ${CMAKE_CURRENT_BINARY_DIR}/version.h
     WORKING_DIRECTORY "${FASTD_SOURCE_DIR}"
