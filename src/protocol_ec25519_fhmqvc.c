@@ -160,28 +160,33 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 }
 
 static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
-	ecc_int256_t key;
+	if (!peer_conf->protocol_config) {
+		if (!peer_conf->key) {
+			pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
+			peer_conf->enabled = false;
+			return;
+		}
 
-	if (!peer_conf->key) {
-		pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
+		ecc_int256_t key;
+		if (!read_key(key.p, peer_conf->key)) {
+			pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
+			peer_conf->enabled = false;
+			return;
+		}
+
+		peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
+		peer_conf->protocol_config->public_key = key;
+
+		if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
+			pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
+			peer_conf->enabled = false;
+			return;
+		}
+	}
+	else if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
 		peer_conf->enabled = false;
 		return;
 	}
-
-	if (!read_key(key.p, peer_conf->key)) {
-		pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
-		peer_conf->enabled = false;
-		return;
-	}
-
-	if (memcmp(key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
-		pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
-		peer_conf->enabled = false;
-		return;
-	}
-
-	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
-	peer_conf->protocol_config->public_key = key;
 }
 
 static void init_protocol_state(fastd_context_t *ctx) {

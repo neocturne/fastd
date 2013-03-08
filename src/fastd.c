@@ -616,14 +616,23 @@ static void delete_peer_groups(fastd_context_t *ctx) {
 static void init_peers(fastd_context_t *ctx) {
 	fastd_peer_config_t *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
-		if (peer_conf->enabled)
-			continue;
+		bool was_enabled = peer_conf->enabled;
 
 		peer_conf->enabled = true;
 		ctx->conf->protocol->peer_configure(ctx, peer_conf);
 
-		if (peer_conf->enabled)
+		if (peer_conf->enabled && !was_enabled)
 			fastd_peer_add(ctx, peer_conf);
+	}
+
+	fastd_peer_t *peer, *next;
+	for (peer = ctx->peers; peer; peer = next) {
+		next = peer->next;
+
+		if (!peer->config->enabled) {
+			pr_info(ctx, "previously enabled peer %P disabled, deleting.", peer);
+			fastd_peer_delete(ctx, peer);
+		}
 	}
 }
 
