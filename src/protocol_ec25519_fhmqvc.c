@@ -159,19 +159,38 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 	return protocol_config;
 }
 
+static inline void hexdump(char out[65], unsigned char d[32]) {
+	int i;
+	for (i = 0; i < 32; i++)
+		snprintf(out+2*i, 3, "%02x", d[i]);
+}
+
+static size_t key_count(fastd_context_t *ctx, const ecc_int256_t *key) {
+	size_t ret = 0;
+
+	fastd_peer_config_t *p;
+	for (p = ctx->conf->peers; p; p = p->next) {
+		if (!p->protocol_config)
+			continue;
+
+		if (memcmp(p->protocol_config->public_key.p, key->p, 32) == 0)
+			ret++;
+	}
+
+	return ret;
+}
+
 static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
 	if (!peer_conf->protocol_config) {
 		if (!peer_conf->key) {
 			pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
-			peer_conf->enabled = false;
-			return;
+			goto disable;
 		}
 
 		ecc_int256_t key;
 		if (!read_key(key.p, peer_conf->key)) {
 			pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
-			peer_conf->enabled = false;
-			return;
+			goto disable;
 		}
 
 		peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
@@ -179,14 +198,39 @@ static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *p
 
 		if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
 			pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
-			peer_conf->enabled = false;
-			return;
+			goto disable;
 		}
 	}
-	else if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
-		peer_conf->enabled = false;
-		return;
+
+	return;
+
+ disable:
+	peer_conf->enabled = false;
+}
+
+static bool protocol_peer_check(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
+	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
+		return false;
 	}
+	if (key_count(ctx, &peer_conf->protocol_config->public_key) > 1) {
+			char buf[65];
+			hexdump(buf, peer_conf->protocol_config->public_key.p);
+			pr_warn(ctx, "more than one peer is configured with key %s, disabling %s", buf, peer_conf->name);
+			return false;
+	}
+
+	return true;
+}
+
+static bool protocol_peer_check_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
+	if (key_count(ctx, &peer->protocol_config->public_key)) {
+		char buf[65];
+		hexdump(buf, peer->protocol_config->public_key.p);
+		pr_info(ctx, "key %s is configured now, deleting temporary peer.", buf);
+		return false;
+	}
+
+	return true;
 }
 
 static void init_protocol_state(fastd_context_t *ctx) {
@@ -859,12 +903,6 @@ static void protocol_free_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
 	}
 }
 
-static inline void hexdump(char out[65], unsigned char d[32]) {
-	int i;
-	for (i = 0; i < 32; i++)
-		snprintf(out+2*i, 3, "%02x", d[i]);
-}
-
 static inline void print_hexdump(const char *desc, unsigned char d[32]) {
 	char buf[65];
 	hexdump(buf, d);
@@ -935,6 +973,8 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 
 	.init = protocol_init,
 	.peer_configure = protocol_peer_configure,
+	.peer_check = protocol_peer_check,
+	.peer_check_temporary = protocol_peer_check_temporary,
 
 	.handshake_init = protocol_handshake_init,
 	.handshake_handle = protocol_handshake_handle,
