@@ -181,42 +181,39 @@ static size_t key_count(fastd_context_t *ctx, const ecc_int256_t *key) {
 }
 
 static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
-	if (!peer_conf->protocol_config) {
-		if (!peer_conf->key) {
-			pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
-			goto disable;
-		}
+	if (peer_conf->protocol_config)
+		return;
 
-		ecc_int256_t key;
-		if (!read_key(key.p, peer_conf->key)) {
-			pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
-			goto disable;
-		}
-
-		peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
-		peer_conf->protocol_config->public_key = key;
-
-		if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
-			pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
-			goto disable;
-		}
+	if (!peer_conf->key) {
+		pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
+		return;
 	}
 
-	return;
+	ecc_int256_t key;
+	if (!read_key(key.p, peer_conf->key)) {
+		pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
+		return;
+	}
 
- disable:
-	peer_conf->enabled = false;
+	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
+	peer_conf->protocol_config->public_key = key;
+
+	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0)
+		pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
 }
 
 static bool protocol_peer_check(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
-	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0) {
+	if (!peer_conf->protocol_config)
 		return false;
-	}
+
+	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0)
+		return false;
+
 	if (key_count(ctx, &peer_conf->protocol_config->public_key) > 1) {
-			char buf[65];
-			hexdump(buf, peer_conf->protocol_config->public_key.p);
-			pr_warn(ctx, "more than one peer is configured with key %s, disabling %s", buf, peer_conf->name);
-			return false;
+		char buf[65];
+		hexdump(buf, peer_conf->protocol_config->public_key.p);
+		pr_warn(ctx, "more than one peer is configured with key %s, disabling %s", buf, peer_conf->name);
+		return false;
 	}
 
 	return true;
