@@ -1000,18 +1000,16 @@ static void peer_dirs_handle_old_peers(fastd_context_t *ctx, fastd_peer_config_t
 }
 
 static void peer_dirs_handle_new_peers(fastd_context_t *ctx, fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
-	fastd_peer_config_t *peer, *next;
-	for (peer = new_peers; peer; peer = next) {
-		next = peer->next;
-
-		ctx->conf->protocol->peer_configure(ctx, peer);
-		if (peer->enabled)
-			fastd_peer_add(ctx, peer);
+	fastd_peer_config_t *peer;
+	for (peer = new_peers; peer; peer = peer->next) {
+		if (peer->next)
+			continue;
 
 		peer->next = *peers;
 		*peers = peer;
 	}
 }
+
 
 void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf) {
 	fastd_config_t temp_conf;

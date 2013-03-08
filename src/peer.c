@@ -210,7 +210,7 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx, fastd_config_t *conf) {
 	fastd_peer_config_t *peer = malloc(sizeof(fastd_peer_config_t));
-	peer->enabled = true;
+	peer->enabled = false;
 
 	peer->hostname = NULL;
 	memset(&peer->address, 0, sizeof(fastd_peer_address_t));

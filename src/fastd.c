@@ -616,6 +616,10 @@ static void delete_peer_groups(fastd_context_t *ctx) {
 static void init_peers(fastd_context_t *ctx) {
 	fastd_peer_config_t *peer_conf;
 	for (peer_conf = ctx->conf->peers; peer_conf; peer_conf = peer_conf->next) {
+		if (peer_conf->enabled)
+			continue;
+
+		peer_conf->enabled = true;
 		ctx->conf->protocol->peer_configure(ctx, peer_conf);
 
 		if (peer_conf->enabled)
@@ -1138,8 +1142,8 @@ int main(int argc, char *argv[]) {
 	init_tuntap(&ctx);
 
 	init_peer_groups(&ctx);
-	init_peers(&ctx);
 	fastd_config_load_peer_dirs(&ctx, &conf);
+	init_peers(&ctx);
 
 	if (conf.daemon) {
 		pid_t pid = fork();
@@ -1188,6 +1192,7 @@ int main(int argc, char *argv[]) {
 			init_log(&ctx);
 
 			fastd_config_load_peer_dirs(&ctx, &conf);
+			init_peers(&ctx);
 		}
 
 		if (dump) {
