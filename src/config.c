@@ -1006,8 +1006,9 @@ static void peer_dirs_handle_new_peers(fastd_context_t *ctx, fastd_peer_config_t
 			continue;
 
 		peer->next = *peers;
-		*peers = peer;
 	}
+
+	*peers = new_peers;
 }
 
 
