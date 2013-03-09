@@ -251,6 +251,9 @@ struct fastd_config {
 	bool daemon;
 	char *pid_file;
 
+	bool hide_ip_addresses;
+	bool hide_mac_addresses;
+
 	bool machine_readable;
 	bool generate_key;
 	bool show_key;

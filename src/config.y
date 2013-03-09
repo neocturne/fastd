@@ -107,6 +107,10 @@
 %token TOK_CAPABILITIES
 %token TOK_EARLY
 %token TOK_LIMIT
+%token TOK_HIDE
+%token TOK_IP
+%token TOK_MAC
+%token TOK_ADDRESSES
 
 %token <addr4> TOK_ADDR4
 %token <addr6> TOK_ADDR6
@@ -156,6 +160,7 @@ statement:	peer_group_statement
 	|	TOK_GROUP group ';'
 	|	TOK_DROP TOK_CAPABILITIES drop_capabilities ';'
 	|	TOK_LOG log ';'
+	|	TOK_HIDE hide ';'
 	| 	TOK_INTERFACE interface ';'
 	| 	TOK_BIND bind ';'
 	|	TOK_MTU mtu ';'
@@ -222,6 +227,14 @@ log:		TOK_LEVEL log_level {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "unable to set log file");
 				YYERROR;
 			}
+		}
+	;
+
+hide:		TOK_IP TOK_ADDRESSES boolean {
+			conf->hide_ip_addresses = $3;
+		}
+	|	TOK_MAC TOK_ADDRESSES boolean {
+			conf->hide_mac_addresses = $3;
 		}
 	;
 

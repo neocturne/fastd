@@ -107,6 +107,10 @@ drop		{ TOKEN(TOK_DROP); }
 capabilities	{ TOKEN(TOK_CAPABILITIES); }
 early		{ TOKEN(TOK_EARLY); }
 limit		{ TOKEN(TOK_LIMIT); }
+hide		{ TOKEN(TOK_HIDE); }
+ip		{ TOKEN(TOK_IP); }
+mac		{ TOKEN(TOK_MAC); }
+addresses	{ TOKEN(TOK_ADDRESSES); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;

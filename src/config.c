@@ -552,6 +552,8 @@ static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 	OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the stderr log level; default is info, if no alternative log destination is configured") \
 	OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug", "Sets the log level for syslog output; default is not to use syslog") \
 	OPTION_ARG(option_syslog_ident, "--syslog-ident", "<ident>", "Sets the syslog identification; default is 'fastd'") \
+	OPTION(option_hide_ip_addresses, "--hide-ip-addresses", "Hides IP addresses in log output") \
+	OPTION(option_hide_mac_addresses, "--hide-mac-addresses", "Hides MAC addresses in log output") \
 	OPTION_ARG(option_config, "--config" OR "-c", "<filename>", "Loads a config file") \
 	OPTION_ARG(option_config_peer, "--config-peer", "<filename>", "Loads a config file for a single peer") \
 	OPTION_ARG(option_config_peer_dir, "--config-peer-dir", "<dir>", "Loads all files from a directory as peer configs") \
@@ -648,6 +650,14 @@ static void option_syslog_level(fastd_context_t *ctx, fastd_config_t *conf, cons
 static void option_syslog_ident(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->log_syslog_ident);
 	conf->log_syslog_ident = strdup(arg);
+}
+
+static void option_hide_ip_addresses(fastd_context_t *ctx, fastd_config_t *conf) {
+	conf->hide_ip_addresses = true;
+}
+
+static void option_hide_mac_addresses(fastd_context_t *ctx, fastd_config_t *conf) {
+	conf->hide_mac_addresses = true;
 }
 
 static void option_config(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {

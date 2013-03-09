@@ -50,12 +50,16 @@ static int snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t
 			return snprintf(buffer, size, "any");
 
 	case AF_INET:
-		if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))
+		if (!bind_address && ctx->conf->hide_ip_addresses)
+			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
+		else if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))
 			return snprintf_safe(buffer, size, "%s:%u", addr_buf, ntohs(address->in.sin_port));
 		else
 			return 0;
 
 	case AF_INET6:
+		if (!bind_address && ctx->conf->hide_ip_addresses)
+			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf)))
 			return snprintf_safe(buffer, size, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
 		else
@@ -121,9 +125,12 @@ int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const
 			eth_addr = va_arg(ap, const fastd_eth_addr_t*);
 
 			if (eth_addr) {
-				buffer += snprintf_safe(buffer, buffer_end-buffer, "%02x:%02x:%02x:%02x:%02x:%02x",
-							eth_addr->data[0], eth_addr->data[1], eth_addr->data[2],
-							eth_addr->data[3], eth_addr->data[4], eth_addr->data[5]);
+				if (ctx->conf->hide_mac_addresses)
+					buffer += snprintf_safe(buffer, buffer_end-buffer, "[hidden]");
+				else
+					buffer += snprintf_safe(buffer, buffer_end-buffer, "%02x:%02x:%02x:%02x:%02x:%02x",
+								eth_addr->data[0], eth_addr->data[1], eth_addr->data[2],
+								eth_addr->data[3], eth_addr->data[4], eth_addr->data[5]);
 			}
 			else {
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
