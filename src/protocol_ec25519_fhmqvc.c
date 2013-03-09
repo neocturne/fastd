@@ -159,13 +159,13 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 	return protocol_config;
 }
 
-static inline void hexdump(char out[65], unsigned char d[32]) {
+static inline void hexdump(char out[65], const unsigned char d[32]) {
 	int i;
 	for (i = 0; i < 32; i++)
 		snprintf(out+2*i, 3, "%02x", d[i]);
 }
 
-static size_t key_count(fastd_context_t *ctx, const ecc_int256_t *key) {
+static size_t key_count(fastd_context_t *ctx, const unsigned char key[32]) {
 	size_t ret = 0;
 
 	fastd_peer_config_t *p;
@@ -173,7 +173,7 @@ static size_t key_count(fastd_context_t *ctx, const ecc_int256_t *key) {
 		if (!p->protocol_config)
 			continue;
 
-		if (memcmp(p->protocol_config->public_key.p, key->p, 32) == 0)
+		if (memcmp(p->protocol_config->public_key.p, key, 32) == 0)
 			ret++;
 	}
 
@@ -209,7 +209,7 @@ static bool protocol_peer_check(fastd_context_t *ctx, fastd_peer_config_t *peer_
 	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0)
 		return false;
 
-	if (key_count(ctx, &peer_conf->protocol_config->public_key) > 1) {
+	if (key_count(ctx, peer_conf->protocol_config->public_key.p) > 1) {
 		char buf[65];
 		hexdump(buf, peer_conf->protocol_config->public_key.p);
 		pr_warn(ctx, "more than one peer is configured with key %s, disabling %s", buf, peer_conf->name);
@@ -220,7 +220,7 @@ static bool protocol_peer_check(fastd_context_t *ctx, fastd_peer_config_t *peer_
 }
 
 static bool protocol_peer_check_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (key_count(ctx, &peer->protocol_config->public_key)) {
+	if (key_count(ctx, peer->protocol_config->public_key.p)) {
 		char buf[65];
 		hexdump(buf, peer->protocol_config->public_key.p);
 		pr_info(ctx, "key %s is configured now, deleting temporary peer.", buf);
@@ -611,6 +611,11 @@ static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, s
 static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const unsigned char key[32]) {
 	if (!fastd_peer_allow_unknown(ctx)) {
 		pr_debug(ctx, "ignoring handshake from %I (unknown key)", address);
+		return NULL;
+	}
+
+	if (key_count(ctx, key)) {
+		pr_debug(ctx, "ignoring handshake from %I (disabled key)", address);
 		return NULL;
 	}
 
