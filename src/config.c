@@ -948,8 +948,6 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 
 	configure_user(ctx, conf);
 
-	read_peer_dirs(ctx, conf);
-
 #undef OR
 #undef OPTION
 #undef OPTION_ARG
