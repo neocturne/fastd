@@ -627,7 +627,7 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 	/* Ugly hack */
 	peer->protocol_state->last_serial--;
 
-	if (!fastd_peer_verify_temporary(ctx, peer, &sock->addr->addr, address)) {
+	if (!fastd_peer_verify_temporary(ctx, peer, sock->bound_addr, address)) {
 		pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, address);
 		fastd_peer_delete(ctx, peer);
 		return NULL;
@@ -674,7 +674,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	}
 
 	if (fastd_peer_is_temporary(peer) && !temporary_added) {
-		if (!fastd_peer_verify_temporary(ctx, peer, &sock->addr->addr, address)) {
+		if (!fastd_peer_verify_temporary(ctx, peer, sock->bound_addr, address)) {
 			pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, address);
 			return;
 		}

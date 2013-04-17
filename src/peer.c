@@ -36,14 +36,14 @@ static inline void on_establish(fastd_context_t *ctx, const fastd_peer_t *peer) 
 	if (!ctx->conf->on_establish)
 		return;
 
-	fastd_shell_exec(ctx, ctx->conf->on_establish, ctx->conf->on_establish_dir, peer, &peer->sock->addr->addr, &peer->address, NULL);
+	fastd_shell_exec(ctx, ctx->conf->on_establish, ctx->conf->on_establish_dir, peer, peer->sock->bound_addr, &peer->address, NULL);
 }
 
 static inline void on_disestablish(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	if (!ctx->conf->on_disestablish)
 		return;
 
-	fastd_shell_exec(ctx, ctx->conf->on_disestablish, ctx->conf->on_disestablish_dir, peer, &peer->sock->addr->addr, &peer->address, NULL);
+	fastd_shell_exec(ctx, ctx->conf->on_disestablish, ctx->conf->on_disestablish_dir, peer, peer->sock->bound_addr, &peer->address, NULL);
 }
 
 static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {

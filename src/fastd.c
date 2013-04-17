@@ -261,11 +261,31 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	if (warn) {
 		if (addr->bindtodev)
 			pr_warn(ctx, "unable to bind to %B on `%s'", &addr->addr, addr->bindtodev);
-                else
+		else
 			pr_warn(ctx, "unable to bind to %B", &addr->addr);
 	}
 
 	return -1;
+}
+
+static bool set_bound_address(fastd_context_t *ctx, fastd_socket_t *sock) {
+	fastd_peer_address_t addr = {};
+	socklen_t len = sizeof(addr);
+
+	if (getsockname(sock->fd, &addr.sa, &len) < 0) {
+		pr_error_errno(ctx, "getsockname");
+		return false;
+	}
+
+	if (len > sizeof(addr)) {
+		pr_error(ctx, "getsockname: got strange long address");
+		return false;
+	}
+
+	sock->bound_addr = calloc(1, sizeof(addr));
+	*sock->bound_addr = addr;
+
+	return true;
 }
 
 static bool bind_sockets(fastd_context_t *ctx) {
@@ -278,10 +298,15 @@ static bool bind_sockets(fastd_context_t *ctx) {
 		ctx->socks[i].fd = bind_socket(ctx, ctx->socks[i].addr, ctx->socks[i].fd < -1);
 
 		if (ctx->socks[i].fd >= 0) {
+			if (!set_bound_address(ctx, &ctx->socks[i])) {
+				fastd_socket_close(ctx, &ctx->socks[i]);
+				continue;
+			}
+
 			if (ctx->socks[i].addr->bindtodev)
-				pr_info(ctx, "successfully bound to %B on `%s'", &ctx->socks[i].addr->addr, ctx->socks[i].addr->bindtodev);
+				pr_info(ctx, "successfully bound to %B on `%s'", ctx->socks[i].bound_addr, ctx->socks[i].addr->bindtodev);
 			else
-				pr_info(ctx, "successfully bound to %B", &ctx->socks[i].addr->addr);
+				pr_info(ctx, "successfully bound to %B", ctx->socks[i].bound_addr);
 		}
 	}
 
@@ -302,7 +327,14 @@ fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int 
 
 	sock->fd = fd;
 	sock->addr = NULL;
+	sock->bound_addr = NULL;
 	sock->peer = peer;
+
+	if (!set_bound_address(ctx, sock)) {
+		fastd_socket_close(ctx, sock);
+		free(sock);
+		return NULL;
+	}
 
 	return sock;
 }
@@ -799,7 +831,7 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 
 	fastd_peer_address_t recvaddr;
 	socklen_t recvaddrlen = sizeof(recvaddr);
-			
+
 	ssize_t len = recvfrom(sock->fd, buffer.data, buffer.len, 0, (struct sockaddr*)&recvaddr, &recvaddrlen);
 	if (len <= 0) {
 		if (len < 0 && errno != EINTR)

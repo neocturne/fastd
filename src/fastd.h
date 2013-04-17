@@ -142,6 +142,7 @@ struct fastd_bind_address {
 struct fastd_socket {
 	int fd;
 	const fastd_bind_address_t *addr;
+	fastd_peer_address_t *bound_addr;
 	fastd_peer_t *peer;
 };
 
@@ -457,6 +458,11 @@ static inline void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock
 			pr_error_errno(ctx, "closing socket: close");
 
 		sock->fd = -2;
+	}
+
+	if (sock->bound_addr) {
+		free(sock->bound_addr);
+		sock->bound_addr = NULL;
 	}
 }
 
