@@ -781,13 +781,6 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 }
 
 static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (!fastd_peer_is_established(peer)) {
-		pr_debug(ctx, "received unexpected packet from %P, scheduling handshake", peer);
-		fastd_task_schedule_handshake(ctx, peer, 0);
-
-		goto fail;
-	}
-
 	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session))
 		goto fail;
 
