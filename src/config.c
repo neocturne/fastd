@@ -132,7 +132,7 @@ static bool config_match(const char *opt, ...) {
 	va_list ap;
 	bool match = false;
 	const char *str;
-	
+
 	va_start(ap, opt);
 
 	while((str = va_arg(ap, const char*)) != NULL) {
@@ -350,6 +350,11 @@ static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char
 				break;
 			if (result->d_name[0] == '.')
 				continue;
+
+			if (result->d_name[strlen(result->d_name)-1] == '~') {
+				pr_verbose(ctx, "ignoring file `%s' as it seems to be a backup file", result->d_name);
+				continue;
+			}
 
 			struct stat statbuf;
 			if (stat(result->d_name, &statbuf)) {
