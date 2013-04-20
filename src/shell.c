@@ -29,6 +29,7 @@
 #include "peer.h"
 
 #include <arpa/inet.h>
+#include <net/if.h>
 
 
 bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
@@ -37,7 +38,8 @@ bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir
 	char *cwd = get_current_dir_name();
 
 	if(!chdir(dir)) {
-		char buf[INET6_ADDRSTRLEN];
+		/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
+		char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
 
 		snprintf(buf, sizeof(buf), "%u", (unsigned)getpid());
 		setenv("FASTD_PID", buf, 1);
@@ -64,6 +66,12 @@ bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir
 
 		case AF_INET6:
 			inet_ntop(AF_INET6, &local_addr->in6.sin6_addr, buf, sizeof(buf));
+
+			if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr)) {
+				if (if_indextoname(local_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
+					buf[strlen(buf)] = '%';
+			}
+
 			setenv("LOCAL_ADDRESS", buf, 1);
 
 			snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in6.sin6_port));
