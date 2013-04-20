@@ -260,7 +260,7 @@ static void maintenance(fastd_context_t *ctx) {
 	}
 }
 
-static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer) {
+static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
 	maintenance(ctx);
 
 	fastd_buffer_t buffer = fastd_handshake_new_init(ctx, 3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
@@ -270,16 +270,16 @@ static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *
 	if (peer)
 		fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
 	else
-		pr_debug(ctx, "sending handshake to unknown peer %I", address);
+		pr_debug(ctx, "sending handshake to unknown peer %I", remote_addr);
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, ctx->protocol_state->handshake_key.public_key.p);
 
-	fastd_send_handshake(ctx, sock, address, buffer);
+	fastd_send_handshake(ctx, sock, local_addr, remote_addr, buffer);
 }
 
-static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, const fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
-			      const fastd_handshake_t *handshake, const fastd_method_t *method) {
-	pr_debug(ctx, "responding handshake with %P[%I]...", peer, address);
+static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_peer_t *peer,
+			      const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const fastd_method_t *method) {
+	pr_debug(ctx, "responding handshake with %P[%I]...", peer, remote_addr);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
@@ -341,21 +341,22 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
 
-	fastd_send_handshake(ctx, sock, address, buffer);
+	fastd_send_handshake(ctx, sock, local_addr, remote_addr, buffer);
 }
 
-static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, fastd_socket_t *sock, const fastd_peer_address_t *address, bool initiator,
+static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, fastd_socket_t *sock,
+		      const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
 		      const ecc_int256_t *A, const ecc_int256_t *B, const ecc_int256_t *X,
 		      const ecc_int256_t *Y, const ecc_int256_t *sigma, uint64_t serial) {
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hash[HASHBYTES];
 
 	if (serial <= peer->protocol_state->last_serial) {
-		pr_debug(ctx, "ignoring handshake from %P[%I] because of handshake key reuse", peer, address);
+		pr_debug(ctx, "ignoring handshake from %P[%I] because of handshake key reuse", peer, remote_addr);
 		return false;
 	}
 
-	pr_verbose(ctx, "%I authorized as %P", address, peer);
+	pr_verbose(ctx, "%I authorized as %P", remote_addr, peer);
 
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		if (peer->protocol_state->old_session.method)
@@ -383,8 +384,8 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 
 	fastd_peer_seen(ctx, peer);
 
-	if (!fastd_peer_claim_address(ctx, peer, sock, address)) {
-		pr_warn(ctx, "can't set address %I which is used by a fixed peer", address);
+	if (!fastd_peer_claim_address(ctx, peer, sock, local_addr, remote_addr)) {
+		pr_warn(ctx, "can't set address %I which is used by a fixed peer", remote_addr);
 		fastd_peer_reset(ctx, peer);
 		return false;
 	}
@@ -401,9 +402,9 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 	return true;
 }
 
-static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
+static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
 			     const fastd_handshake_t *handshake, const fastd_method_t *method) {
-	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, address);
+	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, remote_addr);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
@@ -456,7 +457,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
 
 	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key) != 0) {
-		pr_warn(ctx, "received invalid protocol handshake response from %P[%I]", peer, address);
+		pr_warn(ctx, "received invalid protocol handshake response from %P[%I]", peer, remote_addr);
 		return;
 	}
 
@@ -464,7 +465,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	memcpy(hashinput+PUBLICKEYBYTES, handshake_key->public_key.p, PUBLICKEYBYTES);
 	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key);
 
-	if (!establish(ctx, peer, method, sock, address, true, &handshake_key->public_key, peer_handshake_key, &ctx->conf->protocol_config->public_key,
+	if (!establish(ctx, peer, method, sock, local_addr, remote_addr, true, &handshake_key->public_key, peer_handshake_key, &ctx->conf->protocol_config->public_key,
 		       &peer->protocol_config->public_key, &sigma, handshake_key->serial))
 		return;
 
@@ -476,12 +477,13 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HMACBYTES, hmacbuf);
 
-	fastd_send_handshake(ctx, sock, address, buffer);
+	fastd_send_handshake(ctx, sock, local_addr, remote_addr, buffer);
 }
 
-static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
+static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+				    fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
 				    const fastd_handshake_t *handshake, const fastd_method_t *method) {
-	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, address);
+	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, remote_addr);
 
 	uint8_t hashinput[5*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
@@ -533,11 +535,11 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
 
 	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key) != 0) {
-		pr_warn(ctx, "received invalid protocol handshake finish from %P[%I]", peer, address);
+		pr_warn(ctx, "received invalid protocol handshake finish from %P[%I]", peer, remote_addr);
 		return;
 	}
 
-	establish(ctx, peer, method, sock, address, false, peer_handshake_key, &handshake_key->public_key, &peer->protocol_config->public_key,
+	establish(ctx, peer, method, sock, local_addr, remote_addr, false, peer_handshake_key, &handshake_key->public_key, &peer->protocol_config->public_key,
 		  &ctx->conf->protocol_config->public_key, &sigma, handshake_key->serial);
 }
 
@@ -636,7 +638,7 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 	return peer;
 }
 
-static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method) {
+static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	handshake_key_t *handshake_key;
 	char *peer_version_name = NULL;
 	bool temporary_added = false;
@@ -644,23 +646,23 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	maintenance(ctx);
 
 	if (!has_field(handshake, RECORD_SENDER_KEY, PUBLICKEYBYTES)) {
-		pr_debug(ctx, "received handshake without sender key from %I", address);
+		pr_debug(ctx, "received handshake without sender key from %I", remote_addr);
 		return;
 	}
 
-	peer = match_sender_key(ctx, sock, address, peer, handshake->records[RECORD_SENDER_KEY].data);
+	peer = match_sender_key(ctx, sock, remote_addr, peer, handshake->records[RECORD_SENDER_KEY].data);
 	if (!peer) {
 		switch (errno) {
 		case EAGAIN:
-			pr_debug(ctx, "received handshake from %I, resolving host...", address);
+			pr_debug(ctx, "received handshake from %I, resolving host...", remote_addr);
 			return;
 
 		case EPERM:
-			pr_debug(ctx, "ignoring handshake from %I (incorrect source address)", address);
+			pr_debug(ctx, "ignoring handshake from %I (incorrect source address)", remote_addr);
 			return;
 
 		case ENOENT:
-			peer = add_temporary(ctx, sock, address, handshake->records[RECORD_SENDER_KEY].data);
+			peer = add_temporary(ctx, sock, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
 			if (peer) {
 				temporary_added = true;
 				break;
@@ -674,65 +676,65 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	}
 
 	if (fastd_peer_is_temporary(peer) && !temporary_added) {
-		if (!fastd_peer_verify_temporary(ctx, peer, sock->bound_addr, address)) {
-			pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, address);
+		if (!fastd_peer_verify_temporary(ctx, peer, local_addr, remote_addr)) {
+			pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, remote_addr);
 			return;
 		}
 	}
 
 	if (!fastd_peer_may_connect(ctx, peer)) {
-		pr_debug(ctx, "ignoring handshake from %P[%I] because of local constraints", peer, address);
+		pr_debug(ctx, "ignoring handshake from %P[%I] because of local constraints", peer, remote_addr);
 		return;
 	}
 
 	if (backoff(ctx, peer)) {
-		pr_debug(ctx, "received repeated handshakes from %P[%I], ignoring", peer, address);
+		pr_debug(ctx, "received repeated handshakes from %P[%I], ignoring", peer, remote_addr);
 		return;
 	}
 
 	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
-		pr_debug(ctx, "received handshake reply without receipient key from %P[%I]", peer, address);
+		pr_debug(ctx, "received handshake reply without receipient key from %P[%I]", peer, remote_addr);
 		return;
 	}
 	else if(has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
 		if (memcmp(ctx->conf->protocol_config->public_key.p, handshake->records[RECORD_RECEIPIENT_KEY].data, PUBLICKEYBYTES) != 0) {
-			pr_debug(ctx, "received protocol handshake with wrong receipient key from %P[%I]", peer, address);
+			pr_debug(ctx, "received protocol handshake with wrong receipient key from %P[%I]", peer, remote_addr);
 			return;
 		}
 	}
 
 	if (!has_field(handshake, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
-		pr_debug(ctx, "received handshake without sender handshake key from %P[%I]", peer, address);
+		pr_debug(ctx, "received handshake without sender handshake key from %P[%I]", peer, remote_addr);
 		return;
 	}
 
 	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
-		pr_debug(ctx, "received handshake reply without receipient handshake key from %P[%I]", peer, address);
+		pr_debug(ctx, "received handshake reply without receipient handshake key from %P[%I]", peer, remote_addr);
 		return;
 	}
 
 	if (handshake->type > 1 && !has_field(handshake, RECORD_T, HMACBYTES)) {
-		pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, address);
+		pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, remote_addr);
 		return;
 	}
 
 	switch(handshake->type) {
 	case 1:
 		if (timespec_diff(&ctx->now, &peer->last_handshake_response) < ctx->conf->min_handshake_interval*1000
-		    && fastd_peer_address_equal(address, &peer->last_handshake_response_address)) {
-			pr_debug(ctx, "not responding repeated handshake from %P[%I]", peer, address);
+		    && fastd_peer_address_equal(remote_addr, &peer->last_handshake_response_address)) {
+			pr_debug(ctx, "not responding repeated handshake from %P[%I]", peer, remote_addr);
 			return;
 		}
 
 		if (handshake->records[RECORD_VERSION_NAME].data)
 			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
 
-		pr_verbose(ctx, "received handshake from %P[%I] using fastd %s", peer, address, peer_version_name);
+		pr_verbose(ctx, "received handshake from %P[%I] using fastd %s", peer, remote_addr, peer_version_name);
 		free(peer_version_name);
 
 		peer->last_handshake_response = ctx->now;
-		peer->last_handshake_response_address = *address;
-		respond_handshake(ctx, sock, address, peer, &ctx->protocol_state->handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
+		peer->last_handshake_response_address = *remote_addr;
+		respond_handshake(ctx, sock, local_addr, remote_addr, peer, &ctx->protocol_state->handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
 		break;
 
 	case 2:
@@ -743,17 +745,17 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 			handshake_key = &ctx->protocol_state->prev_handshake_key;
 		}
 		else {
-			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P[%I]", peer, address);
+			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P[%I]", peer, remote_addr);
 			return;
 		}
 
 		if (handshake->records[RECORD_VERSION_NAME].data)
 			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
-		
-		pr_verbose(ctx, "received handshake response from %P[%I] using fastd %s", peer, address, peer_version_name);
+
+		pr_verbose(ctx, "received handshake response from %P[%I] using fastd %s", peer, remote_addr, peer_version_name);
 		free(peer_version_name);
 
-		finish_handshake(ctx, sock, address, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
+		finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
 		break;
 
 	case 3:
@@ -764,17 +766,17 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 			handshake_key = &ctx->protocol_state->prev_handshake_key;
 		}
 		else {
-			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P[%I]", peer, address);
+			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P[%I]", peer, remote_addr);
 			return;
 		}
 
-		pr_debug(ctx, "received handshake finish from %P[%I]", peer, address);
+		pr_debug(ctx, "received handshake finish from %P[%I]", peer, remote_addr);
 
-		handle_finish_handshake(ctx, sock, address, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
+		handle_finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
 		break;
 
 	default:
-		pr_debug(ctx, "received handshake reply with unknown type %u from %P[%I]", handshake->type, peer, address);
+		pr_debug(ctx, "received handshake reply with unknown type %u from %P[%I]", handshake->type, peer, remote_addr);
 	}
 }
 
@@ -845,7 +847,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 		return;
 	}
 
-	fastd_send(ctx, peer->sock, &peer->address, send_buffer);
+	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, send_buffer);
 
 	fastd_task_delete_peer_keepalives(ctx, peer);
 	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);

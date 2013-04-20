@@ -36,14 +36,14 @@ static inline void on_establish(fastd_context_t *ctx, const fastd_peer_t *peer) 
 	if (!ctx->conf->on_establish)
 		return;
 
-	fastd_shell_exec(ctx, ctx->conf->on_establish, ctx->conf->on_establish_dir, peer, peer->sock->bound_addr, &peer->address, NULL);
+	fastd_shell_exec(ctx, ctx->conf->on_establish, ctx->conf->on_establish_dir, peer, &peer->local_address, &peer->address, NULL);
 }
 
 static inline void on_disestablish(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	if (!ctx->conf->on_disestablish)
 		return;
 
-	fastd_shell_exec(ctx, ctx->conf->on_disestablish, ctx->conf->on_disestablish_dir, peer, peer->sock->bound_addr, &peer->address, NULL);
+	fastd_shell_exec(ctx, ctx->conf->on_disestablish, ctx->conf->on_disestablish_dir, peer, &peer->local_address, &peer->address, NULL);
 }
 
 static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
@@ -132,6 +132,8 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 		on_disestablish(ctx, peer);
 
 	free_socket(ctx, peer);
+
+	memset(&peer->local_address, 0, sizeof(peer->local_address)),
 
 	ctx->conf->protocol->reset_peer_state(ctx, peer);
 
@@ -275,6 +277,10 @@ bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_pee
 			return false;
 		if (addr1->in6.sin6_port != addr2->in6.sin6_port)
 			return false;
+		if (IN6_IS_ADDR_LINKLOCAL(&addr1->in6.sin6_addr)) {
+			if (addr1->in6.sin6_scope_id != addr2->in6.sin6_scope_id)
+				return false;
+		}
 	}
 
 	return true;
@@ -299,15 +305,15 @@ static inline void reset_peer_address(fastd_context_t *ctx, fastd_peer_t *peer) 
 	memset(&peer->address, 0, sizeof(fastd_peer_address_t));
 }
 
-bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fastd_socket_t *sock, const fastd_peer_address_t *addr) {
-	if (addr->sa.sa_family == AF_UNSPEC) {
+bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr) {
+	if (remote_addr->sa.sa_family == AF_UNSPEC) {
 		if (fastd_peer_is_established(new_peer))
 			fastd_peer_reset(ctx, new_peer);
 	}
 	else {
 		fastd_peer_t *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (!fastd_peer_address_equal(&peer->address, addr))
+			if (!fastd_peer_address_equal(&peer->address, remote_addr))
 				continue;
 
 			if (peer == new_peer)
@@ -323,11 +329,14 @@ bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fast
 		}
 	}
 
-	new_peer->address = *addr;
+	new_peer->address = *remote_addr;
 	if (sock && sock->addr && sock != new_peer->sock) {
 		free_socket(ctx, new_peer);
 		new_peer->sock = sock;
 	}
+
+	if (local_addr)
+		new_peer->local_address = *local_addr;
 
 	return true;
 }

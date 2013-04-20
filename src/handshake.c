@@ -180,9 +180,9 @@ static fastd_string_stack_t* parse_string_list(uint8_t *data, size_t len) {
 	return ret;
 }
 
-void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, fastd_buffer_t buffer) {
+void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (buffer.len < sizeof(fastd_packet_t)) {
-		pr_warn(ctx, "received a short handshake from %I", address);
+		pr_warn(ctx, "received a short handshake from %I", remote_addr);
 		goto end_free;
 	}
 
@@ -211,7 +211,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	}
 
 	if (handshake.records[RECORD_HANDSHAKE_TYPE].length != 1) {
-		pr_debug(ctx, "received handshake without handshake type from %I", address);
+		pr_debug(ctx, "received handshake without handshake type from %I", remote_addr);
 		goto end_free;
 	}
 
@@ -220,7 +220,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	if (handshake.records[RECORD_MTU].length == 2) {
 		if (AS_UINT16(handshake.records[RECORD_MTU]) != ctx->conf->mtu) {
 			pr_warn(ctx, "MTU configuration differs with peer %I: local MTU is %u, remote MTU is %u",
-				 address, ctx->conf->mtu, AS_UINT16(handshake.records[RECORD_MTU]));
+				 remote_addr, ctx->conf->mtu, AS_UINT16(handshake.records[RECORD_MTU]));
 		}
 	}
 
@@ -304,15 +304,15 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_ERROR_DETAIL, error_detail);
 
-			fastd_send_handshake(ctx, sock, address, reply_buffer);
+			fastd_send_handshake(ctx, sock, local_addr, remote_addr, reply_buffer);
 		}
 		else {
-			ctx->conf->protocol->handshake_handle(ctx, sock, address, peer, &handshake, method);
+			ctx->conf->protocol->handshake_handle(ctx, sock, local_addr, remote_addr, peer, &handshake, method);
 		}
 	}
 	else {
 		if (handshake.records[RECORD_REPLY_CODE].length != 1) {
-			pr_warn(ctx, "received handshake reply without reply code from %I", address);
+			pr_warn(ctx, "received handshake reply without reply code from %I", remote_addr);
 			goto end_free;
 		}
 
@@ -330,22 +330,22 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 			 * It doesn't even make sense to send an error reply here.
 			 */
 			if (!method) {
-				pr_warn(ctx, "Handshake with %I failed because an invalid method name was sent", address);
+				pr_warn(ctx, "Handshake with %I failed because an invalid method name was sent", remote_addr);
 				goto end_free;
 			}
 
-			ctx->conf->protocol->handshake_handle(ctx, sock, address, peer, &handshake, method);
+			ctx->conf->protocol->handshake_handle(ctx, sock, local_addr, remote_addr, peer, &handshake, method);
 		}
 		else {
 			const char *error_field_str;
 
 			if (reply_code >= REPLY_MAX) {
-				pr_warn(ctx, "Handshake with %I failed with unknown code %i", address, reply_code);
+				pr_warn(ctx, "Handshake with %I failed with unknown code %i", remote_addr, reply_code);
 				goto end_free;
 			}
 
 			if (handshake.records[RECORD_ERROR_DETAIL].length != 1) {
-				pr_warn(ctx, "Handshake with %I failed with code %s", address, REPLY_TYPES[reply_code]);
+				pr_warn(ctx, "Handshake with %I failed with code %s", remote_addr, REPLY_TYPES[reply_code]);
 				goto end_free;
 			}
 
@@ -357,11 +357,11 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 
 			switch (reply_code) {
 			case REPLY_MANDATORY_MISSING:
-				pr_warn(ctx, "Handshake with %I failed: mandatory field `%s' missing", address, error_field_str);
+				pr_warn(ctx, "Handshake with %I failed: mandatory field `%s' missing", remote_addr, error_field_str);
 				break;
 
 			case REPLY_UNACCEPTABLE_VALUE:
-				pr_warn(ctx, "Handshake with %I failed: unacceptable value for field `%s'", address, error_field_str);
+				pr_warn(ctx, "Handshake with %I failed: unacceptable value for field `%s'", remote_addr, error_field_str);
 				break;
 
 			default: /* just to silence the warning */

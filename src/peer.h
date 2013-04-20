@@ -37,6 +37,7 @@ struct fastd_peer {
 	fastd_peer_group_t *group;
 
 	fastd_socket_t *sock;
+	fastd_peer_address_t local_address;
 	fastd_peer_address_t address;
 
 	bool established;
@@ -82,6 +83,19 @@ struct fastd_peer_eth_addr {
 bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2);
 void fastd_peer_address_simplify(fastd_peer_address_t *addr);
 
+static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *addr) {
+	switch (addr->sa.sa_family) {
+	case AF_INET:
+		return addr->in.sin_port;
+
+	case AF_INET6:
+		return addr->in6.sin6_port;
+
+	default:
+		return 0;
+	}
+}
+
 fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_peer_config_free(fastd_peer_config_t *peer);
 void fastd_peer_config_delete(fastd_context_t *ctx, fastd_config_t *conf);
@@ -96,7 +110,7 @@ bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const
 void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer);
 bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer);
-bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *addr);
+bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
 void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer);
 
 const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
