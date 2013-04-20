@@ -96,6 +96,12 @@ bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir
 
 		case AF_INET6:
 			inet_ntop(AF_INET6, &peer_addr->in6.sin6_addr, buf, sizeof(buf));
+
+			if (IN6_IS_ADDR_LINKLOCAL(&peer_addr->in6.sin6_addr)) {
+				if (if_indextoname(peer_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
+					buf[strlen(buf)] = '%';
+			}
+
 			setenv("PEER_ADDRESS", buf, 1);
 
 			snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in6.sin6_port));
