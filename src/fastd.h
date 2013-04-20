@@ -370,8 +370,8 @@ static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 
 
 #define container_of(ptr, type, member) ({                      \
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-        (type *)( (char *)__mptr - offsetof(type,member) );})
+			const typeof( ((type *)0)->member ) *__mptr = (ptr); \
+			(type *)( (char *)__mptr - offsetof(type,member) );})
 
 
 static inline size_t alignto(size_t l, size_t a) {
