@@ -25,7 +25,7 @@
 
 /*
   types.h
-  
+
   Basic enums and typedefs for common types
 */
 

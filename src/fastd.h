@@ -59,7 +59,7 @@ struct fastd_buffer {
 	size_t len;
 };
 
-struct fastd_eth_addr {
+struct __attribute__((__packed__)) fastd_eth_addr {
 	uint8_t data[ETH_ALEN];
 };
 

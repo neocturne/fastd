@@ -39,7 +39,7 @@ typedef enum fastd_packet_type {
 	PACKET_DATA,
 } fastd_packet_type_t;
 
-typedef struct __attribute__ ((__packed__)) fastd_packet {
+typedef struct __attribute__((__packed__)) fastd_packet {
 	uint8_t rsv1;
 	uint16_t rsv2;
 	uint8_t tlv_data[];

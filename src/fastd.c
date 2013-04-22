@@ -602,6 +602,12 @@ void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, cons
 
 void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (ctx->conf->mode == MODE_TAP) {
+		if (buffer.len < ETH_HLEN) {
+			pr_debug(ctx, "received truncated packet");
+			fastd_buffer_free(buffer);
+			return;
+		}
+
 		const fastd_eth_addr_t *src_addr = fastd_get_source_address(ctx, buffer);
 
 		if (fastd_eth_addr_is_unicast(src_addr))
@@ -841,6 +847,12 @@ static void handle_tun(fastd_context_t *ctx) {
 	fastd_peer_t *peer = NULL;
 
 	if (ctx->conf->mode == MODE_TAP) {
+		if (buffer.len < ETH_HLEN) {
+			pr_debug(ctx, "truncated packet on tap interface");
+			fastd_buffer_free(buffer);
+			return;
+		}
+
 		const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, buffer);
 		if (fastd_eth_addr_is_unicast(dest_addr)) {
 			peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
