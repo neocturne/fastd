@@ -419,7 +419,7 @@ static inline size_t fastd_max_packet_size(const fastd_context_t *ctx) {
 }
 
 static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
-	fastd_string_stack_t *ret = malloc(sizeof(fastd_string_stack_t) + strlen(str) + 1);
+	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = NULL;
 	strcpy(ret->str, str);
 
@@ -428,7 +428,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
 
 static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, size_t len) {
 	size_t str_len = strnlen(str, len);
-	fastd_string_stack_t *ret = malloc(sizeof(fastd_string_stack_t) + str_len + 1);
+	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
 	ret->next = NULL;
 	strncpy(ret->str, str, str_len);
 	ret->str[str_len] = 0;
@@ -437,7 +437,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, siz
 }
 
 static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
-	fastd_string_stack_t *ret = malloc(sizeof(fastd_string_stack_t) + strlen(str) + 1);
+	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = stack;
 	strcpy(ret->str, str);
 
