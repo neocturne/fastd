@@ -610,14 +610,14 @@ static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, s
 	return (handshake->records[type].length == length);
 }
 
-static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *address, const unsigned char key[32]) {
+static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const unsigned char key[32]) {
 	if (!fastd_peer_allow_unknown(ctx)) {
-		pr_debug(ctx, "ignoring handshake from %I (unknown key)", address);
+		pr_debug(ctx, "ignoring handshake from %I (unknown key)", remote_addr);
 		return NULL;
 	}
 
 	if (key_count(ctx, key)) {
-		pr_debug(ctx, "ignoring handshake from %I (disabled key)", address);
+		pr_debug(ctx, "ignoring handshake from %I (disabled key)", remote_addr);
 		return NULL;
 	}
 
@@ -629,8 +629,8 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 	/* Ugly hack */
 	peer->protocol_state->last_serial--;
 
-	if (!fastd_peer_verify_temporary(ctx, peer, sock->bound_addr, address)) {
-		pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, address);
+	if (!fastd_peer_verify_temporary(ctx, peer, local_addr, remote_addr)) {
+		pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, remote_addr);
 		fastd_peer_delete(ctx, peer);
 		return NULL;
 	}
@@ -662,7 +662,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 			return;
 
 		case ENOENT:
-			peer = add_temporary(ctx, sock, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
+			peer = add_temporary(ctx, sock, local_addr, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
 			if (peer) {
 				temporary_added = true;
 				break;
