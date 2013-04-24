@@ -133,7 +133,7 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	free_socket(ctx, peer);
 
-	memset(&peer->local_address, 0, sizeof(peer->local_address)),
+	memset(&peer->local_address, 0, sizeof(peer->local_address));
 
 	ctx->conf->protocol->reset_peer_state(ctx, peer);
 
@@ -157,6 +157,8 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 		peer->address.sa.sa_family = AF_UNSPEC;
 	else
 		peer->address = peer->config->address;
+
+	memset(&peer->local_address, 0, sizeof(peer->local_address));
 
 	peer->established = false;
 
