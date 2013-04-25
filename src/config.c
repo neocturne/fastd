@@ -321,14 +321,17 @@ bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const
 
 		if(chdir(oldcwd))
 			pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
+
+		free(logdir);
 	}
 	else {
 		pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
 	}
 
-
+	free(oldcwd);
 	free(name2);
 	free(name3);
+
 	return true;
 }
 
