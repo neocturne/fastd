@@ -35,7 +35,6 @@
 
 typedef struct resolv_arg {
 	fastd_context_t *ctx;
-	pthread_t master_thread;
 	char *hostname;
 	fastd_peer_address_t constraints;
 } resolv_arg_t;
@@ -44,7 +43,6 @@ typedef struct resolv_arg {
 static void* resolve_peer(void *varg) {
 	resolv_arg_t *arg = varg;
 
-	struct addrinfo hints;
 	struct addrinfo *res = NULL;
 	int gai_ret;
 	bool error = false;
@@ -52,11 +50,12 @@ static void* resolve_peer(void *varg) {
 	char portstr[6];
 	snprintf(portstr, 6, "%u", ntohs(arg->constraints.in.sin_port));
 
-	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = arg->constraints.sa.sa_family;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_protocol = IPPROTO_UDP;
-	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
+	struct addrinfo hints = {
+		.ai_family = arg->constraints.sa.sa_family,
+		.ai_socktype = SOCK_DGRAM,
+		.ai_protocol = IPPROTO_UDP,
+		.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG,
+	};
 
 	gai_ret = getaddrinfo(arg->hostname, portstr, &hints, &res);
 
@@ -133,21 +132,23 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	}
 
 	pr_verbose(ctx, "resolving host `%s' for peer %P...", peer->config->hostname, peer);
-	peer->last_resolve = ctx->now;
 
 	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
 
 	arg->ctx = ctx;
-	arg->master_thread = pthread_self();
 	arg->hostname = strdup(peer->config->hostname);
 	arg->constraints = peer->config->address;
 
 	pthread_t thread;
 	if (pthread_create(&thread, NULL, resolve_peer, arg) != 0) {
 		pr_error_errno(ctx, "unable to create resolver thread");
+
 		free(arg->hostname);
 		free(arg);
+
+		return;
 	}
 
 	pthread_detach(thread);
+	peer->last_resolve = ctx->now;
 }
