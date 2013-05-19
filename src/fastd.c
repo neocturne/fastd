@@ -936,6 +936,7 @@ static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socke
 		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
 			fastd_buffer_free(buffer);
 			ctx->conf->protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+			return;
 		}
 
 		ctx->conf->protocol->handle_recv(ctx, peer, buffer);
