@@ -883,12 +883,121 @@ static void handle_tun(fastd_context_t *ctx) {
 	}
 }
 
+static inline void handle_socket_control(fastd_context_t *ctx, struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
+	memset(local_addr, 0, sizeof(fastd_peer_address_t));
+
+	const char *end = message->msg_control + message->msg_controllen;
+
+	struct cmsghdr *cmsg;
+	for (cmsg = CMSG_FIRSTHDR(message); cmsg; cmsg = CMSG_NXTHDR(message, cmsg)) {
+		if ((char*)cmsg + sizeof(*cmsg) > end)
+			return;
+
+		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
+			struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
+			if ((char*)pktinfo + sizeof(*pktinfo) > end)
+				return;
+
+			local_addr->in.sin_family = AF_INET;
+			local_addr->in.sin_addr = pktinfo->ipi_addr;
+			local_addr->in.sin_port = fastd_peer_address_get_port(sock->bound_addr);
+
+			return;
+		}
+
+		if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
+			struct in6_pktinfo *pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
+			if ((char*)pktinfo + sizeof(*pktinfo) > end)
+				return;
+
+			local_addr->in6.sin6_family = AF_INET6;
+			local_addr->in6.sin6_addr = pktinfo->ipi6_addr;
+			local_addr->in6.sin6_port = fastd_peer_address_get_port(sock->bound_addr);
+
+			if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
+				local_addr->in6.sin6_scope_id = pktinfo->ipi6_ifindex;
+
+			return;
+		}
+	}
+}
+
+static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+	if (!fastd_peer_may_connect(ctx, peer)) {
+		fastd_buffer_free(buffer);
+		return;
+	}
+
+	const uint8_t *packet_type = buffer.data;
+	fastd_buffer_push_head(ctx, &buffer, 1);
+
+	switch (*packet_type) {
+	case PACKET_DATA:
+		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
+			fastd_buffer_free(buffer);
+			ctx->conf->protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+		}
+
+		ctx->conf->protocol->handle_recv(ctx, peer, buffer);
+		break;
+
+	case PACKET_HANDSHAKE:
+		fastd_handshake_handle(ctx, sock, local_addr, remote_addr, peer, buffer);
+	}
+}
+
+static inline bool is_unknown_peer_valid(fastd_context_t *ctx, const fastd_peer_address_t *remote_addr) {
+	return ctx->conf->n_floating || ctx->conf->n_dynamic || ctx->conf->on_verify ||
+		(remote_addr->sa.sa_family == AF_INET && ctx->conf->n_dynamic_v4) ||
+		(remote_addr->sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6);
+}
+
+static inline void handle_socket_receive_unknown(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
+	const uint8_t *packet_type = buffer.data;
+	fastd_buffer_push_head(ctx, &buffer, 1);
+
+	switch (*packet_type) {
+	case PACKET_DATA:
+		fastd_buffer_free(buffer);
+		ctx->conf->protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+		break;
+
+	case PACKET_HANDSHAKE:
+		fastd_handshake_handle(ctx, sock, local_addr, remote_addr, NULL, buffer);
+	}
+}
+
+static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
+	fastd_peer_t *peer = NULL;
+
+	if (sock->peer) {
+		if (fastd_peer_address_equal(&sock->peer->address, remote_addr)) {
+			peer = sock->peer;
+		}
+	}
+	else {
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (fastd_peer_address_equal(&peer->address, remote_addr))
+				break;
+		}
+	}
+
+	if (peer) {
+		handle_socket_receive_known(ctx, sock, local_addr, remote_addr, peer, buffer);
+	}
+	else if(is_unknown_peer_valid(ctx, remote_addr)) {
+		handle_socket_receive_unknown(ctx, sock, local_addr, remote_addr, buffer);
+	}
+	else  {
+		pr_debug(ctx, "received packet from unknown peer %I", remote_addr);
+		fastd_buffer_free(buffer);
+	}
+}
+
 static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 	size_t max_len = PACKET_TYPE_LEN + methods_max_packet_size(ctx);
 	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
-	uint8_t *packet_type;
-	fastd_peer_address_t local_addr = {};
-
+	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
 	struct iovec buffer_vec = { .iov_base = buffer.data, .iov_len = buffer.len };
 	char cbuf[1024];
@@ -911,38 +1020,9 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 		return;
 	}
 
-	struct cmsghdr *cmsg;
-	for (cmsg = CMSG_FIRSTHDR(&message); cmsg; cmsg = CMSG_NXTHDR(&message, cmsg)) {
-		if ((char*)cmsg + sizeof(*cmsg) > cbuf + sizeof(cbuf))
-			break;
+	buffer.len = len;
 
-		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
-			struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
-			if ((char*)pktinfo + sizeof(*pktinfo) > cbuf + sizeof(cbuf))
-				break;
-
-			local_addr.in.sin_family = AF_INET;
-			local_addr.in.sin_addr = pktinfo->ipi_addr;
-			local_addr.in.sin_port = fastd_peer_address_get_port(sock->bound_addr);
-
-			break;
-		}
-
-		if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
-			struct in6_pktinfo *pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
-			if ((char*)pktinfo + sizeof(*pktinfo) > cbuf + sizeof(cbuf))
-				break;
-
-			local_addr.in6.sin6_family = AF_INET6;
-			local_addr.in6.sin6_addr = pktinfo->ipi6_addr;
-			local_addr.in6.sin6_port = fastd_peer_address_get_port(sock->bound_addr);
-
-			if (IN6_IS_ADDR_LINKLOCAL(&local_addr.in6.sin6_addr))
-				local_addr.in6.sin6_scope_id = pktinfo->ipi6_ifindex;
-
-			break;
-		}
-	}
+	handle_socket_control(ctx, &message, sock, &local_addr);
 
 	if (!local_addr.sa.sa_family) {
 		pr_error(ctx, "received packet without packet info");
@@ -950,73 +1030,9 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 		return;
 	}
 
-	packet_type = buffer.data;
-	buffer.len = len;
-
 	fastd_peer_address_simplify(&recvaddr);
 
-	fastd_buffer_push_head(ctx, &buffer, 1);
-
-	fastd_peer_t *peer = NULL;
-
-	if (sock->peer) {
-		if (fastd_peer_address_equal(&sock->peer->address, &recvaddr)) {
-			peer = sock->peer;
-		}
-	}
-	else {
-		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (fastd_peer_address_equal(&peer->address, &recvaddr))
-				break;
-		}
-	}
-
-	if (peer) {
-		if (!fastd_peer_may_connect(ctx, peer)) {
-			fastd_buffer_free(buffer);
-			return;
-		}
-
-		switch (*packet_type) {
-		case PACKET_DATA:
-			if (fastd_peer_is_established(peer) && fastd_peer_address_equal(&peer->local_address, &local_addr)) {
-				ctx->conf->protocol->handle_recv(ctx, peer, buffer);
-			}
-			else {
-				fastd_buffer_free(buffer);
-				ctx->conf->protocol->handshake_init(ctx, sock, &local_addr, &recvaddr, NULL);
-			}
-			break;
-
-		case PACKET_HANDSHAKE:
-			fastd_handshake_handle(ctx, sock, &local_addr, &recvaddr, peer, buffer);
-			break;
-
-		default:
-			fastd_buffer_free(buffer);
-		}
-	}
-	else if(ctx->conf->n_floating || ctx->conf->n_dynamic || ctx->conf->on_verify ||
-		(recvaddr.sa.sa_family == AF_INET && ctx->conf->n_dynamic_v4) ||
-		(recvaddr.sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6)) {
-		switch (*packet_type) {
-		case PACKET_DATA:
-			fastd_buffer_free(buffer);
-			ctx->conf->protocol->handshake_init(ctx, sock, &local_addr, &recvaddr, NULL);
-			break;
-
-		case PACKET_HANDSHAKE:
-			fastd_handshake_handle(ctx, sock, &local_addr, &recvaddr, NULL, buffer);
-			break;
-
-		default:
-			fastd_buffer_free(buffer);
-		}
-	}
-	else  {
-		pr_debug(ctx, "received packet from unknown peer %I", &recvaddr);
-		fastd_buffer_free(buffer);
-	}
+	handle_socket_receive(ctx, sock, &local_addr, &recvaddr, buffer);
 }
 
 static void handle_resolv_returns(fastd_context_t *ctx) {
