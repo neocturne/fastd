@@ -884,7 +884,7 @@ static void handle_tun(fastd_context_t *ctx) {
 static inline void handle_socket_control(fastd_context_t *ctx, struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
 	memset(local_addr, 0, sizeof(fastd_peer_address_t));
 
-	const char *end = message->msg_control + message->msg_controllen;
+	const char *end = (char*)message->msg_control + message->msg_controllen;
 
 	struct cmsghdr *cmsg;
 	for (cmsg = CMSG_FIRSTHDR(message); cmsg; cmsg = CMSG_NXTHDR(message, cmsg)) {
