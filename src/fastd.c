@@ -521,6 +521,37 @@ static size_t methods_min_decrypt_tail_space(fastd_context_t *ctx) {
 	return ret;
 }
 
+static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *local_addr) {
+	if (!local_addr)
+		return;
+
+	struct cmsghdr *cmsg = (struct cmsghdr*)((char*)msg->msg_control + msg->msg_controllen);
+
+	if (local_addr->sa.sa_family == AF_INET) {
+		cmsg->cmsg_level = IPPROTO_IP;
+		cmsg->cmsg_type = IP_PKTINFO;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+
+		msg->msg_controllen += cmsg->cmsg_len;
+
+		struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
+		pktinfo->ipi_addr = local_addr->in.sin_addr;
+	}
+	else if (local_addr->sa.sa_family == AF_INET6) {
+		cmsg->cmsg_level = IPPROTO_IPV6;
+		cmsg->cmsg_type = IPV6_PKTINFO;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+
+		msg->msg_controllen += cmsg->cmsg_len;
+
+		struct in6_pktinfo *pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
+		pktinfo->ipi6_addr = local_addr->in6.sin6_addr;
+
+		if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
+			pktinfo->ipi6_ifindex = local_addr->in6.sin6_scope_id;
+	}
+}
+
 static void fastd_send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, uint8_t packet_type, fastd_buffer_t buffer) {
 	if (!sock)
 		exit_bug(ctx, "send: sock == NULL");
@@ -550,36 +581,10 @@ static void fastd_send_type(fastd_context_t *ctx, const fastd_socket_t *sock, co
 
 	msg.msg_iov = iov;
 	msg.msg_iovlen = buffer.len ? 2 : 1;
+	msg.msg_control = cbuf;
+	msg.msg_controllen = 0;
 
-	if (local_addr && (local_addr->sa.sa_family == AF_INET || local_addr->sa.sa_family == AF_INET6)) {
-		msg.msg_control = cbuf;
-		msg.msg_controllen = sizeof(cbuf);
-
-		struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-
-		if (local_addr->sa.sa_family == AF_INET) {
-			cmsg->cmsg_level = IPPROTO_IP;
-			cmsg->cmsg_type = IP_PKTINFO;
-
-			msg.msg_controllen = cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
-
-			struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
-			pktinfo->ipi_addr = local_addr->in.sin_addr;
-		}
-		else {
-			cmsg->cmsg_level = IPPROTO_IPV6;
-			cmsg->cmsg_type = IPV6_PKTINFO;
-
-			msg.msg_controllen = cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
-
-			struct in6_pktinfo *pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
-
-			pktinfo->ipi6_addr = local_addr->in6.sin6_addr;
-
-			if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
-				pktinfo->ipi6_ifindex = local_addr->in6.sin6_scope_id;
-		}
-	}
+	add_pktinfo(&msg, local_addr);
 
 	int ret;
 	do {
