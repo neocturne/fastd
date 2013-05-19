@@ -378,6 +378,8 @@ static inline size_t alignto(size_t l, size_t a) {
 	return ((l+a-1)/a)*a;
 }
 
+#define FASTD_BUFFER_NULL ((fastd_buffer_t){})
+
 static inline fastd_buffer_t fastd_buffer_alloc(const fastd_context_t *ctx, size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
 	void *ptr;
@@ -385,6 +387,12 @@ static inline fastd_buffer_t fastd_buffer_alloc(const fastd_context_t *ctx, size
 		exit_errno(ctx, "posix_memalign");
 
 	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
+}
+
+static inline fastd_buffer_t fastd_buffer_dup(const fastd_context_t *ctx, fastd_buffer_t buffer, size_t head_space, size_t tail_space) {
+	fastd_buffer_t new_buffer = fastd_buffer_alloc(ctx, buffer.len, head_space, tail_space);
+	memcpy(new_buffer.data, buffer.data, buffer.len);
+	return new_buffer;
 }
 
 static inline void fastd_buffer_free(fastd_buffer_t buffer) {
