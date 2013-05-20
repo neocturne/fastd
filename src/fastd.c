@@ -611,6 +611,12 @@ static inline void send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fas
 		if (dest_peer == source_peer || !fastd_peer_is_established(dest_peer))
 			continue;
 
+		/* optimization, primarily for TUN mode: don't duplicate the buffer for the last (or only) peer */
+		if (!dest_peer->next) {
+			ctx->conf->protocol->send(ctx, dest_peer, buffer);
+			return;
+		}
+
 		ctx->conf->protocol->send(ctx, dest_peer, fastd_buffer_dup(ctx, buffer, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
 	}
 
