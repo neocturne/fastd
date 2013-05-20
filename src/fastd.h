@@ -378,8 +378,6 @@ static inline size_t alignto(size_t l, size_t a) {
 	return ((l+a-1)/a)*a;
 }
 
-#define FASTD_BUFFER_NULL ((fastd_buffer_t){})
-
 static inline fastd_buffer_t fastd_buffer_alloc(const fastd_context_t *ctx, size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
 	void *ptr;

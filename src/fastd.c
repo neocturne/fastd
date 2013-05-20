@@ -605,26 +605,33 @@ void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, cons
 	fastd_send_type(ctx, sock, local_addr, remote_addr, PACKET_HANDSHAKE, buffer);
 }
 
-static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t *buffer) {
-	const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, *buffer);
+static inline void send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
+	fastd_peer_t *dest_peer;
+	for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
+		if (dest_peer == source_peer || !fastd_peer_is_established(dest_peer))
+			continue;
+
+		ctx->conf->protocol->send(ctx, dest_peer, fastd_buffer_dup(ctx, buffer, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
+	}
+
+	fastd_buffer_free(buffer);
+}
+
+static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
+	const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, buffer);
 
 	if (fastd_eth_addr_is_unicast(dest_addr)) {
 		fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
-		if (!dest_peer || dest_peer == peer || !fastd_peer_is_established(dest_peer))
+		if (!dest_peer || dest_peer == source_peer || !fastd_peer_is_established(dest_peer)) {
+			fastd_buffer_free(buffer);
 			return;
+		}
 
-		ctx->conf->protocol->send(ctx, dest_peer, *buffer);
-		*buffer = FASTD_BUFFER_NULL;
+		ctx->conf->protocol->send(ctx, dest_peer, buffer);
 	}
 	else {
-		fastd_peer_t *dest_peer;
-		for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
-			if (dest_peer == peer || !fastd_peer_is_established(dest_peer))
-				continue;
-
-			ctx->conf->protocol->send(ctx, dest_peer, fastd_buffer_dup(ctx, *buffer, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
-		}
+		send_all(ctx, source_peer, buffer);
 	}
 }
 
@@ -645,8 +652,10 @@ void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
 		pr_warn_errno(ctx, "write");
 
-	if (ctx->conf->mode == MODE_TAP && ctx->conf->forward)
-		handle_forward(ctx, peer, &buffer);
+	if (ctx->conf->mode == MODE_TAP && ctx->conf->forward) {
+		handle_forward(ctx, peer, buffer);
+		return;
+	}
 
 	fastd_buffer_free(buffer);
 }
@@ -876,15 +885,7 @@ static void handle_tun(fastd_context_t *ctx) {
 		return;
 
 	/* TUN mode or multicast packet */
-	fastd_peer_t *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (!fastd_peer_is_established(peer))
-			continue;
-
-		ctx->conf->protocol->send(ctx, peer, fastd_buffer_dup(ctx, buffer, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
-	}
-
-	fastd_buffer_free(buffer);
+	send_all(ctx, NULL, buffer);
 }
 
 static inline void handle_socket_control(fastd_context_t *ctx, struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
