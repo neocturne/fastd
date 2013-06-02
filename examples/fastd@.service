@@ -1,5 +1,5 @@
 [Unit]
-Description=Fastd and Secure Tunneling Daemon (connection %i)
+Description=Fastd and Secure Tunnelling Daemon (connection %i)
 After=network.target
 
 [Service]
