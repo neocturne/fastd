@@ -94,7 +94,7 @@ fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space)
 
 	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0,
 						   2*5 +               /* handshake type, mode */
-						   6 +		     /* MTU */
+						   6 +                 /* MTU */
 						   4+version_len +     /* version name */
 						   4+protocol_len +    /* protocol name */
 						   4+method_len +      /* method name */
