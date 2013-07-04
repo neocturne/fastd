@@ -571,12 +571,12 @@ static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 	OPTION_ARG(option_bind, "--bind" OR "-b", "<address>:<port>", "Sets the bind address") \
 	OPTION_ARG(option_protocol, "--protocol" OR "-p", "<protocol>", "Sets the protocol") \
 	OPTION_ARG(option_method, "--method", "<method>", "Sets the encryption method") \
-	OPTION(option_forward, "--forward", "Enables forwarding of packets between clients; read the documentation before use!") \
+	OPTION(option_forward, "--forward", "Enables forwarding of packets between peers; read the documentation before use!") \
 	OPTION_ARG(option_on_up, "--on-up", "<command>", "Sets a shell command to execute after interface creation") \
 	OPTION_ARG(option_on_down, "--on-down", "<command>", "Sets a shell command to execute before interface destruction") \
 	OPTION_ARG(option_on_establish, "--on-establish", "<command>", "Sets a shell command to execute when a new connection is established") \
 	OPTION_ARG(option_on_disestablish, "--on-disestablish", "<command>", "Sets a shell command to execute when a connection is lost") \
-	OPTION_ARG(option_on_verify, "--on-verify", "<command>", "Sets a shell command to execute to check an connection attempt by an unknown peer") \
+	OPTION_ARG(option_on_verify, "--on-verify", "<command>", "Sets a shell command to execute to check a connection attempt by an unknown peer") \
 	OPTION(option_generate_key, "--generate-key", "Generates a new keypair") \
 	OPTION(option_show_key, "--show-key", "Shows the public key corresponding to the configured secret") \
 	OPTION(option_machine_readable, "--machine-readable", "Suppresses output of explaining text in the --show-key and --generate-key commands")
