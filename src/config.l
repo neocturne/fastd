@@ -83,7 +83,7 @@ verify		{ TOKEN(TOK_VERIFY); }
 peers		{ TOKEN(TOK_PEERS); }
 from		{ TOKEN(TOK_FROM); }
 log		{ TOKEN(TOK_LOG); }
-level 		{ TOKEN(TOK_LEVEL); }
+level		{ TOKEN(TOK_LEVEL); }
 syslog		{ TOKEN(TOK_SYSLOG); }
 stderr		{ TOKEN(TOK_STDERR); }
 to		{ TOKEN(TOK_TO); }
@@ -127,6 +127,7 @@ addresses	{ TOKEN(TOK_ADDRESSES); }
 
 [ \t]		{ yylloc->last_column++; }
 \n		{ yylloc->last_column = 0; yylloc->last_line++; }
+\r		;
 }
 
 <NEEDSPACE>{
@@ -134,11 +135,13 @@ addresses	{ TOKEN(TOK_ADDRESSES); }
 
 [ \t]		{ yylloc->last_column++; BEGIN(INITIAL); }
 \n		{ yylloc->last_column = 0; yylloc->last_line++; BEGIN(INITIAL); }
+\r		;
 }
 
 <INITIAL>\"	{ UPDATE_LOCATION; BEGIN(STRING); }
-<STRING>[^"\\\n] { yylloc->last_column++; yymore(); }
+<STRING>[^"\\\n\r] { yylloc->last_column++; yymore(); }
 <STRING>\n	{ yylloc->last_line++; yylloc->last_column = 0; yymore(); }
+<STRING>\r	{ yymore(); }
 <STRING>\\.	{ yylloc->last_column+=2; yymore(); }
 <STRING>\\\n	{ yylloc->last_line++; yylloc->last_column = 0; yymore(); }
 <STRING>\" {
@@ -182,8 +185,9 @@ addresses	{ TOKEN(TOK_ADDRESSES); }
 
 <INITIAL,NEEDSPACE>\/\*		{ UPDATE_LOCATION; BEGIN(COMMENT); }
 <COMMENT>\*\/	{ yylloc->last_column += yyleng; BEGIN(INITIAL); }
-<COMMENT>.	{ yylloc->last_column++; }
+<COMMENT>[^\n\r] { yylloc->last_column++; }
 <COMMENT>\n	{ yylloc->last_line++; yylloc->last_column = 0; }
+<COMMENT>\r	{}
 
 .		{
 			yylloc->first_line = yylloc->last_line;
