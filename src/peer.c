@@ -213,19 +213,9 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 
 fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx, fastd_config_t *conf) {
-	fastd_peer_config_t *peer = malloc(sizeof(fastd_peer_config_t));
-	peer->enabled = false;
+	fastd_peer_config_t *peer = calloc(1, sizeof(fastd_peer_config_t));
 
-	peer->hostname = NULL;
-	memset(&peer->address, 0, sizeof(fastd_peer_address_t));
-	peer->dynamic_float = false;
-
-	peer->config_source_dir = NULL;
-
-	peer->name = NULL;
-	peer->key = NULL;
 	peer->group = conf->peer_group;
-	peer->protocol_config = NULL;
 
 	peer->next = conf->peers;
 	conf->peers = peer;
