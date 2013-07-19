@@ -66,7 +66,8 @@ struct fastd_peer_config {
 
 	char *hostname;
 	fastd_peer_address_t address;
-	bool dynamic_float;
+	bool floating;
+	bool dynamic_float_deprecated;
 	char *key;
 	const fastd_peer_group_config_t *group;
 
@@ -121,7 +122,7 @@ static inline bool fastd_peer_allow_unknown(fastd_context_t *ctx) {
 }
 
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *config) {
-	return ((config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC) || config->dynamic_float);
+	return ((config->hostname == NULL && config->address.sa.sa_family == AF_UNSPEC) || config->floating);
 }
 
 static inline bool fastd_peer_config_is_dynamic(const fastd_peer_config_t *config) {

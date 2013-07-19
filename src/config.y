@@ -391,8 +391,9 @@ peer_conf:	peer_conf peer_statement
 	;
 
 peer_statement: TOK_REMOTE peer_remote ';'
+	|	TOK_FLOAT peer_float ';'
 	|	TOK_KEY peer_key ';'
-	|	TOK_INCLUDE peer_include  ';'
+	|	TOK_INCLUDE peer_include ';'
 	;
 
 peer_remote:	TOK_ADDR4 port {
@@ -419,7 +420,12 @@ peer_remote:	TOK_ADDR4 port {
 			conf->peers->hostname = strdup($2->str);
 			conf->peers->address.sa.sa_family = $1;
 			conf->peers->address.in.sin_port = htons($3);
-			conf->peers->dynamic_float = $4;
+			conf->peers->floating = conf->peers->dynamic_float_deprecated = $4;
+		}
+	;
+
+peer_float:	boolean {
+			conf->peers->floating = $1;
 		}
 	;
 

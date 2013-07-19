@@ -174,7 +174,7 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
-	if (!fastd_peer_is_floating(peer) || fastd_peer_is_dynamic(peer)) {
+	if (peer->address.sa.sa_family != AF_UNSPEC || fastd_peer_is_dynamic(peer)) {
 		unsigned delay = 0;
 		if (has_group_config_constraints(peer->group->conf))
 			delay = fastd_rand(ctx, 0, 3000);
@@ -340,7 +340,7 @@ bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_
 	if (!strequal(peer1->hostname, peer2->hostname))
 		return false;
 
-	if(peer1->dynamic_float != peer2->dynamic_float)
+	if(peer1->floating != peer2->floating)
 		return false;
 
 	if (!fastd_peer_address_equal(&peer1->address, &peer2->address))

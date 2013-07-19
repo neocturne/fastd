@@ -546,6 +546,9 @@ static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 		default:
 			exit_bug(ctx, "invalid peer address family");
 		}
+
+		if (peer->dynamic_float_deprecated)
+			pr_warn(ctx, "peer `%s' uses deprecated float syntax, please update your configuration", peer->name);
 	}
 }
 
@@ -917,7 +920,7 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 		func(ctx, conf);			\
 		continue;				\
 	}
-#define OPTION_ARG(func, options, arg, message) 	\
+#define OPTION_ARG(func, options, arg, message)		\
 	if(config_match(argv[i], options, NULL)) {	\
 		i+=2;					\
 		if (i > argc)				\
