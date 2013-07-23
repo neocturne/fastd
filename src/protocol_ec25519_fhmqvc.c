@@ -555,12 +555,6 @@ static fastd_peer_t* find_sender_key(fastd_context_t *ctx, const fastd_peer_addr
 		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) != 0)
 			continue;
 
-		if (peer->config && fastd_peer_config_matches_dynamic(peer->config, address)) {
-			fastd_resolve_peer(ctx, peer);
-			errno = EAGAIN;
-			return NULL;
-		}
-
 		if (fastd_peer_is_floating(peer))
 			return peer;
 

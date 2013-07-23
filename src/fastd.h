@@ -225,12 +225,7 @@ struct fastd_config {
 	fastd_peer_group_config_t *peer_group;
 	fastd_peer_config_t *peers;
 
-	unsigned n_floating;
-	unsigned n_v4;
-	unsigned n_v6;
-	unsigned n_dynamic;
-	unsigned n_dynamic_v4;
-	unsigned n_dynamic_v6;
+	bool has_floating;
 
 	fastd_protocol_config_t *protocol_config;
 

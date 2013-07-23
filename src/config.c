@@ -511,41 +511,13 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 	return ret;
 }
 
-static void count_peers(fastd_context_t *ctx, fastd_config_t *conf) {
-	conf->n_floating = 0;
-	conf->n_v4 = 0;
-	conf->n_v6 = 0;
-	conf->n_dynamic = 0;
-	conf->n_dynamic_v4 = 0;
-	conf->n_dynamic_v6 = 0;
+static void assess_peers(fastd_context_t *ctx, fastd_config_t *conf) {
+	conf->has_floating = false;
 
 	fastd_peer_config_t *peer;
 	for (peer = conf->peers; peer; peer = peer->next) {
-		switch (peer->address.sa.sa_family) {
-		case AF_UNSPEC:
-			if (peer->hostname)
-				conf->n_dynamic++;
-			else
-				conf->n_floating++;
-			break;
-
-		case AF_INET:
-			if (peer->hostname)
-				conf->n_dynamic_v4++;
-			else
-				conf->n_v4++;
-			break;
-
-		case AF_INET6:
-			if (peer->hostname)
-				conf->n_dynamic_v6++;
-			else
-				conf->n_v6++;
-			break;
-
-		default:
-			exit_bug(ctx, "invalid peer address family");
-		}
+		if (fastd_peer_config_is_floating(peer))
+			conf->has_floating = true;
 
 		if (peer->dynamic_float_deprecated)
 			pr_warn(ctx, "peer `%s' uses deprecated float syntax, please update your configuration", peer->name);
@@ -1009,7 +981,7 @@ void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf) {
 	peer_dirs_handle_old_peers(ctx, &conf->peers, &temp_conf.peers);
 	peer_dirs_handle_new_peers(ctx, &conf->peers, temp_conf.peers);
 
-	count_peers(ctx, conf);
+	assess_peers(ctx, conf);
 }
 
 void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {

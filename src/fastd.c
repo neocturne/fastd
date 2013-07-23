@@ -959,9 +959,7 @@ static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socke
 }
 
 static inline bool is_unknown_peer_valid(fastd_context_t *ctx, const fastd_peer_address_t *remote_addr) {
-	return ctx->conf->n_floating || ctx->conf->n_dynamic || ctx->conf->on_verify ||
-		(remote_addr->sa.sa_family == AF_INET && ctx->conf->n_dynamic_v4) ||
-		(remote_addr->sa.sa_family == AF_INET6 && ctx->conf->n_dynamic_v6);
+	return ctx->conf->has_floating || ctx->conf->on_verify;
 }
 
 static inline void handle_socket_receive_unknown(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
