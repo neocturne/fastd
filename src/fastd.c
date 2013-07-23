@@ -788,13 +788,13 @@ static inline void update_time(fastd_context_t *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
-static inline void schedule_new_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
+static inline void schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
 }
 
 static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!fastd_peer_may_connect(ctx, peer)) {
-		schedule_new_handshake(ctx, peer);
+		schedule_handshake(ctx, peer);
 		return;
 	}
 
@@ -814,7 +814,7 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 		}
 	}
 
-	schedule_new_handshake(ctx, peer);
+	schedule_handshake(ctx, peer);
 }
 
 static void handle_tasks(fastd_context_t *ctx) {
@@ -826,7 +826,7 @@ static void handle_tasks(fastd_context_t *ctx) {
 				if (fastd_peer_may_connect(ctx, task->peer))
 					fastd_resolve_peer(ctx, task->peer);
 				else
-					schedule_new_handshake(ctx, task->peer);
+					schedule_handshake(ctx, task->peer);
 			}
 			else {
 				send_handshake(ctx, task->peer);
@@ -1079,7 +1079,7 @@ static void handle_resolv_returns(fastd_context_t *ctx) {
 		}
 		else {
 			pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", hostname, &resolve_return.addr);
-			fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
+			schedule_handshake(ctx, peer);
 		}
 		break;
 	}
