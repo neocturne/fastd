@@ -40,7 +40,7 @@ struct fastd_peer {
 	fastd_peer_address_t local_address;
 	fastd_peer_address_t address;
 
-	bool established;
+	fastd_peer_state_t state;
 
 	struct timespec last_resolve;
 	struct timespec last_resolve_return;
@@ -144,7 +144,13 @@ static inline bool fastd_peer_is_temporary(const fastd_peer_t *peer) {
 }
 
 static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
-	return peer->established;
+	switch(peer->state) {
+	case STATE_ESTABLISHED:
+		return true;
+
+	default:
+		return false;
+	}
 }
 
 static inline void fastd_peer_seen(fastd_context_t *ctx, fastd_peer_t *peer) {

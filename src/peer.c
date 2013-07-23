@@ -128,7 +128,7 @@ static bool is_peer_in_group(fastd_peer_t *peer, fastd_peer_group_t *group) {
 }
 
 static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (peer->established)
+	if (fastd_peer_is_established(peer))
 		on_disestablish(ctx, peer);
 
 	free_socket(ctx, peer);
@@ -160,7 +160,7 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	memset(&peer->local_address, 0, sizeof(peer->local_address));
 
-	peer->established = false;
+	peer->state = STATE_INIT;
 
 	peer->last_resolve = (struct timespec){0, 0};
 	peer->last_resolve_return = (struct timespec){0, 0};
@@ -463,13 +463,12 @@ void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
 }
 
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (!peer->established) {
-		peer->established = true;
-		on_establish(ctx, peer);
-		pr_info(ctx, "connection with %P established.", peer);
-	}
+	if (fastd_peer_is_established(peer))
+		return;
 
-	return;
+	peer->state = STATE_ESTABLISHED;
+	on_establish(ctx, peer);
+	pr_info(ctx, "connection with %P established.", peer);
 }
 
 const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
