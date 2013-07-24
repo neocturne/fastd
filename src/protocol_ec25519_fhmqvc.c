@@ -645,10 +645,6 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	peer = match_sender_key(ctx, sock, remote_addr, peer, handshake->records[RECORD_SENDER_KEY].data);
 	if (!peer) {
 		switch (errno) {
-		case EAGAIN:
-			pr_debug(ctx, "received handshake from %I, resolving host...", remote_addr);
-			return;
-
 		case EPERM:
 			pr_debug(ctx, "ignoring handshake from %I (incorrect source address)", remote_addr);
 			return;
