@@ -111,6 +111,7 @@ bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const
 void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer);
 bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_peer_address_t *address);
 bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
 void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer);
 

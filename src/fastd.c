@@ -793,28 +793,27 @@ static inline void schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer) 
 }
 
 static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (!fastd_peer_may_connect(ctx, peer)) {
-		schedule_handshake(ctx, peer);
-		return;
-	}
-
 	if (!fastd_peer_is_established(peer))
 		fastd_peer_reset_socket(ctx, peer);
 
-	if (peer->sock) {
-		if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
-		    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
-			pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
-		}
-		else {
-			pr_debug(ctx, "sending handshake to %P...", peer);
-			peer->last_handshake = ctx->now;
-			peer->last_handshake_address = peer->address;
-			ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->local_address, &peer->address, peer);
-		}
+	if (!peer->sock)
+		return;
+
+	if (peer->address.sa.sa_family == AF_UNSPEC) {
+		pr_debug(ctx, "not sending a handshake to %P (no valid address resolved)", peer);
+		return;
 	}
 
-	schedule_handshake(ctx, peer);
+	if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
+	    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
+		pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
+		return;
+	}
+
+	pr_debug(ctx, "sending handshake to %P...", peer);
+	peer->last_handshake = ctx->now;
+	peer->last_handshake_address = peer->address;
+	ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->local_address, &peer->address, peer);
 }
 
 static void handle_tasks(fastd_context_t *ctx) {
@@ -822,15 +821,16 @@ static void handle_tasks(fastd_context_t *ctx) {
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
-			if (fastd_peer_is_dynamic(task->peer) && !(fastd_peer_is_floating(task->peer) && fastd_peer_is_established(task->peer))) {
-				if (fastd_peer_may_connect(ctx, task->peer))
-					fastd_resolve_peer(ctx, task->peer);
-				else
-					schedule_handshake(ctx, task->peer);
-			}
-			else {
-				send_handshake(ctx, task->peer);
-			}
+			schedule_handshake(ctx, task->peer);
+
+			if(!fastd_peer_may_connect(ctx, task->peer))
+				break;
+
+			if (fastd_peer_is_dynamic(task->peer) && !fastd_peer_is_established(task->peer))
+				fastd_resolve_peer(ctx, task->peer);
+
+			send_handshake(ctx, task->peer);
+
 			break;
 
 		case TASK_KEEPALIVE:
@@ -1045,18 +1045,18 @@ static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
 	handle_socket_receive(ctx, sock, &local_addr, &recvaddr, buffer);
 }
 
-static void handle_resolv_returns(fastd_context_t *ctx) {
+static void handle_resolve_returns(fastd_context_t *ctx) {
 	fastd_resolve_return_t resolve_return;
 
 	while (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
 		if (errno != EINTR)
-			exit_errno(ctx, "handle_resolv_return: read");
+			exit_errno(ctx, "handle_resolve_return: read");
 	}
 
 	char hostname[resolve_return.hostname_len+1];
 	while (read(ctx->resolverfd, hostname, resolve_return.hostname_len) < 0) {
 		if (errno != EINTR)
-			exit_errno(ctx, "handle_resolv_return: read");
+			exit_errno(ctx, "handle_resolve_return: read");
 	}
 
 	hostname[resolve_return.hostname_len] = 0;
@@ -1072,15 +1072,8 @@ static void handle_resolv_returns(fastd_context_t *ctx) {
 		if (!fastd_peer_config_matches_dynamic(peer->config, &resolve_return.constraints))
 			continue;
 
-		peer->last_resolve_return = ctx->now;
+		fastd_peer_handle_resolve(ctx, peer, &resolve_return.addr);
 
-		if (fastd_peer_claim_address(ctx, peer, NULL, NULL, &resolve_return.addr)) {
-			send_handshake(ctx, peer);
-		}
-		else {
-			pr_warn(ctx, "hostname `%s' resolved to address %I which is used by a fixed peer", hostname, &resolve_return.addr);
-			schedule_handshake(ctx, peer);
-		}
 		break;
 	}
 }
@@ -1141,7 +1134,7 @@ static void handle_input(fastd_context_t *ctx) {
 	if (fds[0].revents & POLLIN)
 		handle_tun(ctx);
 	if (fds[1].revents & POLLIN)
-		handle_resolv_returns(ctx);
+		handle_resolve_returns(ctx);
 
 	for (i = 2; i < ctx->n_socks+2; i++) {
 		if (fds[i].revents & (POLLERR|POLLHUP|POLLNVAL))

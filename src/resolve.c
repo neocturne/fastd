@@ -109,25 +109,7 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	}
 
 	if (timespec_diff(&ctx->now, &peer->last_resolve) < ctx->conf->min_resolve_interval*1000) {
-		pr_debug(ctx, "not resolving %P as it has been resolved a short time ago", peer);
-
-		size_t hostname_len = strlen(peer->config->hostname);
-		char buf[sizeof(fastd_resolve_return_t) + hostname_len];
-
-		fastd_resolve_return_t *ret = (void*)buf;
-		char *hostname = buf + sizeof(fastd_resolve_return_t);
-
-		memset(ret, 0, sizeof(fastd_resolve_return_t));
-
-		ret->constraints = peer->config->address;
-		ret->hostname_len = hostname_len;
-		memcpy(hostname, peer->config->hostname, hostname_len);
-
-		ret->addr = peer->address;
-
-		if (write(ctx->resolvewfd, buf, sizeof(buf)) < 0)
-			pr_error_errno(ctx, "can't write resolve return");
-
+		/* last resolve was just a few seconds ago */
 		return;
 	}
 

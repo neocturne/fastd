@@ -152,6 +152,27 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	fastd_task_delete_peer(ctx, peer);
 }
 
+static void init_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
+	unsigned delay = 0;
+	if (has_group_config_constraints(peer->group->conf))
+		delay = fastd_rand(ctx, 0, 3000);
+
+	if (!fastd_peer_is_established(peer))
+		peer->state = STATE_HANDSHAKE;
+
+	fastd_task_schedule_handshake(ctx, peer, delay);
+}
+
+void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_peer_address_t *address) {
+	peer->last_resolve_return = ctx->now;
+
+	if (!fastd_peer_claim_address(ctx, peer, NULL, NULL, address))
+		pr_warn(ctx, "resolved address %I for peer %P which is used by a fixed peer", address, peer);
+
+	if (peer->state == STATE_RESOLVING)
+		init_handshake(ctx, peer);
+}
+
 static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->config || peer->config->hostname)
 		peer->address.sa.sa_family = AF_UNSPEC;
@@ -174,12 +195,12 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
-	if (peer->address.sa.sa_family != AF_UNSPEC || fastd_peer_is_dynamic(peer)) {
-		unsigned delay = 0;
-		if (has_group_config_constraints(peer->group->conf))
-			delay = fastd_rand(ctx, 0, 3000);
-
-		fastd_task_schedule_handshake(ctx, peer, delay);
+	if (fastd_peer_is_dynamic(peer)) {
+		peer->state = STATE_RESOLVING;
+		fastd_resolve_peer(ctx, peer);
+	}
+	else if(peer->address.sa.sa_family != AF_UNSPEC) {
+		init_handshake(ctx, peer);
 	}
 }
 
@@ -404,9 +425,11 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 	peer->protocol_state = NULL;
 	peer->sock = NULL;
 	peer->seen = (struct timespec){0, 0};
-	setup_peer(ctx, peer);
 
 	pr_verbose(ctx, "adding peer %P (group `%s')", peer, peer->group->conf->name);
+
+	setup_peer(ctx, peer);
+
 	ctx->n_peers++;
 
 	return peer;
@@ -426,9 +449,10 @@ fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx) {
 	peer->protocol_state = NULL;
 	peer->sock = NULL;
 	peer->seen = ctx->now;
-	setup_peer(ctx, peer);
 
 	pr_debug(ctx, "adding temporary peer");
+
+	setup_peer(ctx, peer);
 
 	return peer;
 }
@@ -555,7 +579,7 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, const fas
 	int i;
 	for (i = ctx->n_eth_addr-1; i > min; i--)
 		ctx->eth_addr[i] = ctx->eth_addr[i-1];
-	
+
 	ctx->eth_addr[min] = (fastd_peer_eth_addr_t){ *addr, peer, ctx->now };
 
 	pr_debug(ctx, "learned new MAC address %E on peer %P", addr, peer);

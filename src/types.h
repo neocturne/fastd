@@ -50,6 +50,8 @@ typedef enum fastd_drop_caps {
 
 typedef enum fastd_peer_state {
 	STATE_INIT = 0,
+	STATE_RESOLVING,
+	STATE_HANDSHAKE,
 	STATE_ESTABLISHED,
 } fastd_peer_state_t;
 
