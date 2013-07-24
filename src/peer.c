@@ -363,19 +363,21 @@ bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fast
 	else {
 		fastd_peer_t *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (!fastd_peer_address_equal(&peer->address, remote_addr))
+			if (peer == new_peer)
 				continue;
 
-			if (peer == new_peer)
-				break;
-
-			if (!fastd_peer_is_floating(peer)) {
+			if (fastd_peer_owns_address(ctx, peer, remote_addr)) {
 				reset_peer_address(ctx, new_peer);
 				return false;
 			}
 
-			reset_peer_address(ctx, peer);
-			break;
+			if (fastd_peer_address_equal(&peer->address, remote_addr)) {
+				if (fastd_peer_is_established(peer))
+					return false;
+
+				reset_peer_address(ctx, peer);
+				break;
+			}
 		}
 	}
 
