@@ -230,6 +230,13 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->config)
 		free(peer->protocol_config);
 
+	while (peer->remotes) {
+		fastd_remote_t *remote = peer->remotes;
+		peer->remotes = remote->next;
+
+		free(remote);
+	}
+
 	free(peer);
 }
 
