@@ -815,7 +815,7 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 		return;
 	}
 
-	pr_debug(ctx, "sending handshake to %P...", peer);
+	pr_debug(ctx, "sending handshake to %P[%I]...", peer, &peer->address);
 	peer->last_handshake = ctx->now;
 	peer->last_handshake_address = peer->address;
 	ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->local_address, &peer->address, peer);
