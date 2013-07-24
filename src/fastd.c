@@ -1332,9 +1332,6 @@ int main(int argc, char *argv[]) {
 	init_tuntap(&ctx);
 
 	init_peer_groups(&ctx);
-	fastd_config_load_peer_dirs(&ctx, &conf);
-	init_peers(&ctx);
-
 	if (conf.daemon) {
 		pid_t pid = fork();
 		if (pid < 0) {
@@ -1361,6 +1358,9 @@ int main(int argc, char *argv[]) {
 		drop_caps(&ctx);
 	else if (conf.drop_caps == DROP_CAPS_OFF)
 		set_user(&ctx);
+
+	fastd_config_load_peer_dirs(&ctx, &conf);
+	init_peers(&ctx);
 
 	while (!terminate) {
 		handle_tasks(&ctx);
