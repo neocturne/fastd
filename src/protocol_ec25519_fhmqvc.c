@@ -569,16 +569,8 @@ static fastd_peer_t* find_sender_key(fastd_context_t *ctx, const fastd_peer_addr
 static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const unsigned char key[32]) {
 	errno = 0;
 
-	if (sock->peer) {
-		if (peer != sock->peer) {
-			if (peer && !fastd_peer_is_floating(peer) && !fastd_peer_is_dynamic(peer)) {
-				errno = EPERM;
-				return NULL;
-			}
-
-			peer = sock->peer;
-		}
-	}
+	if (sock->peer && peer != sock->peer)
+		exit_bug(ctx, "packet without correct peer set on dynamic socket");
 
 	if (peer) {
 		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {

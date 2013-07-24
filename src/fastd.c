@@ -981,9 +981,12 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 	fastd_peer_t *peer = NULL;
 
 	if (sock->peer) {
-		if (fastd_peer_address_equal(&sock->peer->address, remote_addr)) {
-			peer = sock->peer;
+		if (!fastd_peer_address_equal(&sock->peer->address, remote_addr)) {
+			fastd_buffer_free(buffer);
+			return;
 		}
+
+		peer = sock->peer;
 	}
 	else {
 		for (peer = ctx->peers; peer; peer = peer->next) {
