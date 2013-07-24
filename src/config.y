@@ -397,29 +397,39 @@ peer_statement: TOK_REMOTE peer_remote ';'
 	;
 
 peer_remote:	TOK_ADDR4 port {
-			free(conf->peers->hostname);
-			conf->peers->hostname = NULL;
+			fastd_remote_config_t **remote = &conf->peers->remotes;
+			while (*remote)
+				remote = &(*remote)->next;
 
-			conf->peers->address.in.sin_family = AF_INET;
-			conf->peers->address.in.sin_addr = $1;
-			conf->peers->address.in.sin_port = htons($2);
-			fastd_peer_address_simplify(&conf->peers->address);
+			*remote = calloc(1, sizeof(fastd_remote_config_t));
+
+			(*remote)->address.in.sin_family = AF_INET;
+			(*remote)->address.in.sin_addr = $1;
+			(*remote)->address.in.sin_port = htons($2);
+			fastd_peer_address_simplify(&(*remote)->address);
 		}
 	|	TOK_ADDR6 port {
-			free(conf->peers->hostname);
-			conf->peers->hostname = NULL;
+			fastd_remote_config_t **remote = &conf->peers->remotes;
+			while (*remote)
+				remote = &(*remote)->next;
 
-			conf->peers->address.in6.sin6_family = AF_INET6;
-			conf->peers->address.in6.sin6_addr = $1;
-			conf->peers->address.in6.sin6_port = htons($2);
-			fastd_peer_address_simplify(&conf->peers->address);
+			*remote = calloc(1, sizeof(fastd_remote_config_t));
+
+			(*remote)->address.in6.sin6_family = AF_INET6;
+			(*remote)->address.in6.sin6_addr = $1;
+			(*remote)->address.in6.sin6_port = htons($2);
+			fastd_peer_address_simplify(&(*remote)->address);
 		}
 	|	maybe_af TOK_STRING port maybe_float {
-			free(conf->peers->hostname);
+			fastd_remote_config_t **remote = &conf->peers->remotes;
+			while (*remote)
+				remote = &(*remote)->next;
 
-			conf->peers->hostname = strdup($2->str);
-			conf->peers->address.sa.sa_family = $1;
-			conf->peers->address.in.sin_port = htons($3);
+			*remote = calloc(1, sizeof(fastd_remote_config_t));
+
+			(*remote)->hostname = strdup($2->str);
+			(*remote)->address.sa.sa_family = $1;
+			(*remote)->address.in.sin_port = htons($3);
 			conf->peers->floating = conf->peers->dynamic_float_deprecated = $4;
 		}
 	;

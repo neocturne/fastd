@@ -66,6 +66,8 @@ typedef struct fastd_peer_config fastd_peer_config_t;
 typedef struct fastd_eth_addr fastd_eth_addr_t;
 typedef struct fastd_peer fastd_peer_t;
 typedef struct fastd_peer_eth_addr fastd_peer_eth_addr_t;
+typedef struct fastd_remote_config fastd_remote_config_t;
+typedef struct fastd_remote fastd_remote_t;
 
 typedef struct fastd_log_file fastd_log_file_t;
 typedef struct fastd_log_fd fastd_log_fd_t;

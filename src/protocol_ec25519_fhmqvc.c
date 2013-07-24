@@ -550,20 +550,31 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 }
 
 static fastd_peer_t* find_sender_key(fastd_context_t *ctx, const fastd_peer_address_t *address, const unsigned char key[32], fastd_peer_t *peers) {
-	fastd_peer_t *peer;
+	errno = 0;
+
+	fastd_peer_t *ret = NULL, *peer;
+
 	for (peer = peers; peer; peer = peer->next) {
-		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) != 0)
+		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
+			if (!fastd_peer_matches_address(ctx, peer, address)) {
+				errno = EPERM;
+				return NULL;
+			}
+
+			ret = peer;
 			continue;
+		}
 
-		if (fastd_peer_is_floating(peer))
-			return peer;
-
-		errno = EPERM;
-		return NULL;
+		if (fastd_peer_owns_address(ctx, peer, address)) {
+			errno = EPERM;
+			return NULL;
+		}
 	}
 
-	errno = ENOENT;
-	return NULL;
+	if (!ret)
+		errno = ENOENT;
+
+	return ret;
 }
 
 static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const unsigned char key[32]) {
@@ -573,27 +584,19 @@ static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t
 		exit_bug(ctx, "packet without correct peer set on dynamic socket");
 
 	if (peer) {
-		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0) {
-			if (sock->peer && sock->peer != peer) {
-				errno = EPERM;
-				return NULL;
-			}
-
+		if (memcmp(peer->protocol_config->public_key.p, key, PUBLICKEYBYTES) == 0)
 			return peer;
-		}
-	}
 
-	if (peer && !fastd_peer_is_floating(peer) && !fastd_peer_is_dynamic(peer)) {
-		errno = EPERM;
-		return NULL;
+		if (fastd_peer_owns_address(ctx, peer, address)) {
+			errno = EPERM;
+			return NULL;
+		}
 	}
 
 	peer = find_sender_key(ctx, address, key, ctx->peers);
 
-	if (!peer && errno == ENOENT) {
-		errno = 0;
+	if (!peer && errno == ENOENT)
 		peer = find_sender_key(ctx, address, key, ctx->peers_temp);
-	}
 
 	return peer;
 }

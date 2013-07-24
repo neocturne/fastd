@@ -793,8 +793,13 @@ static inline void schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer) 
 }
 
 static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (!fastd_peer_is_established(peer))
+	if (!peer->next_remote)
+		exit_bug(ctx, "send_handshake: no remote");
+
+	if (!fastd_peer_is_established(peer)) {
+		fastd_peer_claim_address(ctx, peer, NULL, NULL, &peer->next_remote->address);
 		fastd_peer_reset_socket(ctx, peer);
+	}
 
 	if (!peer->sock)
 		return;
@@ -823,13 +828,22 @@ static void handle_tasks(fastd_context_t *ctx) {
 		case TASK_HANDSHAKE:
 			schedule_handshake(ctx, task->peer);
 
-			if(!fastd_peer_may_connect(ctx, task->peer))
+			if(!fastd_peer_may_connect(ctx, task->peer)) {
+				task->peer->next_remote = task->peer->remotes;
 				break;
-
-			if (fastd_peer_is_dynamic(task->peer) && !fastd_peer_is_established(task->peer))
-				fastd_resolve_peer(ctx, task->peer);
+			}
 
 			send_handshake(ctx, task->peer);
+
+			if (fastd_peer_is_established(task->peer))
+				break;
+
+			task->peer->next_remote = task->peer->next_remote->next;
+			if (!task->peer->next_remote)
+				task->peer->next_remote = task->peer->remotes;
+
+			if (fastd_peer_remote_is_dynamic(task->peer->next_remote))
+				fastd_resolve_peer(ctx, task->peer, task->peer->next_remote);
 
 			break;
 
@@ -1069,13 +1083,16 @@ static void handle_resolve_returns(fastd_context_t *ctx) {
 		if (!peer->config)
 			continue;
 
-		if (!strequal(peer->config->hostname, hostname))
+		fastd_remote_t *remote;
+		for (remote = peer->remotes; remote; remote = remote->next) {
+			if (strequal(remote->config->hostname, hostname) && fastd_peer_remote_matches_dynamic(remote->config, &resolve_return.constraints))
+				break;
+		}
+
+		if (!remote)
 			continue;
 
-		if (!fastd_peer_config_matches_dynamic(peer->config, &resolve_return.constraints))
-			continue;
-
-		fastd_peer_handle_resolve(ctx, peer, &resolve_return.addr);
+		fastd_peer_handle_resolve(ctx, peer, remote, &resolve_return.addr);
 
 		break;
 	}

@@ -163,28 +163,27 @@ static void init_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	fastd_task_schedule_handshake(ctx, peer, delay);
 }
 
-void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_peer_address_t *address) {
-	peer->last_resolve_return = ctx->now;
-
-	if (!fastd_peer_claim_address(ctx, peer, NULL, NULL, address))
-		pr_warn(ctx, "resolved address %I for peer %P which is used by a fixed peer", address, peer);
+void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, const fastd_peer_address_t *address) {
+	remote->last_resolve_return = ctx->now;
+	remote->address = *address;
 
 	if (peer->state == STATE_RESOLVING)
 		init_handshake(ctx, peer);
 }
 
 static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (!peer->config || peer->config->hostname)
-		peer->address.sa.sa_family = AF_UNSPEC;
-	else
-		peer->address = peer->config->address;
-
-	memset(&peer->local_address, 0, sizeof(peer->local_address));
+	peer->address.sa.sa_family = AF_UNSPEC;
+	peer->local_address.sa.sa_family = AF_UNSPEC;
 
 	peer->state = STATE_INIT;
 
-	peer->last_resolve = (struct timespec){0, 0};
-	peer->last_resolve_return = (struct timespec){0, 0};
+	fastd_remote_t *remote;
+	for (remote = peer->remotes; remote; remote = remote->next) {
+		remote->last_resolve = (struct timespec){0, 0};
+		remote->last_resolve_return = (struct timespec){0, 0};
+	}
+
+	peer->next_remote = peer->remotes;
 
 	peer->last_handshake = (struct timespec){0, 0};
 	peer->last_handshake_address.sa.sa_family = AF_UNSPEC;
@@ -195,12 +194,14 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
-	if (fastd_peer_is_dynamic(peer)) {
-		peer->state = STATE_RESOLVING;
-		fastd_resolve_peer(ctx, peer);
-	}
-	else if(peer->address.sa.sa_family != AF_UNSPEC) {
-		init_handshake(ctx, peer);
+	if(peer->next_remote) {
+		if (fastd_peer_remote_is_dynamic(peer->next_remote)) {
+			peer->state = STATE_RESOLVING;
+			fastd_resolve_peer(ctx, peer, peer->next_remote);
+		}
+		else  {
+			init_handshake(ctx, peer);
+		}
 	}
 }
 
@@ -245,8 +246,15 @@ fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx, fastd_config_t 
 }
 
 void fastd_peer_config_free(fastd_peer_config_t *peer) {
+	while (peer->remotes) {
+		fastd_remote_config_t *remote = peer->remotes;
+		peer->remotes = remote->next;
+
+		free(remote->hostname);
+		free(remote);
+	}
+
 	free(peer->name);
-	free(peer->hostname);
 	free(peer->key);
 	free(peer->protocol_config);
 	free(peer);
@@ -318,6 +326,35 @@ static inline void reset_peer_address(fastd_context_t *ctx, fastd_peer_t *peer) 
 	memset(&peer->address, 0, sizeof(fastd_peer_address_t));
 }
 
+bool fastd_peer_owns_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
+	if (fastd_peer_is_floating(peer))
+		return false;
+
+	fastd_remote_config_t *remote;
+	for (remote = peer->config->remotes; remote; remote = remote->next) {
+		if (remote->hostname)
+			continue;
+
+		if (fastd_peer_address_equal(&remote->address, addr))
+			return true;
+	}
+
+	return false;
+}
+
+bool fastd_peer_matches_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
+	if (fastd_peer_is_floating(peer))
+		return true;
+
+	fastd_remote_t *remote;
+	for (remote = peer->remotes; remote; remote = remote->next) {
+		if (fastd_peer_address_equal(&remote->address, addr))
+			return true;
+	}
+
+	return false;
+}
+
 bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr) {
 	if (remote_addr->sa.sa_family == AF_UNSPEC) {
 		if (fastd_peer_is_established(new_peer))
@@ -354,17 +391,30 @@ bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fast
 	return true;
 }
 
-bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2) {
-	if (peer1->group != peer2->group)
+static bool fastd_remote_configs_equal(const fastd_remote_config_t *remote1, const fastd_remote_config_t *remote2) {
+	if (!remote1 && !remote2)
+		return true;
+
+	if (!remote1 || !remote2)
 		return false;
 
-	if (!strequal(peer1->hostname, peer2->hostname))
+	if (!fastd_peer_address_equal(&remote1->address, &remote2->address))
+		return false;
+
+	if (!strequal(remote1->hostname, remote2->hostname))
+		return false;
+
+	return fastd_remote_configs_equal(remote1->next, remote2->next);
+}
+
+bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2) {
+	if (peer1->group != peer2->group)
 		return false;
 
 	if(peer1->floating != peer2->floating)
 		return false;
 
-	if (!fastd_peer_address_equal(&peer1->address, &peer2->address))
+	if (!fastd_remote_configs_equal(peer1->remotes, peer2->remotes))
 		return false;
 
 	if (!strequal(peer1->key, peer2->key))
@@ -414,7 +464,7 @@ bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer) {
 }
 
 fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
-	fastd_peer_t *peer = malloc(sizeof(fastd_peer_t));
+	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
 
 	peer->next = ctx->peers;
 	ctx->peers = peer;
@@ -422,9 +472,20 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 	peer->config = peer_conf;
 	peer->group = find_peer_group(ctx->peer_group, peer_conf->group);
 	peer->protocol_config = peer_conf->protocol_config;
-	peer->protocol_state = NULL;
-	peer->sock = NULL;
-	peer->seen = (struct timespec){0, 0};
+
+	fastd_remote_t **remote = &peer->remotes;
+	fastd_remote_config_t *remote_config = peer_conf->remotes;
+
+	while (remote_config) {
+		*remote = calloc(1, sizeof(fastd_remote_t));
+		(*remote)->config = remote_config;
+
+		if (!remote_config->hostname)
+			(*remote)->address = remote_config->address;
+
+		remote = &(*remote)->next;
+		remote_config = remote_config->next;
+	}
 
 	pr_verbose(ctx, "adding peer %P (group `%s')", peer, peer->group->conf->name);
 
@@ -439,15 +500,12 @@ fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx) {
 	if (!ctx->conf->on_verify)
 		exit_bug(ctx, "tried to add temporary peer without on-verify command");
 
-	fastd_peer_t *peer = malloc(sizeof(fastd_peer_t));
+	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
 
 	peer->next = ctx->peers_temp;
 	ctx->peers_temp = peer;
 
-	peer->config = NULL;
 	peer->group = ctx->peer_group;
-	peer->protocol_state = NULL;
-	peer->sock = NULL;
 	peer->seen = ctx->now;
 
 	pr_debug(ctx, "adding temporary peer");
@@ -513,20 +571,20 @@ const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd
 	}
 }
 
-bool fastd_peer_config_matches_dynamic(const fastd_peer_config_t *config, const fastd_peer_address_t *addr) {
-	if (!config->hostname)
+bool fastd_peer_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr) {
+	if (!remote->hostname)
 		return false;
 
-	if (config->address.sa.sa_family != AF_UNSPEC &&
-	    config->address.sa.sa_family != addr->sa.sa_family)
+	if (remote->address.sa.sa_family != AF_UNSPEC &&
+	    remote->address.sa.sa_family != addr->sa.sa_family)
 		return false;
 
 	if (addr->sa.sa_family == AF_INET6) {
-		if (config->address.in.sin_port != addr->in6.sin6_port)
+		if (remote->address.in.sin_port != addr->in6.sin6_port)
 			return false;
 	}
 	else {
-		if (config->address.in.sin_port != addr->in.sin_port)
+		if (remote->address.in.sin_port != addr->in.sin_port)
 			return false;
 	}
 

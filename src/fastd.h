@@ -312,7 +312,7 @@ fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int 
 void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset);
 void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset);
 
-void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote);
 
 int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
 void fastd_logf(const fastd_context_t *ctx, int level, const char *format, ...);

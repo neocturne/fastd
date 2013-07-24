@@ -99,27 +99,27 @@ static void* resolve_peer(void *varg) {
 	return NULL;
 }
 
-void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
+void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote) {
 	if (!peer->config)
 		exit_bug(ctx, "trying to resolve temporary peer");
 
-	if (timespec_after(&peer->last_resolve, &peer->last_resolve_return)) {
+	if (timespec_after(&remote->last_resolve, &remote->last_resolve_return)) {
 		pr_debug(ctx, "not resolving %P as there is already a resolve running", peer);
 		return;
 	}
 
-	if (timespec_diff(&ctx->now, &peer->last_resolve) < ctx->conf->min_resolve_interval*1000) {
+	if (timespec_diff(&ctx->now, &remote->last_resolve) < ctx->conf->min_resolve_interval*1000) {
 		/* last resolve was just a few seconds ago */
 		return;
 	}
 
-	pr_verbose(ctx, "resolving host `%s' for peer %P...", peer->config->hostname, peer);
+	pr_verbose(ctx, "resolving host `%s' for peer %P...", remote->config->hostname, peer);
 
 	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
 
 	arg->ctx = ctx;
-	arg->hostname = strdup(peer->config->hostname);
-	arg->constraints = peer->config->address;
+	arg->hostname = strdup(remote->config->hostname);
+	arg->constraints = remote->config->address;
 
 	pthread_t thread;
 	if (pthread_create(&thread, NULL, resolve_peer, arg) != 0) {
@@ -132,5 +132,5 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	}
 
 	pthread_detach(thread);
-	peer->last_resolve = ctx->now;
+	remote->last_resolve = ctx->now;
 }
