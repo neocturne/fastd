@@ -245,6 +245,14 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 		}
 	}
 
+	if (ctx->conf->pmtu.set) {
+		int pmtu = ctx->conf->pmtu.state ? IP_PMTUDISC_DO : IP_PMTUDISC_DONT;
+		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+			pr_error_errno(ctx, "setsockopt: unable to set PMTU discovery");
+			goto error;
+		}
+	}
+
 	fastd_peer_address_t bind_address = addr->addr;
 
 	if (bind_address.sa.sa_family == AF_UNSPEC) {

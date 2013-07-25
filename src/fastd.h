@@ -195,6 +195,7 @@ struct fastd_config {
 	fastd_mode_t mode;
 
 	bool forward;
+	fastd_tristate_t pmtu;
 
 	fastd_drop_caps_t drop_caps;
 
