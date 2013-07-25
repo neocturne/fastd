@@ -21,6 +21,7 @@ add_executable(fastd
   crypto.c
   crypto_linux.c
   handshake.c
+  options.c
   peer.c
   printf.c
   queue.c

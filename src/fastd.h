@@ -341,6 +341,7 @@ void fastd_config_peer_group_pop(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
 void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf);
+void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
 
 void fastd_cap_init(fastd_context_t *ctx);
 void fastd_cap_drop(fastd_context_t *ctx);
