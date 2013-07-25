@@ -25,6 +25,7 @@ add_executable(fastd
   printf.c
   queue.c
   random.c
+  receive.c
   resolve.c
   send.c
   shell.c

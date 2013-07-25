@@ -311,10 +311,14 @@ struct fastd_string_stack {
 void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer);
 void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer);
 void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer);
+void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock);
+
 void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 
 bool fastd_socket_handle_binds(fastd_context_t *ctx);
 fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int af);
+void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock);
+void fastd_socket_error(fastd_context_t *ctx, fastd_socket_t *sock);
 
 void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset);
 void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset);
@@ -457,20 +461,6 @@ static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 		fastd_string_stack_t *next = str->next;
 		free(str);
 		str = next;
-	}
-}
-
-static inline void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock) {
-	if (sock->fd >= 0) {
-		if(close(sock->fd))
-			pr_error_errno(ctx, "closing socket: close");
-
-		sock->fd = -2;
-	}
-
-	if (sock->bound_addr) {
-		free(sock->bound_addr);
-		sock->bound_addr = NULL;
 	}
 }
 

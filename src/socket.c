@@ -199,3 +199,26 @@ fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int 
 
 	return sock;
 }
+
+void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock) {
+	if (sock->fd >= 0) {
+		if(close(sock->fd))
+			pr_error_errno(ctx, "closing socket: close");
+
+		sock->fd = -2;
+	}
+
+	if (sock->bound_addr) {
+		free(sock->bound_addr);
+		sock->bound_addr = NULL;
+	}
+}
+
+void fastd_socket_error(fastd_context_t *ctx, fastd_socket_t *sock) {
+	if (sock->addr->bindtodev)
+		pr_warn(ctx, "socket bind %I on `%s' lost", &sock->addr->addr, sock->addr->bindtodev);
+	else
+		pr_warn(ctx, "socket bind %I lost", &sock->addr->addr);
+
+	fastd_socket_close(ctx, sock);
+}
