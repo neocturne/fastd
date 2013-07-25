@@ -850,7 +850,7 @@ static void handle_tasks(fastd_context_t *ctx) {
 			if (!task->peer->next_remote)
 				task->peer->next_remote = task->peer->remotes;
 
-			if (fastd_peer_remote_is_dynamic(task->peer->next_remote))
+			if (fastd_remote_is_dynamic(task->peer->next_remote))
 				fastd_resolve_peer(ctx, task->peer, task->peer->next_remote);
 
 			break;
@@ -1078,14 +1078,6 @@ static void handle_resolve_returns(fastd_context_t *ctx) {
 			exit_errno(ctx, "handle_resolve_return: read");
 	}
 
-	char hostname[resolve_return.hostname_len+1];
-	while (read(ctx->resolverfd, hostname, resolve_return.hostname_len) < 0) {
-		if (errno != EINTR)
-			exit_errno(ctx, "handle_resolve_return: read");
-	}
-
-	hostname[resolve_return.hostname_len] = 0;
-
 	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
 		if (!peer->config)
@@ -1093,7 +1085,7 @@ static void handle_resolve_returns(fastd_context_t *ctx) {
 
 		fastd_remote_t *remote;
 		for (remote = peer->remotes; remote; remote = remote->next) {
-			if (strequal(remote->config->hostname, hostname) && fastd_peer_remote_matches_dynamic(remote->config, &resolve_return.constraints))
+			if (remote == resolve_return.remote)
 				break;
 		}
 
@@ -1104,6 +1096,8 @@ static void handle_resolve_returns(fastd_context_t *ctx) {
 
 		break;
 	}
+
+	fastd_remote_unref(resolve_return.remote);
 }
 
 static inline void handle_socket_error(fastd_context_t *ctx, fastd_socket_t *sock) {

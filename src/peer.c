@@ -195,7 +195,7 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
 	if(peer->next_remote) {
-		if (fastd_peer_remote_is_dynamic(peer->next_remote)) {
+		if (fastd_remote_is_dynamic(peer->next_remote)) {
 			peer->state = STATE_RESOLVING;
 			fastd_resolve_peer(ctx, peer, peer->next_remote);
 		}
@@ -234,7 +234,7 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 		fastd_remote_t *remote = peer->remotes;
 		peer->remotes = remote->next;
 
-		free(remote);
+		fastd_remote_unref(remote);
 	}
 
 	free(peer);
@@ -400,7 +400,7 @@ bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fast
 	return true;
 }
 
-static bool fastd_remote_configs_equal(const fastd_remote_config_t *remote1, const fastd_remote_config_t *remote2) {
+static bool remote_configs_equal(const fastd_remote_config_t *remote1, const fastd_remote_config_t *remote2) {
 	if (!remote1 && !remote2)
 		return true;
 
@@ -413,7 +413,7 @@ static bool fastd_remote_configs_equal(const fastd_remote_config_t *remote1, con
 	if (!strequal(remote1->hostname, remote2->hostname))
 		return false;
 
-	return fastd_remote_configs_equal(remote1->next, remote2->next);
+	return remote_configs_equal(remote1->next, remote2->next);
 }
 
 bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2) {
@@ -423,7 +423,7 @@ bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_
 	if(peer1->floating != peer2->floating)
 		return false;
 
-	if (!fastd_remote_configs_equal(peer1->remotes, peer2->remotes))
+	if (!remote_configs_equal(peer1->remotes, peer2->remotes))
 		return false;
 
 	if (!strequal(peer1->key, peer2->key))
@@ -487,6 +487,7 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 
 	while (remote_config) {
 		*remote = calloc(1, sizeof(fastd_remote_t));
+		(*remote)->ref = 1;
 		(*remote)->config = remote_config;
 
 		if (!remote_config->hostname)
@@ -580,7 +581,7 @@ const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd
 	}
 }
 
-bool fastd_peer_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr) {
+bool fastd_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr) {
 	if (!remote->hostname)
 		return false;
 

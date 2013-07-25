@@ -82,6 +82,8 @@ struct fastd_peer_eth_addr {
 struct fastd_remote {
 	fastd_remote_t *next;
 
+	unsigned ref;
+
 	fastd_remote_config_t *config;
 	fastd_peer_address_t address;
 	struct timespec last_resolve;
@@ -143,7 +145,7 @@ static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *conf
 	return (!config->remotes || config->floating);
 }
 
-bool fastd_peer_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr);
+bool fastd_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr);
 
 static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 	return peer->config ? fastd_peer_config_is_floating(peer->config) : true;
@@ -163,7 +165,16 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 	}
 }
 
-static inline bool fastd_peer_remote_is_dynamic(const fastd_remote_t *remote) {
+static inline void fastd_remote_ref(fastd_remote_t *remote) {
+	remote->ref++;
+}
+
+static inline void fastd_remote_unref(fastd_remote_t *remote) {
+	if(!--remote->ref)
+		free(remote);
+}
+
+static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {
 	return remote->config->hostname;
 }
 

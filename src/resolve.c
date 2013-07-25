@@ -35,6 +35,7 @@
 
 typedef struct resolv_arg {
 	fastd_context_t *ctx;
+	fastd_remote_t *remote;
 	char *hostname;
 	fastd_peer_address_t constraints;
 } resolv_arg_t;
@@ -68,28 +69,17 @@ static void* resolve_peer(void *varg) {
 		error = true;
 	}
 
-	size_t hostname_len = strlen(arg->hostname);
-	char buf[sizeof(fastd_resolve_return_t) + hostname_len];
-
-	fastd_resolve_return_t *ret = (void*)buf;
-	char *hostname = buf + sizeof(fastd_resolve_return_t);
-
-	memset(ret, 0, sizeof(fastd_resolve_return_t));
-
-	ret->constraints = arg->constraints;
-	ret->hostname_len = hostname_len;
-	memcpy(hostname, arg->hostname, hostname_len);
+	fastd_resolve_return_t ret = {
+		.remote = arg->remote
+	};
 
 	if (!error) {
 		pr_verbose(arg->ctx, "resolved host `%s' successfully", arg->hostname);
-		memcpy(&ret->addr, res->ai_addr, res->ai_addrlen);
-		fastd_peer_address_simplify(&ret->addr);
-	}
-	else {
-		ret->addr.sa.sa_family = AF_UNSPEC;
+		memcpy(&ret.addr, res->ai_addr, res->ai_addrlen);
+		fastd_peer_address_simplify(&ret.addr);
 	}
 
-	if (write(arg->ctx->resolvewfd, buf, sizeof(buf)) < 0)
+	if (write(arg->ctx->resolvewfd, &ret, sizeof(ret)) < 0)
 		pr_error_errno(arg->ctx, "can't write resolve return");
 
 	freeaddrinfo(res);
@@ -115,9 +105,13 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 
 	pr_verbose(ctx, "resolving host `%s' for peer %P...", remote->config->hostname, peer);
 
+	fastd_remote_ref(remote);
+	remote->last_resolve = ctx->now;
+
 	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
 
 	arg->ctx = ctx;
+	arg->remote = remote;
 	arg->hostname = strdup(remote->config->hostname);
 	arg->constraints = remote->config->address;
 
@@ -132,5 +126,4 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 	}
 
 	pthread_detach(thread);
-	remote->last_resolve = ctx->now;
 }

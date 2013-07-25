@@ -112,10 +112,8 @@ union fastd_peer_address {
 };
 
 struct fastd_resolve_return {
+	fastd_remote_t *remote;
 	fastd_peer_address_t addr;
-
-	fastd_peer_address_t constraints;
-	size_t hostname_len;
 };
 
 struct fastd_log_file {
