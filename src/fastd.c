@@ -276,189 +276,6 @@ static void close_sockets(fastd_context_t *ctx) {
 	free(ctx->socks);
 }
 
-static size_t methods_max_packet_size(fastd_context_t *ctx) {
-	size_t ret = ctx->conf->methods[0]->max_packet_size(ctx);
-
-	int i;
-	for (i = 0; i < MAX_METHODS; i++) {
-		if (!ctx->conf->methods[i])
-			break;
-
-		size_t s = ctx->conf->methods[i]->max_packet_size(ctx);
-		if (s > ret)
-			ret = s;
-	}
-
-	return ret;
-}
-
-static size_t methods_min_encrypt_head_space(fastd_context_t *ctx) {
-	size_t ret = 0;
-
-	int i;
-	for (i = 0; i < MAX_METHODS; i++) {
-		if (!ctx->conf->methods[i])
-			break;
-
-		size_t s = ctx->conf->methods[i]->min_encrypt_head_space(ctx);
-		if (s > ret)
-			ret = s;
-	}
-
-	return alignto(ret, 16);
-}
-
-static size_t methods_min_decrypt_head_space(fastd_context_t *ctx) {
-	size_t ret = 0;
-
-	int i;
-	for (i = 0; i < MAX_METHODS; i++) {
-		if (!ctx->conf->methods[i])
-			break;
-
-		size_t s = ctx->conf->methods[i]->min_decrypt_head_space(ctx);
-		if (s > ret)
-			ret = s;
-	}
-
-	/* ugly hack to get alignment right for aes128-gcm, which needs data aligned to 16 and has a 24 byte header */
-	return alignto(ret, 16) + 8;
-}
-
-static size_t methods_min_encrypt_tail_space(fastd_context_t *ctx) {
-	size_t ret = 0;
-
-	int i;
-	for (i = 0; i < MAX_METHODS; i++) {
-		if (!ctx->conf->methods[i])
-			break;
-
-		size_t s = ctx->conf->methods[i]->min_encrypt_tail_space(ctx);
-		if (s > ret)
-			ret = s;
-	}
-
-	return ret;
-}
-
-static size_t methods_min_decrypt_tail_space(fastd_context_t *ctx) {
-	size_t ret = 0;
-
-	int i;
-	for (i = 0; i < MAX_METHODS; i++) {
-		if (!ctx->conf->methods[i])
-			break;
-
-		size_t s = ctx->conf->methods[i]->min_decrypt_tail_space(ctx);
-		if (s > ret)
-			ret = s;
-	}
-
-	return ret;
-}
-
-static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *local_addr) {
-	if (!local_addr)
-		return;
-
-	struct cmsghdr *cmsg = (struct cmsghdr*)((char*)msg->msg_control + msg->msg_controllen);
-
-	if (local_addr->sa.sa_family == AF_INET) {
-		cmsg->cmsg_level = IPPROTO_IP;
-		cmsg->cmsg_type = IP_PKTINFO;
-		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
-
-		msg->msg_controllen += cmsg->cmsg_len;
-
-		struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
-		pktinfo->ipi_addr = local_addr->in.sin_addr;
-	}
-	else if (local_addr->sa.sa_family == AF_INET6) {
-		cmsg->cmsg_level = IPPROTO_IPV6;
-		cmsg->cmsg_type = IPV6_PKTINFO;
-		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
-
-		msg->msg_controllen += cmsg->cmsg_len;
-
-		struct in6_pktinfo *pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
-		pktinfo->ipi6_addr = local_addr->in6.sin6_addr;
-
-		if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
-			pktinfo->ipi6_ifindex = local_addr->in6.sin6_scope_id;
-	}
-}
-
-static void fastd_send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, uint8_t packet_type, fastd_buffer_t buffer) {
-	if (!sock)
-		exit_bug(ctx, "send: sock == NULL");
-
-	struct msghdr msg = {};
-	char cbuf[1024] = {};
-
-	switch (remote_addr->sa.sa_family) {
-	case AF_INET:
-		msg.msg_name = (void*)&remote_addr->in;
-		msg.msg_namelen = sizeof(struct sockaddr_in);
-		break;
-
-	case AF_INET6:
-		msg.msg_name = (void*)&remote_addr->in6;
-		msg.msg_namelen = sizeof(struct sockaddr_in6);
-		break;
-
-	default:
-		exit_bug(ctx, "unsupported address family");
-	}
-
-	struct iovec iov[2] = {
-		{ .iov_base = &packet_type, .iov_len = 1 },
-		{ .iov_base = buffer.data, .iov_len = buffer.len }
-	};
-
-	msg.msg_iov = iov;
-	msg.msg_iovlen = buffer.len ? 2 : 1;
-	msg.msg_control = cbuf;
-	msg.msg_controllen = 0;
-
-	add_pktinfo(&msg, local_addr);
-
-	int ret;
-	do {
-		ret = sendmsg(sock->fd, &msg, 0);
-	} while (ret < 0 && errno == EINTR);
-
-	if (ret < 0)
-		pr_warn_errno(ctx, "sendmsg");
-
-	fastd_buffer_free(buffer);
-}
-
-void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
-	fastd_send_type(ctx, sock, local_addr, remote_addr, PACKET_DATA, buffer);
-}
-
-void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
-	fastd_send_type(ctx, sock, local_addr, remote_addr, PACKET_HANDSHAKE, buffer);
-}
-
-static inline void send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
-	fastd_peer_t *dest_peer;
-	for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
-		if (dest_peer == source_peer || !fastd_peer_is_established(dest_peer))
-			continue;
-
-		/* optimization, primarily for TUN mode: don't duplicate the buffer for the last (or only) peer */
-		if (!dest_peer->next) {
-			ctx->conf->protocol->send(ctx, dest_peer, buffer);
-			return;
-		}
-
-		ctx->conf->protocol->send(ctx, dest_peer, fastd_buffer_dup(ctx, buffer, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
-	}
-
-	fastd_buffer_free(buffer);
-}
-
 static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
 	const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, buffer);
 
@@ -473,7 +290,7 @@ static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *source_pee
 		ctx->conf->protocol->send(ctx, dest_peer, buffer);
 	}
 	else {
-		send_all(ctx, source_peer, buffer);
+		fastd_send_all(ctx, source_peer, buffer);
 	}
 }
 
@@ -685,7 +502,7 @@ static void handle_tasks(fastd_context_t *ctx) {
 
 		case TASK_KEEPALIVE:
 			pr_debug(ctx, "sending keepalive to %P", task->peer);
-			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(ctx, 0, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx)));
+			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
 			break;
 
 		default:
@@ -723,7 +540,7 @@ static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
 
 static void handle_tun(fastd_context_t *ctx) {
 	size_t max_len = fastd_max_packet_size(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, methods_min_encrypt_head_space(ctx), methods_min_encrypt_tail_space(ctx));
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space);
 
 	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
 	if (len < 0) {
@@ -741,7 +558,7 @@ static void handle_tun(fastd_context_t *ctx) {
 		return;
 
 	/* TUN mode or multicast packet */
-	send_all(ctx, NULL, buffer);
+	fastd_send_all(ctx, NULL, buffer);
 }
 
 static inline void handle_socket_control(fastd_context_t *ctx, struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
@@ -858,8 +675,8 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 }
 
 static void handle_socket(fastd_context_t *ctx, fastd_socket_t *sock) {
-	size_t max_len = PACKET_TYPE_LEN + methods_max_packet_size(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, methods_min_decrypt_head_space(ctx), methods_min_decrypt_tail_space(ctx));
+	size_t max_len = PACKET_TYPE_LEN + ctx->conf->max_packet_size;
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_decrypt_head_space, ctx->conf->min_decrypt_tail_space);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
 	struct iovec buffer_vec = { .iov_base = buffer.data, .iov_len = buffer.len };
@@ -1140,7 +957,6 @@ int main(int argc, char *argv[]) {
 
 	fastd_config_t conf;
 	fastd_configure(&ctx, &conf, argc, argv);
-	ctx.conf = &conf;
 
 	init_log(&ctx);
 

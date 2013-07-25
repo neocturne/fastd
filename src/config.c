@@ -845,7 +845,31 @@ static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
 			conf->n_groups = ngroups;
 		}
 	}
+}
 
+static void configure_method_parameters(fastd_context_t *ctx, fastd_config_t *conf) {
+	conf->max_packet_size = 0;
+	conf->min_encrypt_head_space = 0;
+	conf->min_decrypt_head_space = 0;
+	conf->min_encrypt_tail_space = 0;
+	conf->min_decrypt_tail_space = 0;
+
+	int i;
+	for (i = 0; i < MAX_METHODS; i++) {
+		if (!conf->methods[i])
+			break;
+
+		conf->max_packet_size = max_size_t(conf->max_packet_size, conf->methods[i]->max_packet_size(ctx));
+		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, conf->methods[i]->min_encrypt_head_space(ctx));
+		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, conf->methods[i]->min_decrypt_head_space(ctx));
+		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, conf->methods[i]->min_encrypt_tail_space(ctx));
+		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, conf->methods[i]->min_decrypt_tail_space(ctx));
+	}
+
+	conf->min_encrypt_head_space = alignto(conf->min_encrypt_head_space, 16);
+
+	/* ugly hack to get alignment right for aes128-gcm, which needs data aligned to 16 and has a 24 byte header */
+	conf->min_decrypt_head_space = alignto(conf->min_decrypt_head_space, 16) + 8;
 }
 
 void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]) {
@@ -902,6 +926,9 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
 
 	configure_user(ctx, conf);
+
+	ctx->conf = conf;
+	configure_method_parameters(ctx, conf);
 }
 
 static void peer_dirs_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {

@@ -208,6 +208,13 @@ struct fastd_config {
 	const fastd_protocol_t *protocol;
 	const fastd_method_t *methods[MAX_METHODS];
 	const fastd_method_t *method_default;
+
+	size_t max_packet_size;
+	size_t min_encrypt_head_space;
+	size_t min_decrypt_head_space;
+	size_t min_encrypt_tail_space;
+	size_t min_decrypt_tail_space;
+
 	char *secret;
 	unsigned key_valid;
 	unsigned key_refresh;
@@ -302,6 +309,7 @@ struct fastd_string_stack {
 
 
 void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer);
+void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer);
 void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer);
 void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 
@@ -481,6 +489,10 @@ static inline bool strequal(const char *str1, const char *str2) {
 		return (!strcmp(str1, str2));
 	else
 		return (str1 == str2);
+}
+
+static inline size_t max_size_t(size_t a, size_t b) {
+	return (a > b) ? a : b;
 }
 
 #endif /* _FASTD_FASTD_H_ */

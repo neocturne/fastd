@@ -26,6 +26,7 @@ add_executable(fastd
   queue.c
   random.c
   resolve.c
+  send.c
   shell.c
   socket.c
   task.c
