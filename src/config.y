@@ -45,6 +45,7 @@
 	fastd_string_stack_t *str;
 	char *error;
 	bool boolean;
+	fastd_tristate_t tristate;
 	struct in_addr addr4;
 	struct in6_addr addr6;
 	fastd_peer_address_t addr;
@@ -60,6 +61,7 @@
 %token TOK_INTERFACE
 %token TOK_BIND
 %token TOK_MTU
+%token TOK_PMTU
 %token TOK_MODE
 %token TOK_PROTOCOL
 %token TOK_METHOD
@@ -111,6 +113,7 @@
 %token TOK_IP
 %token TOK_MAC
 %token TOK_ADDRESSES
+%token TOK_AUTO
 
 %token <addr4> TOK_ADDR4
 %token <addr6> TOK_ADDR6
@@ -139,6 +142,7 @@
 %type <num> maybe_bind_default
 %type <num> bind_default
 %type <num> drop_capabilities_enabled
+%type <tristate> autobool
 
 %%
 start:		START_CONFIG config
@@ -164,6 +168,7 @@ statement:	peer_group_statement
 	|	TOK_INTERFACE interface ';'
 	|	TOK_BIND bind ';'
 	|	TOK_MTU mtu ';'
+	|	TOK_PMTU pmtu ';'
 	|	TOK_MODE mode ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_METHOD method ';'
@@ -302,6 +307,9 @@ bind_default:
 	;
 
 mtu:		TOK_INTEGER	{ conf->mtu = $1; }
+	;
+
+pmtu:		autobool	{ conf->pmtu = $1; }
 	;
 
 mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
@@ -511,6 +519,10 @@ boolean:	TOK_YES		{ $$ = true; }
 	|	TOK_NO		{ $$ = false; }
 	;
 
+autobool:	TOK_AUTO	{ $$ = (fastd_tristate_t){ .set = false }; }
+	|	boolean		{ $$ = (fastd_tristate_t){ .set = true, .state = $1 }; }
+	;
+
 colon_or_port:	':'
 	|	TOK_PORT
 	;
@@ -523,6 +535,7 @@ port:		colon_or_port TOK_INTEGER {
 			$$ = $2;
 		}
 	;
+
 %%
 void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, char *s) {
 	pr_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);

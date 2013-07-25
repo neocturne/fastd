@@ -60,6 +60,7 @@
 interface	{ TOKEN(TOK_INTERFACE); }
 bind		{ TOKEN(TOK_BIND); }
 mtu		{ TOKEN(TOK_MTU); }
+pmtu		{ TOKEN(TOK_PMTU); }
 mode		{ TOKEN(TOK_MODE); }
 protocol	{ TOKEN(TOK_PROTOCOL); }
 method		{ TOKEN(TOK_METHOD); }
@@ -111,6 +112,7 @@ hide		{ TOKEN(TOK_HIDE); }
 ip		{ TOKEN(TOK_IP); }
 mac		{ TOKEN(TOK_MAC); }
 addresses	{ TOKEN(TOK_ADDRESSES); }
+auto		{ TOKEN(TOK_AUTO); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;
