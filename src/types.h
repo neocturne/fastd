@@ -36,6 +36,13 @@
 #include <config.h>
 #include <version.h>
 
+#include <stdbool.h>
+
+
+typedef struct fastd_tristate {
+	bool set : 1;
+	bool state : 1;
+} fastd_tristate_t;
 
 typedef enum fastd_mode {
 	MODE_TAP,

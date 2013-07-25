@@ -34,7 +34,6 @@
 #include <linux/if_ether.h>
 #include <netinet/in.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
