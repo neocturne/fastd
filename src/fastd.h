@@ -305,6 +305,7 @@ void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_pe
 void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer);
 void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 
+bool fastd_socket_handle_binds(fastd_context_t *ctx);
 fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int af);
 
 void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset);
