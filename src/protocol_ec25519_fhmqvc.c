@@ -24,8 +24,6 @@
 */
 
 
-#define _GNU_SOURCE
-
 #include "fastd.h"
 #include "handshake.h"
 #include "peer.h"

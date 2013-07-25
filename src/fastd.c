@@ -24,8 +24,6 @@
 */
 
 
-#define _GNU_SOURCE
-
 #include "fastd.h"
 #include "crypto.h"
 #include "handshake.h"

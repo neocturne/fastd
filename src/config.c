@@ -24,8 +24,6 @@
 */
 
 
-#define _GNU_SOURCE
-
 #include "fastd.h"
 #include "peer.h"
 #include <config.ll.h>

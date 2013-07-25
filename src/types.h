@@ -33,6 +33,8 @@
 #ifndef _FASTD_TYPES_H_
 #define _FASTD_TYPES_H_
 
+#define _GNU_SOURCE
+
 #include <config.h>
 #include <version.h>
 

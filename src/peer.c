@@ -24,8 +24,6 @@
 */
 
 
-#define _GNU_SOURCE
-
 #include "peer.h"
 #include "task.h"
 

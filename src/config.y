@@ -34,8 +34,6 @@
 %parse-param {int depth}
 
 %code requires {
-	#define _GNU_SOURCE
-
 	#include <fastd.h>
 	#include <arpa/inet.h>
 }
