@@ -41,12 +41,13 @@
 %union {
 	int num;
 	fastd_string_stack_t *str;
-	char *error;
 	bool boolean;
 	fastd_tristate_t tristate;
 	struct in_addr addr4;
 	struct in6_addr addr6;
 	fastd_peer_address_t addr;
+
+	const char *error;
 }
 
 %token START_CONFIG
@@ -123,7 +124,7 @@
 	#include <stdint.h>
 	#include <unistd.h>
 
-	void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, char *s);
+	void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, const char *s);
 }
 
 
@@ -535,6 +536,6 @@ port:		colon_or_port TOK_INTEGER {
 	;
 
 %%
-void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, char *s) {
+void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, const char *s) {
 	pr_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
 }
