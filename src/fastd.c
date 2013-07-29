@@ -446,10 +446,10 @@ static inline void schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer) 
 }
 
 static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (!peer->next_remote)
-		exit_bug(ctx, "send_handshake: no remote");
-
 	if (!fastd_peer_is_established(peer)) {
+		if (!peer->next_remote)
+			exit_bug(ctx, "send_handshake: no remote");
+
 		fastd_peer_claim_address(ctx, peer, NULL, NULL, &peer->next_remote->address);
 		fastd_peer_reset_socket(ctx, peer);
 	}
