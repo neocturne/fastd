@@ -28,6 +28,7 @@
 
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <sys/wait.h>
 
 
 bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {

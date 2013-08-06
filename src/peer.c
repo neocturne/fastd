@@ -28,6 +28,7 @@
 #include "task.h"
 
 #include <arpa/inet.h>
+#include <sys/wait.h>
 
 
 static inline void on_establish(fastd_context_t *ctx, const fastd_peer_t *peer) {
