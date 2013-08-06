@@ -18,7 +18,13 @@ pkg_check_modules(UECC REQUIRED libuecc>=3)
 
 find_package(NaCl REQUIRED)
 
-set(WITH_CAPABILITIES TRUE CACHE BOOL "Include support for POSIX capabilities")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(LINUX TRUE)
+else()
+  set(LINUX FALSE)
+endif()
+
+set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilities")
 
 if(WITH_CAPABILITIES)
   find_package(CAP REQUIRED)
@@ -28,10 +34,12 @@ else(WITH_CAPABILITIES)
 endif(WITH_CAPABILITIES)
 
 set(WITH_CRYPTO_AES128CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implementation from the NaCl library")
-set(WITH_CRYPTO_AES128CTR_LINUX TRUE CACHE BOOL "Support using the AES128-CTR implementation in the Linux kernel")
-
 set(WITH_CRYPTO_GHASH_BUILTIN TRUE CACHE BOOL "Include the built-in GHASH implementation")
-set(WITH_CRYPTO_GHASH_LINUX TRUE CACHE BOOL "Support using the GHASH implementation in the Linux kernel")
+
+if(LINUX)
+  set(WITH_CRYPTO_AES128CTR_LINUX TRUE CACHE BOOL "Support using the AES128-CTR implementation in the Linux kernel")
+  set(WITH_CRYPTO_GHASH_LINUX TRUE CACHE BOOL "Support using the GHASH implementation in the Linux kernel")
+endif(LINUX)
 
 set(WITH_METHOD_XSALSA20_POLY1305 TRUE CACHE BOOL "Include xsalsa20-poly1305 method")
 set(WITH_METHOD_AES128_GCM TRUE CACHE BOOL "Include aes128-gcm method")
