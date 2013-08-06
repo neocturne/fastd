@@ -37,6 +37,7 @@
 #include <version.h>
 
 #include <stdbool.h>
+#include <sys/types.h>
 
 
 typedef struct fastd_tristate {
