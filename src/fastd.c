@@ -32,7 +32,6 @@
 
 #include <fcntl.h>
 #include <grp.h>
-#include <linux/if_tun.h>
 #include <net/if.h>
 #include <poll.h>
 #include <pthread.h>
@@ -41,6 +40,12 @@
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
+
+#ifdef __linux__
+#include <linux/if_tun.h>
+#else
+#include <net/if_tun.h>
+#endif
 
 
 static volatile bool sighup = false;
