@@ -27,11 +27,10 @@
 #include "fastd.h"
 #include "crypto.h"
 
-#include <alloca.h>
-
 
 #if (defined(USE_CRYPTO_AES128CTR) && defined(WITH_CRYPTO_AES128CTR_LINUX)) || (defined(USE_CRYPTO_GHASH) && defined(WITH_CRYPTO_GHASH_LINUX))
 
+#include <alloca.h>
 #include <linux/if_alg.h>
 
 #ifndef SOL_ALG
