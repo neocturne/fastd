@@ -18,6 +18,7 @@ pkg_check_modules(UECC REQUIRED libuecc>=3)
 
 find_package(NaCl REQUIRED)
 
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LINUX TRUE)
 else()
@@ -33,6 +34,7 @@ else(WITH_CAPABILITIES)
   set(CAP_LIBRARY "")
 endif(WITH_CAPABILITIES)
 
+
 set(WITH_CRYPTO_AES128CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implementation from the NaCl library")
 set(WITH_CRYPTO_GHASH_BUILTIN TRUE CACHE BOOL "Include the built-in GHASH implementation")
 
@@ -44,7 +46,9 @@ endif(LINUX)
 set(WITH_METHOD_XSALSA20_POLY1305 TRUE CACHE BOOL "Include xsalsa20-poly1305 method")
 set(WITH_METHOD_AES128_GCM TRUE CACHE BOOL "Include aes128-gcm method")
 
+
 set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
+
 
 if(WITH_CRYPTO_AES128CTR_NACL OR WITH_CRYPTO_AES128CTR_LINUX)
   set(WITH_CRYPTO_AES128CTR TRUE)
