@@ -27,6 +27,7 @@
 #ifndef _FASTD_FASTD_H_
 #define _FASTD_FASTD_H_
 
+#include "compat.h"
 #include "types.h"
 #include "queue.h"
 
