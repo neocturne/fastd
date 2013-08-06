@@ -31,7 +31,7 @@
 #include "queue.h"
 
 #include <errno.h>
-#include <linux/if_ether.h>
+#include <netinet/if_ether.h>
 #include <netinet/in.h>
 #include <stdarg.h>
 #include <stddef.h>
