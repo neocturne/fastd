@@ -604,6 +604,8 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 	if (!conf->methods[0])
 		conf->methods[0] = conf->method_default;
 
+	ctx->conf = conf;
+
 	if (conf->generate_key || conf->show_key)
 		return;
 
@@ -625,8 +627,6 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 #endif
 
 	configure_user(ctx, conf);
-
-	ctx->conf = conf;
 	configure_method_parameters(ctx, conf);
 }
 
