@@ -30,8 +30,10 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-#include <linux/if_tun.h>
 
+#if defined(__linux__)
+
+#include <linux/if_tun.h>
 
 void fastd_tuntap_open(fastd_context_t *ctx) {
 	struct ifreq ifr = {};
@@ -81,6 +83,103 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 
 	pr_debug(ctx, "tun/tap device initialized.");
 }
+
+#elif defined(__FreeBSD__)
+
+#include <net/if_tun.h>
+#include <net/if_tap.h>
+
+static void get_tap_name(fastd_context_t *ctx) {
+	struct ifreq ifr = {};
+
+	if (ioctl(ctx->tunfd, TAPGIFNAME, &ifr) < 0)
+		exit_errno(ctx, "TAPGIFNAME ioctl failed");
+
+	free(ctx->ifname);
+	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+}
+
+static void set_tap_mtu(fastd_context_t *ctx) {
+	struct tapinfo tapinfo;
+
+	if (ioctl(ctx->tunfd, TAPGIFINFO, &tapinfo) < 0)
+		exit_errno(ctx, "TAPGIFINFO ioctl failed");
+
+	tapinfo.mtu = ctx->conf->mtu;
+
+	if (ioctl(ctx->tunfd, TAPSIFINFO, &tapinfo) < 0)
+		exit_errno(ctx, "TAPSIFINFO ioctl failed");
+}
+
+static void set_tun_mtu(fastd_context_t *ctx) {
+	struct tuninfo tuninfo;
+
+	if (ioctl(ctx->tunfd, TUNGIFINFO, &tuninfo) < 0)
+		exit_errno(ctx, "TUNGIFINFO ioctl failed");
+
+	tuninfo.mtu = ctx->conf->mtu;
+
+	if (ioctl(ctx->tunfd, TUNSIFINFO, &tuninfo) < 0)
+		exit_errno(ctx, "TUNSIFINFO ioctl failed");
+}
+
+void fastd_tuntap_open(fastd_context_t *ctx) {
+	pr_debug(ctx, "initializing tun/tap device...");
+
+	char ifname[5+IFNAMSIZ] = "/dev/";
+	if (ctx->conf->ifname) {
+		strncat(ifname, ctx->conf->ifname, IFNAMSIZ-1);
+	}
+	else {
+		switch (ctx->conf->mode) {
+		case MODE_TAP:
+			strncat(ifname, "tap", IFNAMSIZ-1);
+			break;
+
+		case MODE_TUN:
+			strncat(ifname, "tun", IFNAMSIZ-1);
+			break;
+
+		default:
+			exit_bug(ctx, "invalid mode");
+		}
+	}
+
+	if ((ctx->tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+		exit_errno(ctx, "could not open tun/tap device file");
+
+	if (!(ctx->ifname = fdevname_r(ctx->tunfd, malloc(IFNAMSIZ), IFNAMSIZ)))
+		exit_errno(ctx, "could not get tun/tap interface name");
+
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		if (strncmp(ctx->ifname, "tap", 3) != 0)
+			exit_error(ctx, "opened device doesn't to be a tap device");
+
+		get_tap_name(ctx);
+		set_tap_mtu(ctx);
+		break;
+
+	case MODE_TUN:
+		if (strncmp(ctx->ifname, "tun", 3) != 0)
+			exit_error(ctx, "opened device doesn't to be a tun device");
+
+		set_tun_mtu(ctx);
+		break;
+
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
+
+	pr_debug(ctx, "tun/tap device initialized.");
+}
+
+#else
+
+#error unknown tun/tap implementation
+
+#endif
+
 
 void fastd_tuntap_close(fastd_context_t *ctx) {
 	if (close(ctx->tunfd))
