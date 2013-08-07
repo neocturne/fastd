@@ -98,6 +98,9 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 
 	add_pktinfo(&msg, local_addr);
 
+	if (!msg.msg_controllen)
+		msg.msg_control = NULL;
+
 	int ret;
 	do {
 		ret = sendmsg(sock->fd, &msg, 0);
