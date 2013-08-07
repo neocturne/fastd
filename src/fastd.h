@@ -339,6 +339,9 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
 
+void fastd_tuntap_open(fastd_context_t *ctx);
+void fastd_tuntap_close(fastd_context_t *ctx);
+
 void fastd_cap_init(fastd_context_t *ctx);
 void fastd_cap_drop(fastd_context_t *ctx);
 

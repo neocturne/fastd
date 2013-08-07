@@ -32,6 +32,7 @@ add_executable(fastd
   shell.c
   socket.c
   task.c
+  tuntap.c
   protocol_ec25519_fhmqvc.c
   ${FLEX_fastd_config_lex_OUTPUTS}
   ${BISON_fastd_config_parse_OUTPUTS}

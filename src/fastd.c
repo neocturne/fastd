@@ -32,20 +32,11 @@
 
 #include <fcntl.h>
 #include <grp.h>
-#include <net/if.h>
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/resource.h>
-#include <sys/socket.h>
-
-#ifdef __linux__
-#include <linux/if_tun.h>
-#else
-#include <net/if_tun.h>
-#endif
 
 
 static volatile bool sighup = false;
@@ -213,64 +204,6 @@ void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset) {
 
 	if (fcntl(fd, F_SETFL, (flags|set) & (~unset)) < 0)
 		exit_errno(ctx, "Setting file status flags failed: fcntl");
-}
-
-static void init_tuntap(fastd_context_t *ctx) {
-	struct ifreq ifr;
-
-	pr_debug(ctx, "initializing tun/tap device...");
-
-	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
-		exit_errno(ctx, "could not open tun/tap device file");
-
-	memset(&ifr, 0, sizeof(ifr));
-
-	if (ctx->conf->ifname)
-		strncpy(ifr.ifr_name, ctx->conf->ifname, IFNAMSIZ-1);
-
-	switch (ctx->conf->mode) {
-	case MODE_TAP:
-		ifr.ifr_flags = IFF_TAP;
-		break;
-
-	case MODE_TUN:
-		ifr.ifr_flags = IFF_TUN;
-		break;
-
-	default:
-		exit_bug(ctx, "invalid mode");
-	}
-
-	ifr.ifr_flags |= IFF_NO_PI;
-	if (ioctl(ctx->tunfd, TUNSETIFF, &ifr) < 0)
-		exit_errno(ctx, "TUNSETIFF ioctl failed");
-
-	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
-
-	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (ctl_sock < 0)
-		exit_errno(ctx, "socket");
-
-	if (ioctl(ctl_sock, SIOCGIFMTU, &ifr) < 0)
-		exit_errno(ctx, "SIOCGIFMTU ioctl failed");
-
-	if (ifr.ifr_mtu != ctx->conf->mtu) {
-		ifr.ifr_mtu = ctx->conf->mtu;
-		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
-			exit_errno(ctx, "SIOCSIFMTU ioctl failed");
-	}
-
-	if (close(ctl_sock))
-		pr_error_errno(ctx, "close");
-
-	pr_debug(ctx, "tun/tap device initialized.");
-}
-
-static void close_tuntap(fastd_context_t *ctx) {
-	if(close(ctx->tunfd))
-		pr_warn_errno(ctx, "closing tun/tap: close");
-
-	free(ctx->ifname);
 }
 
 static void close_sockets(fastd_context_t *ctx) {
@@ -830,7 +763,7 @@ int main(int argc, char *argv[]) {
 	if (!fastd_socket_handle_binds(&ctx))
 		exit_error(&ctx, "unable to bind default socket");
 
-	init_tuntap(&ctx);
+	fastd_tuntap_open(&ctx);
 
 	init_peer_groups(&ctx);
 	if (conf.daemon) {
@@ -899,7 +832,7 @@ int main(int argc, char *argv[]) {
 	delete_peers(&ctx);
 	delete_peer_groups(&ctx);
 
-	close_tuntap(&ctx);
+	fastd_tuntap_close(&ctx);
 	close_sockets(&ctx);
 
 	free(ctx.protocol_state);
