@@ -61,10 +61,13 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	fastd_setfl(ctx, fd, O_NONBLOCK, 0);
 
 	int one = 1;
+
+#ifdef USE_PKTINFO
 	if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
 		pr_error_errno(ctx, "setsockopt: unable to set IP_PKTINFO");
 		goto error;
 	}
+#endif
 
 	if (af == AF_INET6) {
 		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
@@ -73,6 +76,7 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 		}
 	}
 
+#ifdef USE_BINDTODEVICE
 	if (addr->bindtodev) {
 		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
 			if (warn)
@@ -80,7 +84,9 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 			goto error;
 		}
 	}
+#endif
 
+#ifdef USE_PMTU
 	if (ctx->conf->pmtu.set) {
 		int pmtu = ctx->conf->pmtu.state ? IP_PMTUDISC_DO : IP_PMTUDISC_DONT;
 		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
@@ -88,6 +94,7 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 			goto error;
 		}
 	}
+#endif
 
 	fastd_peer_address_t bind_address = addr->addr;
 

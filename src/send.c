@@ -35,6 +35,7 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 
 	struct cmsghdr *cmsg = (struct cmsghdr*)((char*)msg->msg_control + msg->msg_controllen);
 
+#ifdef USE_PKTINFO
 	if (local_addr->sa.sa_family == AF_INET) {
 		cmsg->cmsg_level = IPPROTO_IP;
 		cmsg->cmsg_type = IP_PKTINFO;
@@ -44,8 +45,11 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 
 		struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
 		pktinfo->ipi_addr = local_addr->in.sin_addr;
+		return;
 	}
-	else if (local_addr->sa.sa_family == AF_INET6) {
+#endif
+
+	if (local_addr->sa.sa_family == AF_INET6) {
 		cmsg->cmsg_level = IPPROTO_IPV6;
 		cmsg->cmsg_type = IPV6_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));

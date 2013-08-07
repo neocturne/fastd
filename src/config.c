@@ -212,7 +212,12 @@ bool fastd_config_crypto(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	return false;
 }
 
-void fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+bool fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+#ifndef USE_BINDTODEVICE
+	if (bindtodev)
+		return false;
+#endif
+
 	fastd_bind_address_t *addr = malloc(sizeof(fastd_bind_address_t));
 	addr->next = conf->bind_addrs;
 	conf->bind_addrs = addr;
@@ -228,6 +233,8 @@ void fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const
 
 	if (addr->addr.sa.sa_family != AF_INET && (default_v6 || !conf->bind_addr_default_v6))
 		conf->bind_addr_default_v6 = addr;
+
+	return true;
 }
 
 void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
@@ -611,6 +618,11 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 
 	if (!conf->peers && !has_peer_group_peer_dirs(conf->peer_group))
 		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
+
+#ifndef USE_PMTU
+	if (conf->pmtu.set)
+		exit_error(ctx, "config error: setting pmtu is not supported on this system");
+#endif
 
 	configure_user(ctx, conf);
 

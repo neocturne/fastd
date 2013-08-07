@@ -30,6 +30,11 @@
 #cmakedefine HAVE_ETHHDR
 
 
+#cmakedefine USE_BINDTODEVICE
+#cmakedefine USE_PMTU
+#cmakedefine USE_PKTINFO
+
+
 #cmakedefine WITH_CAPABILITIES
 
 #cmakedefine USE_CRYPTO_AES128CTR

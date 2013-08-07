@@ -40,6 +40,7 @@ static inline void handle_socket_control(fastd_context_t *ctx, struct msghdr *me
 		if ((char*)cmsg + sizeof(*cmsg) > end)
 			return;
 
+#ifdef USE_PKTINFO
 		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
 			struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
 			if ((char*)pktinfo + sizeof(*pktinfo) > end)
@@ -51,6 +52,7 @@ static inline void handle_socket_control(fastd_context_t *ctx, struct msghdr *me
 
 			return;
 		}
+#endif
 
 		if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
 			struct in6_pktinfo *pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
@@ -173,11 +175,13 @@ void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
 
 	handle_socket_control(ctx, &message, sock, &local_addr);
 
+#ifdef USE_PKTINFO
 	if (!local_addr.sa.sa_family) {
 		pr_error(ctx, "received packet without packet info");
 		fastd_buffer_free(buffer);
 		return;
 	}
+#endif
 
 	fastd_peer_address_simplify(&recvaddr);
 

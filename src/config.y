@@ -259,7 +259,10 @@ interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
 	;
 
 bind:		bind_address maybe_bind_interface maybe_bind_default {
-			fastd_config_bind_address(ctx, conf, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+			if (!fastd_config_bind_address(ctx, conf, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6)) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid bind directive");
+				YYERROR;
+			}
 		}
 	;
 

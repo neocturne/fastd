@@ -32,6 +32,10 @@ include(CheckTypeSize)
 check_type_size("struct ethhdr" SIZEOF_ETHHDR)
 string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
 
+set(USE_BINDTODEVICE ${LINUX})
+set(USE_PMTU ${LINUX})
+set(USE_PKTINFO ${LINUX})
+
 
 set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilities")
 
