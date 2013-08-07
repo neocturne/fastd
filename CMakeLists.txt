@@ -25,6 +25,14 @@ else()
   set(LINUX FALSE)
 endif()
 
+
+set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
+include(CheckTypeSize)
+
+check_type_size("struct ethhdr" SIZEOF_ETHHDR)
+string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
+
+
 set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilities")
 
 if(WITH_CAPABILITIES)

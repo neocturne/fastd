@@ -27,12 +27,25 @@
 #ifndef _FASTD_COMPAT_H_
 #define _FASTD_COMPAT_H_
 
+#include <config.h>
+
+#include <stdint.h>
+
+
 #ifndef ETH_ALEN
 #define ETH_ALEN 6
 #endif
 
 #ifndef ETH_HLEN
 #define ETH_HLEN 14
+#endif
+
+#ifndef HAVE_ETHHDR
+struct ethhdr {
+	uint8_t h_dest[ETH_ALEN];
+	uint8_t h_source[ETH_ALEN];
+	uint16_t h_proto;
+} __attribute__((packed));
 #endif
 
 #endif /* _FASTD_COMPAT_H_ */

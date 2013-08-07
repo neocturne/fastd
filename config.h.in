@@ -27,6 +27,9 @@
 #ifndef _FASTD_CONFIG_H_
 #define _FASTD_CONFIG_H_
 
+#cmakedefine HAVE_ETHHDR
+
+
 #cmakedefine WITH_CAPABILITIES
 
 #cmakedefine USE_CRYPTO_AES128CTR
