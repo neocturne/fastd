@@ -32,6 +32,12 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
+
 
 #ifndef ETH_ALEN
 #define ETH_ALEN 6

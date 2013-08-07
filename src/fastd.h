@@ -35,18 +35,12 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <time.h>
-#include <unistd.h>
 
 #include <sys/uio.h>
-#include <sys/socket.h>
-
-#include <netinet/in.h>
-#include <netinet/if_ether.h>
 
 /* This must be adjusted when new methods are added */
 #define MAX_METHODS 3
