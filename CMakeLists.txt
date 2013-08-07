@@ -26,11 +26,16 @@ else()
 endif()
 
 
-set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
+include(CheckPrototypeDefinition)
 include(CheckTypeSize)
+set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
+set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
+
+check_prototype_definition("get_current_dir_name" "char *get_current_dir_name(void)" "NULL" "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
 
 check_type_size("struct ethhdr" SIZEOF_ETHHDR)
 string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
+
 
 set(USE_BINDTODEVICE ${LINUX})
 set(USE_PMTU ${LINUX})

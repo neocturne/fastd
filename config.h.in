@@ -28,6 +28,7 @@
 #define _FASTD_CONFIG_H_
 
 #cmakedefine HAVE_ETHHDR
+#cmakedefine HAVE_GET_CURRENT_DIR_NAME
 
 
 #cmakedefine USE_BINDTODEVICE

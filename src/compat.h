@@ -30,6 +30,7 @@
 #include <config.h>
 
 #include <stdint.h>
+#include <unistd.h>
 
 
 #ifndef ETH_ALEN
@@ -46,6 +47,21 @@ struct ethhdr {
 	uint8_t h_source[ETH_ALEN];
 	uint16_t h_proto;
 } __attribute__((packed));
+#endif
+
+
+#ifndef HAVE_GET_CURRENT_DIR_NAME
+
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+static inline char *get_current_dir_name(void) {
+	return getcwd(NULL, 0);
+}
+#else
+
+#error unknown system, get_current_dir_name() not implemented
+
+#endif
+
 #endif
 
 #endif /* _FASTD_COMPAT_H_ */
