@@ -246,8 +246,7 @@ void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 			fastd_peer_eth_addr_add(ctx, peer, src_addr);
 	}
 
-	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
-		pr_warn_errno(ctx, "write");
+	fastd_tuntap_write(ctx, buffer);
 
 	if (ctx->conf->mode == MODE_TAP && ctx->conf->forward) {
 		handle_forward(ctx, peer, buffer);
@@ -477,20 +476,9 @@ static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
 }
 
 static void handle_tun(fastd_context_t *ctx) {
-	size_t max_len = fastd_max_packet_size(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space);
-
-	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
-	if (len < 0) {
-		if (errno == EINTR) {
-			fastd_buffer_free(buffer);
-			return;
-		}
-
-		exit_errno(ctx, "read");
-	}
-
-	buffer.len = len;
+	fastd_buffer_t buffer = fastd_tuntap_read(ctx);
+	if (!buffer.len)
+		return;
 
 	if (handle_tun_tap(ctx, buffer))
 		return;

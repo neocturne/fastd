@@ -84,12 +84,35 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	pr_debug(ctx, "tun/tap device initialized.");
 }
 
+fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
+	size_t max_len = fastd_max_packet_size(ctx);
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space);
+
+	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
+	if (len < 0) {
+		if (errno == EINTR) {
+			fastd_buffer_free(buffer);
+			return (fastd_buffer_t){};
+		}
+
+		exit_errno(ctx, "read");
+	}
+
+	buffer.len = len;
+	return buffer;
+}
+
+void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
+	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
+		pr_warn_errno(ctx, "write");
+}
+
 #elif defined(__FreeBSD__)
 
 #include <net/if_tun.h>
 #include <net/if_tap.h>
 
-static void get_tap_name(fastd_context_t *ctx) {
+static void setup_tap(fastd_context_t *ctx) {
 	struct ifreq ifr = {};
 
 	if (ioctl(ctx->tunfd, TAPGIFNAME, &ifr) < 0)
@@ -97,6 +120,12 @@ static void get_tap_name(fastd_context_t *ctx) {
 
 	free(ctx->ifname);
 	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+}
+
+static void setup_tun(fastd_context_t *ctx) {
+	int one = 1;
+	if (ioctl(ctx->tunfd, TUNSIFHEAD, &one) < 0)
+		exit_errno(ctx, "TUNSIFHEAD ioctl failed");
 }
 
 static void set_tap_mtu(fastd_context_t *ctx) {
@@ -156,7 +185,7 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 		if (strncmp(ctx->ifname, "tap", 3) != 0)
 			exit_error(ctx, "opened device doesn't to be a tap device");
 
-		get_tap_name(ctx);
+		setup_tap(ctx);
 		set_tap_mtu(ctx);
 		break;
 
@@ -164,6 +193,7 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 		if (strncmp(ctx->ifname, "tun", 3) != 0)
 			exit_error(ctx, "opened device doesn't to be a tun device");
 
+		setup_tun(ctx);
 		set_tun_mtu(ctx);
 		break;
 
@@ -172,6 +202,60 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	}
 
 	pr_debug(ctx, "tun/tap device initialized.");
+}
+
+fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
+	size_t max_len = fastd_max_packet_size(ctx);
+
+	fastd_buffer_t buffer;
+	if (ctx->conf->mode == MODE_TUN)
+		buffer = fastd_buffer_alloc(ctx, max_len+4, ctx->conf->min_encrypt_head_space+12, ctx->conf->min_encrypt_tail_space);
+	else
+		buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space);
+
+	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
+	if (len < 0) {
+		if (errno == EINTR) {
+			fastd_buffer_free(buffer);
+			return (fastd_buffer_t){};
+		}
+
+		exit_errno(ctx, "read");
+	}
+
+	buffer.len = len;
+
+	if (ctx->conf->mode == MODE_TUN)
+		fastd_buffer_push_head(ctx, &buffer, 4);
+
+	return buffer;
+}
+
+void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
+	if (ctx->conf->mode == MODE_TUN) {
+		uint8_t version = *((uint8_t*)buffer.data) >> 4;
+		int af;
+
+		switch (version) {
+		case 4:
+			af = AF_INET;
+			break;
+
+		case 6:
+			af = AF_INET6;
+			break;
+
+		default:
+			pr_warn(ctx, "fastd_tuntap_write: unknown IP version %u", version);
+			return;
+		}
+
+		fastd_buffer_pull_head(ctx, &buffer, 4);
+		*((uint32_t*)buffer.data) = htonl(af);
+	}
+
+	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
+		pr_warn_errno(ctx, "write");
 }
 
 #else
