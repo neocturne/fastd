@@ -53,7 +53,10 @@ static void* resolve_peer(void *varg) {
 		.ai_family = arg->constraints.sa.sa_family,
 		.ai_socktype = SOCK_DGRAM,
 		.ai_protocol = IPPROTO_UDP,
-		.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG,
+		.ai_flags = AI_NUMERICSERV
+#ifdef HAVE_AI_ADDRCONFIG
+		| AI_ADDRCONFIG
+#endif
 	};
 
 	gai_ret = getaddrinfo(arg->hostname, portstr, &hints, &res);

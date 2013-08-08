@@ -26,16 +26,26 @@ else()
 endif()
 
 
+include(CheckCSourceCompiles)
 include(CheckPrototypeDefinition)
 include(CheckTypeSize)
 set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
 set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
 
+check_c_source_compiles("
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+int main() {
+	return AI_ADDRCONFIG;
+}
+" HAVE_AI_ADDRCONFIG)
+
 check_prototype_definition("get_current_dir_name" "char *get_current_dir_name(void)" "NULL" "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
 
 check_type_size("struct ethhdr" SIZEOF_ETHHDR)
 string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
-
 
 set(USE_BINDTODEVICE ${LINUX})
 set(USE_PMTU ${LINUX})

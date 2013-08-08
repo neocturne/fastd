@@ -27,6 +27,7 @@
 #ifndef _FASTD_CONFIG_H_
 #define _FASTD_CONFIG_H_
 
+#cmakedefine HAVE_AI_ADDRCONFIG
 #cmakedefine HAVE_ETHHDR
 #cmakedefine HAVE_GET_CURRENT_DIR_NAME
 
