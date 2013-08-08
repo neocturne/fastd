@@ -35,6 +35,10 @@
 
 #include <linux/if_tun.h>
 
+
+static const bool multiaf_tun = false;
+
+
 void fastd_tuntap_open(fastd_context_t *ctx) {
 	struct ifreq ifr = {};
 
@@ -84,33 +88,14 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	pr_debug(ctx, "tun/tap device initialized.");
 }
 
-fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
-	size_t max_len = fastd_max_packet_size(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space);
-
-	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
-	if (len < 0) {
-		if (errno == EINTR) {
-			fastd_buffer_free(buffer);
-			return (fastd_buffer_t){};
-		}
-
-		exit_errno(ctx, "read");
-	}
-
-	buffer.len = len;
-	return buffer;
-}
-
-void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
-	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
-		pr_warn_errno(ctx, "write");
-}
-
 #elif defined(__FreeBSD__)
 
 #include <net/if_tun.h>
 #include <net/if_tap.h>
+
+
+static const bool multiaf_tun = true;
+
 
 static void setup_tap(fastd_context_t *ctx) {
 	struct ifreq ifr = {};
@@ -204,11 +189,18 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	pr_debug(ctx, "tun/tap device initialized.");
 }
 
+#else
+
+#error unknown tun/tap implementation
+
+#endif
+
+
 fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
 	size_t max_len = fastd_max_packet_size(ctx);
 
 	fastd_buffer_t buffer;
-	if (ctx->conf->mode == MODE_TUN)
+	if (multiaf_tun && ctx->conf->mode == MODE_TUN)
 		buffer = fastd_buffer_alloc(ctx, max_len+4, ctx->conf->min_encrypt_head_space+12, ctx->conf->min_encrypt_tail_space);
 	else
 		buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space);
@@ -225,14 +217,14 @@ fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
 
 	buffer.len = len;
 
-	if (ctx->conf->mode == MODE_TUN)
+	if (multiaf_tun && ctx->conf->mode == MODE_TUN)
 		fastd_buffer_push_head(ctx, &buffer, 4);
 
 	return buffer;
 }
 
 void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
-	if (ctx->conf->mode == MODE_TUN) {
+	if (multiaf_tun && ctx->conf->mode == MODE_TUN) {
 		uint8_t version = *((uint8_t*)buffer.data) >> 4;
 		int af;
 
@@ -257,13 +249,6 @@ void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
 	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
 		pr_warn_errno(ctx, "write");
 }
-
-#else
-
-#error unknown tun/tap implementation
-
-#endif
-
 
 void fastd_tuntap_close(fastd_context_t *ctx) {
 	if (close(ctx->tunfd))
