@@ -262,10 +262,6 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	if (!ok || memcmp(&sig, &outblocks[0], sizeof(fastd_block128_t)) != 0) {
 		fastd_buffer_free(*out);
-
-		/* restore input buffer */
-		fastd_buffer_pull_head(ctx, &in, NONCEBYTES);
-
 		return false;
 	}
 
