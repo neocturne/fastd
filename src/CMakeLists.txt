@@ -39,7 +39,7 @@ add_executable(fastd
   ${METHODS}
 )
 set_target_properties(fastd PROPERTIES COMPILE_FLAGS -pthread ${UECC_CFLAGS_OTHER} COMPILE_DEFINITIONS _GNU_SOURCE LINK_FLAGS -pthread ${UECC_LDFLAGS_OTHER})
-target_link_libraries(fastd rt ${CAP_LIBRARY} ${UECC_LIBRARIES} ${NACL_LIBRARY})
+target_link_libraries(fastd ${RT_LIBRARY} ${CAP_LIBRARY} ${UECC_LIBRARIES} ${NACL_LIBRARY})
 
 add_custom_target(
     version
