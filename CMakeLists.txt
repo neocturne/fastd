@@ -52,12 +52,12 @@ check_symbol_exists("clock_gettime" "time.h" HAVE_CLOCK_GETTIME)
 
 if(NOT HAVE_CLOCK_GETTIME)
   set(RT_LIBRARY "rt")
-  list(append CMAKE_REQUIRED_LIBRARIES "rt")
+  list(APPEND CMAKE_REQUIRED_LIBRARIES "rt")
 
-  check_symbol_exists("clock_gettime" "time.h" HAVE_CLOCK_GETTIME)
-  if(NOT HAVE_CLOCK_GETTIME)
+  check_symbol_exists("clock_gettime" "time.h" HAVE_CLOCK_GETTIME_RT)
+  if(NOT HAVE_CLOCK_GETTIME_RT)
       message(FATAL_ERROR "clock_gettime() not found")
-  endif(NOT HAVE_CLOCK_GETTIME)
+  endif(NOT HAVE_CLOCK_GETTIME_RT)
 endif(NOT HAVE_CLOCK_GETTIME)
 
 
