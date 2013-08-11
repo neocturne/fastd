@@ -31,13 +31,29 @@
 #include <sys/ioctl.h>
 
 
-#if defined(__linux__)
+#ifdef __linux__
 
 #include <linux/if_tun.h>
 
+#else
 
+#include <net/if_tun.h>
+
+#ifdef __FreeBSD__
+#include <net/if_tap.h>
+#endif
+
+#endif
+
+
+#ifdef __linux__
 static const bool multiaf_tun = false;
+#else
+static const bool multiaf_tun = true;
+#endif
 
+
+#if defined(__linux__)
 
 void fastd_tuntap_open(fastd_context_t *ctx) {
 	struct ifreq ifr = {};
@@ -88,30 +104,22 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	pr_debug(ctx, "tun/tap device initialized.");
 }
 
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
 
-#include <net/if_tun.h>
-#include <net/if_tap.h>
+static void set_tun_mtu(fastd_context_t *ctx) {
+	struct tuninfo tuninfo;
 
+	if (ioctl(ctx->tunfd, TUNGIFINFO, &tuninfo) < 0)
+		exit_errno(ctx, "TUNGIFINFO ioctl failed");
 
-static const bool multiaf_tun = true;
+	tuninfo.mtu = ctx->conf->mtu;
 
-
-static void setup_tap(fastd_context_t *ctx) {
-	struct ifreq ifr = {};
-
-	if (ioctl(ctx->tunfd, TAPGIFNAME, &ifr) < 0)
-		exit_errno(ctx, "TAPGIFNAME ioctl failed");
-
-	free(ctx->ifname);
-	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+	if (ioctl(ctx->tunfd, TUNSIFINFO, &tuninfo) < 0)
+		exit_errno(ctx, "TUNSIFINFO ioctl failed");
 }
 
-static void setup_tun(fastd_context_t *ctx) {
-	int one = 1;
-	if (ioctl(ctx->tunfd, TUNSIFHEAD, &one) < 0)
-		exit_errno(ctx, "TUNSIFHEAD ioctl failed");
-}
+
+#ifdef __FreeBSD__
 
 static void set_tap_mtu(fastd_context_t *ctx) {
 	struct tapinfo tapinfo;
@@ -125,16 +133,24 @@ static void set_tap_mtu(fastd_context_t *ctx) {
 		exit_errno(ctx, "TAPSIFINFO ioctl failed");
 }
 
-static void set_tun_mtu(fastd_context_t *ctx) {
-	struct tuninfo tuninfo;
+static void setup_tun(fastd_context_t *ctx) {
+	int one = 1;
+	if (ioctl(ctx->tunfd, TUNSIFHEAD, &one) < 0)
+		exit_errno(ctx, "TUNSIFHEAD ioctl failed");
 
-	if (ioctl(ctx->tunfd, TUNGIFINFO, &tuninfo) < 0)
-		exit_errno(ctx, "TUNGIFINFO ioctl failed");
+	set_tun_mtu(ctx);
+}
 
-	tuninfo.mtu = ctx->conf->mtu;
+static void setup_tap(fastd_context_t *ctx) {
+	struct ifreq ifr = {};
 
-	if (ioctl(ctx->tunfd, TUNSIFINFO, &tuninfo) < 0)
-		exit_errno(ctx, "TUNSIFINFO ioctl failed");
+	if (ioctl(ctx->tunfd, TAPGIFNAME, &ifr) < 0)
+		exit_errno(ctx, "TAPGIFNAME ioctl failed");
+
+	free(ctx->ifname);
+	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+
+	set_tap_mtu(ctx);
 }
 
 void fastd_tuntap_open(fastd_context_t *ctx) {
@@ -168,18 +184,16 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
 		if (strncmp(ctx->ifname, "tap", 3) != 0)
-			exit_error(ctx, "opened device doesn't to be a tap device");
+			exit_error(ctx, "opened device doesn't seem to be a tap device");
 
 		setup_tap(ctx);
-		set_tap_mtu(ctx);
 		break;
 
 	case MODE_TUN:
 		if (strncmp(ctx->ifname, "tun", 3) != 0)
-			exit_error(ctx, "opened device doesn't to be a tun device");
+			exit_error(ctx, "opened device doesn't seem to be a tun device");
 
 		setup_tun(ctx);
-		set_tun_mtu(ctx);
 		break;
 
 	default:
@@ -188,6 +202,75 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 
 	pr_debug(ctx, "tun/tap device initialized.");
 }
+
+#else /* __OpenBSD__ */
+
+static void set_link0(fastd_context_t *ctx, bool set) {
+	struct ifreq ifr = {};
+
+	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (ctl_sock < 0)
+		exit_errno(ctx, "socket");
+
+	strncpy(ifr.ifr_name, ctx->ifname, IFNAMSIZ-1);
+	if (ioctl(ctl_sock, SIOCGIFFLAGS, &ifr) < 0)
+		exit_errno(ctx, "SIOCGIFFLAGS ioctl failed");
+
+	if (set)
+		ifr.ifr_flags |= IFF_LINK0;
+	else
+		ifr.ifr_flags &= ~IFF_LINK0;
+
+	if (ioctl(ctl_sock, SIOCSIFFLAGS, &ifr) < 0)
+		exit_errno(ctx, "SIOCSIFFLAGS ioctl failed");
+
+	if (close(ctl_sock))
+		pr_error_errno(ctx, "close");
+}
+
+static void setup_tun(fastd_context_t *ctx) {
+	set_link0(ctx, false);
+	set_tun_mtu(ctx);
+}
+
+static void setup_tap(fastd_context_t *ctx) {
+	set_link0(ctx, true);
+	set_tun_mtu(ctx);
+}
+
+void fastd_tuntap_open(fastd_context_t *ctx) {
+	char ifname[5+IFNAMSIZ] = "/dev/";
+	if (!ctx->conf->ifname)
+		exit_error(ctx, "config error: no interface name given.");
+	else if (strncmp(ctx->conf->ifname, "tun", 3) != 0)
+		exit_error(ctx, "config error: `%s' doesn't seem to be a tun device", ctx->conf->ifname);
+	else
+		strncat(ifname, ctx->conf->ifname, IFNAMSIZ-1);
+
+	pr_debug(ctx, "initializing tun device...");
+
+	if ((ctx->tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+		exit_errno(ctx, "could not open tun device file");
+
+	ctx->ifname = strndup(ctx->conf->ifname, IFNAMSIZ-1);
+
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		setup_tap(ctx);
+		break;
+
+	case MODE_TUN:
+		setup_tun(ctx);
+		break;
+
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
+
+	pr_debug(ctx, "tun device initialized.");
+}
+
+#endif
 
 #else
 
