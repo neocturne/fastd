@@ -715,7 +715,6 @@ int main(int argc, char *argv[]) {
 
 	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
 
-	init_signals(&ctx);
 	init_pipes(&ctx);
 
 	fastd_config_t conf;
@@ -727,6 +726,8 @@ int main(int argc, char *argv[]) {
 		conf.protocol->generate_key(&ctx);
 		exit(0);
 	}
+
+	init_signals(&ctx);
 
 	conf.protocol_config = conf.protocol->init(&ctx);
 
