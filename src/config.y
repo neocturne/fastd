@@ -311,7 +311,7 @@ bind_default:
 	;
 
 mtu:		TOK_UINT {
-			if ($1 > 65535) {
+			if (conf->mtu < 576 || $1 > 65535) {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid MTU");
 				YYERROR;
 			}
@@ -544,7 +544,7 @@ colon_or_port:	':'
 	;
 
 port:		colon_or_port TOK_UINT {
-			if ($2 > 65535) {
+			if ($2 < 1 || $2 > 65535) {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid port");
 				YYERROR;
 			}

@@ -151,7 +151,7 @@ static void option_mtu(fastd_context_t *ctx, fastd_config_t *conf, const char *a
 	char *endptr;
 
 	conf->mtu = strtol(arg, &endptr, 10);
-	if (*endptr || conf->mtu < 576)
+	if (*endptr || conf->mtu < 576 || conf->mtu > 65535)
 		exit_error(ctx, "invalid mtu `%s'", arg);
 }
 
@@ -185,7 +185,7 @@ static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *
 
 	if (charptr) {
 		l = strtol(charptr+1, &endptr, 10);
-		if (*endptr || l < 0 || l > 65535)
+		if (*endptr || l < 1 || l > 65535)
 			exit_error(ctx, "invalid bind port `%s'", charptr+1);
 	}
 	else {

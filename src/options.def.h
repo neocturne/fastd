@@ -15,7 +15,7 @@ OPTION_ARG(option_config_peer_dir, "--config-peer-dir", "<dir>", "Loads all file
 OPTION_ARG(option_mode, "--mode" OR "-m", "tap|tun", "Sets the mode of the interface");
 OPTION_ARG(option_interface, "--interface" OR "-i", "<name>", "Sets the name of the TUN/TAP interface to use");
 OPTION_ARG(option_mtu, "--mtu" OR "-M", "<mtu>", "Sets the MTU; must be at least 576");
-OPTION_ARG(option_bind, "--bind" OR "-b", "<address>:<port>", "Sets the bind address");
+OPTION_ARG(option_bind, "--bind" OR "-b", "<address>[:<port>]", "Sets the bind address");
 OPTION_ARG(option_protocol, "--protocol" OR "-p", "<protocol>", "Sets the protocol");
 OPTION_ARG(option_method, "--method", "<method>", "Sets the encryption method");
 OPTION(option_forward, "--forward", "Enables forwarding of packets between peers; read the documentation before use!");
