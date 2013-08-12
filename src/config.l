@@ -122,6 +122,7 @@ auto		{ TOKEN(TOK_AUTO); }
 				return -1;
 			}
 
+			BEGIN(NEEDSPACE);
 			return TOK_ADDR4;
 		}
 
@@ -180,7 +181,7 @@ auto		{ TOKEN(TOK_AUTO); }
 				return -1;
 			}
 		}
-<ADDR6>\]	{ yylloc->last_column++; BEGIN(INITIAL); return TOK_ADDR6; }
+<ADDR6>\]	{ yylloc->last_column++; BEGIN(NEEDSPACE); return TOK_ADDR6; }
 
 <INITIAL,NEEDSPACE>#.*		{ yylloc->last_column += yyleng; }
 <INITIAL,NEEDSPACE>\/\/.*	{ yylloc->last_column += yyleng; }
