@@ -609,6 +609,11 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 	if (conf->generate_key || conf->show_key)
 		return;
 
+	if (conf->ifname) {
+		if (strchr(conf->ifname, '/'))
+			exit_error(ctx, "config error: invalid interface name");
+	}
+
 	if (conf->mode == MODE_TUN) {
 		if (!conf->peers || conf->peers->next)
 			exit_error(ctx, "config error: in TUN mode exactly one peer must be configured");

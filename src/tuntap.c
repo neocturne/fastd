@@ -157,22 +157,29 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	pr_debug(ctx, "initializing tun/tap device...");
 
 	char ifname[5+IFNAMSIZ] = "/dev/";
+	const char *type;
+
+	switch (ctx->conf->mode) {
+	case MODE_TAP:
+		type = "tap";
+		break;
+
+	case MODE_TUN:
+		type = "tun";
+		break;
+
+	default:
+		exit_bug(ctx, "invalid mode");
+	}
+
 	if (ctx->conf->ifname) {
+		if (strncmp(ctx->conf->ifname, type, 3) != 0)
+			exit_error(ctx, "`%s' doesn't seem to be a %s device", ctx->conf->ifname, type);
+
 		strncat(ifname, ctx->conf->ifname, IFNAMSIZ-1);
 	}
 	else {
-		switch (ctx->conf->mode) {
-		case MODE_TAP:
-			strncat(ifname, "tap", IFNAMSIZ-1);
-			break;
-
-		case MODE_TUN:
-			strncat(ifname, "tun", IFNAMSIZ-1);
-			break;
-
-		default:
-			exit_bug(ctx, "invalid mode");
-		}
+		strncat(ifname, type, IFNAMSIZ-1);
 	}
 
 	if ((ctx->tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
@@ -183,16 +190,10 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
-		if (strncmp(ctx->ifname, "tap", 3) != 0)
-			exit_error(ctx, "opened device doesn't seem to be a tap device");
-
 		setup_tap(ctx);
 		break;
 
 	case MODE_TUN:
-		if (strncmp(ctx->ifname, "tun", 3) != 0)
-			exit_error(ctx, "opened device doesn't seem to be a tun device");
-
 		setup_tun(ctx);
 		break;
 
