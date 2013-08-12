@@ -77,8 +77,10 @@
 %token TOK_TAP
 %token TOK_TUN
 %token TOK_ON
+%token TOK_PRE_UP
 %token TOK_UP
 %token TOK_DOWN
+%token TOK_POST_DOWN
 %token TOK_ESTABLISH
 %token TOK_DISESTABLISH
 %token TOK_VERIFY
@@ -175,8 +177,10 @@ statement:	peer_group_statement
 	|	TOK_METHOD method ';'
 	|	TOK_CRYPTO crypto ';'
 	|	TOK_SECRET secret ';'
+	|	TOK_ON TOK_PRE_UP on_pre_up ';'
 	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_ON TOK_DOWN on_down ';'
+	|	TOK_ON TOK_POST_DOWN on_post_down ';'
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_ON TOK_VERIFY on_verify ';'
@@ -354,6 +358,15 @@ crypto:	TOK_STRING TOK_USE TOK_STRING {
 secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1->str); }
 	;
 
+on_pre_up:	TOK_STRING {
+			free(conf->on_pre_up);
+			free(conf->on_pre_up_dir);
+
+			conf->on_pre_up = strdup($1->str);
+			conf->on_pre_up_dir = get_current_dir_name();
+		}
+	;
+
 on_up:		TOK_STRING {
 			free(conf->on_up);
 			free(conf->on_up_dir);
@@ -369,6 +382,15 @@ on_down:	TOK_STRING {
 
 			conf->on_down = strdup($1->str);
 			conf->on_down_dir = get_current_dir_name();
+		}
+	;
+
+on_post_down:	TOK_STRING {
+			free(conf->on_post_down);
+			free(conf->on_post_down_dir);
+
+			conf->on_post_down = strdup($1->str);
+			conf->on_post_down_dir = get_current_dir_name();
 		}
 	;
 

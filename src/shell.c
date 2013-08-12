@@ -43,7 +43,20 @@ bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir
 		snprintf(buf, sizeof(buf), "%u", (unsigned)getpid());
 		setenv("FASTD_PID", buf, 1);
 
-		setenv("INTERFACE", ctx->ifname, 1);
+		if (ctx->ifname) {
+			setenv("INTERFACE", ctx->ifname, 1);
+		}
+		else if (ctx->conf->ifname) {
+			char ifname[IF_NAMESIZE];
+
+			strncpy(ifname, ctx->conf->ifname, sizeof(ifname)-1);
+			ifname[sizeof(ifname)-1] = 0;
+
+			setenv("INTERFACE", ifname, 1);
+		}
+		else {
+			unsetenv("INTERFACE");
+		}
 
 		snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
 		setenv("INTERFACE_MTU", buf, 1);

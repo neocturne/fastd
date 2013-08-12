@@ -90,8 +90,10 @@ any		{ TOKEN(TOK_ANY); }
 tap		{ TOKEN(TOK_TAP); }
 tun		{ TOKEN(TOK_TUN); }
 on		{ TOKEN(TOK_ON); }
+pre-up		{ TOKEN(TOK_PRE_UP); }
 up		{ TOKEN(TOK_UP); }
 down		{ TOKEN(TOK_DOWN); }
+post-down	{ TOKEN(TOK_POST_DOWN); }
 establish	{ TOKEN(TOK_ESTABLISH); }
 disestablish	{ TOKEN(TOK_DISESTABLISH); }
 verify		{ TOKEN(TOK_VERIFY); }

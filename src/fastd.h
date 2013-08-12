@@ -230,11 +230,17 @@ struct fastd_config {
 
 	fastd_protocol_config_t *protocol_config;
 
+	char *on_pre_up;
+	char *on_pre_up_dir;
+
 	char *on_up;
 	char *on_up_dir;
 
 	char *on_down;
 	char *on_down_dir;
+
+	char *on_post_down;
+	char *on_post_down_dir;
 
 	char *on_establish;
 	char *on_establish_dir;

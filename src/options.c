@@ -231,6 +231,14 @@ static void option_forward(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->forward = true;
 }
 
+static void option_on_pre_up(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	free(conf->on_pre_up);
+	free(conf->on_pre_up_dir);
+
+	conf->on_pre_up = strdup(arg);
+	conf->on_pre_up_dir = get_current_dir_name();
+}
+
 static void option_on_up(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->on_up);
 	free(conf->on_up_dir);
@@ -245,6 +253,14 @@ static void option_on_down(fastd_context_t *ctx, fastd_config_t *conf, const cha
 
 	conf->on_down = strdup(arg);
 	conf->on_down_dir = get_current_dir_name();
+}
+
+static void option_on_post_down(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	free(conf->on_post_down);
+	free(conf->on_post_down_dir);
+
+	conf->on_post_down = strdup(arg);
+	conf->on_post_down_dir = get_current_dir_name();
 }
 
 static void option_on_establish(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {

@@ -738,10 +738,14 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 	free(conf->groups);
 	free(conf->ifname);
 	free(conf->secret);
+	free(conf->on_pre_up);
+	free(conf->on_pre_up_dir);
 	free(conf->on_up);
 	free(conf->on_up_dir);
 	free(conf->on_down);
 	free(conf->on_down_dir);
+	free(conf->on_post_down);
+	free(conf->on_post_down_dir);
 	free(conf->on_establish);
 	free(conf->on_establish_dir);
 	free(conf->on_disestablish);

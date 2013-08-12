@@ -337,6 +337,4 @@ void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
 void fastd_tuntap_close(fastd_context_t *ctx) {
 	if (close(ctx->tunfd))
 		pr_warn_errno(ctx, "closing tun/tap: close");
-
-	free(ctx->ifname);
 }

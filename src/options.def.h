@@ -19,8 +19,10 @@ OPTION_ARG(option_bind, "--bind" OR "-b", "<address>[:<port>]", "Sets the bind a
 OPTION_ARG(option_protocol, "--protocol" OR "-p", "<protocol>", "Sets the protocol");
 OPTION_ARG(option_method, "--method", "<method>", "Sets the encryption method");
 OPTION(option_forward, "--forward", "Enables forwarding of packets between peers; read the documentation before use!");
+OPTION_ARG(option_on_pre_up, "--on-pre-up", "<command>", "Sets a shell command to execute before interface creation");
 OPTION_ARG(option_on_up, "--on-up", "<command>", "Sets a shell command to execute after interface creation");
 OPTION_ARG(option_on_down, "--on-down", "<command>", "Sets a shell command to execute before interface destruction");
+OPTION_ARG(option_on_post_down, "--on-post-down", "<command>", "Sets a shell command to execute after interface destruction");
 OPTION_ARG(option_on_establish, "--on-establish", "<command>", "Sets a shell command to execute when a new connection is established");
 OPTION_ARG(option_on_disestablish, "--on-disestablish", "<command>", "Sets a shell command to execute when a connection is lost");
 OPTION_ARG(option_on_verify, "--on-verify", "<command>", "Sets a shell command to execute to check a connection attempt by an unknown peer");
