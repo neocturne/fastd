@@ -55,7 +55,21 @@
 %}
 
 <INITIAL>{
-[0-9]+		{ UPDATE_LOCATION; yylval->num = atoi(yytext); BEGIN(NEEDSPACE); return TOK_INTEGER; }
+[0-9]+ {
+	char *endptr;
+
+	UPDATE_LOCATION;
+
+	yylval->uint64 = strtoull(yytext, &endptr, 10);
+	if (*endptr) {
+		yylval->error = "invalid integer constant";
+		return -1;
+	}
+
+
+	BEGIN(NEEDSPACE);
+	return TOK_UINT;
+}
 
 interface	{ TOKEN(TOK_INTERFACE); }
 bind		{ TOKEN(TOK_BIND); }

@@ -39,7 +39,8 @@
 }
 
 %union {
-	int num;
+	uint64_t uint64;
+	int64_t int64;
 	fastd_string_stack_t *str;
 	bool boolean;
 	fastd_tristate_t tristate;
@@ -54,7 +55,7 @@
 %token START_PEER_GROUP_CONFIG
 %token START_PEER_CONFIG
 
-%token <num> TOK_INTEGER
+%token <uint64> TOK_UINT
 %token <str> TOK_STRING
 
 %token TOK_INTERFACE
@@ -121,6 +122,7 @@
 %code {
 	#include <peer.h>
 
+	#include <limits.h>
 	#include <stdint.h>
 	#include <unistd.h>
 
@@ -128,19 +130,19 @@
 }
 
 
-%type <num> maybe_log_level
-%type <num> log_level
-%type <num> port
+%type <uint64> maybe_log_level
+%type <uint64> log_level
+%type <uint64> port
 %type <boolean> boolean
-%type <num> maybe_port
+%type <uint64> maybe_port
 %type <str> maybe_as
-%type <num> maybe_af
+%type <uint64> maybe_af
 %type <boolean> maybe_float
 %type <addr> bind_address
 %type <str> maybe_bind_interface
-%type <num> maybe_bind_default
-%type <num> bind_default
-%type <num> drop_capabilities_enabled
+%type <int64> maybe_bind_default
+%type <uint64> bind_default
+%type <uint64> drop_capabilities_enabled
 %type <tristate> autobool
 
 %%
@@ -308,7 +310,14 @@ bind_default:
 		}
 	;
 
-mtu:		TOK_INTEGER	{ conf->mtu = $1; }
+mtu:		TOK_UINT {
+			if ($1 > 65535) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid MTU");
+				YYERROR;
+			}
+
+			conf->mtu = $1;
+		}
 	;
 
 pmtu:		autobool	{ conf->pmtu = $1; }
@@ -472,7 +481,12 @@ peer_group_after:
 		}
 	;
 
-peer_limit:	TOK_INTEGER {
+peer_limit:	TOK_UINT {
+			if ($1 > INT_MAX) {
+				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid peer limit");
+				YYERROR;
+			}
+
 			conf->peer_group->max_connections = $1;
 		}
 	;
@@ -529,8 +543,8 @@ colon_or_port:	':'
 	|	TOK_PORT
 	;
 
-port:		colon_or_port TOK_INTEGER {
-			if ($2 < 0 || $2 > 65635) {
+port:		colon_or_port TOK_UINT {
+			if ($2 > 65535) {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid port");
 				YYERROR;
 			}
