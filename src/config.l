@@ -34,26 +34,113 @@
 %option warn
 
 
-%top {
-#include <config.yy.h>
-}
-
 %s NEEDSPACE
 %s STRING
 %s COMMENT
 
-%%
+
+%top {
+#include <config.yy.h>
+}
+
 %{
+typedef struct keyword {
+	const char *keyword;
+	int token;
+} keyword_t;
+
+/* the keyword list must be sorted */
+static const keyword_t keywords[] = {
+	{ "addresses", TOK_ADDRESSES },
+	{ "any", TOK_ANY },
+	{ "as", TOK_AS },
+	{ "auto", TOK_AUTO },
+	{ "bind", TOK_BIND },
+	{ "capabilities", TOK_CAPABILITIES },
+	{ "crypto", TOK_CRYPTO },
+	{ "debug", TOK_DEBUG },
+	{ "default", TOK_DEFAULT },
+	{ "disestablish", TOK_DISESTABLISH },
+	{ "down", TOK_DOWN },
+	{ "drop", TOK_DROP },
+	{ "early", TOK_EARLY },
+	{ "error", TOK_ERROR },
+	{ "establish", TOK_ESTABLISH },
+	{ "fatal", TOK_FATAL },
+	{ "float", TOK_FLOAT },
+	{ "forward", TOK_FORWARD },
+	{ "from", TOK_FROM },
+	{ "group", TOK_GROUP },
+	{ "hide", TOK_HIDE },
+	{ "include", TOK_INCLUDE },
+	{ "info", TOK_INFO },
+	{ "interface", TOK_INTERFACE },
+	{ "ip", TOK_IP },
+	{ "ipv4", TOK_IPV4 },
+	{ "ipv6", TOK_IPV6 },
+	{ "key", TOK_KEY },
+	{ "level", TOK_LEVEL },
+	{ "limit", TOK_LIMIT },
+	{ "log", TOK_LOG },
+	{ "mac", TOK_MAC },
+	{ "method", TOK_METHOD },
+	{ "mode", TOK_MODE },
+	{ "mtu", TOK_MTU },
+	{ "no", TOK_NO },
+	{ "on", TOK_ON },
+	{ "peer", TOK_PEER },
+	{ "peers", TOK_PEERS },
+	{ "pmtu", TOK_PMTU },
+	{ "port", TOK_PORT },
+	{ "post-down", TOK_POST_DOWN },
+	{ "pre-up", TOK_PRE_UP },
+	{ "protocol", TOK_PROTOCOL },
+	{ "remote", TOK_REMOTE },
+	{ "secret", TOK_SECRET },
+	{ "stderr", TOK_STDERR },
+	{ "syslog", TOK_SYSLOG },
+	{ "tap", TOK_TAP },
+	{ "to", TOK_TO },
+	{ "tun", TOK_TUN },
+	{ "up", TOK_UP },
+	{ "use", TOK_USE },
+	{ "user", TOK_USER },
+	{ "verbose", TOK_VERBOSE },
+	{ "verify", TOK_VERIFY },
+	{ "warn", TOK_WARN },
+	{ "yes", TOK_YES },
+};
+
+static int compare_keywords(const void *v1, const void *v2) {
+	const keyword_t *k1 = v1, *k2 = v2;
+	return strcmp(k1->keyword, k2->keyword);
+}
+
 #define UPDATE_LOCATION do {					      \
 		yylloc->first_line = yylloc->last_line;		      \
 		yylloc->first_column = yylloc->last_column+1;	      \
 		yylloc->last_column += yyleng;			      \
 	} while (0)
-
-#define TOKEN(tok) do { UPDATE_LOCATION; BEGIN(NEEDSPACE); return tok; } while (0)
 %}
 
+%%
+
 <INITIAL>{
+[a-z][-a-z0-9]* {
+	const keyword_t key = {yytext};
+	const keyword_t *ret = bsearch(&key, keywords, sizeof(keywords)/sizeof(keyword_t), sizeof(keyword_t), compare_keywords);
+
+	UPDATE_LOCATION;
+
+	if (!ret) {
+		yylval->error = "syntax error";
+		return -1;
+	}
+
+	BEGIN(NEEDSPACE);
+	return ret->token;
+}
+
 [0-9]+ {
 	char *endptr;
 
@@ -69,65 +156,6 @@
 	BEGIN(NEEDSPACE);
 	return TOK_UINT;
 }
-
-interface	{ TOKEN(TOK_INTERFACE); }
-bind		{ TOKEN(TOK_BIND); }
-mtu		{ TOKEN(TOK_MTU); }
-pmtu		{ TOKEN(TOK_PMTU); }
-mode		{ TOKEN(TOK_MODE); }
-protocol	{ TOKEN(TOK_PROTOCOL); }
-method		{ TOKEN(TOK_METHOD); }
-peer		{ TOKEN(TOK_PEER); }
-remote		{ TOKEN(TOK_REMOTE); }
-ipv4		{ TOKEN(TOK_IPV4); }
-ipv6		{ TOKEN(TOK_IPV6); }
-secret		{ TOKEN(TOK_SECRET); }
-key		{ TOKEN(TOK_KEY); }
-include		{ TOKEN(TOK_INCLUDE); }
-as		{ TOKEN(TOK_AS); }
-any		{ TOKEN(TOK_ANY); }
-tap		{ TOKEN(TOK_TAP); }
-tun		{ TOKEN(TOK_TUN); }
-on		{ TOKEN(TOK_ON); }
-pre-up		{ TOKEN(TOK_PRE_UP); }
-up		{ TOKEN(TOK_UP); }
-down		{ TOKEN(TOK_DOWN); }
-post-down	{ TOKEN(TOK_POST_DOWN); }
-establish	{ TOKEN(TOK_ESTABLISH); }
-disestablish	{ TOKEN(TOK_DISESTABLISH); }
-verify		{ TOKEN(TOK_VERIFY); }
-peers		{ TOKEN(TOK_PEERS); }
-from		{ TOKEN(TOK_FROM); }
-log		{ TOKEN(TOK_LOG); }
-level		{ TOKEN(TOK_LEVEL); }
-syslog		{ TOKEN(TOK_SYSLOG); }
-stderr		{ TOKEN(TOK_STDERR); }
-to		{ TOKEN(TOK_TO); }
-fatal		{ TOKEN(TOK_FATAL); }
-error		{ TOKEN(TOK_ERROR); }
-warn		{ TOKEN(TOK_WARN); }
-info		{ TOKEN(TOK_INFO); }
-verbose		{ TOKEN(TOK_VERBOSE); }
-debug		{ TOKEN(TOK_DEBUG); }
-forward		{ TOKEN(TOK_FORWARD); }
-yes		{ TOKEN(TOK_YES); }
-no		{ TOKEN(TOK_NO); }
-port		{ TOKEN(TOK_PORT); }
-float		{ TOKEN(TOK_FLOAT); }
-crypto		{ TOKEN(TOK_CRYPTO); }
-use		{ TOKEN(TOK_USE); }
-default		{ TOKEN(TOK_DEFAULT); }
-user		{ TOKEN(TOK_USER); }
-group		{ TOKEN(TOK_GROUP); }
-drop		{ TOKEN(TOK_DROP); }
-capabilities	{ TOKEN(TOK_CAPABILITIES); }
-early		{ TOKEN(TOK_EARLY); }
-limit		{ TOKEN(TOK_LIMIT); }
-hide		{ TOKEN(TOK_HIDE); }
-ip		{ TOKEN(TOK_IP); }
-mac		{ TOKEN(TOK_MAC); }
-addresses	{ TOKEN(TOK_ADDRESSES); }
-auto		{ TOKEN(TOK_AUTO); }
 
 [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} {
 			UPDATE_LOCATION;
