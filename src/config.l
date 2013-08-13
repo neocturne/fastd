@@ -35,23 +35,22 @@
 
 
 %top {
-	 #include <config.yy.h>
+#include <config.yy.h>
 }
 
 %s NEEDSPACE
 %s STRING
-%s ADDR6
 %s COMMENT
 
 %%
 %{
-	#define UPDATE_LOCATION do { \
-			yylloc->first_line = yylloc->last_line; \
-			yylloc->first_column = yylloc->last_column+1; \
-			yylloc->last_column += yyleng; \
-		} while (0)
+#define UPDATE_LOCATION do {					      \
+		yylloc->first_line = yylloc->last_line;		      \
+		yylloc->first_column = yylloc->last_column+1;	      \
+		yylloc->last_column += yyleng;			      \
+	} while (0)
 
-	#define TOKEN(tok) do { UPDATE_LOCATION; BEGIN(NEEDSPACE); return tok; } while (0)
+#define TOKEN(tok) do { UPDATE_LOCATION; BEGIN(NEEDSPACE); return tok; } while (0)
 %}
 
 <INITIAL>{
@@ -142,6 +141,20 @@ auto		{ TOKEN(TOK_AUTO); }
 			return TOK_ADDR4;
 		}
 
+\[[0-9a-fA-F:]+\] {
+			UPDATE_LOCATION;
+
+			yytext[yyleng-1] = 0;
+
+			if (!inet_pton(AF_INET6, yytext+1, &yylval->addr6)) {
+				yylval->error = "invalid address";
+				return -1;
+			}
+
+			BEGIN(NEEDSPACE);
+			return TOK_ADDR6;
+		}
+
 [;:\{\}]	{ UPDATE_LOCATION; return yytext[0]; }
 
 [ \t]		{ yylloc->last_column++; }
@@ -189,16 +202,6 @@ auto		{ TOKEN(TOK_AUTO); }
 
 		}
 
-<INITIAL>\[	{ UPDATE_LOCATION; BEGIN(ADDR6); }
-<ADDR6>[0-9a-fA-F:]+	{
-			yylloc->last_column += yyleng;
-			if (!inet_pton(AF_INET6, yytext, &yylval->addr6)) {
-				yylval->error = "invalid address";
-				return -1;
-			}
-		}
-<ADDR6>\]	{ yylloc->last_column++; BEGIN(NEEDSPACE); return TOK_ADDR6; }
-
 <INITIAL,NEEDSPACE>#.*		{ yylloc->last_column += yyleng; }
 <INITIAL,NEEDSPACE>\/\/.*	{ yylloc->last_column += yyleng; }
 
@@ -218,5 +221,4 @@ auto		{ TOKEN(TOK_AUTO); }
 <INITIAL><<EOF>> { return 0; }
 <COMMENT><<EOF>> { yylval->error = "unterminated block comment"; return -1; }
 <STRING><<EOF>>	{ yylval->error = "unterminated string"; return -1; }
-<ADDR6><<EOF>>	{ yylval->error = "unterminated address"; return -1; }
 %%
