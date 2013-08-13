@@ -154,26 +154,23 @@ auto		{ TOKEN(TOK_AUTO); }
 			BEGIN(NEEDSPACE);
 			return TOK_ADDR6;
 		}
-
-[;:\{\}]	{ UPDATE_LOCATION; return yytext[0]; }
-
-[ \t]		{ yylloc->last_column++; }
-\n		{ yylloc->last_column = 0; yylloc->last_line++; }
-\r		;
 }
 
-<NEEDSPACE>{
+<INITIAL,NEEDSPACE>{
 [;:\{\}]	{ UPDATE_LOCATION; BEGIN(INITIAL); return yytext[0]; }
 
-[ \t]		{ yylloc->last_column++; BEGIN(INITIAL); }
 \n		{ yylloc->last_column = 0; yylloc->last_line++; BEGIN(INITIAL); }
-\r		;
+
+[ \t\r]		|
+#.*		|
+\/\/.*		{ UPDATE_LOCATION; BEGIN(INITIAL); }
+
+\/\*		{ UPDATE_LOCATION; BEGIN(COMMENT); }
 }
 
 <INITIAL>\"	{ UPDATE_LOCATION; BEGIN(STRING); }
-<STRING>[^"\\\n\r] { yylloc->last_column++; yymore(); }
+<STRING>[^"\\\n] { yylloc->last_column++; yymore(); }
 <STRING>\n	{ yylloc->last_line++; yylloc->last_column = 0; yymore(); }
-<STRING>\r	{ yymore(); }
 <STRING>\\.	{ yylloc->last_column+=2; yymore(); }
 <STRING>\\\n	{ yylloc->last_line++; yylloc->last_column = 0; yymore(); }
 <STRING>\" {
@@ -202,14 +199,9 @@ auto		{ TOKEN(TOK_AUTO); }
 
 		}
 
-<INITIAL,NEEDSPACE>#.*		{ yylloc->last_column += yyleng; }
-<INITIAL,NEEDSPACE>\/\/.*	{ yylloc->last_column += yyleng; }
-
-<INITIAL,NEEDSPACE>\/\*		{ UPDATE_LOCATION; BEGIN(COMMENT); }
 <COMMENT>\*\/	{ yylloc->last_column += yyleng; BEGIN(INITIAL); }
-<COMMENT>[^\n\r] { yylloc->last_column++; }
+<COMMENT>[^\n]  { yylloc->last_column++; }
 <COMMENT>\n	{ yylloc->last_line++; yylloc->last_column = 0; }
-<COMMENT>\r	{}
 
 .		{
 			yylloc->first_line = yylloc->last_line;
