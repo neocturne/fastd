@@ -5,7 +5,6 @@ set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR})
 set(FASTD_VERSION "v8+")
 
 find_package(BISON 2.5 REQUIRED)
-find_package(FLEX REQUIRED)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads)

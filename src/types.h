@@ -87,6 +87,7 @@ typedef struct fastd_method fastd_method_t;
 
 typedef struct fastd_handshake fastd_handshake_t;
 
+typedef struct fastd_lex fastd_lex_t;
 typedef struct fastd_string_stack fastd_string_stack_t;
 
 typedef struct fastd_resolve_return fastd_resolve_return_t;

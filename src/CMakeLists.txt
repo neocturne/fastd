@@ -11,7 +11,6 @@ endif(WITH_METHOD_AES128_GCM)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${FASTD_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CAP_INCLUDE_DIR} ${UECC_INCLUDE_DIRS} ${NACL_INCLUDE_DIR})
 link_directories(${UECC_LIBRARY_DIRS})
 
-FLEX_TARGET(fastd_config_lex config.l ${CMAKE_CURRENT_BINARY_DIR}/config.ll.c)
 BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
 
 add_executable(fastd
@@ -21,6 +20,7 @@ add_executable(fastd
   crypto.c
   crypto_linux.c
   handshake.c
+  lex.c
   options.c
   peer.c
   printf.c
@@ -34,7 +34,6 @@ add_executable(fastd
   task.c
   tuntap.c
   protocol_ec25519_fhmqvc.c
-  ${FLEX_fastd_config_lex_OUTPUTS}
   ${BISON_fastd_config_parse_OUTPUTS}
   ${METHODS}
 )

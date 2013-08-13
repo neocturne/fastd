@@ -25,8 +25,8 @@
 
 
 #include "fastd.h"
+#include "lex.h"
 #include "peer.h"
-#include <config.ll.h>
 #include <config.yy.h>
 
 #include <dirent.h>
@@ -414,11 +414,10 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 	char *filename2 = NULL;
 	char *dir = NULL;
 	FILE *file;
-	yyscan_t scanner;
+	fastd_lex_t *lex = NULL;
 	fastd_config_pstate *ps;
 	fastd_string_stack_t *strings = NULL;
 
-	fastd_config_yylex_init(&scanner);
 	ps = fastd_config_pstate_new();
 
 	if (!filename) {
@@ -433,7 +432,7 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 		}
 	}
 
-	fastd_config_yyset_in(file, scanner);
+	lex = fastd_lex_init(file);
 
 	if (filename) {
 		filename2 = strdup(filename);
@@ -458,7 +457,7 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1);
 
 	while(parse_ret == YYPUSH_MORE) {
-		token = fastd_config_yylex(&token_val, &loc, scanner);
+		token = fastd_lex(&token_val, &loc, lex);
 
 		if (token < 0) {
 			pr_error(ctx, "config error: %s at %s:%i:%i", token_val.error, filename, loc.first_line, loc.first_column);
@@ -480,8 +479,8 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
  end_free:
 	fastd_string_stack_free(strings);
 
+	fastd_lex_destroy(lex);
 	fastd_config_pstate_delete(ps);
-	fastd_config_yylex_destroy(scanner);
 
 	if(chdir(oldcwd))
 		pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
