@@ -169,21 +169,17 @@ static void consume(fastd_lex_t *lex, bool needspace) {
 	lex->needspace = needspace;
 }
 
-static int syntax_error(YYSTYPE *yylval, fastd_lex_t *lex) {
-	yylval->error = "syntax error";
-	return -1;
-}
-
 static int io_error(YYSTYPE *yylval, fastd_lex_t *lex) {
 	yylval->error = "I/O error";
 	return -1;
 }
 
-static inline int end(YYSTYPE *yylval, fastd_lex_t *lex) {
+static int syntax_error(YYSTYPE *yylval, fastd_lex_t *lex) {
 	if (ferror(lex->file))
 		return io_error(yylval, lex);
 
-	return 0;
+	yylval->error = "syntax error";
+	return -1;
 }
 
 static int consume_comment(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
@@ -268,7 +264,10 @@ static int parse_ipv6_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 	if (lex->needspace)
 		return syntax_error(yylval, lex);
 
-	while (next(yylloc, lex, false)) {
+	while (true) {
+		if (!next(yylloc, lex, false))
+			return syntax_error(yylval, lex);
+
 		char cur = current(lex);
 
 		if (!((cur >= '0' && cur <= '9') || cur == ':'))
@@ -282,10 +281,8 @@ static int parse_ipv6_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 		ok = inet_pton(AF_INET6, lex->buffer+lex->start+1, &yylval->addr6);
 	}
 
-	if (!ok) {
-		yylval->error = "invalid address";
-		return -1;
-	}
+	if (!ok)
+		return syntax_error(yylval, lex);
 
 	next(yylloc, lex, true);
 	consume(lex, true);
@@ -309,10 +306,10 @@ static int parse_ipv4_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 
 	free(token);
 
-	if (!ok) {
-		yylval->error = "invalid address";
-		return -1;
-	}
+	if (!ok)
+		return syntax_error(yylval, lex);
+
+	consume(lex, true);
 
 	return TOK_ADDR4;
 }
@@ -337,10 +334,10 @@ static int parse_number(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 	bool ok = !*endptr;
 	free(token);
 
-	if (!ok) {
-		yylval->error = "invalid integer constant";
-		return -1;
-	}
+	if (!ok)
+		return syntax_error(yylval, lex);
+
+	consume(lex, true);
 
 	return TOK_UINT;
 }
@@ -453,5 +450,8 @@ int fastd_lex(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 		}
 	}
 
-	return end(yylval, lex);
+	if (ferror(lex->file))
+		return io_error(yylval, lex);
+
+	return 0;
 }
