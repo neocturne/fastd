@@ -29,6 +29,7 @@ add_executable(fastd
   receive.c
   resolve.c
   send.c
+  sha256.c
   shell.c
   socket.c
   task.c

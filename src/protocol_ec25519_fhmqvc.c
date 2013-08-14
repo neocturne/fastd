@@ -27,19 +27,18 @@
 #include "fastd.h"
 #include "handshake.h"
 #include "peer.h"
+#include "sha256.h"
 #include "task.h"
 
-#include <arpa/inet.h>
 
 #include <libuecc/ecc.h>
 #include <crypto_auth_hmacsha256.h>
-#include <crypto_hash_sha256.h>
 
 
 #define PUBLICKEYBYTES 32
 #define SECRETKEYBYTES 32
 #define HMACBYTES crypto_auth_hmacsha256_BYTES
-#define HASHBYTES crypto_hash_sha256_BYTES
+#define HASHBYTES FASTD_SHA256_HASH_BYTES
 
 
 #if HASHBYTES != crypto_auth_hmacsha256_KEYBYTES
@@ -279,16 +278,16 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 			      const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "responding handshake with %P[%I]...", peer, remote_addr);
 
-	uint8_t hashinput[5*PUBLICKEYBYTES];
+	uint8_t hashinput[2*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
 	uint8_t hmacbuf[HMACBYTES];
 
-	memcpy(hashinput, handshake_key->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
-
-	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
+	fastd_sha256_blocks(hashbuf,
+			    handshake_key->public_key.p,
+			    peer_handshake_key->p,
+			    ctx->conf->protocol_config->public_key.p,
+			    peer->protocol_config->public_key.p,
+			    NULL);
 
 	ecc_int256_t d = {{0}}, e = {{0}}, eb, s;
 
@@ -323,8 +322,13 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	ecc_25519_store_packed(&sigma, &work);
 
 	uint8_t shared_handshake_key[HASHBYTES];
-	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
-	crypto_hash_sha256(shared_handshake_key, hashinput, 5*PUBLICKEYBYTES);
+	fastd_sha256_blocks(shared_handshake_key,
+			    handshake_key->public_key.p,
+			    peer_handshake_key->p,
+			    ctx->conf->protocol_config->public_key.p,
+			    peer->protocol_config->public_key.p,
+			    sigma.p,
+			    NULL);
 
 	memcpy(hashinput, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, handshake_key->public_key.p, PUBLICKEYBYTES);
@@ -346,9 +350,6 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 		      const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
 		      const ecc_int256_t *A, const ecc_int256_t *B, const ecc_int256_t *X,
 		      const ecc_int256_t *Y, const ecc_int256_t *sigma, uint64_t serial) {
-	uint8_t hashinput[5*PUBLICKEYBYTES];
-	uint8_t hash[HASHBYTES];
-
 	if (serial <= peer->protocol_state->last_serial) {
 		pr_debug(ctx, "ignoring handshake from %P[%I] because of handshake key reuse", peer, remote_addr);
 		return false;
@@ -372,12 +373,8 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 		peer->protocol_state->old_session = (protocol_session_t){};
 	}
 
-	memcpy(hashinput, X->p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, A->p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
-	memcpy(hashinput+4*PUBLICKEYBYTES, sigma->p, PUBLICKEYBYTES);
-	crypto_hash_sha256(hash, hashinput, 5*PUBLICKEYBYTES);
+	uint8_t hash[HASHBYTES];
+	fastd_sha256_blocks(hash, X->p, Y->p, A->p, B->p, sigma->p, NULL);
 
 	peer->protocol_state->session.established = ctx->now;
 	peer->protocol_state->session.handshakes_cleaned = false;
@@ -410,16 +407,16 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 			     const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, remote_addr);
 
-	uint8_t hashinput[5*PUBLICKEYBYTES];
+	uint8_t hashinput[2*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
 	uint8_t hmacbuf[HMACBYTES];
 
-	memcpy(hashinput, peer_handshake_key->p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, handshake_key->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-
-	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
+	fastd_sha256_blocks(hashbuf,
+			    peer_handshake_key->p,
+			    handshake_key->public_key.p,
+			    peer->protocol_config->public_key.p,
+			    ctx->conf->protocol_config->public_key.p,
+			    NULL);
 
 	ecc_int256_t d = {{0}}, e = {{0}}, da, s;
 
@@ -454,8 +451,13 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	ecc_25519_store_packed(&sigma, &work);
 
 	uint8_t shared_handshake_key[HASHBYTES];
-	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
-	crypto_hash_sha256(shared_handshake_key, hashinput, 5*PUBLICKEYBYTES);
+	fastd_sha256_blocks(shared_handshake_key,
+			    peer_handshake_key->p,
+			    handshake_key->public_key.p,
+			    peer->protocol_config->public_key.p,
+			    ctx->conf->protocol_config->public_key.p,
+			    sigma.p,
+			    NULL);
 
 	memcpy(hashinput, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
@@ -489,15 +491,15 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 				    const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, remote_addr);
 
-	uint8_t hashinput[5*PUBLICKEYBYTES];
+	uint8_t hashinput[2*PUBLICKEYBYTES];
 	uint8_t hashbuf[HASHBYTES];
 
-	memcpy(hashinput, handshake_key->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
-	memcpy(hashinput+2*PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+3*PUBLICKEYBYTES, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
-
-	crypto_hash_sha256(hashbuf, hashinput, 4*PUBLICKEYBYTES);
+	fastd_sha256_blocks(hashbuf,
+			    handshake_key->public_key.p,
+			    peer_handshake_key->p,
+			    ctx->conf->protocol_config->public_key.p,
+			    peer->protocol_config->public_key.p,
+			    NULL);
 
 	ecc_int256_t d = {{0}}, e = {{0}}, eb, s;
 
@@ -532,8 +534,13 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	ecc_25519_store_packed(&sigma, &work);
 
 	uint8_t shared_handshake_key[HASHBYTES];
-	memcpy(hashinput+4*PUBLICKEYBYTES, sigma.p, PUBLICKEYBYTES);
-	crypto_hash_sha256(shared_handshake_key, hashinput, 5*PUBLICKEYBYTES);
+	fastd_sha256_blocks(shared_handshake_key,
+			    handshake_key->public_key.p,
+			    peer_handshake_key->p,
+			    ctx->conf->protocol_config->public_key.p,
+			    peer->protocol_config->public_key.p,
+			    sigma.p,
+			    NULL);
 
 	memcpy(hashinput, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
 	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
