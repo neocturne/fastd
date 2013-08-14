@@ -68,10 +68,12 @@ static void usage(fastd_context_t *ctx, fastd_config_t *conf) {
 	puts("fastd (Fast and Secure Tunnelling Daemon) " FASTD_VERSION " usage:\n");
 
 #define OR ", "
+#define SEPARATOR puts("")
 #define OPTION(func, options, message) print_usage("  " options, message)
 #define OPTION_ARG(func, options, arg, message) print_usage("  " options " " arg, message)
 #include "options.def.h"
 #undef OR
+#undef SEPARATOR
 #undef OPTION
 #undef OPTION_ARG
 
@@ -335,6 +337,7 @@ void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int
 
 	while (i < argc) {
 #define OR ,
+#define SEPARATOR do {} while (false)
 #define OPTION(func, options, message)					\
 		({							\
 			if(config_match(argv[i], options, NULL)) {	\
@@ -355,6 +358,7 @@ void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int
 		})
 #include "options.def.h"
 #undef OR
+#undef SEPARATOR
 #undef OPTION
 #undef OPTION_ARG
 
