@@ -30,24 +30,6 @@
 #include <arpa/inet.h>
 
 
-static int parse_log_level(fastd_context_t *ctx, const char *arg) {
-	if (!strcmp(arg, "fatal"))
-		return LOG_CRIT;
-	else if (!strcmp(arg, "error"))
-		return LOG_ERR;
-	else if (!strcmp(arg, "warn"))
-		return LOG_WARNING;
-	else if (!strcmp(arg, "info"))
-		return LOG_NOTICE;
-	else if (!strcmp(arg, "verbose"))
-		return LOG_INFO;
-	else if (!strcmp(arg, "debug"))
-		return LOG_DEBUG;
-	else
-		exit_error(ctx, "invalid log level `%s'", arg);
-}
-
-
 static void print_usage(const char *options, const char *message) {
 	/* 28 spaces */
 	static const char spaces[] = "                            ";
@@ -85,6 +67,36 @@ static void version(fastd_context_t *ctx, fastd_config_t *conf) {
 	exit(0);
 }
 
+static void option_daemon(fastd_context_t *ctx, fastd_config_t *conf) {
+	conf->daemon = true;
+}
+
+static void option_pid_file(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	free(conf->pid_file);
+	conf->pid_file = strdup(arg);
+}
+
+
+static void option_config(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	if (!strcmp(arg, "-"))
+		arg = NULL;
+
+	if (!fastd_read_config(ctx, conf, arg, false, 0))
+		exit(1);
+}
+
+static void option_config_peer(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	fastd_peer_config_new(ctx, conf);
+
+	if(!fastd_read_config(ctx, conf, arg, true, 0))
+		exit(1);
+}
+
+static void option_config_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+	fastd_add_peer_dir(ctx, conf, arg);
+}
+
+
 static void option_user(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->user);
 	conf->user = strdup(arg);
@@ -93,6 +105,24 @@ static void option_user(fastd_context_t *ctx, fastd_config_t *conf, const char *
 static void option_group(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->group);
 	conf->group = strdup(arg);
+}
+
+
+static int parse_log_level(fastd_context_t *ctx, const char *arg) {
+	if (!strcmp(arg, "fatal"))
+		return LOG_CRIT;
+	else if (!strcmp(arg, "error"))
+		return LOG_ERR;
+	else if (!strcmp(arg, "warn"))
+		return LOG_WARNING;
+	else if (!strcmp(arg, "info"))
+		return LOG_NOTICE;
+	else if (!strcmp(arg, "verbose"))
+		return LOG_INFO;
+	else if (!strcmp(arg, "debug"))
+		return LOG_DEBUG;
+	else
+		exit_error(ctx, "invalid log level `%s'", arg);
 }
 
 static void option_log_level(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
@@ -116,24 +146,6 @@ static void option_hide_mac_addresses(fastd_context_t *ctx, fastd_config_t *conf
 	conf->hide_mac_addresses = true;
 }
 
-static void option_config(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	if (!strcmp(arg, "-"))
-		arg = NULL;
-
-	if (!fastd_read_config(ctx, conf, arg, false, 0))
-		exit(1);
-}
-
-static void option_config_peer(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	fastd_peer_config_new(ctx, conf);
-
-	if(!fastd_read_config(ctx, conf, arg, true, 0))
-		exit(1);
-}
-
-static void option_config_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	fastd_add_peer_dir(ctx, conf, arg);
-}
 
 static void option_mode(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	if (!strcmp(arg, "tap"))
@@ -233,6 +245,7 @@ static void option_forward(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->forward = true;
 }
 
+
 static void option_on_pre_up(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->on_pre_up);
 	free(conf->on_pre_up_dir);
@@ -289,14 +302,6 @@ static void option_on_verify(fastd_context_t *ctx, fastd_config_t *conf, const c
 	conf->on_verify_dir = get_current_dir_name();
 }
 
-static void option_daemon(fastd_context_t *ctx, fastd_config_t *conf) {
-	conf->daemon = true;
-}
-
-static void option_pid_file(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	free(conf->pid_file);
-	conf->pid_file = strdup(arg);
-}
 
 static void option_generate_key(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->generate_key = true;
