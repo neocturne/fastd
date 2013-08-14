@@ -38,6 +38,11 @@
 
 
 #cmakedefine WITH_CAPABILITIES
+#cmakedefine WITH_CMDLINE_USER
+#cmakedefine WITH_CMDLINE_LOGGING
+#cmakedefine WITH_CMDLINE_OPERATION
+#cmakedefine WITH_CMDLINE_COMMANDS
+
 
 #cmakedefine USE_CRYPTO_AES128CTR
 #cmakedefine USE_CRYPTO_GHASH

@@ -97,6 +97,8 @@ static void option_config_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, c
 }
 
 
+#ifdef WITH_CMDLINE_USER
+
 static void option_user(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->user);
 	conf->user = strdup(arg);
@@ -107,6 +109,9 @@ static void option_group(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	conf->group = strdup(arg);
 }
 
+#endif
+
+#ifdef WITH_CMDLINE_LOGGING
 
 static int parse_log_level(fastd_context_t *ctx, const char *arg) {
 	if (!strcmp(arg, "fatal"))
@@ -146,6 +151,9 @@ static void option_hide_mac_addresses(fastd_context_t *ctx, fastd_config_t *conf
 	conf->hide_mac_addresses = true;
 }
 
+#endif
+
+#ifdef WITH_CMDLINE_OPERATION
 
 static void option_mode(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	if (!strcmp(arg, "tap"))
@@ -245,6 +253,9 @@ static void option_forward(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->forward = true;
 }
 
+#endif
+
+#ifdef WITH_CMDLINE_COMMANDS
 
 static void option_on_pre_up(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	free(conf->on_pre_up);
@@ -302,6 +313,7 @@ static void option_on_verify(fastd_context_t *ctx, fastd_config_t *conf, const c
 	conf->on_verify_dir = get_current_dir_name();
 }
 
+#endif
 
 static void option_generate_key(fastd_context_t *ctx, fastd_config_t *conf) {
 	conf->generate_key = true;
