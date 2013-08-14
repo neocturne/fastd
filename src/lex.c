@@ -376,9 +376,6 @@ fastd_lex_t* fastd_lex_init(FILE *file) {
 }
 
 void fastd_lex_destroy(fastd_lex_t *lex) {
-	if (!lex)
-		return;
-
 	free(lex);
 }
 
