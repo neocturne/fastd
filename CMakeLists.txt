@@ -4,65 +4,12 @@ project(FASTD C)
 set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR})
 set(FASTD_VERSION "v8+")
 
-find_package(BISON 2.5 REQUIRED)
-
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-find_package(Threads)
-if(NOT CMAKE_USE_PTHREADS_INIT)
-  MESSAGE(FATAL_ERROR "No pthread support found.")
-endif(NOT CMAKE_USE_PTHREADS_INIT)
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(UECC REQUIRED libuecc>=3)
-
-find_package(NaCl REQUIRED)
-
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LINUX TRUE)
 else()
   set(LINUX FALSE)
 endif()
-
-
-include(CheckCSourceCompiles)
-include(CheckPrototypeDefinition)
-include(CheckSymbolExists)
-include(CheckTypeSize)
-set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
-
-
-check_c_source_compiles("
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-
-int main() {
-	return AI_ADDRCONFIG;
-}
-" HAVE_AI_ADDRCONFIG)
-
-
-check_prototype_definition("get_current_dir_name" "char *get_current_dir_name(void)" "NULL" "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
-
-
-set(RT_LIBRARY "")
-check_symbol_exists("clock_gettime" "time.h" HAVE_CLOCK_GETTIME)
-
-if(NOT HAVE_CLOCK_GETTIME)
-  set(RT_LIBRARY "rt")
-  list(APPEND CMAKE_REQUIRED_LIBRARIES "rt")
-
-  check_symbol_exists("clock_gettime" "time.h" HAVE_CLOCK_GETTIME_RT)
-  if(NOT HAVE_CLOCK_GETTIME_RT)
-      message(FATAL_ERROR "clock_gettime() not found")
-  endif(NOT HAVE_CLOCK_GETTIME_RT)
-endif(NOT HAVE_CLOCK_GETTIME)
-
-
-set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
-check_type_size("struct ethhdr" SIZEOF_ETHHDR)
-string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
 
 
 set(USE_BINDTODEVICE ${LINUX})
@@ -75,14 +22,6 @@ set(WITH_CMDLINE_USER TRUE CACHE BOOL "Include support for setting user/group re
 set(WITH_CMDLINE_LOGGING TRUE CACHE BOOL "Include support for setting logging related options on the command line")
 set(WITH_CMDLINE_OPERATION TRUE CACHE BOOL "Include support for setting options related to the VPN operation (like mode, interface, encryption method) on the command line")
 set(WITH_CMDLINE_COMMANDS TRUE CACHE BOOL "Include support for setting handler scripts (e.g. --on-up) on the command line")
-
-
-if(WITH_CAPABILITIES)
-  find_package(CAP REQUIRED)
-else(WITH_CAPABILITIES)
-  set(CAP_INCLUDE_DIR "")
-  set(CAP_LIBRARY "")
-endif(WITH_CAPABILITIES)
 
 
 set(WITH_CRYPTO_AES128CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implementation from the NaCl library")
@@ -128,6 +67,74 @@ endif(USE_CRYPTO_AES128CTR AND NOT WITH_CRYPTO_AES128CTR)
 if(USE_CRYPTO_GHASH AND NOT WITH_CRYPTO_GHASH)
   MESSAGE(FATAL_ERROR "No GHASH implementation was selected, but a selected method needs it.")
 endif(USE_CRYPTO_GHASH AND NOT WITH_CRYPTO_GHASH)
+
+
+find_package(BISON 2.5 REQUIRED)
+
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+find_package(Threads)
+if(NOT CMAKE_USE_PTHREADS_INIT)
+  MESSAGE(FATAL_ERROR "No pthread support found.")
+endif(NOT CMAKE_USE_PTHREADS_INIT)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(UECC REQUIRED libuecc>=3)
+
+
+if(WITH_METHOD_XSALSA20_POLY1305 OR WITH_CRYPTO_AES128CTR_NACL)
+  find_package(NaCl REQUIRED)
+else(WITH_METHOD_XSALSA20_POLY1305 OR WITH_CRYPTO_AES128CTR_NACL)
+  set(NACL_INCLUDE_DIR "")
+  set(NACL_LIBRARY "")
+endif(WITH_METHOD_XSALSA20_POLY1305 OR WITH_CRYPTO_AES128CTR_NACL)
+
+
+if(WITH_CAPABILITIES)
+  find_package(CAP REQUIRED)
+else(WITH_CAPABILITIES)
+  set(CAP_INCLUDE_DIR "")
+  set(CAP_LIBRARY "")
+endif(WITH_CAPABILITIES)
+
+
+include(CheckCSourceCompiles)
+include(CheckPrototypeDefinition)
+include(CheckSymbolExists)
+include(CheckTypeSize)
+set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
+
+
+check_c_source_compiles("
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+int main() {
+	return AI_ADDRCONFIG;
+}
+" HAVE_AI_ADDRCONFIG)
+
+
+check_prototype_definition("get_current_dir_name" "char *get_current_dir_name(void)" "NULL" "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
+
+
+set(RT_LIBRARY "")
+check_symbol_exists("clock_gettime" "time.h" HAVE_CLOCK_GETTIME)
+
+if(NOT HAVE_CLOCK_GETTIME)
+  set(RT_LIBRARY "rt")
+  list(APPEND CMAKE_REQUIRED_LIBRARIES "rt")
+
+  check_symbol_exists("clock_gettime" "time.h" HAVE_CLOCK_GETTIME_RT)
+  if(NOT HAVE_CLOCK_GETTIME_RT)
+      message(FATAL_ERROR "clock_gettime() not found")
+  endif(NOT HAVE_CLOCK_GETTIME_RT)
+endif(NOT HAVE_CLOCK_GETTIME)
+
+
+set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
+check_type_size("struct ethhdr" SIZEOF_ETHHDR)
+string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
 
 
 configure_file(${FASTD_SOURCE_DIR}/config.h.in ${FASTD_BINARY_DIR}/config.h)
