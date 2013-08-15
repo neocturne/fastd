@@ -679,7 +679,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		pr_debug(ctx, "received handshake reply without receipient key from %P[%I]", peer, remote_addr);
 		return;
 	}
-	else if(has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
+	else if (has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
 		if (memcmp(ctx->conf->protocol_config->public_key.p, handshake->records[RECORD_RECEIPIENT_KEY].data, PUBLICKEYBYTES) != 0) {
 			pr_debug(ctx, "received protocol handshake with wrong receipient key from %P[%I]", peer, remote_addr);
 			return;
@@ -691,6 +691,9 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		return;
 	}
 
+	ecc_int256_t peer_handshake_key;
+	memcpy(peer_handshake_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
+
 	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
 		pr_debug(ctx, "received handshake reply without receipient handshake key from %P[%I]", peer, remote_addr);
 		return;
@@ -701,7 +704,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		return;
 	}
 
-	switch(handshake->type) {
+	switch (handshake->type) {
 	case 1:
 		if (timespec_diff(&ctx->now, &peer->last_handshake_response) < ctx->conf->min_handshake_interval*1000
 		    && fastd_peer_address_equal(remote_addr, &peer->last_handshake_response_address)) {
@@ -717,7 +720,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 
 		peer->last_handshake_response = ctx->now;
 		peer->last_handshake_response_address = *remote_addr;
-		respond_handshake(ctx, sock, local_addr, remote_addr, peer, &ctx->protocol_state->handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
+		respond_handshake(ctx, sock, local_addr, remote_addr, peer, &ctx->protocol_state->handshake_key, &peer_handshake_key, handshake, method);
 		break;
 
 	case 2:
@@ -738,7 +741,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		pr_verbose(ctx, "received handshake response from %P[%I] using fastd %s", peer, remote_addr, peer_version_name);
 		free(peer_version_name);
 
-		finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
+		finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, &peer_handshake_key, handshake, method);
 		break;
 
 	case 3:
@@ -755,7 +758,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 
 		pr_debug(ctx, "received handshake finish from %P[%I]", peer, remote_addr);
 
-		handle_finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, handshake, method);
+		handle_finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, &peer_handshake_key, handshake, method);
 		break;
 
 	default:
