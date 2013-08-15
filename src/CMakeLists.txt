@@ -38,7 +38,9 @@ add_executable(fastd
   ${BISON_fastd_config_parse_OUTPUTS}
   ${METHODS}
 )
-set_target_properties(fastd PROPERTIES COMPILE_FLAGS -pthread ${UECC_CFLAGS_OTHER} COMPILE_DEFINITIONS _GNU_SOURCE LINK_FLAGS -pthread ${UECC_LDFLAGS_OTHER})
+set_property(TARGET fastd PROPERTY COMPILE_FLAGS "-Wall -pthread ${UECC_CFLAGS_OTHER}")
+set_property(TARGET fastd PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE)
+set_property(TARGET fastd PROPERTY LINK_FLAGS "-pthread ${UECC_LDFLAGS_OTHER}")
 target_link_libraries(fastd ${RT_LIBRARY} ${CAP_LIBRARY} ${UECC_LIBRARIES} ${NACL_LIBRARY})
 
 add_custom_target(
