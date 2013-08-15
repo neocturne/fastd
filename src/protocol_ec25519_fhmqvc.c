@@ -32,17 +32,18 @@
 
 
 #include <libuecc/ecc.h>
-#include <crypto_auth_hmacsha256.h>
 
 
 #define PUBLICKEYBYTES 32
 #define SECRETKEYBYTES 32
-#define HMACBYTES crypto_auth_hmacsha256_BYTES
+#define HMACWORDS FASTD_SHA256_HASH_WORDS
+#define HMACBYTES FASTD_SHA256_HASH_BYTES
+#define HASHWORDS FASTD_SHA256_HASH_WORDS
 #define HASHBYTES FASTD_SHA256_HASH_BYTES
 
 
-#if HASHBYTES != crypto_auth_hmacsha256_KEYBYTES
-#error bug: HASHBYTES != crypto_auth_hmacsha256_KEYBYTES
+#if HASHWORDS != FASTD_HMACSHA256_KEY_WORDS
+#error bug: HASHWORDS != FASTD_HMACSHA256_KEY_WORDS
 #endif
 
 #if HASHBYTES != SECRETKEYBYTES
@@ -278,9 +279,8 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 			      const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "responding handshake with %P[%I]...", peer, remote_addr);
 
-	uint8_t hashinput[2*PUBLICKEYBYTES];
-	uint8_t hashbuf[HASHBYTES];
-	uint8_t hmacbuf[HMACBYTES];
+	uint32_t hashbuf[HASHWORDS];
+	uint32_t hmacbuf[HMACWORDS];
 
 	fastd_sha256_blocks(hashbuf,
 			    handshake_key->public_key.p,
@@ -292,7 +292,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	ecc_int256_t d = {{0}}, e = {{0}}, eb, s;
 
 	memcpy(d.p, hashbuf, HASHBYTES/2);
-	memcpy(e.p, hashbuf+HASHBYTES/2, HASHBYTES/2);
+	memcpy(e.p, hashbuf+HASHWORDS/2, HASHBYTES/2);
 
 	d.p[15] |= 0x80;
 	e.p[15] |= 0x80;
@@ -321,7 +321,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	ecc_int256_t sigma;
 	ecc_25519_store_packed(&sigma, &work);
 
-	uint8_t shared_handshake_key[HASHBYTES];
+	uint32_t shared_handshake_key[HASHWORDS];
 	fastd_sha256_blocks(shared_handshake_key,
 			    handshake_key->public_key.p,
 			    peer_handshake_key->p,
@@ -330,10 +330,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 			    sigma.p,
 			    NULL);
 
-	memcpy(hashinput, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, handshake_key->public_key.p, PUBLICKEYBYTES);
-
-	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key);
+	fastd_hmacsha256_blocks(hmacbuf, shared_handshake_key, ctx->conf->protocol_config->public_key.p, handshake_key->public_key.p, NULL);
 
 	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HMACBYTES);
 
@@ -373,14 +370,14 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 		peer->protocol_state->old_session = (protocol_session_t){};
 	}
 
-	uint8_t hash[HASHBYTES];
+	uint32_t hash[HASHWORDS];
 	fastd_sha256_blocks(hash, X->p, Y->p, A->p, B->p, sigma->p, NULL);
 
 	peer->protocol_state->session.established = ctx->now;
 	peer->protocol_state->session.handshakes_cleaned = false;
 	peer->protocol_state->session.refreshing = false;
 	peer->protocol_state->session.method = method;
-	peer->protocol_state->session.method_state = method->session_init(ctx, hash, HASHBYTES, initiator);
+	peer->protocol_state->session.method_state = method->session_init(ctx, (uint8_t*)hash, HASHBYTES, initiator);
 	peer->protocol_state->last_serial = serial;
 
 	fastd_peer_seen(ctx, peer);
@@ -407,9 +404,8 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 			     const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, remote_addr);
 
-	uint8_t hashinput[2*PUBLICKEYBYTES];
-	uint8_t hashbuf[HASHBYTES];
-	uint8_t hmacbuf[HMACBYTES];
+	uint32_t hashbuf[HASHWORDS];
+	uint32_t hmacbuf[HMACWORDS];
 
 	fastd_sha256_blocks(hashbuf,
 			    peer_handshake_key->p,
@@ -421,7 +417,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	ecc_int256_t d = {{0}}, e = {{0}}, da, s;
 
 	memcpy(d.p, hashbuf, HASHBYTES/2);
-	memcpy(e.p, hashbuf+HASHBYTES/2, HASHBYTES/2);
+	memcpy(e.p, hashbuf+HASHWORDS/2, HASHBYTES/2);
 
 	d.p[15] |= 0x80;
 	e.p[15] |= 0x80;
@@ -450,7 +446,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	ecc_int256_t sigma;
 	ecc_25519_store_packed(&sigma, &work);
 
-	uint8_t shared_handshake_key[HASHBYTES];
+	uint32_t shared_handshake_key[HASHWORDS];
 	fastd_sha256_blocks(shared_handshake_key,
 			    peer_handshake_key->p,
 			    handshake_key->public_key.p,
@@ -459,17 +455,12 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 			    sigma.p,
 			    NULL);
 
-	memcpy(hashinput, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
-
-	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key) != 0) {
+	if(!fastd_hmacsha256_blocks_verify(handshake->records[RECORD_T].data, shared_handshake_key, peer->protocol_config->public_key.p, peer_handshake_key->p, NULL)) {
 		pr_warn(ctx, "received invalid protocol handshake response from %P[%I]", peer, remote_addr);
 		return;
 	}
 
-	memcpy(hashinput, ctx->conf->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, handshake_key->public_key.p, PUBLICKEYBYTES);
-	crypto_auth_hmacsha256(hmacbuf, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key);
+	fastd_hmacsha256_blocks(hmacbuf, shared_handshake_key, ctx->conf->protocol_config->public_key.p, handshake_key->public_key.p, NULL);
 
 	if (!establish(ctx, peer, method, sock, local_addr, remote_addr, true, &handshake_key->public_key, peer_handshake_key, &ctx->conf->protocol_config->public_key,
 		       &peer->protocol_config->public_key, &sigma, handshake_key->serial))
@@ -491,8 +482,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 				    const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, remote_addr);
 
-	uint8_t hashinput[2*PUBLICKEYBYTES];
-	uint8_t hashbuf[HASHBYTES];
+	uint32_t hashbuf[HASHWORDS];
 
 	fastd_sha256_blocks(hashbuf,
 			    handshake_key->public_key.p,
@@ -504,7 +494,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	ecc_int256_t d = {{0}}, e = {{0}}, eb, s;
 
 	memcpy(d.p, hashbuf, HASHBYTES/2);
-	memcpy(e.p, hashbuf+HASHBYTES/2, HASHBYTES/2);
+	memcpy(e.p, hashbuf+HASHWORDS/2, HASHBYTES/2);
 
 	d.p[15] |= 0x80;
 	e.p[15] |= 0x80;
@@ -533,7 +523,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	ecc_int256_t sigma;
 	ecc_25519_store_packed(&sigma, &work);
 
-	uint8_t shared_handshake_key[HASHBYTES];
+	uint32_t shared_handshake_key[HASHWORDS];
 	fastd_sha256_blocks(shared_handshake_key,
 			    handshake_key->public_key.p,
 			    peer_handshake_key->p,
@@ -542,10 +532,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 			    sigma.p,
 			    NULL);
 
-	memcpy(hashinput, peer->protocol_config->public_key.p, PUBLICKEYBYTES);
-	memcpy(hashinput+PUBLICKEYBYTES, peer_handshake_key->p, PUBLICKEYBYTES);
-
-	if(crypto_auth_hmacsha256_verify(handshake->records[RECORD_T].data, hashinput, 2*PUBLICKEYBYTES, shared_handshake_key) != 0) {
+	if (!fastd_hmacsha256_blocks_verify(handshake->records[RECORD_T].data, shared_handshake_key, peer->protocol_config->public_key.p, peer_handshake_key->p, NULL)) {
 		pr_warn(ctx, "received invalid protocol handshake finish from %P[%I]", peer, remote_addr);
 		return;
 	}

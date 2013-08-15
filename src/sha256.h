@@ -27,13 +27,23 @@
 #ifndef _FASTD_SHA256_H_
 #define _FASTD_SHA256_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 
-#define FASTD_SHA256_HASH_BYTES 32
-#define FASTD_SHA256_HASH_BLOCK_BYTES 32
+#define FASTD_SHA256_HASH_WORDS 8
+#define FASTD_SHA256_BLOCK_WORDS 8
+
+#define FASTD_HMACSHA256_KEY_WORDS 8
+
+#define FASTD_SHA256_HASH_BYTES (4*FASTD_SHA256_HASH_WORDS)
+#define FASTD_SHA256_BLOCK_BYTES (4*FASTD_SHA256_BLOCK_WORDS)
+
+#define FASTD_HMACSHA256_KEY_BYTES (4*FASTD_HMACSHA256_KEY_WORDS)
 
 
-void fastd_sha256_blocks(uint8_t out[FASTD_SHA256_HASH_BYTES], ...);
+void fastd_sha256_blocks(uint32_t out[FASTD_SHA256_HASH_WORDS], ...);
+void fastd_hmacsha256_blocks(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...);
+bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...);
 
 #endif /* _FASTD_SHA256_H_ */

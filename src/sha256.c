@@ -27,7 +27,6 @@
 #include "sha256.h"
 
 #include <stdarg.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include <arpa/inet.h>
@@ -37,7 +36,7 @@ static inline uint32_t rotr(uint32_t x, int r) {
 	return (x >> r) | (x << (32-r));
 }
 
-void fastd_sha256_blocks(uint8_t out[FASTD_SHA256_HASH_BYTES], ...) {
+static void sha256_blocks_va(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t *in1, const uint32_t *in2, va_list ap) {
 	static const uint32_t k[64] = {
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
 		0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -59,27 +58,10 @@ void fastd_sha256_blocks(uint8_t out[FASTD_SHA256_HASH_BYTES], ...) {
 		0x1f83d9ab,
 		0x5be0cd19
 	};
-	unsigned count = 0, i;
-	va_list ap;
-	const uint32_t *in1, *in2;
+	unsigned count = in2 ? 2 : in1 ? 1 : 0, i;
 
-	va_start(ap, out);
-
-	do {
+	while (true) {
 		uint32_t w[64], v[8];
-
-		in1 = va_arg(ap, const uint32_t*);
-
-		if (in1) {
-			count++;
-			in2 = va_arg(ap, const uint32_t*);
-
-			if (in2)
-				count++;
-		}
-		else {
-			in2 = NULL;
-		}
 
 		if (in1) {
 			for (i = 0; i < 8; i++)
@@ -129,11 +111,90 @@ void fastd_sha256_blocks(uint8_t out[FASTD_SHA256_HASH_BYTES], ...) {
 		for (i = 0; i < 8; i++)
 			h[i] += v[i];
 
-	} while (in1 && in2);
 
+		if (!in2)
+			break;
+
+
+		in1 = va_arg(ap, const uint32_t*);
+		if (in1) {
+			count++;
+			in2 = va_arg(ap, const uint32_t*);
+
+			if (in2)
+				count++;
+		}
+		else {
+			in2 = NULL;
+		}
+	}
+
+	for (i = 0; i < 8; i++)
+		out[i] = htonl(h[i]);
+}
+
+static void hmacsha256_blocks_va(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], va_list ap) {
+	static const uint32_t ipad2[8] = {
+		0x36363636,
+		0x36363636,
+		0x36363636,
+		0x36363636,
+		0x36363636,
+		0x36363636,
+		0x36363636,
+		0x36363636
+	};
+	static const uint32_t opad2[8] = {
+		0x5c5c5c5c,
+		0x5c5c5c5c,
+		0x5c5c5c5c,
+		0x5c5c5c5c,
+		0x5c5c5c5c,
+		0x5c5c5c5c,
+		0x5c5c5c5c,
+		0x5c5c5c5c
+	};
+
+	uint32_t ipad[8], opad[8];
+	unsigned i;
+
+	for (i = 0; i < 8; i++) {
+		ipad[i] = key[i] ^ 0x36363636;
+		opad[i] = key[i] ^ 0x5c5c5c5c;
+	}
+
+	uint32_t temp[8];
+	sha256_blocks_va(temp, ipad, ipad2, ap);
+
+	fastd_sha256_blocks(out, opad, opad2, temp, NULL);
+}
+
+
+void fastd_sha256_blocks(uint32_t out[FASTD_SHA256_HASH_WORDS], ...) {
+	va_list ap;
+
+	va_start(ap, out);
+	const uint32_t *in1 = va_arg(ap, const uint32_t*);
+	const uint32_t *in2 = in1 ? va_arg(ap, const uint32_t*) : NULL;
+	sha256_blocks_va(out, in1, in2, ap);
+	va_end(ap);
+}
+
+void fastd_hmacsha256_blocks(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...) {
+	va_list ap;
+
+	va_start(ap, key);
+	hmacsha256_blocks_va(out, key, ap);
+	va_end(ap);
+}
+
+bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...) {
+	va_list ap;
+	uint32_t out[8];
+
+	va_start(ap, key);
+	hmacsha256_blocks_va(out, key, ap);
 	va_end(ap);
 
-	uint32_t *out32 = (uint32_t*)out;
-	for (i = 0; i < 8; i++)
-		out32[i] = htonl(h[i]);
+	return !memcmp(out, mac, sizeof(out));
 }
