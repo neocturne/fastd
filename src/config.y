@@ -519,7 +519,8 @@ forward:	boolean		{ conf->forward = $1; }
 
 include:	TOK_PEER TOK_STRING maybe_as {
 			fastd_peer_config_new(ctx, conf);
-			conf->peers->name = strdup($3->str);
+			if ($3)
+				conf->peers->name = strdup($3->str);
 
 			if (!fastd_read_config(ctx, conf, $2->str, true, depth))
 				YYERROR;
