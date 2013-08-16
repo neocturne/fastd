@@ -270,7 +270,7 @@ static int parse_ipv6_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 
 		char cur = current(lex);
 
-		if (!((cur >= '0' && cur <= '9') || cur == ':'))
+		if (!((cur >= '0' && cur <= '9') || (cur >= 'a' && cur <= 'f') || (cur >= 'A' && cur <= 'F') || cur == ':'))
 			break;
 	}
 
