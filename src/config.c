@@ -324,17 +324,15 @@ static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char
 
 	if (dirh) {
 		while (true) {
-			struct dirent entry, *result;
-			int ret;
+			errno = 0;
+			struct dirent *result = readdir(dirh);
+			if (!result) {
+				if (errno)
+					pr_error_errno(ctx, "readdir");
 
-			ret = readdir_r(dirh, &entry, &result);
-			if (ret) {
-				pr_error(ctx, "readdir_r: %s", strerror(ret));
 				break;
 			}
 
-			if (!result)
-				break;
 			if (result->d_name[0] == '.')
 				continue;
 
