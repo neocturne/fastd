@@ -42,8 +42,14 @@
 #define FASTD_HMACSHA256_KEY_BYTES (4*FASTD_HMACSHA256_KEY_WORDS)
 
 
-void fastd_sha256_blocks(uint32_t out[FASTD_SHA256_HASH_WORDS], ...);
-void fastd_hmacsha256_blocks(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...);
+typedef union fastd_sha256 {
+	uint32_t w[FASTD_SHA256_HASH_WORDS];
+	uint8_t b[FASTD_SHA256_HASH_BYTES];
+} fastd_sha256_t;
+
+
+void fastd_sha256_blocks(fastd_sha256_t *out, ...);
+void fastd_hmacsha256_blocks(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...);
 bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...);
 
 #endif /* _FASTD_SHA256_H_ */
