@@ -59,7 +59,7 @@ typedef enum fastd_reply_code {
 
 typedef struct fastd_handshake_record {
 	size_t length;
-	void *data;
+	const uint8_t *data;
 } fastd_handshake_record_t;
 
 struct fastd_handshake {

@@ -164,8 +164,8 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 	return buffer;
 }
 
-static fastd_string_stack_t* parse_string_list(uint8_t *data, size_t len) {
-	uint8_t *end = data+len;
+static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) {
+	const uint8_t *end = data+len;
 	fastd_string_stack_t *ret = NULL;
 
 	while (data < end) {
@@ -320,7 +320,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 			const fastd_method_t *method = ctx->conf->method_default;
 
 			if (handshake.records[RECORD_METHOD_NAME].data) {
-				method = method_from_name(ctx, handshake.records[RECORD_METHOD_NAME].data, handshake.records[RECORD_METHOD_NAME].length);
+				method = method_from_name(ctx, (const char*)handshake.records[RECORD_METHOD_NAME].data, handshake.records[RECORD_METHOD_NAME].length);
 			}
 
 			/*

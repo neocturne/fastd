@@ -707,7 +707,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		}
 
 		if (handshake->records[RECORD_VERSION_NAME].data)
-			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
+			peer_version_name = strndup((const char*)handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
 
 		pr_verbose(ctx, "received handshake from %P[%I] using fastd %s", peer, remote_addr, peer_version_name);
 		free(peer_version_name);
@@ -730,7 +730,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		}
 
 		if (handshake->records[RECORD_VERSION_NAME].data)
-			peer_version_name = strndup(handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
+			peer_version_name = strndup((const char*)handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
 
 		pr_verbose(ctx, "received handshake response from %P[%I] using fastd %s", peer, remote_addr, peer_version_name);
 		free(peer_version_name);
