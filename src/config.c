@@ -361,7 +361,9 @@ static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char
 			}
 		}
 
-		closedir(dirh);
+		if (closedir(dirh) < 0)
+			pr_error_errno(ctx, "closedir");
+
 	}
 	else {
 		pr_error(ctx, "opendir for `%s' failed: %s", dir, strerror(errno));
