@@ -653,11 +653,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		return;
 	}
 
-	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
-		pr_debug(ctx, "received handshake reply without receipient key from %P[%I]", peer, remote_addr);
-		return;
-	}
-	else if (has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
+	if (has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
 		if (memcmp(ctx->conf->protocol_config->public_key.p, handshake->records[RECORD_RECEIPIENT_KEY].data, PUBLICKEYBYTES) != 0) {
 			pr_debug(ctx, "received protocol handshake with wrong receipient key from %P[%I]", peer, remote_addr);
 			return;
@@ -672,14 +668,32 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	ecc_int256_t peer_handshake_key;
 	memcpy(peer_handshake_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 
-	if (handshake->type > 1 && !has_field(handshake, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
-		pr_debug(ctx, "received handshake reply without receipient handshake key from %P[%I]", peer, remote_addr);
-		return;
-	}
+	if (handshake->type > 1) {
+		if (!has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
+			pr_debug(ctx, "received handshake reply without receipient key from %P[%I]", peer, remote_addr);
+			return;
+		}
 
-	if (handshake->type > 1 && !has_field(handshake, RECORD_T, HASHBYTES)) {
-		pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, remote_addr);
-		return;
+		if (!has_field(handshake, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
+			pr_debug(ctx, "received handshake reply without receipient handshake key from %P[%I]", peer, remote_addr);
+			return;
+		}
+
+		if (!has_field(handshake, RECORD_T, HASHBYTES)) {
+			pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, remote_addr);
+			return;
+		}
+
+		if (is_handshake_key_valid(ctx, &ctx->protocol_state->handshake_key) && memcmp(ctx->protocol_state->handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+			handshake_key = &ctx->protocol_state->handshake_key;
+		}
+		else if (is_handshake_key_valid(ctx, &ctx->protocol_state->prev_handshake_key) && memcmp(ctx->protocol_state->prev_handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+			handshake_key = &ctx->protocol_state->prev_handshake_key;
+		}
+		else {
+			pr_debug(ctx, "received handshake reply with unexpected receipient handshake key from %P[%I]", peer, remote_addr);
+			return;
+		}
 	}
 
 	switch (handshake->type) {
@@ -702,17 +716,6 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		break;
 
 	case 2:
-		if (is_handshake_key_valid(ctx, &ctx->protocol_state->handshake_key) && memcmp(ctx->protocol_state->handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
-			handshake_key = &ctx->protocol_state->handshake_key;
-		}
-		else if (is_handshake_key_valid(ctx, &ctx->protocol_state->prev_handshake_key) && memcmp(ctx->protocol_state->prev_handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
-			handshake_key = &ctx->protocol_state->prev_handshake_key;
-		}
-		else {
-			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P[%I]", peer, remote_addr);
-			return;
-		}
-
 		if (handshake->records[RECORD_VERSION_NAME].data)
 			peer_version_name = strndup((const char*)handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
 
@@ -723,17 +726,6 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		break;
 
 	case 3:
-		if (is_handshake_key_valid(ctx, &ctx->protocol_state->handshake_key) && memcmp(ctx->protocol_state->handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
-			handshake_key = &ctx->protocol_state->handshake_key;
-		}
-		else if (is_handshake_key_valid(ctx, &ctx->protocol_state->prev_handshake_key) && memcmp(ctx->protocol_state->prev_handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
-			handshake_key = &ctx->protocol_state->prev_handshake_key;
-		}
-		else {
-			pr_debug(ctx, "received handshake response with unexpected receipient handshake key from %P[%I]", peer, remote_addr);
-			return;
-		}
-
 		pr_debug(ctx, "received handshake finish from %P[%I]", peer, remote_addr);
 
 		handle_finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, &peer_handshake_key, handshake, method);
