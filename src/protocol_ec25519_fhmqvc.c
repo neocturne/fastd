@@ -604,7 +604,6 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *
 }
 
 static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method) {
-	handshake_key_t *handshake_key;
 	char *peer_version_name = NULL;
 	bool temporary_added = false;
 
@@ -668,36 +667,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	ecc_int256_t peer_handshake_key;
 	memcpy(peer_handshake_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 
-	if (handshake->type > 1) {
-		if (!has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
-			pr_debug(ctx, "received handshake reply without receipient key from %P[%I]", peer, remote_addr);
-			return;
-		}
-
-		if (!has_field(handshake, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
-			pr_debug(ctx, "received handshake reply without receipient handshake key from %P[%I]", peer, remote_addr);
-			return;
-		}
-
-		if (!has_field(handshake, RECORD_T, HASHBYTES)) {
-			pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, remote_addr);
-			return;
-		}
-
-		if (is_handshake_key_valid(ctx, &ctx->protocol_state->handshake_key) && memcmp(ctx->protocol_state->handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
-			handshake_key = &ctx->protocol_state->handshake_key;
-		}
-		else if (is_handshake_key_valid(ctx, &ctx->protocol_state->prev_handshake_key) && memcmp(ctx->protocol_state->prev_handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
-			handshake_key = &ctx->protocol_state->prev_handshake_key;
-		}
-		else {
-			pr_debug(ctx, "received handshake reply with unexpected receipient handshake key from %P[%I]", peer, remote_addr);
-			return;
-		}
-	}
-
-	switch (handshake->type) {
-	case 1:
+	if (handshake->type == 1) {
 		if (timespec_diff(&ctx->now, &peer->last_handshake_response) < ctx->conf->min_handshake_interval*1000
 		    && fastd_peer_address_equal(remote_addr, &peer->last_handshake_response_address)) {
 			pr_debug(ctx, "not responding repeated handshake from %P[%I]", peer, remote_addr);
@@ -713,8 +683,37 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		peer->last_handshake_response = ctx->now;
 		peer->last_handshake_response_address = *remote_addr;
 		respond_handshake(ctx, sock, local_addr, remote_addr, peer, &ctx->protocol_state->handshake_key, &peer_handshake_key, handshake, method);
-		break;
+		return;
+	}
 
+	if (!has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
+		pr_debug(ctx, "received handshake reply without receipient key from %P[%I]", peer, remote_addr);
+		return;
+	}
+
+	if (!has_field(handshake, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
+		pr_debug(ctx, "received handshake reply without receipient handshake key from %P[%I]", peer, remote_addr);
+		return;
+	}
+
+	if (!has_field(handshake, RECORD_T, HASHBYTES)) {
+		pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, remote_addr);
+		return;
+	}
+
+	handshake_key_t *handshake_key;
+	if (is_handshake_key_valid(ctx, &ctx->protocol_state->handshake_key) && memcmp(ctx->protocol_state->handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+		handshake_key = &ctx->protocol_state->handshake_key;
+	}
+	else if (is_handshake_key_valid(ctx, &ctx->protocol_state->prev_handshake_key) && memcmp(ctx->protocol_state->prev_handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+		handshake_key = &ctx->protocol_state->prev_handshake_key;
+	}
+	else {
+		pr_debug(ctx, "received handshake reply with unexpected receipient handshake key from %P[%I]", peer, remote_addr);
+		return;
+	}
+
+	switch (handshake->type) {
 	case 2:
 		if (handshake->records[RECORD_VERSION_NAME].data)
 			peer_version_name = strndup((const char*)handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
