@@ -48,9 +48,11 @@
 #endif
 
 
+typedef ecc_int256_t __attribute__((aligned(4))) aligned_int256_t;
+
 struct fastd_protocol_config {
 	ecc_int256_t secret_key;
-	ecc_int256_t public_key;
+	aligned_int256_t public_key;
 };
 
 typedef struct handshake_key {
@@ -59,7 +61,7 @@ typedef struct handshake_key {
 	struct timespec valid_till;
 
 	ecc_int256_t secret_key;
-	ecc_int256_t public_key;
+	aligned_int256_t public_key;
 } handshake_key_t;
 
 struct fastd_protocol_state {
@@ -68,7 +70,7 @@ struct fastd_protocol_state {
 };
 
 struct fastd_protocol_peer_config {
-	ecc_int256_t public_key;
+	aligned_int256_t public_key;
 };
 
 typedef struct protocol_session {
@@ -89,8 +91,8 @@ struct fastd_protocol_peer_state {
 
 	/* handshake cache */
 	uint64_t last_handshake_serial;
-	ecc_int256_t peer_handshake_key;
-	ecc_int256_t sigma;
+	aligned_int256_t peer_handshake_key;
+	aligned_int256_t sigma;
 	fastd_sha256_t shared_handshake_key;
 };
 
@@ -190,7 +192,7 @@ static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *p
 		return;
 	}
 
-	ecc_int256_t key;
+	aligned_int256_t key;
 	if (!read_key(key.p, peer_conf->key)) {
 		pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
 		return;
@@ -279,7 +281,7 @@ static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *
 }
 
 
-static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key) {
+static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key) {
 	if (peer->protocol_state->last_handshake_serial == handshake_key->serial) {
 		if (memcmp(&peer->protocol_state->peer_handshake_key, peer_handshake_key, PUBLICKEYBYTES) == 0)
 			return true;
@@ -347,7 +349,7 @@ static void clear_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t 
 }
 
 static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_peer_t *peer,
-			      const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const fastd_method_t *method) {
+			      const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "responding handshake with %P[%I]...", peer, remote_addr);
 
 	if (!update_shared_handshake_key(ctx, peer, handshake_key, peer_handshake_key))
@@ -369,8 +371,8 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 
 static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, fastd_socket_t *sock,
 		      const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
-		      const ecc_int256_t *A, const ecc_int256_t *B, const ecc_int256_t *X,
-		      const ecc_int256_t *Y, const ecc_int256_t *sigma, uint64_t serial) {
+		      const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X,
+		      const aligned_int256_t *Y, const aligned_int256_t *sigma, uint64_t serial) {
 	if (serial <= peer->protocol_state->last_serial) {
 		pr_debug(ctx, "ignoring handshake from %P[%I] because of handshake key reuse", peer, remote_addr);
 		return false;
@@ -424,7 +426,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 	return true;
 }
 
-static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
+static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key,
 			     const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, remote_addr);
 
@@ -465,7 +467,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	if (ecc_25519_is_identity(&work))
 		return;
 
-	ecc_int256_t sigma;
+	aligned_int256_t sigma;
 	ecc_25519_store_packed(&sigma, &work);
 
 	fastd_sha256_t shared_handshake_key;
@@ -501,7 +503,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 }
 
 static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-				    fastd_peer_t *peer, const handshake_key_t *handshake_key, const ecc_int256_t *peer_handshake_key,
+				    fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key,
 				    const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, remote_addr);
 
@@ -664,7 +666,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		return;
 	}
 
-	ecc_int256_t peer_handshake_key;
+	aligned_int256_t peer_handshake_key;
 	memcpy(peer_handshake_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 
 	if (handshake->type == 1) {
