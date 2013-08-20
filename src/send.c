@@ -70,6 +70,7 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 
 	struct msghdr msg = {};
 	char cbuf[1024] = {};
+	fastd_peer_address_t remote_addr6;
 
 	switch (remote_addr->sa.sa_family) {
 	case AF_INET:
@@ -84,6 +85,14 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 
 	default:
 		exit_bug(ctx, "unsupported address family");
+	}
+
+	if (sock->bound_addr->sa.sa_family == AF_INET6) {
+		remote_addr6 = *remote_addr;
+		fastd_peer_address_widen(&remote_addr6);
+
+		msg.msg_name = (void*)&remote_addr6.in6;
+		msg.msg_namelen = sizeof(struct sockaddr_in6);
 	}
 
 	struct iovec iov[2] = {

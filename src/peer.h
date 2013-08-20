@@ -100,6 +100,7 @@ struct fastd_remote_config {
 
 bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2);
 void fastd_peer_address_simplify(fastd_peer_address_t *addr);
+void fastd_peer_address_widen(fastd_peer_address_t *addr);
 
 static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *addr) {
 	switch (addr->sa.sa_family) {

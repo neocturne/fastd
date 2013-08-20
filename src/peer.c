@@ -324,6 +324,19 @@ void fastd_peer_address_simplify(fastd_peer_address_t *addr) {
 	}
 }
 
+void fastd_peer_address_widen(fastd_peer_address_t *addr) {
+	if (addr->sa.sa_family == AF_INET) {
+		struct sockaddr_in addr4 = addr->in;
+
+		memset(addr, 0, sizeof(fastd_peer_address_t));
+		addr->in6.sin6_family = AF_INET6;
+		addr->in6.sin6_port = addr4.sin_port;
+		addr->in6.sin6_addr.s6_addr[10] = 0xff;
+		addr->in6.sin6_addr.s6_addr[11] = 0xff;
+		memcpy(&addr->in6.sin6_addr.s6_addr[12], &addr4.sin_addr.s_addr, 4);
+	}
+}
+
 
 static inline void reset_peer_address(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (fastd_peer_is_established(peer))
