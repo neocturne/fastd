@@ -218,6 +218,21 @@ bool fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf
 		return false;
 #endif
 
+#ifndef USE_MULTIAF_BIND
+	if (address->sa.sa_family == AF_UNSPEC) {
+		fastd_peer_address_t addr4 = { .in = { .sin_family = AF_INET, .sin_port = address->in.sin_port } };
+		fastd_peer_address_t addr6 = { .in6 = { .sin6_family = AF_INET6, .sin6_port = address->in.sin_port } };
+
+		if (!fastd_config_bind_address(ctx, conf, &addr4, bindtodev, default_v4, default_v6))
+			return false;
+
+		if (!fastd_config_bind_address(ctx, conf, &addr6, bindtodev, default_v4, default_v6))
+			return false;
+
+		return true;
+	}
+#endif
+
 	fastd_bind_address_t *addr = malloc(sizeof(fastd_bind_address_t));
 	addr->next = conf->bind_addrs;
 	conf->bind_addrs = addr;

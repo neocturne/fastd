@@ -16,6 +16,12 @@ set(USE_BINDTODEVICE ${LINUX})
 set(USE_PMTU ${LINUX})
 set(USE_PKTINFO ${LINUX})
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
+  set(USE_MULTIAF_BIND FALSE)
+else()
+  set(USE_MULTIAF_BIND TRUE)
+endif()
+
 
 set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilities")
 set(WITH_CMDLINE_USER TRUE CACHE BOOL "Include support for setting user/group related options on the command line")
