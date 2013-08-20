@@ -150,7 +150,7 @@ static void method_session_free(fastd_context_t *ctx, fastd_method_session_state
 		ctx->conf->crypto_aes128ctr->free_state(ctx, session->cstate_aes128ctr);
 		ctx->conf->crypto_ghash->free_state(ctx, session->cstate_ghash);
 
-		memset(session, 0, sizeof(fastd_method_session_state_t));
+		secure_memzero(session, sizeof(fastd_method_session_state_t));
 		free(session);
 	}
 }

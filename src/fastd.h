@@ -497,4 +497,9 @@ static inline size_t min_size_t(size_t a, size_t b) {
 	return (a < b) ? a : b;
 }
 
+static inline void secure_memzero(void *s, size_t n) {
+	memset(s, 0, n);
+	asm volatile("" : : "m"(s));
+}
+
 #endif /* _FASTD_FASTD_H_ */

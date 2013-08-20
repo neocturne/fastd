@@ -131,7 +131,7 @@ static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_sessi
 
 static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	if(session) {
-		memset(session, 0, sizeof(fastd_method_session_state_t));
+		secure_memzero(session, sizeof(fastd_method_session_state_t));
 		free(session);
 	}
 }
@@ -180,7 +180,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		if (age > ctx->conf->reorder_count)
 			return false;
 	}
-	
+
 	fastd_buffer_pull_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-NONCEBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 

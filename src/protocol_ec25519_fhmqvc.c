@@ -837,7 +837,7 @@ static void protocol_init_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
 static void reset_session(fastd_context_t *ctx, protocol_session_t *session) {
 	if (session->method)
 		session->method->session_free(ctx, session->method_state);
-	memset(session, 0, sizeof(protocol_session_t));
+	secure_memzero(session, sizeof(protocol_session_t));
 }
 
 static void protocol_reset_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
