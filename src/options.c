@@ -46,7 +46,7 @@ static void print_usage(const char *options, const char *message) {
 	puts(message);
 }
 
-static void usage(fastd_context_t *ctx, fastd_config_t *conf) {
+static void usage(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED) {
 	puts("fastd (Fast and Secure Tunnelling Daemon) " FASTD_VERSION " usage:\n");
 
 #define OR ", "
@@ -62,16 +62,16 @@ static void usage(fastd_context_t *ctx, fastd_config_t *conf) {
 	exit(0);
 }
 
-static void version(fastd_context_t *ctx, fastd_config_t *conf) {
+static void version(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED) {
 	puts("fastd " FASTD_VERSION);
 	exit(0);
 }
 
-static void option_daemon(fastd_context_t *ctx, fastd_config_t *conf) {
+static void option_daemon(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->daemon = true;
 }
 
-static void option_pid_file(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_pid_file(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->pid_file);
 	conf->pid_file = strdup(arg);
 }
@@ -99,12 +99,12 @@ static void option_config_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, c
 
 #ifdef WITH_CMDLINE_USER
 
-static void option_user(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_user(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->user);
 	conf->user = strdup(arg);
 }
 
-static void option_group(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_group(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->group);
 	conf->group = strdup(arg);
 }
@@ -138,16 +138,16 @@ static void option_syslog_level(fastd_context_t *ctx, fastd_config_t *conf, cons
 	conf->log_syslog_level = parse_log_level(ctx, arg);
 }
 
-static void option_syslog_ident(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_syslog_ident(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->log_syslog_ident);
 	conf->log_syslog_ident = strdup(arg);
 }
 
-static void option_hide_ip_addresses(fastd_context_t *ctx, fastd_config_t *conf) {
+static void option_hide_ip_addresses(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->hide_ip_addresses = true;
 }
 
-static void option_hide_mac_addresses(fastd_context_t *ctx, fastd_config_t *conf) {
+static void option_hide_mac_addresses(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->hide_mac_addresses = true;
 }
 
@@ -164,17 +164,19 @@ static void option_mode(fastd_context_t *ctx, fastd_config_t *conf, const char *
 		exit_error(ctx, "invalid mode `%s'", arg);
 }
 
-static void option_interface(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_interface(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->ifname);
 	conf->ifname = strdup(arg);
 }
 
 static void option_mtu(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
 	char *endptr;
+	long mtu = strtol(arg, &endptr, 10);
 
-	conf->mtu = strtol(arg, &endptr, 10);
-	if (*endptr || conf->mtu < 576 || conf->mtu > 65535)
+	if (*endptr || mtu < 576 || mtu > 65535)
 		exit_error(ctx, "invalid mtu `%s'", arg);
+
+	conf->mtu = mtu;
 }
 
 static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
@@ -249,7 +251,7 @@ static void option_method(fastd_context_t *ctx, fastd_config_t *conf, const char
 		exit_error(ctx, "invalid method `%s'", arg);
 }
 
-static void option_forward(fastd_context_t *ctx, fastd_config_t *conf) {
+static void option_forward(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->forward = true;
 }
 
@@ -257,7 +259,7 @@ static void option_forward(fastd_context_t *ctx, fastd_config_t *conf) {
 
 #ifdef WITH_CMDLINE_COMMANDS
 
-static void option_on_pre_up(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_on_pre_up(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->on_pre_up);
 	free(conf->on_pre_up_dir);
 
@@ -265,7 +267,7 @@ static void option_on_pre_up(fastd_context_t *ctx, fastd_config_t *conf, const c
 	conf->on_pre_up_dir = get_current_dir_name();
 }
 
-static void option_on_up(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_on_up(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->on_up);
 	free(conf->on_up_dir);
 
@@ -273,7 +275,7 @@ static void option_on_up(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	conf->on_up_dir = get_current_dir_name();
 }
 
-static void option_on_down(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_on_down(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->on_down);
 	free(conf->on_down_dir);
 
@@ -281,7 +283,7 @@ static void option_on_down(fastd_context_t *ctx, fastd_config_t *conf, const cha
 	conf->on_down_dir = get_current_dir_name();
 }
 
-static void option_on_post_down(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_on_post_down(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->on_post_down);
 	free(conf->on_post_down_dir);
 
@@ -289,7 +291,7 @@ static void option_on_post_down(fastd_context_t *ctx, fastd_config_t *conf, cons
 	conf->on_post_down_dir = get_current_dir_name();
 }
 
-static void option_on_establish(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_on_establish(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->on_establish);
 	free(conf->on_establish_dir);
 
@@ -297,7 +299,7 @@ static void option_on_establish(fastd_context_t *ctx, fastd_config_t *conf, cons
 	conf->on_establish_dir = get_current_dir_name();
 }
 
-static void option_on_disestablish(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_on_disestablish(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->on_disestablish);
 	free(conf->on_disestablish_dir);
 
@@ -305,7 +307,7 @@ static void option_on_disestablish(fastd_context_t *ctx, fastd_config_t *conf, c
 	conf->on_disestablish_dir = get_current_dir_name();
 }
 
-static void option_on_verify(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_on_verify(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	free(conf->on_verify);
 	free(conf->on_verify_dir);
 
@@ -315,17 +317,17 @@ static void option_on_verify(fastd_context_t *ctx, fastd_config_t *conf, const c
 
 #endif
 
-static void option_generate_key(fastd_context_t *ctx, fastd_config_t *conf) {
+static void option_generate_key(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->generate_key = true;
 	conf->show_key = false;
 }
 
-static void option_show_key(fastd_context_t *ctx, fastd_config_t *conf) {
+static void option_show_key(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->generate_key = false;
 	conf->show_key = true;
 }
 
-static void option_machine_readable(fastd_context_t *ctx, fastd_config_t *conf) {
+static void option_machine_readable(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->machine_readable = true;
 }
 

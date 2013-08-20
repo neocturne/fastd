@@ -80,19 +80,19 @@ static size_t method_max_packet_size(fastd_context_t *ctx) {
 }
 
 
-static size_t method_min_encrypt_head_space(fastd_context_t *ctx) {
+static size_t method_min_encrypt_head_space(fastd_context_t *ctx UNUSED) {
 	return sizeof(fastd_block128_t);
 }
 
-static size_t method_min_decrypt_head_space(fastd_context_t *ctx) {
+static size_t method_min_decrypt_head_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
-static size_t method_min_encrypt_tail_space(fastd_context_t *ctx) {
+static size_t method_min_encrypt_tail_space(fastd_context_t *ctx UNUSED) {
 	return (sizeof(fastd_block128_t)-1);
 }
 
-static size_t method_min_decrypt_tail_space(fastd_context_t *ctx) {
+static size_t method_min_decrypt_tail_space(fastd_context_t *ctx UNUSED) {
 	return (2*sizeof(fastd_block128_t)-1);
 }
 
@@ -137,7 +137,7 @@ static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_s
 	return (session && timespec_after(&session->valid_till, &ctx->now));
 }
 
-static bool method_session_is_initiator(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static bool method_session_is_initiator(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	return (session->send_nonce[0] & 1);
 }
 
@@ -164,7 +164,7 @@ static inline void put_size(fastd_block128_t *out, size_t len) {
 	out->b[sizeof(fastd_block128_t)-1] = len << 3;
 }
 
-static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_pull_head(ctx, &in, sizeof(fastd_block128_t));
 	memset(in.data, 0, sizeof(fastd_block128_t));
 
@@ -231,7 +231,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		return false;
 
 	if (age >= 0) {
-		if (timespec_diff(&ctx->now, &session->receive_last) > ctx->conf->reorder_time*1000)
+		if (timespec_diff(&ctx->now, &session->receive_last) > (int)ctx->conf->reorder_time*1000)
 			return false;
 
 		if (age > ctx->conf->reorder_count)

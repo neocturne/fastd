@@ -31,33 +31,33 @@ static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return fastd_max_packet_size(ctx);
 }
 
-static size_t method_min_head_tail_space(fastd_context_t *ctx) {
+static size_t method_min_head_tail_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, uint8_t *secret UNUSED, size_t length UNUSED, bool initiator) {
 	if (initiator)
 		return (fastd_method_session_state_t*)1;
 	else
 		return (fastd_method_session_state_t*)2;
 }
 
-static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static bool method_session_is_valid(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	return session;
 }
 
-static bool method_session_is_initiator(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static bool method_session_is_initiator(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	return (session == (fastd_method_session_state_t*)1);
 }
 
-static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static bool method_session_want_refresh(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
 	return false;
 }
 
-static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
 }
 
-static bool method_passthrough(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_passthrough(fastd_context_t *ctx UNUSED, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session UNUSED, fastd_buffer_t *out, fastd_buffer_t in) {
 	*out = in;
 	return true;
 }

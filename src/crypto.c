@@ -39,11 +39,11 @@ struct fastd_crypto_aes128ctr_state {
 };
 
 
-static fastd_crypto_aes128ctr_context_t* aes128ctr_init(fastd_context_t *ctx) {
+static fastd_crypto_aes128ctr_context_t* aes128ctr_init(fastd_context_t *ctx UNUSED) {
 	return (fastd_crypto_aes128ctr_context_t*)1;
 }
 
-static fastd_crypto_aes128ctr_state_t* aes128ctr_set_key(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx, const fastd_block128_t *key) {
+static fastd_crypto_aes128ctr_state_t* aes128ctr_set_key(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx UNUSED, const fastd_block128_t *key) {
 	fastd_crypto_aes128ctr_state_t *cstate = malloc(sizeof(fastd_crypto_aes128ctr_state_t));
 
 	cstate->d = fastd_buffer_alloc(ctx, crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
@@ -52,22 +52,22 @@ static fastd_crypto_aes128ctr_state_t* aes128ctr_set_key(fastd_context_t *ctx, c
 	return cstate;
 }
 
-static bool aes128ctr_crypt(fastd_context_t *ctx, const fastd_crypto_aes128ctr_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv) {
+static bool aes128ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_crypto_aes128ctr_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv) {
 	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv->b, cstate->d.data);
 	return true;
 }
 
-static void aes128ctr_free_state(fastd_context_t *ctx, fastd_crypto_aes128ctr_state_t *cstate) {
+static void aes128ctr_free_state(fastd_context_t *ctx UNUSED, fastd_crypto_aes128ctr_state_t *cstate) {
 	if (cstate) {
 		fastd_buffer_free(cstate->d);
 		free(cstate);
 	}
 }
 
-static void aes128ctr_free(fastd_context_t *ctx, fastd_crypto_aes128ctr_context_t *cctx) {
+static void aes128ctr_free(fastd_context_t *ctx UNUSED, fastd_crypto_aes128ctr_context_t *cctx UNUSED) {
 }
 
-fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_nacl = {
+const fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_nacl = {
 	.name = "nacl",
 
 	.init = aes128ctr_init,
@@ -93,7 +93,7 @@ static const fastd_block128_t r = { .b = {0xe1} };
 
 
 static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int n) {
-	int i;
+	size_t i;
 	uint8_t c = 0;
 
 	for (i = 0; i < sizeof(fastd_block128_t); i++) {
@@ -118,11 +118,11 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_crypto_ghash_state_t 
 }
 
 
-static fastd_crypto_ghash_context_t* ghash_init(fastd_context_t *ctx) {
+static fastd_crypto_ghash_context_t* ghash_init(fastd_context_t *ctx UNUSED) {
 	return (fastd_crypto_ghash_context_t*)1;
 }
 
-static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx, const fastd_crypto_ghash_context_t *cctx, const fastd_block128_t *h) {
+static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx UNUSED, const fastd_crypto_ghash_context_t *cctx UNUSED, const fastd_block128_t *h) {
 	fastd_crypto_ghash_state_t *cstate = malloc(sizeof(fastd_crypto_ghash_state_t));
 
 	fastd_block128_t Hbase[4];
@@ -166,10 +166,10 @@ static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx, const fastd
 	return cstate;
 }
 
-static bool ghash_hash(fastd_context_t *ctx, const fastd_crypto_ghash_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
+static bool ghash_hash(fastd_context_t *ctx UNUSED, const fastd_crypto_ghash_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
 	memset(out, 0, sizeof(fastd_block128_t));
 
-	int i;
+	size_t i;
 	for (i = 0; i < n_blocks; i++) {
 		xor_a(out, &in[i]);
 		mulH_a(out, cstate);
@@ -178,14 +178,14 @@ static bool ghash_hash(fastd_context_t *ctx, const fastd_crypto_ghash_state_t *c
 	return true;
 }
 
-static void ghash_free_state(fastd_context_t *ctx, fastd_crypto_ghash_state_t *cstate) {
+static void ghash_free_state(fastd_context_t *ctx UNUSED, fastd_crypto_ghash_state_t *cstate) {
 	free(cstate);
 }
 
-static void ghash_free(fastd_context_t *ctx, fastd_crypto_ghash_context_t *cctx) {
+static void ghash_free(fastd_context_t *ctx UNUSED, fastd_crypto_ghash_context_t *cctx UNUSED) {
 }
 
-fastd_crypto_ghash_t fastd_crypto_ghash_builtin = {
+const fastd_crypto_ghash_t fastd_crypto_ghash_builtin = {
 	.name = "builtin",
 
 	.init = ghash_init,

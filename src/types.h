@@ -39,6 +39,9 @@
 #include <stdbool.h>
 
 
+#define UNUSED __attribute__((unused))
+
+
 typedef struct fastd_tristate {
 	bool set : 1;
 	bool state : 1;

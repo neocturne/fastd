@@ -136,7 +136,7 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	ctx->conf->protocol->reset_peer_state(ctx, peer);
 
-	int i, deleted = 0;
+	size_t i, deleted = 0;
 	for (i = 0; i < ctx->n_eth_addr; i++) {
 		if (ctx->eth_addr[i].peer == peer) {
 			deleted++;
@@ -240,7 +240,7 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 }
 
 
-fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx, fastd_config_t *conf) {
+fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	fastd_peer_config_t *peer = calloc(1, sizeof(fastd_peer_config_t));
 
 	peer->group = conf->peer_group;
@@ -266,7 +266,7 @@ void fastd_peer_config_free(fastd_peer_config_t *peer) {
 	free(peer);
 }
 
-void fastd_peer_config_delete(fastd_context_t *ctx, fastd_config_t *conf) {
+void fastd_peer_config_delete(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	fastd_peer_config_t *peer = conf->peers, *next = peer->next;
 	fastd_peer_config_free(peer);
 	conf->peers = next;
@@ -332,7 +332,7 @@ static inline void reset_peer_address(fastd_context_t *ctx, fastd_peer_t *peer) 
 	memset(&peer->address, 0, sizeof(fastd_peer_address_t));
 }
 
-bool fastd_peer_owns_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
+bool fastd_peer_owns_address(fastd_context_t *ctx UNUSED, const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
 	if (fastd_peer_is_floating(peer))
 		return false;
 
@@ -348,7 +348,7 @@ bool fastd_peer_owns_address(fastd_context_t *ctx, const fastd_peer_t *peer, con
 	return false;
 }
 
-bool fastd_peer_matches_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
+bool fastd_peer_matches_address(fastd_context_t *ctx UNUSED, const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
 	if (fastd_peer_is_floating(peer))
 		return true;
 
@@ -464,7 +464,7 @@ bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer) {
 		if (group->conf->max_connections < 0)
 			continue;
 
-		if (count_established_group_peers(ctx, group) >= group->conf->max_connections)
+		if (count_established_group_peers(ctx, group) >= (unsigned)group->conf->max_connections)
 			return false;
 	}
 
@@ -653,10 +653,10 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, const fas
 }
 
 void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx) {
-	int i, deleted = 0;
+	size_t i, deleted = 0;
 
 	for (i = 0; i < ctx->n_eth_addr; i++) {
-		if (timespec_diff(&ctx->now, &ctx->eth_addr[i].seen) > ctx->conf->eth_addr_stale_time*1000) {
+		if (timespec_diff(&ctx->now, &ctx->eth_addr[i].seen) > (int)ctx->conf->eth_addr_stale_time*1000) {
 			deleted++;
 			pr_debug(ctx, "MAC address %E not seen for more than %u seconds, removing",
 				 &ctx->eth_addr[i].addr, ctx->conf->eth_addr_stale_time);

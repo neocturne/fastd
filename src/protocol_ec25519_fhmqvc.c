@@ -340,7 +340,7 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 	return true;
 }
 
-static void clear_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t *peer) {
+static void clear_shared_handshake_key(fastd_context_t *ctx UNUSED, const fastd_peer_t *peer) {
 	memset(&peer->protocol_state->sigma, 0, sizeof(peer->protocol_state->sigma));
 	memset(&peer->protocol_state->shared_handshake_key, 0, sizeof(peer->protocol_state->shared_handshake_key));
 
@@ -577,7 +577,7 @@ static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, s
 	return (handshake->records[type].length == length);
 }
 
-static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const unsigned char key[32]) {
+static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const unsigned char key[32]) {
 	if (!fastd_peer_allow_unknown(ctx)) {
 		pr_debug(ctx, "ignoring handshake from %I (unknown key)", remote_addr);
 		return NULL;
@@ -624,7 +624,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 			return;
 
 		case ENOENT:
-			peer = add_temporary(ctx, sock, local_addr, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
+			peer = add_temporary(ctx, local_addr, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
 			if (peer) {
 				temporary_added = true;
 				break;
@@ -670,7 +670,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	memcpy(peer_handshake_key.p, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 
 	if (handshake->type == 1) {
-		if (timespec_diff(&ctx->now, &peer->last_handshake_response) < ctx->conf->min_handshake_interval*1000
+		if (timespec_diff(&ctx->now, &peer->last_handshake_response) < (int)ctx->conf->min_handshake_interval*1000
 		    && fastd_peer_address_equal(remote_addr, &peer->last_handshake_response_address)) {
 			pr_debug(ctx, "not responding repeated handshake from %P[%I]", peer, remote_addr);
 			return;
@@ -909,7 +909,7 @@ static void protocol_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *pee
 	}
 }
 
-static bool protocol_describe_peer(const fastd_context_t *ctx, const fastd_peer_t *peer, char *buf, size_t len) {
+static bool protocol_describe_peer(const fastd_context_t *ctx UNUSED, const fastd_peer_t *peer, char *buf, size_t len) {
 	if (peer && peer->protocol_config) {
 		char dumpbuf[65];
 

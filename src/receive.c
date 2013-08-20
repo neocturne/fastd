@@ -30,7 +30,7 @@
 #include "peer.h"
 
 
-static inline void handle_socket_control(fastd_context_t *ctx, struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
+static inline void handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
 	memset(local_addr, 0, sizeof(fastd_peer_address_t));
 
 	const char *end = (char*)message->msg_control + message->msg_controllen;
@@ -96,7 +96,7 @@ static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socke
 	}
 }
 
-static inline bool is_unknown_peer_valid(fastd_context_t *ctx, const fastd_peer_address_t *remote_addr) {
+static inline bool allow_unknown_peers(fastd_context_t *ctx) {
 	return ctx->conf->has_floating || ctx->conf->on_verify;
 }
 
@@ -136,7 +136,7 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 	if (peer) {
 		handle_socket_receive_known(ctx, sock, local_addr, remote_addr, peer, buffer);
 	}
-	else if(is_unknown_peer_valid(ctx, remote_addr)) {
+	else if (allow_unknown_peers(ctx)) {
 		handle_socket_receive_unknown(ctx, sock, local_addr, remote_addr, buffer);
 	}
 	else  {
@@ -173,7 +173,7 @@ void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
 
 	buffer.len = len;
 
-	handle_socket_control(ctx, &message, sock, &local_addr);
+	handle_socket_control(&message, sock, &local_addr);
 
 #ifdef USE_PKTINFO
 	if (!local_addr.sa.sa_family) {

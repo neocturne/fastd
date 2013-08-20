@@ -124,7 +124,7 @@ static void default_config(fastd_config_t *conf) {
 	conf->peer_group->max_connections = -1;
 }
 
-bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
+bool fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
 	if (!strcmp(name, "ec25519-fhmqvc"))
 		conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	else
@@ -170,7 +170,7 @@ bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	exit_bug(ctx, "MAX_METHODS too low");
 }
 
-bool fastd_config_crypto(fastd_context_t *ctx, fastd_config_t *conf, const char *alg, const char *impl) {
+bool fastd_config_crypto(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED, const char *alg UNUSED, const char *impl UNUSED) {
 #ifdef USE_CRYPTO_AES128CTR
 	if (!strcasecmp(alg, "aes128-ctr") || !strcasecmp(alg, "aes128") || !strcasecmp(alg, "aes-ctr") || !strcasecmp(alg, "aes")) {
 		if (!strcasecmp(impl, "default"))
@@ -212,7 +212,7 @@ bool fastd_config_crypto(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	return false;
 }
 
-bool fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+bool fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev)
 		return false;
@@ -237,7 +237,7 @@ bool fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const
 	return true;
 }
 
-void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
+void fastd_config_peer_group_push(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
 	fastd_peer_group_config_t *group = calloc(1, sizeof(fastd_peer_group_config_t));
 	group->name = strdup(name);
 	group->max_connections = -1;
@@ -250,7 +250,7 @@ void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, co
 	conf->peer_group = group;
 }
 
-void fastd_config_peer_group_pop(fastd_context_t *ctx, fastd_config_t *conf) {
+void fastd_config_peer_group_pop(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->peer_group = conf->peer_group->parent;
 }
 
@@ -688,7 +688,7 @@ static void peer_dirs_handle_old_peers(fastd_context_t *ctx, fastd_peer_config_t
 	}
 }
 
-static void peer_dirs_handle_new_peers(fastd_context_t *ctx, fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
+static void peer_dirs_handle_new_peers(fastd_context_t *ctx UNUSED, fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
 	fastd_peer_config_t *peer;
 	for (peer = new_peers; peer; peer = peer->next) {
 		if (peer->next)

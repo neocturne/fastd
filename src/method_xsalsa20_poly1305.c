@@ -78,15 +78,15 @@ static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return (fastd_max_packet_size(ctx) + NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 }
 
-static size_t method_min_encrypt_head_space(fastd_context_t *ctx) {
+static size_t method_min_encrypt_head_space(fastd_context_t *ctx UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_ZEROBYTES;
 }
 
-static size_t method_min_decrypt_head_space(fastd_context_t *ctx) {
+static size_t method_min_decrypt_head_space(fastd_context_t *ctx UNUSED) {
 	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - NONCEBYTES);
 }
 
-static size_t method_min_tail_space(fastd_context_t *ctx) {
+static size_t method_min_tail_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
@@ -121,7 +121,7 @@ static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_s
 	return (session && timespec_after(&session->valid_till, &ctx->now));
 }
 
-static bool method_session_is_initiator(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static bool method_session_is_initiator(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	return (session->send_nonce[0] & 1);
 }
 
@@ -129,14 +129,14 @@ static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_sessi
 	return timespec_after(&ctx->now, &session->refresh_after);
 }
 
-static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	if(session) {
 		memset(session, 0, sizeof(fastd_method_session_state_t));
 		free(session);
 	}
 }
 
-static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_pull_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
@@ -174,7 +174,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		return false;
 
 	if (age >= 0) {
-		if (timespec_diff(&ctx->now, &session->receive_last) > ctx->conf->reorder_time*1000)
+		if (timespec_diff(&ctx->now, &session->receive_last) > (int)ctx->conf->reorder_time*1000)
 			return false;
 
 		if (age > ctx->conf->reorder_count)

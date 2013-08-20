@@ -96,10 +96,10 @@ void fastd_cap_drop(fastd_context_t *ctx) {
 
 #else /* WITH_CAPABILITIES */
 
-void fastd_cap_init(fastd_context_t *ctx) {
+void fastd_cap_init(fastd_context_t *ctx UNUSED) {
 }
 
-void fastd_cap_drop(fastd_context_t *ctx) {
+void fastd_cap_drop(fastd_context_t *ctx UNUSED) {
 }
 
 #endif /* WITH_CAPABILITIES */

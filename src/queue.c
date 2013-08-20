@@ -74,7 +74,7 @@ int fastd_queue_timeout(fastd_context_t *ctx, fastd_queue_t *queue) {
 		return diff_msec;
 }
 
-void fastd_queue_filter(fastd_context_t *ctx, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra) {
+void fastd_queue_filter(fastd_context_t *ctx UNUSED, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra) {
 	fastd_queue_entry_t **entry, *next;
 	for (entry = &queue->head; *entry;) {
 		next = (*entry)->next;
@@ -86,7 +86,7 @@ void fastd_queue_filter(fastd_context_t *ctx, fastd_queue_t *queue, bool (*pred)
 	}
 }
 
-bool fastd_queue_has_entry(fastd_context_t *ctx, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra) {
+bool fastd_queue_has_entry(fastd_context_t *ctx UNUSED, fastd_queue_t *queue, bool (*pred)(fastd_queue_entry_t*, void*), void *extra) {
 	fastd_queue_entry_t *entry;
 	for (entry = queue->head; entry; entry = entry->next) {
 		if (pred(entry, extra))

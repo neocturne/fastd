@@ -576,6 +576,6 @@ port:		colon_or_port TOK_UINT {
 	;
 
 %%
-void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, const char *s) {
+void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf UNUSED, const char *filename, int depth UNUSED, const char *s) {
 	pr_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
 }

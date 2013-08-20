@@ -169,7 +169,7 @@ static void consume(fastd_lex_t *lex, bool needspace) {
 	lex->needspace = needspace;
 }
 
-static int io_error(YYSTYPE *yylval, fastd_lex_t *lex) {
+static int io_error(YYSTYPE *yylval, fastd_lex_t *lex UNUSED) {
 	yylval->error = "I/O error";
 	return -1;
 }
@@ -354,7 +354,7 @@ static int parse_keyword(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 	}
 
 	char *token = get_token(lex);
-	const keyword_t key = {token};
+	const keyword_t key = { .keyword = token };
 	const keyword_t *ret = bsearch(&key, keywords, sizeof(keywords)/sizeof(keyword_t), sizeof(keyword_t), compare_keywords);
 	free(token);
 

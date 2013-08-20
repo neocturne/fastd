@@ -134,21 +134,21 @@ static bool aes128ctr_crypt(fastd_context_t *ctx, const fastd_crypto_aes128ctr_s
 	return true;
 }
 
-static void aes128ctr_free_state(fastd_context_t *ctx, fastd_crypto_aes128ctr_state_t *cstate) {
+static void aes128ctr_free_state(fastd_context_t *ctx UNUSED, fastd_crypto_aes128ctr_state_t *cstate) {
 	if (cstate) {
 		close(cstate->fd);
 		free(cstate);
 	}
 }
 
-static void aes128ctr_free(fastd_context_t *ctx, fastd_crypto_aes128ctr_context_t *cctx) {
+static void aes128ctr_free(fastd_context_t *ctx UNUSED, fastd_crypto_aes128ctr_context_t *cctx) {
 	if (cctx) {
 		close(cctx->fd);
 		free(cctx);
 	}
 }
 
-fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_linux = {
+const fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_linux = {
 	.name = "linux",
 
 	.init = aes128ctr_init,
@@ -233,21 +233,21 @@ static bool ghash_hash(fastd_context_t *ctx, const fastd_crypto_ghash_state_t *c
 	return true;
 }
 
-static void ghash_free_state(fastd_context_t *ctx, fastd_crypto_ghash_state_t *cstate) {
+static void ghash_free_state(fastd_context_t *ctx UNUSED, fastd_crypto_ghash_state_t *cstate) {
 	if (cstate) {
 		close(cstate->fd);
 		free(cstate);
 	}
 }
 
-static void ghash_free(fastd_context_t *ctx, fastd_crypto_ghash_context_t *cctx) {
+static void ghash_free(fastd_context_t *ctx UNUSED, fastd_crypto_ghash_context_t *cctx) {
 	if (cctx) {
 		close(cctx->fd);
 		free(cctx);
 	}
 }
 
-fastd_crypto_ghash_t fastd_crypto_ghash_linux = {
+const fastd_crypto_ghash_t fastd_crypto_ghash_linux = {
 	.name = "linux",
 
 	.init = ghash_init,

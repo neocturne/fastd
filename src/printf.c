@@ -31,16 +31,19 @@
 #include <net/if.h>
 
 
-static inline int snprintf_safe(char *buffer, size_t size, const char *format, ...) {
+static inline size_t snprintf_safe(char *buffer, size_t size, const char *format, ...) {
 	va_list ap;
 	va_start(ap, format);
 	int ret = vsnprintf(buffer, size, format, ap);
 	va_end(ap);
 
-	return ret < 0 ? 0 : ret > size ? size : ret;
+	if (ret < 0)
+		return 0;
+
+	return min_size_t(ret, size);
 }
 
-static int snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address, bool bind_address) {
+static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address, bool bind_address) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
 	switch (address->sa.sa_family) {
@@ -78,7 +81,7 @@ static int snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t
 	}
 }
 
-static int snprint_peer_str(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_t *peer) {
+static size_t snprint_peer_str(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_t *peer) {
 	if (peer->config && peer->config->name) {
 		return snprintf_safe(buffer, size, "<%s>", peer->config->name);
 	}

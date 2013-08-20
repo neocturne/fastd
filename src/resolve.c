@@ -99,7 +99,7 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 		return;
 	}
 
-	if (timespec_diff(&ctx->now, &remote->last_resolve) < ctx->conf->min_resolve_interval*1000) {
+	if (timespec_diff(&ctx->now, &remote->last_resolve) < (int)ctx->conf->min_resolve_interval*1000) {
 		/* last resolve was just a few seconds ago */
 		return;
 	}

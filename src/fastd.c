@@ -44,15 +44,15 @@ static volatile bool terminate = false;
 static volatile bool dump = false;
 
 
-static void on_sighup(int signo) {
+static void on_sighup(int signo UNUSED) {
 	sighup = true;
 }
 
-static void on_terminate(int signo) {
+static void on_terminate(int signo UNUSED) {
 	terminate = true;
 }
 
-static void on_sigusr1(int signo) {
+static void on_sigusr1(int signo UNUSED) {
 	dump = true;
 }
 
@@ -140,7 +140,7 @@ static void close_log(fastd_context_t *ctx) {
 	closelog();
 }
 
-static void crypto_init(fastd_context_t *ctx) {
+static void crypto_init(fastd_context_t *ctx UNUSED) {
 #ifdef USE_CRYPTO_AES128CTR
 	ctx->crypto_aes128ctr = ctx->conf->crypto_aes128ctr->init(ctx);
 	if (!ctx->crypto_aes128ctr)
@@ -154,7 +154,7 @@ static void crypto_init(fastd_context_t *ctx) {
 #endif
 }
 
-static void crypto_free(fastd_context_t *ctx) {
+static void crypto_free(fastd_context_t *ctx UNUSED) {
 #ifdef USE_CRYPTO_AES128CTR
 	ctx->conf->crypto_aes128ctr->free(ctx, ctx->crypto_aes128ctr);
 	ctx->crypto_aes128ctr = NULL;
@@ -173,7 +173,7 @@ static void init_sockets(fastd_context_t *ctx) {
 	unsigned i;
 	fastd_bind_address_t *addr = ctx->conf->bind_addrs;
 	for (i = 0; i < ctx->conf->n_bind_addrs; i++) {
-		ctx->socks[i] = (fastd_socket_t){-2, addr, NULL};
+		ctx->socks[i] = (fastd_socket_t){ .fd = -2, .addr = addr };
 
 		if (addr == ctx->conf->bind_addr_default_v4)
 			ctx->sock_default_v4 = &ctx->socks[i];
@@ -413,7 +413,7 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 		return;
 	}
 
-	if (timespec_diff(&ctx->now, &peer->last_handshake) < ctx->conf->min_handshake_interval*1000
+	if (timespec_diff(&ctx->now, &peer->last_handshake) < (int)ctx->conf->min_handshake_interval*1000
 	    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
 		pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
 		return;
@@ -607,7 +607,7 @@ static void cleanup_peers(fastd_context_t *ctx) {
 		next = peer->next;
 
 		if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
-			if (timespec_diff(&ctx->now, &peer->seen) > ctx->conf->peer_stale_time*1000) {
+			if (timespec_diff(&ctx->now, &peer->seen) > (int)ctx->conf->peer_stale_time*1000) {
 				if (fastd_peer_is_temporary(peer)) {
 					fastd_peer_delete(ctx, peer);
 				}
