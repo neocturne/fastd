@@ -50,9 +50,13 @@
 
 typedef ecc_int256_t __attribute__((aligned(4))) aligned_int256_t;
 
+typedef struct keypair {
+	ecc_int256_t secret;
+	aligned_int256_t public;
+} keypair_t;
+
 struct fastd_protocol_config {
-	ecc_int256_t secret_key;
-	aligned_int256_t public_key;
+	keypair_t key;
 };
 
 typedef struct handshake_key {
@@ -60,8 +64,7 @@ typedef struct handshake_key {
 	struct timespec preferred_till;
 	struct timespec valid_till;
 
-	ecc_int256_t secret_key;
-	aligned_int256_t public_key;
+	keypair_t key;
 } handshake_key_t;
 
 struct fastd_protocol_state {
@@ -152,12 +155,12 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 	if (!ctx->conf->secret)
 		exit_error(ctx, "no secret key configured");
 
-	if (!read_key(protocol_config->secret_key.p, ctx->conf->secret))
+	if (!read_key(protocol_config->key.secret.p, ctx->conf->secret))
 		exit_error(ctx, "invalid secret key");
 
 	ecc_25519_work_t work;
-	ecc_25519_scalarmult_base(&work, &protocol_config->secret_key);
-	ecc_25519_store_packed(&protocol_config->public_key, &work);
+	ecc_25519_scalarmult_base(&work, &protocol_config->key.secret);
+	ecc_25519_store_packed(&protocol_config->key.public, &work);
 
 	return protocol_config;
 }
@@ -201,7 +204,7 @@ static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *p
 	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
 	peer_conf->protocol_config->public_key = key;
 
-	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0)
+	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->key.public.p, 32) == 0)
 		pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
 }
 
@@ -209,7 +212,7 @@ static bool protocol_peer_check(fastd_context_t *ctx, fastd_peer_config_t *peer_
 	if (!peer_conf->protocol_config)
 		return false;
 
-	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->public_key.p, 32) == 0)
+	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->key.public.p, 32) == 0)
 		return false;
 
 	if (key_count(ctx, peer_conf->protocol_config->public_key.p) > 1) {
@@ -238,6 +241,15 @@ static void init_protocol_state(fastd_context_t *ctx) {
 		ctx->protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
 }
 
+static void new_handshake_key(fastd_context_t *ctx, keypair_t *key) {
+		fastd_random_bytes(ctx, key->secret.p, 32, false);
+		ecc_25519_gf_sanitize_secret(&key->secret, &key->secret);
+
+		ecc_25519_work_t work;
+		ecc_25519_scalarmult_base(&work, &key->secret);
+		ecc_25519_store_packed(&key->public, &work);
+}
+
 static void maintenance(fastd_context_t *ctx) {
 	init_protocol_state(ctx);
 
@@ -248,12 +260,7 @@ static void maintenance(fastd_context_t *ctx) {
 
 		ctx->protocol_state->handshake_key.serial++;
 
-		fastd_random_bytes(ctx, ctx->protocol_state->handshake_key.secret_key.p, 32, false);
-		ecc_25519_gf_sanitize_secret(&ctx->protocol_state->handshake_key.secret_key, &ctx->protocol_state->handshake_key.secret_key);
-
-		ecc_25519_work_t work;
-		ecc_25519_scalarmult_base(&work, &ctx->protocol_state->handshake_key.secret_key);
-		ecc_25519_store_packed(&ctx->protocol_state->handshake_key.public_key, &work);
+		new_handshake_key(ctx, &ctx->protocol_state->handshake_key.key);
 
 		ctx->protocol_state->handshake_key.preferred_till = ctx->now;
 		ctx->protocol_state->handshake_key.preferred_till.tv_sec += 15;
@@ -268,14 +275,14 @@ static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *
 
 	fastd_buffer_t buffer = fastd_handshake_new_init(ctx, 3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->key.public.p);
 
 	if (peer)
 		fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
 	else
 		pr_debug(ctx, "sending handshake to unknown peer %I", remote_addr);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, ctx->protocol_state->handshake_key.public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, ctx->protocol_state->handshake_key.key.public.p);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, buffer);
 }
@@ -289,9 +296,9 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 
 	fastd_sha256_t hashbuf;
 	fastd_sha256_blocks(&hashbuf,
-			    handshake_key->public_key.p,
+			    handshake_key->key.public.p,
 			    peer_handshake_key->p,
-			    ctx->conf->protocol_config->public_key.p,
+			    ctx->conf->protocol_config->key.public.p,
 			    peer->protocol_config->public_key.p,
 			    NULL);
 
@@ -303,8 +310,8 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 	d.p[15] |= 0x80;
 	e.p[15] |= 0x80;
 
-	ecc_25519_gf_mult(&eb, &e, &ctx->conf->protocol_config->secret_key);
-	ecc_25519_gf_add(&s, &eb, &handshake_key->secret_key);
+	ecc_25519_gf_mult(&eb, &e, &ctx->conf->protocol_config->key.secret);
+	ecc_25519_gf_add(&s, &eb, &handshake_key->key.secret);
 
 	ecc_25519_work_t work, workX;
 	if (!ecc_25519_load_packed(&workX, peer_handshake_key))
@@ -327,9 +334,9 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 	ecc_25519_store_packed(&peer->protocol_state->sigma, &work);
 
 	fastd_sha256_blocks(&peer->protocol_state->shared_handshake_key,
-			    handshake_key->public_key.p,
+			    handshake_key->key.public.p,
 			    peer_handshake_key->p,
-			    ctx->conf->protocol_config->public_key.p,
+			    ctx->conf->protocol_config->key.public.p,
 			    peer->protocol_config->public_key.p,
 			    peer->protocol_state->sigma.p,
 			    NULL);
@@ -356,13 +363,13 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 		return;
 
 	fastd_sha256_t hmacbuf;
-	fastd_hmacsha256_blocks(&hmacbuf, peer->protocol_state->shared_handshake_key.w, ctx->conf->protocol_config->public_key.p, handshake_key->public_key.p, NULL);
+	fastd_hmacsha256_blocks(&hmacbuf, peer->protocol_state->shared_handshake_key.w, ctx->conf->protocol_config->key.public.p, handshake_key->key.public.p, NULL);
 
 	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HASHBYTES);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->key.public.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake_key->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake_key->key.public.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 
@@ -433,9 +440,9 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	fastd_sha256_t hashbuf;
 	fastd_sha256_blocks(&hashbuf,
 			    peer_handshake_key->p,
-			    handshake_key->public_key.p,
+			    handshake_key->key.public.p,
 			    peer->protocol_config->public_key.p,
-			    ctx->conf->protocol_config->public_key.p,
+			    ctx->conf->protocol_config->key.public.p,
 			    NULL);
 
 	ecc_int256_t d = {{0}}, e = {{0}}, da, s;
@@ -446,8 +453,8 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	d.p[15] |= 0x80;
 	e.p[15] |= 0x80;
 
-	ecc_25519_gf_mult(&da, &d, &ctx->conf->protocol_config->secret_key);
-	ecc_25519_gf_add(&s, &da, &handshake_key->secret_key);
+	ecc_25519_gf_mult(&da, &d, &ctx->conf->protocol_config->key.secret);
+	ecc_25519_gf_add(&s, &da, &handshake_key->key.secret);
 
 	ecc_25519_work_t work, workY;
 	if (!ecc_25519_load_packed(&workY, peer_handshake_key))
@@ -473,9 +480,9 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	fastd_sha256_t shared_handshake_key;
 	fastd_sha256_blocks(&shared_handshake_key,
 			    peer_handshake_key->p,
-			    handshake_key->public_key.p,
+			    handshake_key->key.public.p,
 			    peer->protocol_config->public_key.p,
-			    ctx->conf->protocol_config->public_key.p,
+			    ctx->conf->protocol_config->key.public.p,
 			    sigma.p,
 			    NULL);
 
@@ -485,17 +492,17 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	}
 
 	fastd_sha256_t hmacbuf;
-	fastd_hmacsha256_blocks(&hmacbuf, shared_handshake_key.w, ctx->conf->protocol_config->public_key.p, handshake_key->public_key.p, NULL);
+	fastd_hmacsha256_blocks(&hmacbuf, shared_handshake_key.w, ctx->conf->protocol_config->key.public.p, handshake_key->key.public.p, NULL);
 
-	if (!establish(ctx, peer, method, sock, local_addr, remote_addr, true, &handshake_key->public_key, peer_handshake_key, &ctx->conf->protocol_config->public_key,
+	if (!establish(ctx, peer, method, sock, local_addr, remote_addr, true, &handshake_key->key.public, peer_handshake_key, &ctx->conf->protocol_config->key.public,
 		       &peer->protocol_config->public_key, &sigma, handshake_key->serial))
 		return;
 
 	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 4+HASHBYTES);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->key.public.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake_key->public_key.p);
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake_key->key.public.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 
@@ -515,8 +522,8 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 		return;
 	}
 
-	establish(ctx, peer, method, sock, local_addr, remote_addr, false, peer_handshake_key, &handshake_key->public_key, &peer->protocol_config->public_key,
-		  &ctx->conf->protocol_config->public_key, &peer->protocol_state->sigma, handshake_key->serial);
+	establish(ctx, peer, method, sock, local_addr, remote_addr, false, peer_handshake_key, &handshake_key->key.public, &peer->protocol_config->public_key,
+		  &ctx->conf->protocol_config->key.public, &peer->protocol_state->sigma, handshake_key->serial);
 
 	clear_shared_handshake_key(ctx, peer);
 }
@@ -655,7 +662,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	}
 
 	if (has_field(handshake, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES)) {
-		if (memcmp(ctx->conf->protocol_config->public_key.p, handshake->records[RECORD_RECEIPIENT_KEY].data, PUBLICKEYBYTES) != 0) {
+		if (memcmp(ctx->conf->protocol_config->key.public.p, handshake->records[RECORD_RECEIPIENT_KEY].data, PUBLICKEYBYTES) != 0) {
 			pr_debug(ctx, "received protocol handshake with wrong receipient key from %P[%I]", peer, remote_addr);
 			return;
 		}
@@ -704,10 +711,10 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	}
 
 	handshake_key_t *handshake_key;
-	if (is_handshake_key_valid(ctx, &ctx->protocol_state->handshake_key) && memcmp(ctx->protocol_state->handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+	if (is_handshake_key_valid(ctx, &ctx->protocol_state->handshake_key) && memcmp(ctx->protocol_state->handshake_key.key.public.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
 		handshake_key = &ctx->protocol_state->handshake_key;
 	}
-	else if (is_handshake_key_valid(ctx, &ctx->protocol_state->prev_handshake_key) && memcmp(ctx->protocol_state->prev_handshake_key.public_key.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+	else if (is_handshake_key_valid(ctx, &ctx->protocol_state->prev_handshake_key) && memcmp(ctx->protocol_state->prev_handshake_key.key.public.p, handshake->records[RECORD_RECEIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
 		handshake_key = &ctx->protocol_state->prev_handshake_key;
 	}
 	else {
@@ -889,15 +896,15 @@ static void protocol_generate_key(fastd_context_t *ctx) {
 
 static void protocol_show_key(fastd_context_t *ctx) {
 	if (ctx->conf->machine_readable)
-		print_hexdump("", ctx->conf->protocol_config->public_key.p);
+		print_hexdump("", ctx->conf->protocol_config->key.public.p);
 	else
-		print_hexdump("Public: ", ctx->conf->protocol_config->public_key.p);
+		print_hexdump("Public: ", ctx->conf->protocol_config->key.public.p);
 }
 
 static void protocol_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	char buf[65];
 
-	hexdump(buf, ctx->conf->protocol_config->public_key.p);
+	hexdump(buf, ctx->conf->protocol_config->key.public.p);
 	setenv("LOCAL_KEY", buf, 1);
 
 	if (peer && peer->protocol_config) {
