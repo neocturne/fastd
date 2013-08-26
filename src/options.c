@@ -370,7 +370,7 @@ void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int
 			if(config_match(argv[i], options, NULL)) {	\
 				i+=2;					\
 				if (i > argc)				\
-					exit_error(ctx, "config error: option `%s' needs an argument; see --help for usage", argv[i-2]); \
+					exit_error(ctx, "command line error: option `%s' needs an argument; see --help for usage", argv[i-2]); \
 				func(ctx, conf, argv[i-1]);		\
 				continue;				\
 			}						\
@@ -381,6 +381,6 @@ void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int
 #undef OPTION
 #undef OPTION_ARG
 
-		exit_error(ctx, "config error: unknown option `%s'; see --help for usage", argv[i]);
+		exit_error(ctx, "command line error: unknown option `%s'; see --help for usage", argv[i]);
 	}
 }
