@@ -115,17 +115,19 @@ static void option_group(fastd_context_t *ctx UNUSED, fastd_config_t *conf, cons
 
 static int parse_log_level(fastd_context_t *ctx, const char *arg) {
 	if (!strcmp(arg, "fatal"))
-		return LOG_CRIT;
+		return LL_FATAL;
 	else if (!strcmp(arg, "error"))
-		return LOG_ERR;
+		return LL_ERROR;
 	else if (!strcmp(arg, "warn"))
-		return LOG_WARNING;
+		return LL_WARN;
 	else if (!strcmp(arg, "info"))
-		return LOG_NOTICE;
+		return LL_INFO;
 	else if (!strcmp(arg, "verbose"))
-		return LOG_INFO;
+		return LL_VERBOSE;
 	else if (!strcmp(arg, "debug"))
-		return LOG_DEBUG;
+		return LL_DEBUG;
+	else if (!strcmp(arg, "debug2"))
+		return LL_DEBUG2;
 	else
 		exit_error(ctx, "invalid log level `%s'", arg);
 }

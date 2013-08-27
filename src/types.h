@@ -65,6 +65,17 @@ typedef enum fastd_peer_state {
 	STATE_ESTABLISHED,
 } fastd_peer_state_t;
 
+typedef enum fastd_loglevel {
+	LL_UNSPEC = 0,
+	LL_FATAL,
+	LL_ERROR,
+	LL_WARN,
+	LL_INFO,
+	LL_VERBOSE,
+	LL_DEBUG,
+	LL_DEBUG2,
+} fastd_loglevel_t;
+
 typedef struct fastd_buffer fastd_buffer_t;
 
 typedef union fastd_peer_address fastd_peer_address_t;

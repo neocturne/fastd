@@ -36,6 +36,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
+#include <syslog.h>
 #include <sys/resource.h>
 
 
@@ -107,7 +108,7 @@ static void init_log(fastd_context_t *ctx) {
 			pr_debug_errno(ctx, "seteuid");
 	}
 
-	if (ctx->conf->log_syslog_level >= 0)
+	if (ctx->conf->log_syslog_level > LL_UNSPEC)
 		openlog(ctx->conf->log_syslog_ident, LOG_PID, LOG_DAEMON);
 
 	fastd_log_file_t *config;
@@ -452,7 +453,7 @@ static void handle_tasks(fastd_context_t *ctx) {
 			break;
 
 		case TASK_KEEPALIVE:
-			pr_debug(ctx, "sending keepalive to %P", task->peer);
+			pr_debug2(ctx, "sending keepalive to %P", task->peer);
 			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
 			break;
 

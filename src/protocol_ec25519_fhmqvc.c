@@ -830,7 +830,7 @@ static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 	check_session_refresh(ctx, peer);
 
 	if (peer->protocol_state->session.method->session_is_initiator(ctx, peer->protocol_state->session.method_state) && is_session_valid(ctx, &peer->protocol_state->old_session)) {
-		pr_debug(ctx, "sending packet for old session to %P", peer);
+		pr_debug2(ctx, "sending packet for old session to %P", peer);
 		session_send(ctx, peer, buffer, &peer->protocol_state->old_session);
 	}
 	else {

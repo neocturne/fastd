@@ -37,7 +37,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <time.h>
 
 #include <sys/uio.h>
@@ -115,7 +114,7 @@ struct fastd_resolve_return {
 struct fastd_log_file {
 	fastd_log_file_t *next;
 
-	int level;
+	fastd_loglevel_t level;
 	char *filename;
 };
 
@@ -162,8 +161,8 @@ struct fastd_peer_group {
 };
 
 struct fastd_config {
-	int log_stderr_level;
-	int log_syslog_level;
+	fastd_loglevel_t log_stderr_level;
+	fastd_loglevel_t log_syslog_level;
 	char *log_syslog_ident;
 	fastd_log_file_t *log_files;
 
@@ -328,7 +327,7 @@ void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset);
 void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote);
 
 int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
-void fastd_logf(const fastd_context_t *ctx, int level, const char *format, ...);
+void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *format, ...);
 
 void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
@@ -336,7 +335,7 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_crypto(fastd_context_t *ctx, fastd_config_t *conf, const char *alg, const char *impl);
-bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, int level);
+bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level);
 bool fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);
 void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 void fastd_config_peer_group_pop(fastd_context_t *ctx, fastd_config_t *conf);
@@ -363,19 +362,21 @@ static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 }
 
 
-#define FASTD_DEFAULT_LOG_LEVEL	LOG_INFO
+#define FASTD_DEFAULT_LOG_LEVEL	LL_VERBOSE
 
 
-#define pr_fatal(ctx, args...) fastd_logf(ctx, LOG_CRIT, args)
-#define pr_error(ctx, args...) fastd_logf(ctx, LOG_ERR, args)
-#define pr_warn(ctx, args...) fastd_logf(ctx, LOG_WARNING, args)
-#define pr_info(ctx, args...) fastd_logf(ctx, LOG_NOTICE, args)
-#define pr_verbose(ctx, args...) fastd_logf(ctx, LOG_INFO, args)
-#define pr_debug(ctx, args...) fastd_logf(ctx, LOG_DEBUG, args)
+#define pr_fatal(ctx, args...) fastd_logf(ctx, LL_FATAL, args)
+#define pr_error(ctx, args...) fastd_logf(ctx, LL_ERROR, args)
+#define pr_warn(ctx, args...) fastd_logf(ctx, LL_WARN, args)
+#define pr_info(ctx, args...) fastd_logf(ctx, LL_INFO, args)
+#define pr_verbose(ctx, args...) fastd_logf(ctx, LL_VERBOSE, args)
+#define pr_debug(ctx, args...) fastd_logf(ctx, LL_DEBUG, args)
+#define pr_debug2(ctx, args...) fastd_logf(ctx, LL_DEBUG2, args)
 
 #define pr_error_errno(ctx, message) pr_error(ctx, "%s: %s", message, strerror(errno))
 #define pr_warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
 #define pr_debug_errno(ctx, message) pr_debug(ctx, "%s: %s", message, strerror(errno))
+#define pr_debug2_errno(ctx, message) pr_debug2(ctx, "%s: %s", message, strerror(errno))
 
 #define exit_fatal(ctx, args...) do { pr_fatal(ctx, args); abort(); } while(0)
 #define exit_bug(ctx, message) exit_fatal(ctx, "BUG: %s", message)

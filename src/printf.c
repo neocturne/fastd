@@ -27,6 +27,7 @@
 #include "fastd.h"
 #include "peer.h"
 
+#include <syslog.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 
@@ -180,26 +181,45 @@ int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const
 	return buffer-buffer_start;
 }
 
-static inline const char* get_log_prefix(int log_level) {
+static inline const char* get_log_prefix(fastd_loglevel_t log_level) {
 	switch(log_level) {
-	case LOG_CRIT:
+	case LL_FATAL:
 		return "Fatal: ";
-	case LOG_ERR:
+	case LL_ERROR:
 		return "Error: ";
-	case LOG_WARNING:
+	case LL_WARN:
 		return "Warning: ";
-	case LOG_NOTICE:
+	case LL_INFO:
 		return "Info: ";
-	case LOG_INFO:
+	case LL_VERBOSE:
 		return "Verbose: ";
-	case LOG_DEBUG:
+	case LL_DEBUG:
 		return "DEBUG: ";
+	case LL_DEBUG2:
+		return "DEBUG2: ";
 	default:
 		return "";
 	}
 }
 
-void fastd_logf(const fastd_context_t *ctx, int level, const char *format, ...) {
+static inline int get_syslog_level(fastd_loglevel_t log_level) {
+	switch(log_level) {
+	case LL_FATAL:
+		return LOG_CRIT;
+	case LL_ERROR:
+		return LOG_ERR;
+	case LL_WARN:
+		return LOG_WARNING;
+	case LL_INFO:
+		return LOG_NOTICE;
+	case LL_VERBOSE:
+		return LOG_INFO;
+	default:
+		return LOG_DEBUG;
+	}
+}
+
+void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *format, ...) {
 	char buffer[1024];
 	char timestr[100] = "";
 	va_list ap;
@@ -225,7 +245,7 @@ void fastd_logf(const fastd_context_t *ctx, int level, const char *format, ...) 
 		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
 
 	if (ctx->conf != NULL && level <= ctx->conf->log_syslog_level)
-		syslog(level, "%s", buffer);
+		syslog(get_syslog_level(level), "%s", buffer);
 
 	fastd_log_fd_t *file;
 	for (file = ctx->log_files; file; file = file->next) {

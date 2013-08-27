@@ -87,8 +87,6 @@ static const fastd_crypto_ghash_t *fastd_crypto_ghash_default = &fastd_crypto_gh
 static void default_config(fastd_config_t *conf) {
 	memset(conf, 0, sizeof(fastd_config_t));
 
-	conf->log_stderr_level = -1;
-	conf->log_syslog_level = -1;
 	conf->log_syslog_ident = strdup("fastd");
 
 	conf->keepalive_interval = 20;
@@ -294,7 +292,7 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_config_t *group) {
 	return false;
 }
 
-bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, int level) {
+bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level) {
 	char *name2 = strdup(name);
 	char *name3 = strdup(name);
 
@@ -612,7 +610,7 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 
 	fastd_config_handle_options(ctx, conf, argc, argv);
 
-	if (conf->log_stderr_level < 0 && conf->log_syslog_level < 0 && !conf->log_files)
+	if (!conf->log_stderr_level && !conf->log_syslog_level && !conf->log_files)
 		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
 
 	if (!conf->methods[0])

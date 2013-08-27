@@ -281,7 +281,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		*out = fastd_buffer_alloc(ctx, 0, 0, 0);
 	}
 	else {
-		pr_debug(ctx, "accepting reordered packet from %P (age %u)", peer, (unsigned)age);
+		pr_debug2(ctx, "accepting reordered packet from %P (age %u)", peer, (unsigned)age);
 		session->receive_reorder_seen |= (1 << (age-1));
 	}
 

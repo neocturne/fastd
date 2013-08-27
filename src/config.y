@@ -97,6 +97,7 @@
 %token TOK_INFO
 %token TOK_VERBOSE
 %token TOK_DEBUG
+%token TOK_DEBUG2
 %token TOK_FORWARD
 %token TOK_YES
 %token TOK_NO
@@ -253,12 +254,13 @@ maybe_log_level:
 	|				{ $$ = FASTD_DEFAULT_LOG_LEVEL; }
 	;
 
-log_level:	TOK_FATAL	{ $$ = LOG_CRIT; }
-	|	TOK_ERROR	{ $$ = LOG_ERR; }
-	|	TOK_WARN	{ $$ = LOG_WARNING; }
-	|	TOK_INFO	{ $$ = LOG_NOTICE; }
-	|	TOK_VERBOSE	{ $$ = LOG_INFO; }
-	|	TOK_DEBUG	{ $$ = LOG_DEBUG; }
+log_level:	TOK_FATAL	{ $$ = LL_FATAL; }
+	|	TOK_ERROR	{ $$ = LL_ERROR; }
+	|	TOK_WARN	{ $$ = LL_WARN; }
+	|	TOK_INFO	{ $$ = LL_INFO; }
+	|	TOK_VERBOSE	{ $$ = LL_VERBOSE; }
+	|	TOK_DEBUG	{ $$ = LL_DEBUG; }
+	|	TOK_DEBUG2	{ $$ = LL_DEBUG2; }
 	;
 
 interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
