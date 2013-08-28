@@ -79,29 +79,6 @@ void fastd_task_schedule_keepalive(fastd_context_t *ctx, fastd_peer_t *peer, int
 	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, timeout);
 }
 
-typedef struct replace_peer_extra {
-	fastd_peer_t *old_peer;
-	fastd_peer_t *new_peer;
-} replace_peer_extra_t;
-
-
-static bool replace_peer(fastd_queue_entry_t *data, void *extra) {
-	replace_peer_extra_t *e = extra;
-	fastd_task_t *task = container_of(data, fastd_task_t, entry);
-	fastd_peer_t *old_peer = e->old_peer;
-	fastd_peer_t *new_peer = e->new_peer;
-
-	if (task->peer == old_peer)
-		task->peer = new_peer;
-
-	return true;
-}
-
-void fastd_task_replace_peer(fastd_context_t *ctx, fastd_peer_t *old_peer, fastd_peer_t *new_peer) {
-	replace_peer_extra_t extra = {old_peer, new_peer};
-	fastd_queue_filter(ctx, &ctx->task_queue, replace_peer, &extra);
-}
-
 typedef struct delete_task_extra {
 	fastd_peer_t *peer;
 	bool handshake_only;

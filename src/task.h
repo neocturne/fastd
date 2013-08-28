@@ -46,7 +46,7 @@ typedef struct fastd_task {
 } fastd_task_t;
 
 
-static inline int fastd_task_timeout(fastd_context_t *ctx) {	
+static inline int fastd_task_timeout(fastd_context_t *ctx) {
 	return fastd_queue_timeout(ctx, &ctx->task_queue);
 }
 
@@ -56,7 +56,6 @@ fastd_task_t* fastd_task_get(fastd_context_t *ctx);
 void fastd_task_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer, int timeout);
 void fastd_task_schedule_keepalive(fastd_context_t *ctx, fastd_peer_t *peer, int timeout);
 
-void fastd_task_replace_peer(fastd_context_t *ctx, fastd_peer_t *old_peer, fastd_peer_t *new_peer);
 void fastd_task_delete_peer(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_task_delete_peer_handshakes(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_task_delete_peer_keepalives(fastd_context_t *ctx, fastd_peer_t *peer);
