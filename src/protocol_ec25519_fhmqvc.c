@@ -755,8 +755,17 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 	}
 }
 
+static inline bool check_session(fastd_context_t *ctx, fastd_peer_t *peer) {
+	if (is_session_valid(ctx, &peer->protocol_state->session))
+		return true;
+
+	pr_verbose(ctx, "active session with %P timed out", peer);
+	fastd_peer_reset(ctx, peer);
+	return false;
+}
+
 static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (!peer->protocol_state || !is_session_valid(ctx, &peer->protocol_state->session))
+	if (!peer->protocol_state || !check_session(ctx, peer))
 		goto fail;
 
 	fastd_buffer_t recv_buffer;
@@ -822,7 +831,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 }
 
 static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !is_session_valid(ctx, &peer->protocol_state->session)) {
+	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !check_session(ctx, peer)) {
 		fastd_buffer_free(buffer);
 		return;
 	}
