@@ -47,6 +47,11 @@ typedef struct fastd_tristate {
 	bool state : 1;
 } fastd_tristate_t;
 
+static const fastd_tristate_t fastd_tristate_true = {true, true};
+static const fastd_tristate_t fastd_tristate_false = {true, false};
+static const fastd_tristate_t fastd_tristate_undef = {false, false};
+
+
 typedef enum fastd_mode {
 	MODE_TAP,
 	MODE_TUN,

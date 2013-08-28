@@ -560,8 +560,8 @@ boolean:	TOK_YES		{ $$ = true; }
 	|	TOK_NO		{ $$ = false; }
 	;
 
-autobool:	TOK_AUTO	{ $$ = (fastd_tristate_t){ .set = false }; }
-	|	boolean		{ $$ = (fastd_tristate_t){ .set = true, .state = $1 }; }
+autobool:	TOK_AUTO	{ $$ = fastd_tristate_undef; }
+	|	boolean		{ $$ = $1 ? fastd_tristate_true : fastd_tristate_false; }
 	;
 
 colon_or_port:	':'
