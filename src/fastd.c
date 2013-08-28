@@ -425,37 +425,27 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 static void handle_tasks(fastd_context_t *ctx) {
 	fastd_task_t *task;
 	while ((task = fastd_task_get(ctx)) != NULL) {
-		switch (task->type) {
-		case TASK_HANDSHAKE:
-			fastd_peer_schedule_handshake(ctx, task->peer);
+		fastd_peer_schedule_handshake(ctx, task->peer);
 
-			if(!fastd_peer_may_connect(ctx, task->peer)) {
-				task->peer->next_remote = task->peer->remotes;
-				break;
-			}
-
-			send_handshake(ctx, task->peer);
-
-			if (fastd_peer_is_established(task->peer))
-				break;
-
-			task->peer->next_remote = task->peer->next_remote->next;
-			if (!task->peer->next_remote)
-				task->peer->next_remote = task->peer->remotes;
-
-			if (fastd_remote_is_dynamic(task->peer->next_remote))
-				fastd_resolve_peer(ctx, task->peer, task->peer->next_remote);
-
-			break;
-
-		case TASK_KEEPALIVE:
-			pr_debug2(ctx, "sending keepalive to %P", task->peer);
-			ctx->conf->protocol->send(ctx, task->peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
-			break;
-
-		default:
-			exit_bug(ctx, "invalid task type");
+		if(!fastd_peer_may_connect(ctx, task->peer)) {
+			task->peer->next_remote = task->peer->remotes;
+			free(task);
+			continue;
 		}
+
+		send_handshake(ctx, task->peer);
+
+		if (fastd_peer_is_established(task->peer)) {
+			free(task);
+			continue;
+		}
+
+		task->peer->next_remote = task->peer->next_remote->next;
+		if (!task->peer->next_remote)
+			task->peer->next_remote = task->peer->remotes;
+
+		if (fastd_remote_is_dynamic(task->peer->next_remote))
+			fastd_resolve_peer(ctx, task->peer, task->peer->next_remote);
 
 		free(task);
 	}
@@ -557,10 +547,14 @@ static void handle_input(fastd_context_t *ctx) {
 	if (i != n_fds)
 		exit_bug(ctx, "fd count mismatch");
 
-	int timeout = fastd_task_timeout(ctx);
+	int keepalive_timeout = timespec_diff(&ctx->next_keepalives, &ctx->now);
 
-	if (timeout < 0 || timeout > 60000)
-		timeout = 60000; /* call maintenance at least once a minute */
+	if (keepalive_timeout < 0)
+		keepalive_timeout = 0;
+
+	int timeout = fastd_task_timeout(ctx);
+	if (timeout < 0 || timeout > keepalive_timeout)
+		timeout = keepalive_timeout;
 
 	int ret = poll(fds, n_fds, timeout);
 	if (ret < 0) {
@@ -628,6 +622,22 @@ static void maintenance(fastd_context_t *ctx) {
 	fastd_peer_eth_addr_cleanup(ctx);
 
 	fastd_socket_handle_binds(ctx);
+
+	if (timespec_after(&ctx->now, &ctx->next_keepalives)) {
+		fastd_peer_t *peer;
+		for (peer = ctx->peers; peer; peer = peer->next) {
+			if (!fastd_peer_is_established(peer))
+				continue;
+
+			if (timespec_diff(&ctx->now, &peer->last_send) < (int)ctx->conf->keepalive_timeout*1000)
+				continue;
+
+			pr_debug2(ctx, "sending keepalive to %P", peer);
+			ctx->conf->protocol->send(ctx, peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
+		}
+
+		ctx->next_keepalives.tv_sec += ctx->conf->keepalive_interval;
+	}
 }
 
 
@@ -747,6 +757,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	update_time(&ctx);
+
+	ctx.next_keepalives = ctx.now;
+	ctx.next_keepalives.tv_sec += conf.keepalive_interval;
 
 	pr_info(&ctx, "fastd " FASTD_VERSION " starting");
 

@@ -435,8 +435,6 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 
 	pr_verbose(ctx, "new session with %P established using method `%s'.", peer, method->name);
 
-	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
-
 	if (initiator)
 		fastd_peer_schedule_handshake(ctx, peer);
 	else
@@ -795,7 +793,7 @@ static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd
 
 			if (!peer->protocol_state->session.handshakes_cleaned) {
 				pr_debug(ctx, "cleaning left handshakes with %P", peer);
-				fastd_task_delete_peer_handshakes(ctx, peer);
+				fastd_task_delete_peer(ctx, peer);
 				peer->protocol_state->session.handshakes_cleaned = true;
 
 				if (peer->protocol_state->session.method->session_is_initiator(ctx, peer->protocol_state->session.method_state))
@@ -832,9 +830,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 	}
 
 	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, send_buffer);
-
-	fastd_task_delete_peer_keepalives(ctx, peer);
-	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
+	peer->last_send = ctx->now;
 }
 
 static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {

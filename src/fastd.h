@@ -167,6 +167,7 @@ struct fastd_config {
 	char *log_syslog_ident;
 	fastd_log_file_t *log_files;
 
+	unsigned keepalive_timeout;
 	unsigned keepalive_interval;
 	unsigned peer_stale_time;
 	unsigned eth_addr_stale_time;
@@ -277,6 +278,7 @@ struct fastd_context {
 	fastd_peer_t *peers;
 	fastd_peer_t *peers_temp;
 	fastd_queue_t task_queue;
+	struct timespec next_keepalives;
 
 	int resolverfd;
 	int resolvewfd;

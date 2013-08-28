@@ -43,6 +43,7 @@ struct fastd_peer {
 
 	fastd_peer_state_t state;
 	struct timespec seen;
+	struct timespec last_send;
 
 	fastd_remote_t *remotes;
 	fastd_remote_t *next_remote;

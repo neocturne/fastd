@@ -31,72 +31,31 @@ fastd_task_t* fastd_task_get(fastd_context_t *ctx) {
 	return container_of(fastd_queue_get(ctx, &ctx->task_queue), fastd_task_t, entry);
 }
 
-static bool is_handshake(fastd_queue_entry_t *data, void *extra) {
+static bool is_peer(fastd_queue_entry_t *data, void *extra) {
 	fastd_task_t *task = container_of(data, fastd_task_t, entry);
 	fastd_peer_t *peer = extra;
 
-	if (task->peer != peer)
-		return false;
-
-	return (task->type == TASK_HANDSHAKE);
+	return (task->peer == peer);
 }
 
 void fastd_task_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer, int timeout) {
-	if (fastd_queue_has_entry(ctx, &ctx->task_queue, is_handshake, peer)) {
+	if (fastd_queue_has_entry(ctx, &ctx->task_queue, is_peer, peer)) {
 		pr_debug(ctx, "not sending a handshake to %P, there still is one queued", peer);
 		return;
 	}
 
 	fastd_task_t *task = malloc(sizeof(fastd_task_t));
 
-	task->type = TASK_HANDSHAKE;
 	task->peer = peer;
 
 	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, timeout);
 }
 
-static bool is_keepalive(fastd_queue_entry_t *data, void *extra) {
+static bool delete_peer_task(fastd_queue_entry_t *data, void *extra) {
 	fastd_task_t *task = container_of(data, fastd_task_t, entry);
 	fastd_peer_t *peer = extra;
 
 	if (task->peer != peer)
-		return false;
-
-	return (task->type == TASK_KEEPALIVE);
-}
-
-void fastd_task_schedule_keepalive(fastd_context_t *ctx, fastd_peer_t *peer, int timeout) {
-	if (fastd_queue_has_entry(ctx, &ctx->task_queue, is_keepalive, peer)) {
-		pr_debug(ctx, "not sending a keepalive to %P, there still is one queued", peer);
-		return;
-	}
-
-	fastd_task_t *task = malloc(sizeof(fastd_task_t));
-
-	task->type = TASK_KEEPALIVE;
-	task->peer = peer;
-
-	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, timeout);
-}
-
-typedef struct delete_task_extra {
-	fastd_peer_t *peer;
-	bool handshake_only;
-	bool keepalive_only;
-} delete_task_extra_t;
-
-static bool delete_task(fastd_queue_entry_t *data, void *extra) {
-	delete_task_extra_t *e = extra;
-	fastd_task_t *task = container_of(data, fastd_task_t, entry);
-	fastd_peer_t *peer = e->peer;
-
-	if (task->peer != peer)
-		return true;
-
-	if (e->handshake_only && task->type != TASK_HANDSHAKE)
-		return true;
-
-	if (e->keepalive_only && task->type != TASK_KEEPALIVE)
 		return true;
 
 	free(task);
@@ -105,16 +64,5 @@ static bool delete_task(fastd_queue_entry_t *data, void *extra) {
 }
 
 void fastd_task_delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
-	delete_task_extra_t extra = {peer, false, false};
-	fastd_queue_filter(ctx, &ctx->task_queue, delete_task, &extra);
-}
-
-void fastd_task_delete_peer_handshakes(fastd_context_t *ctx, fastd_peer_t *peer) {
-	delete_task_extra_t extra = {peer, true, false};
-	fastd_queue_filter(ctx, &ctx->task_queue, delete_task, &extra);
-}
-
-void fastd_task_delete_peer_keepalives(fastd_context_t *ctx, fastd_peer_t *peer) {
-	delete_task_extra_t extra = {peer, false, true};
-	fastd_queue_filter(ctx, &ctx->task_queue, delete_task, &extra);
+	fastd_queue_filter(ctx, &ctx->task_queue, delete_peer_task, peer);
 }
