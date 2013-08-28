@@ -25,7 +25,6 @@
 
 
 #include "peer.h"
-#include "task.h"
 
 #include <arpa/inet.h>
 #include <sys/wait.h>

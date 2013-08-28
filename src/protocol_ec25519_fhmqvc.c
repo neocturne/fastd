@@ -432,7 +432,9 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 
 	fastd_task_schedule_keepalive(ctx, peer, ctx->conf->keepalive_interval*1000);
 
-	if (!initiator)
+	if (initiator)
+		fastd_peer_schedule_handshake(ctx, peer);
+	else
 		send_empty(ctx, peer, &peer->protocol_state->session);
 
 	return true;

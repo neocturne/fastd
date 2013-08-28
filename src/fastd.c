@@ -393,10 +393,6 @@ static inline void update_time(fastd_context_t *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
-static inline void schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
-	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
-}
-
 static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!fastd_peer_is_established(peer)) {
 		if (!peer->next_remote)
@@ -431,7 +427,7 @@ static void handle_tasks(fastd_context_t *ctx) {
 	while ((task = fastd_task_get(ctx)) != NULL) {
 		switch (task->type) {
 		case TASK_HANDSHAKE:
-			schedule_handshake(ctx, task->peer);
+			fastd_peer_schedule_handshake(ctx, task->peer);
 
 			if(!fastd_peer_may_connect(ctx, task->peer)) {
 				task->peer->next_remote = task->peer->remotes;
