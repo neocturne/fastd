@@ -392,6 +392,12 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 
 	pr_verbose(ctx, "%I authorized as %P", remote_addr, peer);
 
+	if (!fastd_peer_claim_address(ctx, peer, sock, local_addr, remote_addr)) {
+		pr_warn(ctx, "can't set address %I which is used by a fixed peer", remote_addr);
+		fastd_peer_reset(ctx, peer);
+		return false;
+	}
+
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		if (peer->protocol_state->old_session.method)
 			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
@@ -419,12 +425,6 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 	peer->protocol_state->last_serial = serial;
 
 	fastd_peer_seen(ctx, peer);
-
-	if (!fastd_peer_claim_address(ctx, peer, sock, local_addr, remote_addr)) {
-		pr_warn(ctx, "can't set address %I which is used by a fixed peer", remote_addr);
-		fastd_peer_reset(ctx, peer);
-		return false;
-	}
 
 	fastd_peer_set_established(ctx, peer);
 
