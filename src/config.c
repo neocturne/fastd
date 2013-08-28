@@ -107,6 +107,7 @@ static void default_config(fastd_config_t *conf) {
 	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	conf->method_default = &fastd_method_null;
 	conf->key_valid = 3600;		/* 60 minutes */
+	conf->key_valid_old = 60;	/* 1 minute */
 	conf->key_refresh = 3300;	/* 55 minutes */
 	conf->key_refresh_splay = 300;	/* 5 minutes */
 

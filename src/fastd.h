@@ -94,6 +94,7 @@ struct fastd_method {
 	bool (*session_is_valid)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 	bool (*session_is_initiator)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 	bool (*session_want_refresh)(fastd_context_t *ctx, fastd_method_session_state_t *session);
+	void (*session_superseded)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 	void (*session_free)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 
 	bool (*encrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
@@ -212,6 +213,7 @@ struct fastd_config {
 
 	char *secret;
 	unsigned key_valid;
+	unsigned key_valid_old;
 	unsigned key_refresh;
 	unsigned key_refresh_splay;
 

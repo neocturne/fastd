@@ -145,6 +145,14 @@ static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_sessi
 	return timespec_after(&ctx->now, &session->refresh_after);
 }
 
+static void method_session_superseded(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+	struct timespec valid_max = ctx->now;
+	valid_max.tv_sec += ctx->conf->key_valid_old;
+
+	if (timespec_after(&session->valid_till, &valid_max))
+		session->valid_till = valid_max;
+}
+
 static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	if(session) {
 		ctx->conf->crypto_aes128ctr->free_state(ctx, session->cstate_aes128ctr);
@@ -301,6 +309,7 @@ const fastd_method_t fastd_method_aes128_gcm = {
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,
+	.session_superseded = method_session_superseded,
 	.session_free = method_session_free,
 
 	.encrypt = method_encrypt,

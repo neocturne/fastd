@@ -408,10 +408,15 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 			peer->protocol_state->session.method->session_free(ctx, peer->protocol_state->session.method_state);
 	}
 
-	if (peer->protocol_state->old_session.method && peer->protocol_state->old_session.method != method) {
-		pr_debug(ctx, "method of %P[%I] has changed, terminating old session", peer, remote_addr);
-		peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
-		peer->protocol_state->old_session = (protocol_session_t){};
+	if (peer->protocol_state->old_session.method) {
+		if (peer->protocol_state->old_session.method != method) {
+			pr_debug(ctx, "method of %P[%I] has changed, terminating old session", peer, remote_addr);
+			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session = (protocol_session_t){};
+		}
+		else {
+			peer->protocol_state->old_session.method->session_superseded(ctx, peer->protocol_state->old_session.method_state);
+		}
 	}
 
 	fastd_sha256_t hash;
@@ -782,7 +787,7 @@ static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd
 		if (peer->protocol_state->session.method->decrypt(ctx, peer, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
 			ok = true;
 
-			if (peer->protocol_state->old_session.method_state) {
+			if (peer->protocol_state->old_session.method) {
 				pr_debug(ctx, "invalidating old session with %P", peer);
 				peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
 				peer->protocol_state->old_session = (protocol_session_t){};

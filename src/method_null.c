@@ -54,6 +54,9 @@ static bool method_session_want_refresh(fastd_context_t *ctx UNUSED, fastd_metho
 	return false;
 }
 
+static void method_session_superseded(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
+}
+
 static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
 }
 
@@ -75,6 +78,7 @@ const fastd_method_t fastd_method_null = {
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,
+	.session_superseded = method_session_superseded,
 	.session_free = method_session_free,
 
 	.encrypt = method_passthrough,
