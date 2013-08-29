@@ -28,7 +28,6 @@
 #define _FASTD_PEER_H_
 
 #include "fastd.h"
-#include "task.h"
 
 
 struct fastd_peer {
@@ -47,6 +46,9 @@ struct fastd_peer {
 
 	fastd_remote_t *remotes;
 	fastd_remote_t *next_remote;
+
+	struct timespec next_handshake;
+	fastd_dlist_head_t handshake_entry;
 
 	struct timespec last_handshake;
 	fastd_peer_address_t last_handshake_address;
@@ -136,9 +138,14 @@ bool fastd_peer_owns_address(fastd_context_t *ctx, const fastd_peer_t *peer, con
 bool fastd_peer_matches_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr);
 bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
 void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_peer_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer, int delay);
 
-static inline void fastd_peer_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
-	fastd_task_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
+static inline void fastd_peer_schedule_handshake_default(fastd_context_t *ctx, fastd_peer_t *peer) {
+	fastd_peer_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
+}
+
+static inline void fastd_peer_unschedule_handshake(fastd_context_t *ctx UNUSED, fastd_peer_t *peer) {
+	fastd_dlist_remove(&peer->handshake_entry);
 }
 
 const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);

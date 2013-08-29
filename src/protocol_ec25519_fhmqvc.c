@@ -28,7 +28,6 @@
 #include "handshake.h"
 #include "peer.h"
 #include "sha256.h"
-#include "task.h"
 
 
 #include <libuecc/ecc.h>
@@ -149,7 +148,7 @@ static inline void check_session_refresh(fastd_context_t *ctx, fastd_peer_t *pee
 		pr_verbose(ctx, "refreshing session with %P", peer);
 		session->handshakes_cleaned = true;
 		session->refreshing = true;
-		fastd_task_schedule_handshake(ctx, peer, 0);
+		fastd_peer_schedule_handshake(ctx, peer, 0);
 	}
 }
 
@@ -436,7 +435,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 	pr_verbose(ctx, "new session with %P established using method `%s'.", peer, method->name);
 
 	if (initiator)
-		fastd_peer_schedule_handshake(ctx, peer);
+		fastd_peer_schedule_handshake_default(ctx, peer);
 	else
 		send_empty(ctx, peer, &peer->protocol_state->session);
 
@@ -793,7 +792,7 @@ static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd
 
 			if (!peer->protocol_state->session.handshakes_cleaned) {
 				pr_debug(ctx, "cleaning left handshakes with %P", peer);
-				fastd_task_delete_peer(ctx, peer);
+				fastd_peer_unschedule_handshake(ctx, peer);
 				peer->protocol_state->session.handshakes_cleaned = true;
 
 				if (peer->protocol_state->session.method->session_is_initiator(ctx, peer->protocol_state->session.method_state))

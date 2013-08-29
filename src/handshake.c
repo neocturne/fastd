@@ -27,7 +27,6 @@
 #include "handshake.h"
 #include "packet.h"
 #include "peer.h"
-#include "task.h"
 
 
 static const char *const RECORD_TYPES[RECORD_MAX] = {

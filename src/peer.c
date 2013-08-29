@@ -95,6 +95,30 @@ void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 	}
 }
 
+void fastd_peer_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer, int delay) {
+	fastd_peer_unschedule_handshake(ctx, peer);
+
+	peer->next_handshake = ctx->now;
+
+	peer->next_handshake.tv_sec += delay/1000;
+	peer->next_handshake.tv_nsec += (delay%1000)*1e6;
+
+	if (peer->next_handshake.tv_nsec > 1e9) {
+		peer->next_handshake.tv_sec++;
+		peer->next_handshake.tv_nsec -= 1e9;
+	}
+
+	fastd_dlist_head_t *list;
+	for (list = &ctx->handshake_queue; list->next; list = list->next) {
+		fastd_peer_t *entry = container_of(list->next, fastd_peer_t, handshake_entry);
+
+		if (timespec_after(&entry->next_handshake, &peer->next_handshake))
+			break;
+	}
+
+	fastd_dlist_insert(list, &peer->handshake_entry);
+}
+
 static inline fastd_peer_group_t* find_peer_group(fastd_peer_group_t *group, const fastd_peer_group_config_t *config) {
 	if (group->conf == config)
 		return group;
@@ -147,7 +171,7 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	ctx->n_eth_addr -= deleted;
 
-	fastd_task_delete_peer(ctx, peer);
+	fastd_peer_unschedule_handshake(ctx, peer);
 }
 
 static void init_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
@@ -158,7 +182,7 @@ static void init_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!fastd_peer_is_established(peer))
 		peer->state = STATE_HANDSHAKE;
 
-	fastd_task_schedule_handshake(ctx, peer, delay);
+	fastd_peer_schedule_handshake(ctx, peer, delay);
 }
 
 void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, const fastd_peer_address_t *address) {

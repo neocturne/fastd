@@ -24,45 +24,40 @@
 */
 
 
-#include "task.h"
+#ifndef _FASTD_DLIST_H_
+#define _FASTD_DLIST_H_
+
+#include "types.h"
+
+#include <stdlib.h>
 
 
-fastd_task_t* fastd_task_get(fastd_context_t *ctx) {
-	return container_of(fastd_queue_get(ctx, &ctx->task_queue), fastd_task_t, entry);
+typedef struct fastd_dlist_head fastd_dlist_head_t;
+
+struct fastd_dlist_head {
+	fastd_dlist_head_t *prev;
+	fastd_dlist_head_t *next;
+};
+
+
+static inline void fastd_dlist_insert(fastd_dlist_head_t *list, fastd_dlist_head_t *elem) {
+	elem->prev = list;
+	elem->next = list->next;
+
+	list->next = elem;
+
+	if (elem->next)
+		elem->next->prev = elem;
 }
 
-static bool is_peer(fastd_queue_entry_t *data, void *extra) {
-	fastd_task_t *task = container_of(data, fastd_task_t, entry);
-	fastd_peer_t *peer = extra;
+static inline void fastd_dlist_remove(fastd_dlist_head_t *elem) {
+	if (elem->prev)
+		elem->prev->next = elem->next;
 
-	return (task->peer == peer);
+	if (elem->next)
+		elem->next->prev = elem->prev;
+
+	elem->prev = elem->next = NULL;
 }
 
-void fastd_task_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer, int timeout) {
-	if (fastd_queue_has_entry(ctx, &ctx->task_queue, is_peer, peer)) {
-		pr_debug(ctx, "not sending a handshake to %P, there still is one queued", peer);
-		return;
-	}
-
-	fastd_task_t *task = malloc(sizeof(fastd_task_t));
-
-	task->peer = peer;
-
-	fastd_queue_put(ctx, &ctx->task_queue, &task->entry, timeout);
-}
-
-static bool delete_peer_task(fastd_queue_entry_t *data, void *extra) {
-	fastd_task_t *task = container_of(data, fastd_task_t, entry);
-	fastd_peer_t *peer = extra;
-
-	if (task->peer != peer)
-		return true;
-
-	free(task);
-
-	return false;
-}
-
-void fastd_task_delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
-	fastd_queue_filter(ctx, &ctx->task_queue, delete_peer_task, peer);
-}
+#endif /* _FASTD_DLIST_H_ */

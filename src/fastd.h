@@ -29,7 +29,7 @@
 
 #include "compat.h"
 #include "types.h"
-#include "queue.h"
+#include "dlist.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -277,7 +277,8 @@ struct fastd_context {
 	fastd_peer_group_t *peer_group;
 	fastd_peer_t *peers;
 	fastd_peer_t *peers_temp;
-	fastd_queue_t task_queue;
+
+	fastd_dlist_head_t handshake_queue;
 	struct timespec next_keepalives;
 
 	int resolverfd;

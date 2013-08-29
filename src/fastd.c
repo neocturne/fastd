@@ -28,7 +28,6 @@
 #include "crypto.h"
 #include "handshake.h"
 #include "peer.h"
-#include "task.h"
 
 #include <fcntl.h>
 #include <grp.h>
@@ -422,33 +421,32 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->local_address, &peer->address, peer);
 }
 
-static void handle_tasks(fastd_context_t *ctx) {
-	fastd_task_t *task;
-	while ((task = fastd_task_get(ctx)) != NULL) {
-		fastd_peer_schedule_handshake(ctx, task->peer);
+static void handle_handshake_queue(fastd_context_t *ctx) {
+	if (!ctx->handshake_queue.next)
+		return;
 
-		if(!fastd_peer_may_connect(ctx, task->peer)) {
-			task->peer->next_remote = task->peer->remotes;
-			free(task);
-			continue;
-		}
+	fastd_peer_t *peer = container_of(ctx->handshake_queue.next, fastd_peer_t, handshake_entry);
+	if (timespec_after(&peer->next_handshake, &ctx->now))
+		return;
 
-		send_handshake(ctx, task->peer);
+	fastd_peer_schedule_handshake_default(ctx, peer);
 
-		if (fastd_peer_is_established(task->peer)) {
-			free(task);
-			continue;
-		}
-
-		task->peer->next_remote = task->peer->next_remote->next;
-		if (!task->peer->next_remote)
-			task->peer->next_remote = task->peer->remotes;
-
-		if (fastd_remote_is_dynamic(task->peer->next_remote))
-			fastd_resolve_peer(ctx, task->peer, task->peer->next_remote);
-
-		free(task);
+	if (!fastd_peer_may_connect(ctx, peer)) {
+		peer->next_remote = peer->remotes;
+		return;
 	}
+
+	send_handshake(ctx, peer);
+
+	if (fastd_peer_is_established(peer))
+		return;
+
+	peer->next_remote = peer->next_remote->next;
+	if (!peer->next_remote)
+		peer->next_remote = peer->remotes;
+
+	if (fastd_remote_is_dynamic(peer->next_remote))
+		fastd_resolve_peer(ctx, peer, peer->next_remote);
 }
 
 static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
@@ -518,6 +516,19 @@ static void handle_resolve_returns(fastd_context_t *ctx) {
 	fastd_remote_unref(resolve_return.remote);
 }
 
+static inline int handshake_timeout(fastd_context_t *ctx) {
+	if (!ctx->handshake_queue.next)
+		return -1;
+
+       fastd_peer_t *peer = container_of(ctx->handshake_queue.next, fastd_peer_t, handshake_entry);
+
+       int diff_msec = timespec_diff(&peer->next_handshake, &ctx->now);
+       if (diff_msec < 0)
+	       return 0;
+       else
+	       return diff_msec;
+}
+
 static void handle_input(fastd_context_t *ctx) {
 	const size_t n_fds = 2 + ctx->n_socks + ctx->n_peers;
 	struct pollfd fds[n_fds];
@@ -552,7 +563,7 @@ static void handle_input(fastd_context_t *ctx) {
 	if (keepalive_timeout < 0)
 		keepalive_timeout = 0;
 
-	int timeout = fastd_task_timeout(ctx);
+	int timeout = handshake_timeout(ctx);
 	if (timeout < 0 || timeout > keepalive_timeout)
 		timeout = keepalive_timeout;
 
@@ -811,7 +822,7 @@ int main(int argc, char *argv[]) {
 	init_peers(&ctx);
 
 	while (!terminate) {
-		handle_tasks(&ctx);
+		handle_handshake_queue(&ctx);
 
 		handle_input(&ctx);
 

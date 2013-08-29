@@ -24,7 +24,6 @@ add_executable(fastd
   options.c
   peer.c
   printf.c
-  queue.c
   random.c
   receive.c
   resolve.c
@@ -32,7 +31,6 @@ add_executable(fastd
   sha256.c
   shell.c
   socket.c
-  task.c
   tuntap.c
   protocol_ec25519_fhmqvc.c
   ${BISON_fastd_config_parse_OUTPUTS}
