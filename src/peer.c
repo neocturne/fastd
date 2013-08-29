@@ -201,16 +201,16 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	fastd_remote_t *remote;
 	for (remote = peer->remotes; remote; remote = remote->next) {
-		remote->last_resolve = (struct timespec){0, 0};
-		remote->last_resolve_return = (struct timespec){0, 0};
+		remote->last_resolve = ctx->conf->long_ago;
+		remote->last_resolve_return = ctx->conf->long_ago;
 	}
 
 	peer->next_remote = peer->remotes;
 
-	peer->last_handshake = (struct timespec){0, 0};
+	peer->last_handshake = ctx->conf->long_ago;
 	peer->last_handshake_address.sa.sa_family = AF_UNSPEC;
 
-	peer->last_handshake_response = (struct timespec){0, 0};
+	peer->last_handshake_response = ctx->conf->long_ago;
 	peer->last_handshake_response_address.sa.sa_family = AF_UNSPEC;
 
 	if (!peer->protocol_state)

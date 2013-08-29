@@ -769,6 +769,9 @@ int main(int argc, char *argv[]) {
 
 	update_time(&ctx);
 
+	conf.long_ago = ctx.now;
+	conf.long_ago.tv_sec -= 86400; /* 24h in the past */
+
 	ctx.next_keepalives = ctx.now;
 	ctx.next_keepalives.tv_sec += conf.keepalive_interval;
 

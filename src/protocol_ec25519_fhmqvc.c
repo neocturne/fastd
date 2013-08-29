@@ -240,8 +240,12 @@ static bool protocol_peer_check_temporary(fastd_context_t *ctx, fastd_peer_t *pe
 }
 
 static void init_protocol_state(fastd_context_t *ctx) {
-	if (!ctx->protocol_state)
+	if (!ctx->protocol_state) {
 		ctx->protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
+
+		ctx->protocol_state->prev_handshake_key.preferred_till = ctx->conf->long_ago;
+		ctx->protocol_state->handshake_key.preferred_till = ctx->conf->long_ago;
+	}
 }
 
 static void new_handshake_key(fastd_context_t *ctx, keypair_t *key) {

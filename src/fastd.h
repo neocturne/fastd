@@ -162,6 +162,8 @@ struct fastd_peer_group {
 };
 
 struct fastd_config {
+	struct timespec long_ago;
+
 	fastd_loglevel_t log_stderr_level;
 	fastd_loglevel_t log_syslog_level;
 	char *log_syslog_ident;
