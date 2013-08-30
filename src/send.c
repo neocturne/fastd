@@ -115,8 +115,25 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 		ret = sendmsg(sock->fd, &msg, 0);
 	} while (ret < 0 && errno == EINTR);
 
-	if (ret < 0)
-		pr_warn_errno(ctx, "sendmsg");
+	if (ret < 0) {
+		switch (errno) {
+		case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+		case EWOULDBLOCK:
+#endif
+			pr_debug2_errno(ctx, "sendmsg");
+			break;
+
+		case ENETDOWN:
+		case ENETUNREACH:
+		case EHOSTUNREACH:
+			pr_debug_errno(ctx, "sendmsg");
+			break;
+
+		default:
+			pr_warn_errno(ctx, "sendmsg");
+		}
+	}
 
 	fastd_buffer_free(buffer);
 }
