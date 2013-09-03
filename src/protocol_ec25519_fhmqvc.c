@@ -826,13 +826,15 @@ static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd
 }
 
 static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer, protocol_session_t *session) {
+	size_t stat_size = buffer.len;
+
 	fastd_buffer_t send_buffer;
 	if (!session->method->encrypt(ctx, peer, session->method_state, &send_buffer, buffer)) {
 		fastd_buffer_free(buffer);
 		return;
 	}
 
-	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, send_buffer);
+	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, send_buffer, stat_size);
 	peer->last_send = ctx->now;
 }
 

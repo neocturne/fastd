@@ -125,6 +125,10 @@ int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const
 			buffer += snprintf_safe(buffer, buffer_end-buffer, "%u", va_arg(ap, unsigned int));
 			break;
 
+		case 'U':
+			buffer += snprintf_safe(buffer, buffer_end-buffer, "%llu", (unsigned long long)va_arg(ap, uint64_t));
+			break;
+
 		case 's':
 			buffer += snprintf_safe(buffer, buffer_end-buffer, "%s", va_arg(ap, char*));
 			break;

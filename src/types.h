@@ -81,6 +81,7 @@ typedef enum fastd_loglevel {
 	LL_DEBUG2,
 } fastd_loglevel_t;
 
+
 typedef struct fastd_buffer fastd_buffer_t;
 
 typedef union fastd_peer_address fastd_peer_address_t;
@@ -94,6 +95,7 @@ typedef struct fastd_peer fastd_peer_t;
 typedef struct fastd_peer_eth_addr fastd_peer_eth_addr_t;
 typedef struct fastd_remote_config fastd_remote_config_t;
 typedef struct fastd_remote fastd_remote_t;
+typedef struct fastd_stats fastd_stats_t;
 
 typedef struct fastd_log_file fastd_log_file_t;
 typedef struct fastd_log_fd fastd_log_fd_t;

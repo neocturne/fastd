@@ -161,6 +161,11 @@ struct fastd_peer_group {
 	unsigned n_connections;
 };
 
+struct fastd_stats {
+	uint64_t packets;
+	uint64_t bytes;
+};
+
 struct fastd_config {
 	struct timespec long_ago;
 
@@ -294,6 +299,12 @@ struct fastd_context {
 	fastd_socket_t *sock_default_v4;
 	fastd_socket_t *sock_default_v6;
 
+	fastd_stats_t rx;
+
+	fastd_stats_t tx;
+	fastd_stats_t tx_dropped;
+	fastd_stats_t tx_error;
+
 #ifdef USE_CRYPTO_AES128CTR
 	fastd_crypto_aes128ctr_context_t *crypto_aes128ctr;
 #endif
@@ -316,7 +327,7 @@ struct fastd_string_stack {
 };
 
 
-void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer);
+void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer, size_t stat_size);
 void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer);
 void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer);
 void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock);

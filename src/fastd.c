@@ -246,6 +246,9 @@ void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 			fastd_peer_eth_addr_add(ctx, peer, src_addr);
 	}
 
+	ctx->rx.packets++;
+	ctx->rx.bytes += buffer.len;
+
 	fastd_tuntap_write(ctx, buffer);
 
 	if (ctx->conf->mode == MODE_TAP && ctx->conf->forward) {
@@ -360,8 +363,12 @@ static void delete_peers(fastd_context_t *ctx) {
 	}
 }
 
-static void dump_peers(fastd_context_t *ctx) {
-	pr_info(ctx, "dumping peers...");
+static void dump_state(fastd_context_t *ctx) {
+	pr_info(ctx, "TX stats: %U packet(s), %U byte(s); dropped: %U packet(s), %U byte(s); error: %U packet(s), %U byte(s)",
+		ctx->tx.packets, ctx->tx.bytes, ctx->tx_dropped.packets, ctx->tx_dropped.bytes, ctx->tx_error.packets, ctx->tx_error.bytes);
+	pr_info(ctx, "RX stats: %U packet(s), %U byte(s)", ctx->rx.packets, ctx->rx.bytes);
+
+	pr_info(ctx, "dumping peers:");
 
 	fastd_peer_t *peer;
 	for (peer = ctx->peers; peer; peer = peer->next) {
@@ -385,7 +392,7 @@ static void dump_peers(fastd_context_t *ctx) {
 		}
 	}
 
-	pr_info(ctx, "peer dump finished.");
+	pr_info(ctx, "dump finished.");
 }
 
 static inline void update_time(fastd_context_t *ctx) {
@@ -849,7 +856,7 @@ int main(int argc, char *argv[]) {
 
 		if (dump) {
 			dump = false;
-			dump_peers(&ctx);
+			dump_state(&ctx);
 		}
 
 		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
