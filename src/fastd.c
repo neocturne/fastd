@@ -715,6 +715,9 @@ static void write_pid(fastd_context_t *ctx, pid_t pid) {
 }
 
 static void set_user(fastd_context_t *ctx) {
+	if (chdir("/"))
+		pr_error(ctx, "can't chdir to `/': %s", strerror(errno));
+
 	if (ctx->conf->user || ctx->conf->group) {
 		if (setgid(ctx->conf->gid) < 0)
 			exit_errno(ctx, "setgid");
