@@ -27,6 +27,12 @@
 #include "fastd.h"
 
 
+struct fastd_method_session_state {
+	bool valid;
+	bool initiator;
+};
+
+
 static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return fastd_max_packet_size(ctx);
 }
@@ -36,28 +42,32 @@ static size_t method_min_head_tail_space(fastd_context_t *ctx UNUSED) {
 }
 
 static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, uint8_t *secret UNUSED, size_t length UNUSED, bool initiator) {
-	if (initiator)
-		return (fastd_method_session_state_t*)1;
-	else
-		return (fastd_method_session_state_t*)2;
-}
+	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
-static bool method_session_is_valid(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+	session->valid = true;
+	session->initiator = initiator;
+
 	return session;
 }
 
+static bool method_session_is_valid(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+	return (session && session->valid);
+}
+
 static bool method_session_is_initiator(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
-	return (session == (fastd_method_session_state_t*)1);
+	return (session->initiator);
 }
 
 static bool method_session_want_refresh(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
 	return false;
 }
 
-static void method_session_superseded(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
+static void method_session_superseded(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+	session->valid = false;
 }
 
-static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
+static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+	free(session);
 }
 
 static bool method_passthrough(fastd_context_t *ctx UNUSED, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session UNUSED, fastd_buffer_t *out, fastd_buffer_t in) {
