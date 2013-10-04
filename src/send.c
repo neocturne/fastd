@@ -44,7 +44,7 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 		msg->msg_controllen += cmsg->cmsg_len;
 
 		struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
-		pktinfo->ipi_addr = local_addr->in.sin_addr;
+		pktinfo->ipi_spec_dst = local_addr->in.sin_addr;
 		return;
 	}
 #endif
