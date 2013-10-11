@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(FASTD C)
 
 set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR})
-set(FASTD_VERSION "v9")
+set(FASTD_VERSION "v10")
 
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
