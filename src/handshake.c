@@ -301,7 +301,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_ERROR_DETAIL, error_detail);
 
-			fastd_send_handshake(ctx, sock, local_addr, remote_addr, reply_buffer);
+			fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, reply_buffer);
 		}
 		else {
 			ctx->conf->protocol->handshake_handle(ctx, sock, local_addr, remote_addr, peer, &handshake, method);

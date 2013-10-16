@@ -71,7 +71,7 @@ static inline void count_stat(fastd_stats_t *stats, size_t stat_size) {
 	}
 }
 
-static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
+static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug(ctx, "send: sock == NULL");
 
@@ -124,12 +124,17 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 
 	if (ret < 0 && errno == EINVAL && msg.msg_controllen) {
 		pr_debug2(ctx, "sendmsg failed, trying again without pktinfo");
+
+		if (peer && !fastd_peer_handshake_scheduled(ctx, peer))
+			fastd_peer_schedule_handshake(ctx, peer, 0);
+
 		msg.msg_control = NULL;
 		msg.msg_controllen = 0;
 
 		do {
 			ret = sendmsg(sock->fd, &msg, 0);
 		} while (ret < 0 && errno == EINTR);
+
 	}
 
 	if (ret < 0) {
@@ -161,12 +166,12 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 	fastd_buffer_free(buffer);
 }
 
-void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer, size_t stat_size) {
-	send_type(ctx, sock, local_addr, remote_addr, PACKET_DATA, buffer, stat_size);
+void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
+	send_type(ctx, sock, local_addr, remote_addr, peer, PACKET_DATA, buffer, stat_size);
 }
 
-void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
-	send_type(ctx, sock, local_addr, remote_addr, PACKET_HANDSHAKE, buffer, 0);
+void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+	send_type(ctx, sock, local_addr, remote_addr, peer, PACKET_HANDSHAKE, buffer, 0);
 }
 
 void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {

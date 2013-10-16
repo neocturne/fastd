@@ -292,7 +292,7 @@ static void protocol_handshake_init(fastd_context_t *ctx, const fastd_socket_t *
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, ctx->protocol_state->handshake_key.key1.public.p);
 
-	fastd_send_handshake(ctx, sock, local_addr, remote_addr, buffer);
+	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
 
 
@@ -363,7 +363,7 @@ static void clear_shared_handshake_key(fastd_context_t *ctx UNUSED, const fastd_
 	memset(&peer->protocol_state->peer_handshake_key, 0, sizeof(peer->protocol_state->peer_handshake_key));
 }
 
-static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_peer_t *peer,
+static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer,
 			      const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const fastd_method_t *method) {
 	pr_debug(ctx, "responding handshake with %P[%I]...", peer, remote_addr);
 
@@ -381,7 +381,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 
-	fastd_send_handshake(ctx, sock, local_addr, remote_addr, buffer);
+	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
 
 static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, fastd_socket_t *sock,
@@ -519,7 +519,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 	fastd_handshake_add(ctx, &buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 
-	fastd_send_handshake(ctx, sock, local_addr, remote_addr, buffer);
+	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
 
 static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
@@ -834,7 +834,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 		return;
 	}
 
-	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, send_buffer, stat_size);
+	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, peer, send_buffer, stat_size);
 	peer->last_send = ctx->now;
 }
 

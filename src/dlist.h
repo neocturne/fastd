@@ -40,6 +40,10 @@ struct fastd_dlist_head {
 };
 
 
+static inline bool fastd_dlist_linked(fastd_dlist_head_t *elem) {
+	return elem->prev;
+}
+
 static inline void fastd_dlist_insert(fastd_dlist_head_t *list, fastd_dlist_head_t *elem) {
 	elem->prev = list;
 	elem->next = list->next;

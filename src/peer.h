@@ -148,6 +148,10 @@ static inline void fastd_peer_unschedule_handshake(fastd_context_t *ctx UNUSED, 
 	fastd_dlist_remove(&peer->handshake_entry);
 }
 
+static inline bool fastd_peer_handshake_scheduled(fastd_context_t *ctx UNUSED, fastd_peer_t *peer) {
+	return fastd_dlist_linked(&peer->handshake_entry);
+}
+
 const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
 const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
 
