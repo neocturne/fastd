@@ -122,6 +122,16 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 		ret = sendmsg(sock->fd, &msg, 0);
 	} while (ret < 0 && errno == EINTR);
 
+	if (ret < 0 && errno == EINVAL && msg.msg_controllen) {
+		pr_debug2(ctx, "sendmsg failed, trying again without pktinfo");
+		msg.msg_control = NULL;
+		msg.msg_controllen = 0;
+
+		do {
+			ret = sendmsg(sock->fd, &msg, 0);
+		} while (ret < 0 && errno == EINTR);
+	}
+
 	if (ret < 0) {
 		switch (errno) {
 		case EAGAIN:
