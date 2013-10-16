@@ -117,6 +117,8 @@
 %token TOK_MAC
 %token TOK_ADDRESSES
 %token TOK_AUTO
+%token TOK_SECURE
+%token TOK_HANDSHAKES
 
 %token <addr4> TOK_ADDR4
 %token <addr6> TOK_ADDR6
@@ -167,6 +169,7 @@ statement:	peer_group_statement
 	|	TOK_USER user ';'
 	|	TOK_GROUP group ';'
 	|	TOK_DROP TOK_CAPABILITIES drop_capabilities ';'
+	|	TOK_SECURE TOK_HANDSHAKES secure_handshakes ';'
 	|	TOK_LOG log ';'
 	|	TOK_HIDE hide ';'
 	|	TOK_INTERFACE interface ';'
@@ -217,6 +220,13 @@ drop_capabilities_enabled:
 	|	boolean {
 			$$ = $1 ? DROP_CAPS_ON : DROP_CAPS_OFF;
 		}
+
+secure_handshakes:
+		boolean {
+			conf->secure_handshakes_set = true;
+			conf->secure_handshakes = $1;
+		}
+	;
 
 log:		TOK_LEVEL log_level {
 			conf->log_stderr_level = $2;

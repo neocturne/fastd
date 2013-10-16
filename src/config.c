@@ -645,6 +645,9 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 		exit_error(ctx, "config error: setting pmtu is not supported on this system");
 #endif
 
+	if (!conf->secure_handshakes_set)
+		pr_warn(ctx, "`secure handshakes' not set, please read the documentation about this option; defaulting to no");
+
 	configure_user(ctx, conf);
 	configure_method_parameters(ctx, conf);
 }

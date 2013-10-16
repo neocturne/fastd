@@ -198,6 +198,8 @@ struct fastd_config {
 
 	bool forward;
 	fastd_tristate_t pmtu;
+	bool secure_handshakes_set;
+	bool secure_handshakes;
 
 	fastd_drop_caps_t drop_caps;
 
