@@ -126,7 +126,7 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 		pr_debug2(ctx, "sendmsg failed, trying again without pktinfo");
 
 		if (peer && !fastd_peer_handshake_scheduled(ctx, peer))
-			fastd_peer_schedule_handshake(ctx, peer, 0);
+			fastd_peer_schedule_handshake_default(ctx, peer);
 
 		msg.msg_control = NULL;
 		msg.msg_controllen = 0;
