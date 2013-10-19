@@ -26,7 +26,6 @@
 
 #include "fastd.h"
 #include "handshake.h"
-#include "packet.h"
 #include "peer.h"
 
 

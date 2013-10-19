@@ -52,6 +52,15 @@ static const fastd_tristate_t fastd_tristate_false = {true, false};
 static const fastd_tristate_t fastd_tristate_undef = {false, false};
 
 
+#define PACKET_TYPE_LEN 1
+
+
+typedef enum fastd_packet_type {
+	PACKET_UNKNOWN = 0,
+	PACKET_HANDSHAKE,
+	PACKET_DATA,
+} fastd_packet_type_t;
+
 typedef enum fastd_mode {
 	MODE_TAP,
 	MODE_TUN,

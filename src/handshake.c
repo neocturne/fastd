@@ -25,7 +25,6 @@
 
 
 #include "handshake.h"
-#include "packet.h"
 #include "peer.h"
 
 
@@ -90,7 +89,7 @@ fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space)
 	size_t method_list_len;
 	uint8_t *method_list = create_method_list(ctx, &method_list_len);
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0,
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 0,
 						   2*5 +               /* handshake type, mode */
 						   6 +                 /* MTU */
 						   4+version_len +     /* version name */
@@ -99,7 +98,7 @@ fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space)
 						   4+method_list_len + /* supported method name list */
 						   tail_space
 						   );
-	fastd_packet_t *request = buffer.data;
+	fastd_handshake_packet_t *request = buffer.data;
 
 	request->rsv1 = 0;
 	request->rsv2 = 0;
@@ -141,13 +140,13 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 		extra_size = 6 +            /* MTU */
 			     4+version_len; /* version name */
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 1,
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 1,
 						   2*5 +           /* handshake type, reply code */
 						   4+method_len +  /* method name */
 						   extra_size +
 						   tail_space
 						   );
-	fastd_packet_t *request = buffer.data;
+	fastd_handshake_packet_t *request = buffer.data;
 
 	request->rsv1 = 0;
 	request->rsv2 = 0;
@@ -179,13 +178,13 @@ static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) 
 }
 
 void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (buffer.len < sizeof(fastd_packet_t)) {
+	if (buffer.len < sizeof(fastd_handshake_packet_t)) {
 		pr_warn(ctx, "received a short handshake from %I", remote_addr);
 		goto end_free;
 	}
 
 	fastd_handshake_t handshake = { .buffer = buffer };
-	fastd_packet_t *packet = buffer.data;
+	fastd_handshake_packet_t *packet = buffer.data;
 
 	uint8_t *ptr = packet->tlv_data;
 	while (true) {
@@ -290,8 +289,8 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 
 	send_reply:
 		if (reply_code) {
-			fastd_buffer_t reply_buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
-			fastd_packet_t *reply = reply_buffer.data;
+			fastd_buffer_t reply_buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
+			fastd_handshake_packet_t *reply = reply_buffer.data;
 
 			reply->rsv1 = 0;
 			reply->rsv2 = 0;
