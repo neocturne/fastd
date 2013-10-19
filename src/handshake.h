@@ -72,7 +72,8 @@ typedef struct fastd_handshake_record {
 struct fastd_handshake {
 	uint8_t type;
 	fastd_handshake_record_t records[RECORD_MAX];
-	fastd_buffer_t buffer;
+	uint16_t tlv_len;
+	void *tlv_data;
 };
 
 
@@ -81,6 +82,16 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 
 void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
 
+
+static inline void* fastd_handshake_tlv_data(const fastd_buffer_t *buffer) {
+	fastd_handshake_packet_t *packet = buffer->data;
+	return packet->tlv_data;
+}
+
+static inline uint16_t fastd_handshake_tlv_len(const fastd_buffer_t *buffer) {
+	fastd_handshake_packet_t *packet = buffer->data;
+	return ntohs(packet->tlv_len);
+}
 
 static inline uint8_t* fastd_handshake_extend(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
 	uint8_t *dst = buffer->data + buffer->len;
@@ -91,7 +102,7 @@ static inline uint8_t* fastd_handshake_extend(fastd_context_t *ctx, fastd_buffer
 	buffer->len += 4 + len;
 
 	fastd_handshake_packet_t *packet = buffer->data;
-	packet->tlv_len = htons(ntohs(packet->tlv_len) + 4 + len);
+	packet->tlv_len = htons(fastd_handshake_tlv_len(buffer) + 4 + len);
 
 	dst[0] = type;
 	dst[1] = type >> 8;

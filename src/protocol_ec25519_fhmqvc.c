@@ -386,7 +386,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 
 	memset(&hmacbuf, 0, sizeof(hmacbuf));
 	fastd_handshake_add(ctx, &buffer, RECORD_HANDSHAKE_MAC, HASHBYTES, hmacbuf.b);
-	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, buffer.data+sizeof(fastd_handshake_packet_t), buffer.len-sizeof(fastd_handshake_packet_t));
+	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
 	memcpy(buffer.data+buffer.len-HASHBYTES, hmacbuf.b, HASHBYTES);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
@@ -517,7 +517,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 		memcpy(mac, handshake->records[RECORD_HANDSHAKE_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_HANDSHAKE_MAC].data, 0, HASHBYTES);
 
-		valid = fastd_hmacsha256_verify(mac, shared_handshake_key.w, handshake->buffer.data+sizeof(fastd_handshake_packet_t), handshake->buffer.len-sizeof(fastd_handshake_packet_t));
+		valid = fastd_hmacsha256_verify(mac, shared_handshake_key.w, handshake->tlv_data, handshake->tlv_len);
 	}
 	else {
 		valid = fastd_hmacsha256_blocks_verify(handshake->records[RECORD_T].data, shared_handshake_key.w, peer->protocol_config->public_key.p, peer_handshake_key->p, NULL);
@@ -548,7 +548,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 
 	memset(&hmacbuf, 0, sizeof(hmacbuf));
 	fastd_handshake_add(ctx, &buffer, RECORD_HANDSHAKE_MAC, HASHBYTES, hmacbuf.b);
-	fastd_hmacsha256(&hmacbuf, shared_handshake_key.w, buffer.data+sizeof(fastd_handshake_packet_t), buffer.len-sizeof(fastd_handshake_packet_t));
+	fastd_hmacsha256(&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
 	memcpy(buffer.data+buffer.len-HASHBYTES, hmacbuf.b, HASHBYTES);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
@@ -568,7 +568,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 		memcpy(mac, handshake->records[RECORD_HANDSHAKE_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_HANDSHAKE_MAC].data, 0, HASHBYTES);
 
-		valid = fastd_hmacsha256_verify(mac, peer->protocol_state->shared_handshake_key.w, handshake->buffer.data+sizeof(fastd_handshake_packet_t), handshake->buffer.len-sizeof(fastd_handshake_packet_t));
+		valid = fastd_hmacsha256_verify(mac, peer->protocol_state->shared_handshake_key.w, handshake->tlv_data, handshake->tlv_len);
 	}
 	else {
 		valid = fastd_hmacsha256_blocks_verify(handshake->records[RECORD_T].data, peer->protocol_state->shared_handshake_key.w, peer->protocol_config->public_key.p, peer_handshake_key->p, NULL);

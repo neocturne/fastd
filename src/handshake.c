@@ -183,12 +183,11 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 		goto end_free;
 	}
 
-	fastd_handshake_t handshake = { .buffer = buffer };
 	fastd_handshake_packet_t *packet = buffer.data;
 
 	size_t len = buffer.len - sizeof(fastd_handshake_packet_t);
 	if (packet->tlv_len) {
-		size_t tlv_len = ntohs(packet->tlv_len);
+		size_t tlv_len = fastd_handshake_tlv_len(&buffer);
 		if (tlv_len > len) {
 			pr_warn(ctx, "received a short handshake from %I", remote_addr);
 			goto end_free;
@@ -198,6 +197,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	}
 
 	uint8_t *ptr = packet->tlv_data, *end = packet->tlv_data + len;
+	fastd_handshake_t handshake = { .tlv_len = len, .tlv_data = packet->tlv_data };
 
 	while (true) {
 		if (ptr+4 > end)
