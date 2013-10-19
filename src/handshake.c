@@ -98,10 +98,10 @@ fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space)
 						   4+method_list_len + /* supported method name list */
 						   tail_space
 						   );
-	fastd_handshake_packet_t *request = buffer.data;
+	fastd_handshake_packet_t *packet = buffer.data;
 
-	request->rsv1 = 0;
-	request->rsv2 = 0;
+	packet->rsv = 0;
+	packet->tlv_len = 0;
 
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, 1);
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_MODE, ctx->conf->mode);
@@ -146,10 +146,10 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 						   extra_size +
 						   tail_space
 						   );
-	fastd_handshake_packet_t *request = buffer.data;
+	fastd_handshake_packet_t *packet = buffer.data;
 
-	request->rsv1 = 0;
-	request->rsv2 = 0;
+	packet->rsv = 0;
+	packet->tlv_len = 0;
 
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, AS_UINT8(handshake->records[RECORD_HANDSHAKE_TYPE])+1);
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
@@ -186,15 +186,27 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	fastd_handshake_t handshake = { .buffer = buffer };
 	fastd_handshake_packet_t *packet = buffer.data;
 
-	uint8_t *ptr = packet->tlv_data;
+	size_t len = buffer.len - sizeof(fastd_handshake_packet_t);
+	if (packet->tlv_len) {
+		size_t tlv_len = ntohs(packet->tlv_len);
+		if (tlv_len > len) {
+			pr_warn(ctx, "received a short handshake from %I", remote_addr);
+			goto end_free;
+		}
+
+		len = tlv_len;
+	}
+
+	uint8_t *ptr = packet->tlv_data, *end = packet->tlv_data + len;
+
 	while (true) {
-		if (ptr+4 > (uint8_t*)buffer.data + buffer.len)
+		if (ptr+4 > end)
 			break;
 
 		uint16_t type = ptr[0] + (ptr[1] << 8);
 		uint16_t len = ptr[2] + (ptr[3] << 8);
 
-		if (ptr+4+len > (uint8_t*)buffer.data + buffer.len)
+		if (ptr+4+len > end)
 			break;
 
 		if (type < RECORD_MAX) {
@@ -292,8 +304,8 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 			fastd_buffer_t reply_buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
 			fastd_handshake_packet_t *reply = reply_buffer.data;
 
-			reply->rsv1 = 0;
-			reply->rsv2 = 0;
+			reply->rsv = 0;
+			reply->tlv_len = 0;
 
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_HANDSHAKE_TYPE, 2);
 			fastd_handshake_add_uint8(ctx, &reply_buffer, RECORD_REPLY_CODE, reply_code);

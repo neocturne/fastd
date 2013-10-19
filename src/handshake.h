@@ -59,8 +59,8 @@ typedef enum fastd_reply_code {
 
 
 typedef struct __attribute__((__packed__)) fastd_handshake_packet {
-	uint8_t rsv1;
-	uint16_t rsv2;
+	uint8_t rsv;
+	uint16_t tlv_len;
 	uint8_t tlv_data[];
 } fastd_handshake_packet_t;
 
@@ -82,50 +82,42 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
 
 
-static inline void fastd_handshake_add(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len, const void *data) {
-	if ((uint8_t*)buffer->data + buffer->len + 4 + len > (uint8_t*)buffer->base + buffer->base_len)
+static inline uint8_t* fastd_handshake_extend(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
+	uint8_t *dst = buffer->data + buffer->len;
+
+	if (buffer->data + buffer->len + 4 + len > buffer->base + buffer->base_len)
 		exit_bug(ctx, "not enough buffer allocated for handshake");
 
-	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
+	buffer->len += 4 + len;
+
+	fastd_handshake_packet_t *packet = buffer->data;
+	packet->tlv_len = htons(ntohs(packet->tlv_len) + 4 + len);
 
 	dst[0] = type;
 	dst[1] = type >> 8;
 	dst[2] = len;
 	dst[3] = len >> 8;
-	memcpy(dst+4, data, len);
 
-	buffer->len += 4 + len;
+	return dst+4;
+}
+
+static inline void fastd_handshake_add(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len, const void *data) {
+	uint8_t *dst = fastd_handshake_extend(ctx, buffer, type, len);
+
+	memcpy(dst, data, len);
 }
 
 static inline void fastd_handshake_add_uint8(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint8_t value) {
-	if ((uint8_t*)buffer->data + buffer->len + 5 > (uint8_t*)buffer->base + buffer->base_len)
-		exit_bug(ctx, "not enough buffer allocated for handshake");
+	uint8_t *dst = fastd_handshake_extend(ctx, buffer, type, 1);
 
-	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
-
-	dst[0] = type;
-	dst[1] = type >> 8;
-	dst[2] = 1;
-	dst[3] = 0;
-	dst[4] = value;
-
-	buffer->len += 5;
+	dst[0] = value;
 }
 
 static inline void fastd_handshake_add_uint16(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint16_t value) {
-	if ((uint8_t*)buffer->data + buffer->len + 6 > (uint8_t*)buffer->base + buffer->base_len)
-		exit_bug(ctx, "not enough buffer allocated for handshake");
+	uint8_t *dst = fastd_handshake_extend(ctx, buffer, type, 2);
 
-	uint8_t *dst = (uint8_t*)buffer->data + buffer->len;
-
-	dst[0] = type;
-	dst[1] = type >> 8;
-	dst[2] = 2;
-	dst[3] = 0;
-	dst[4] = value;
-	dst[5] = value >> 8;
-
-	buffer->len += 6;
+	dst[0] = value;
+	dst[1] = value >> 8;
 }
 
 
