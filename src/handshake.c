@@ -44,7 +44,7 @@ static const char *const RECORD_TYPES[RECORD_MAX] = {
 	"method name",
 	"version name",
 	"method list",
-	"handshake message authentication code",
+	"TLV message authentication code",
 };
 
 static const char *const REPLY_TYPES[REPLY_MAX] = {

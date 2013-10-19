@@ -385,7 +385,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	}
 
 	memset(&hmacbuf, 0, sizeof(hmacbuf));
-	fastd_handshake_add(ctx, &buffer, RECORD_HANDSHAKE_MAC, HASHBYTES, hmacbuf.b);
+	fastd_handshake_add(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES, hmacbuf.b);
 	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
 	memcpy(buffer.data+buffer.len-HASHBYTES, hmacbuf.b, HASHBYTES);
 
@@ -512,10 +512,10 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 			    NULL);
 
 	bool valid;
-	if (has_field(handshake, RECORD_HANDSHAKE_MAC, HASHBYTES)) {
+	if (has_field(handshake, RECORD_TLV_MAC, HASHBYTES)) {
 		uint8_t mac[HASHBYTES];
-		memcpy(mac, handshake->records[RECORD_HANDSHAKE_MAC].data, HASHBYTES);
-		memset(handshake->records[RECORD_HANDSHAKE_MAC].data, 0, HASHBYTES);
+		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
+		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
 
 		valid = fastd_hmacsha256_verify(mac, shared_handshake_key.w, handshake->tlv_data, handshake->tlv_len);
 	}
@@ -547,7 +547,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	}
 
 	memset(&hmacbuf, 0, sizeof(hmacbuf));
-	fastd_handshake_add(ctx, &buffer, RECORD_HANDSHAKE_MAC, HASHBYTES, hmacbuf.b);
+	fastd_handshake_add(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES, hmacbuf.b);
 	fastd_hmacsha256(&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
 	memcpy(buffer.data+buffer.len-HASHBYTES, hmacbuf.b, HASHBYTES);
 
@@ -563,10 +563,10 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 		return;
 
 	bool valid;
-	if (has_field(handshake, RECORD_HANDSHAKE_MAC, HASHBYTES)) {
+	if (has_field(handshake, RECORD_TLV_MAC, HASHBYTES)) {
 		uint8_t mac[HASHBYTES];
-		memcpy(mac, handshake->records[RECORD_HANDSHAKE_MAC].data, HASHBYTES);
-		memset(handshake->records[RECORD_HANDSHAKE_MAC].data, 0, HASHBYTES);
+		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
+		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
 
 		valid = fastd_hmacsha256_verify(mac, peer->protocol_state->shared_handshake_key.w, handshake->tlv_data, handshake->tlv_len);
 	}
@@ -762,7 +762,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 		return;
 	}
 
-	if (!has_field(handshake, RECORD_HANDSHAKE_MAC, HASHBYTES)) {
+	if (!has_field(handshake, RECORD_TLV_MAC, HASHBYTES)) {
 		if (ctx->conf->secure_handshakes || !has_field(handshake, RECORD_T, HASHBYTES)) {
 			pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, remote_addr);
 			return;

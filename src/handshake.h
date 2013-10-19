@@ -46,7 +46,7 @@ typedef enum fastd_handshake_record_type {
 	RECORD_METHOD_NAME,
 	RECORD_VERSION_NAME,
 	RECORD_METHOD_LIST,
-	RECORD_HANDSHAKE_MAC,
+	RECORD_TLV_MAC,
 	RECORD_MAX,
 } fastd_handshake_record_type_t;
 
