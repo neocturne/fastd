@@ -45,6 +45,7 @@ static const char *const RECORD_TYPES[RECORD_MAX] = {
 	"method name",
 	"version name",
 	"method list",
+	"handshake message authentication code",
 };
 
 static const char *const REPLY_TYPES[REPLY_MAX] = {
@@ -140,7 +141,7 @@ fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_hands
 		extra_size = 6 +            /* MTU */
 			     4+version_len; /* version name */
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 0,
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_packet_t), 1,
 						   2*5 +           /* handshake type, reply code */
 						   4+method_len +  /* method name */
 						   extra_size +
@@ -183,9 +184,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 		goto end_free;
 	}
 
-	fastd_handshake_t handshake;
-	memset(&handshake, 0, sizeof(handshake));
-
+	fastd_handshake_t handshake = { .buffer = buffer };
 	fastd_packet_t *packet = buffer.data;
 
 	uint8_t *ptr = packet->tlv_data;

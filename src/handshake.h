@@ -46,6 +46,7 @@ typedef enum fastd_handshake_record_type {
 	RECORD_METHOD_NAME,
 	RECORD_VERSION_NAME,
 	RECORD_METHOD_LIST,
+	RECORD_HANDSHAKE_MAC,
 	RECORD_MAX,
 } fastd_handshake_record_type_t;
 
@@ -59,12 +60,13 @@ typedef enum fastd_reply_code {
 
 typedef struct fastd_handshake_record {
 	size_t length;
-	const uint8_t *data;
+	uint8_t *data;
 } fastd_handshake_record_t;
 
 struct fastd_handshake {
 	uint8_t type;
 	fastd_handshake_record_t records[RECORD_MAX];
+	fastd_buffer_t buffer;
 };
 
 
