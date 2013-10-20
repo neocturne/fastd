@@ -268,21 +268,21 @@ static inline void print_error_reply(fastd_context_t *ctx, const fastd_peer_addr
 }
 
 static inline bool check_records(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake) {
+	if (handshake->records[RECORD_PROTOCOL_NAME].data) {
+		if (!record_equal(ctx->conf->protocol->name, &handshake->records[RECORD_PROTOCOL_NAME])) {
+			send_error(ctx, sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_PROTOCOL_NAME);
+			return false;
+		}
+	}
+
+	if (handshake->records[RECORD_MODE].data) {
+		if (handshake->records[RECORD_MODE].length != 1 || AS_UINT8(handshake->records[RECORD_MODE]) != ctx->conf->mode) {
+			send_error(ctx, sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MODE);
+			return false;
+		}
+	}
+
 	if (!ctx->conf->secure_handshakes || handshake->type > 1) {
-		if (handshake->records[RECORD_PROTOCOL_NAME].data) {
-			if (!record_equal(ctx->conf->protocol->name, &handshake->records[RECORD_PROTOCOL_NAME])) {
-				send_error(ctx, sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_PROTOCOL_NAME);
-				return false;
-			}
-		}
-
-		if (handshake->records[RECORD_MODE].data) {
-			if (handshake->records[RECORD_MODE].length != 1 || AS_UINT8(handshake->records[RECORD_MODE]) != ctx->conf->mode) {
-				send_error(ctx, sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MODE);
-				return false;
-			}
-		}
-
 		if (handshake->records[RECORD_MTU].length == 2) {
 			if (AS_UINT16(handshake->records[RECORD_MTU]) != ctx->conf->mtu) {
 				pr_warn(ctx, "MTU configuration differs with peer %I: local MTU is %u, remote MTU is %u",
