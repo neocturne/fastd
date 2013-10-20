@@ -615,8 +615,10 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 	if (!conf->log_stderr_level && !conf->log_syslog_level && !conf->log_files)
 		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
 
-	if (!conf->methods[0])
+	if (!conf->methods[0]) {
+		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
 		conf->methods[0] = conf->method_default;
+	}
 
 	ctx->conf = conf;
 
