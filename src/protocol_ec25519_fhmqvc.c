@@ -370,7 +370,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	if (!update_shared_handshake_key(ctx, peer, handshake_key, peer_handshake_key))
 		return;
 
-	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
+	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, true, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->key.public.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
@@ -532,7 +532,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 		       &peer->protocol_config->public_key, &sigma, handshake_key->serial))
 		return;
 
-	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
+	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, false, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
 
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->key.public.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
