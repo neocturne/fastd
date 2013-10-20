@@ -334,6 +334,9 @@ static inline const fastd_method_t* get_method(fastd_context_t *ctx, const fastd
 }
 
 void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+	char *peer_version = NULL;
+	const fastd_method_t *method = NULL;
+
 	fastd_handshake_t handshake = parse_tlvs(&buffer);
 
 	if (!handshake.tlv_data) {
@@ -351,7 +354,12 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	if (!check_records(ctx, sock, local_addr, remote_addr, peer, &handshake))
 		goto end_free;
 
-	const fastd_method_t *method = get_method(ctx, &handshake);
+	if (!ctx->conf->secure_handshakes || handshake.type > 1) {
+		method = get_method(ctx, &handshake);
+
+		if (handshake.records[RECORD_VERSION_NAME].data)
+			handshake.peer_version = peer_version = strndup((const char*)handshake.records[RECORD_VERSION_NAME].data, handshake.records[RECORD_VERSION_NAME].length);
+	}
 
 	if (handshake.type > 1 && !method) {
 		send_error(ctx, sock, local_addr, remote_addr, peer, &handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_METHOD_NAME);
@@ -361,5 +369,6 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	ctx->conf->protocol->handshake_handle(ctx, sock, local_addr, remote_addr, peer, &handshake, method);
 
  end_free:
+	free(peer_version);
 	fastd_buffer_free(buffer);
 }

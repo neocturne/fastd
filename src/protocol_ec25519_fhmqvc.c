@@ -670,7 +670,6 @@ static inline keypair_t* get_handshake_keypair(handshake_key_t *handshake_key, u
 }
 
 static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method) {
-	char *peer_version_name = NULL;
 	bool temporary_added = false;
 
 	maintenance(ctx);
@@ -740,11 +739,7 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 			return;
 		}
 
-		if (handshake->records[RECORD_VERSION_NAME].data)
-			peer_version_name = strndup((const char*)handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
-
-		pr_verbose(ctx, "received handshake from %P[%I] using fastd %s", peer, remote_addr, peer_version_name);
-		free(peer_version_name);
+		pr_verbose(ctx, "received handshake from %P[%I]%s%s", peer, remote_addr, handshake->peer_version ? " using fastd " : "", handshake->peer_version ?: "");
 
 		peer->last_handshake_response = ctx->now;
 		peer->last_handshake_response_address = *remote_addr;
@@ -785,17 +780,13 @@ static void protocol_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock
 
 	switch (handshake->type) {
 	case 2:
-		if (handshake->records[RECORD_VERSION_NAME].data)
-			peer_version_name = strndup((const char*)handshake->records[RECORD_VERSION_NAME].data, handshake->records[RECORD_VERSION_NAME].length);
-
-		pr_verbose(ctx, "received handshake response from %P[%I] using fastd %s", peer, remote_addr, peer_version_name);
-		free(peer_version_name);
+		pr_verbose(ctx, "received handshake response from %P[%I]%s%s", peer, remote_addr, handshake->peer_version ? " using fastd " : "", handshake->peer_version ?: "");
 
 		finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, &peer_handshake_key, handshake, method);
 		break;
 
 	case 3:
-		pr_debug(ctx, "received handshake finish from %P[%I]", peer, remote_addr);
+		pr_debug(ctx, "received handshake finish from %P[%I]%s%s", peer, remote_addr, handshake->peer_version ? " using fastd " : "", handshake->peer_version ?: "");
 
 		handle_finish_handshake(ctx, sock, local_addr, remote_addr, peer, handshake_key, &peer_handshake_key, handshake, method);
 		break;

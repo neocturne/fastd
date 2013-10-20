@@ -71,6 +71,7 @@ typedef struct fastd_handshake_record {
 
 struct fastd_handshake {
 	uint8_t type;
+	const char *peer_version;
 	fastd_handshake_record_t records[RECORD_MAX];
 	uint16_t tlv_len;
 	void *tlv_data;
