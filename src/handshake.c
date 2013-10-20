@@ -150,7 +150,7 @@ static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const fa
 	fastd_handshake_add(ctx, &buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
 	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
 
-	if (method)
+	if (method && (!with_method_list || !ctx->conf->secure_handshakes))
 		fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, method->name);
 
 	if (with_method_list) {
