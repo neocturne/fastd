@@ -130,7 +130,7 @@ static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const fa
 	if (with_method_list)
 		method_list = create_method_list(ctx, &method_list_len);
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 0,
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 1,
 						   3*5 +               /* handshake type, mode, reply code */
 						   6 +                 /* MTU */
 						   4+version_len +     /* version name */
