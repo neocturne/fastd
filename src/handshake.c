@@ -310,7 +310,7 @@ static inline const fastd_method_t* get_method(fastd_context_t *ctx, const fastd
 	if (handshake->records[RECORD_METHOD_LIST].data && handshake->records[RECORD_METHOD_LIST].length) {
 		fastd_string_stack_t *method_list = parse_string_list(handshake->records[RECORD_METHOD_LIST].data, handshake->records[RECORD_METHOD_LIST].length);
 
-		const fastd_method_t *method;
+		const fastd_method_t *method = NULL;
 		fastd_string_stack_t *method_name = method_list;
 
 		while (method_name) {
