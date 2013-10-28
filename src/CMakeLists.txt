@@ -31,8 +31,8 @@ add_executable(fastd
   socket.c
   tuntap.c
   ${BISON_fastd_config_parse_OUTPUTS}
-  ${PROTOCOL_OBJECTS}
-  ${METHOD_OBJECTS}
+  ${PROTOCOL_SOURCES}
+  ${METHOD_SOURCES}
 )
 set_property(TARGET fastd PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
 set_property(TARGET fastd PROPERTY LINK_FLAGS "-pthread ${UECC_LDFLAGS_OTHER}")
