@@ -145,4 +145,15 @@ string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
 
 configure_file(${FASTD_SOURCE_DIR}/config.h.in ${FASTD_BINARY_DIR}/config.h)
 
+add_custom_target(
+    version
+    COMMAND echo "#ifndef _FASTD_VERSION_H_" > ${FASTD_BINARY_DIR}/version.h.new
+    COMMAND echo "#define _FASTD_VERSION_H_" >> ${FASTD_BINARY_DIR}/version.h.new
+    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"$(git --git-dir=./.git describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${FASTD_BINARY_DIR}/version.h.new
+    COMMAND echo "#endif /* _FASTD_VERSION_H_ */" >> ${FASTD_BINARY_DIR}/version.h.new
+    COMMAND cmp -s ${FASTD_BINARY_DIR}/version.h.new ${FASTD_BINARY_DIR}/version.h && rm ${FASTD_BINARY_DIR}/version.h.new || mv ${FASTD_BINARY_DIR}/version.h.new ${FASTD_BINARY_DIR}/version.h
+    WORKING_DIRECTORY "${FASTD_SOURCE_DIR}"
+    VERBATIM
+)
+
 add_subdirectory(src)

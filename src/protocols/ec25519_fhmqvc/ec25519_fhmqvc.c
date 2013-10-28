@@ -24,11 +24,10 @@
 */
 
 
-#include "fastd.h"
-#include "handshake.h"
-#include "peer.h"
-#include "sha256.h"
-
+#include <fastd.h>
+#include <handshake.h>
+#include <peer.h>
+#include <sha256.h>
 
 #include <libuecc/ecc.h>
 

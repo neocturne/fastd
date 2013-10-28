@@ -28,6 +28,7 @@
 #include "crypto.h"
 #include "handshake.h"
 #include "peer.h"
+#include <version.h>
 
 #include <fcntl.h>
 #include <grp.h>

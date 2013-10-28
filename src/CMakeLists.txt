@@ -1,15 +1,13 @@
-set(METHODS method_null.c)
+set_directory_properties(PROPERTIES COMPILE_DEFINITIONS _GNU_SOURCE)
+set(FASTD_CFLAGS "-Wall -pthread ${UECC_CFLAGS_OTHER}")
 
-if(WITH_METHOD_XSALSA20_POLY1305)
-  list(APPEND METHODS method_xsalsa20_poly1305.c)
-endif(WITH_METHOD_XSALSA20_POLY1305)
-
-if(WITH_METHOD_AES128_GCM)
-  list(APPEND METHODS method_aes128_gcm.c)
-endif(WITH_METHOD_AES128_GCM)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${FASTD_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CAP_INCLUDE_DIR} ${UECC_INCLUDE_DIRS} ${NACL_INCLUDE_DIR})
+include_directories(BEFORE ${FASTD_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CAP_INCLUDE_DIR} ${NACL_INCLUDE_DIR})
 link_directories(${UECC_LIBRARY_DIRS})
+
+
+add_subdirectory(protocols)
+add_subdirectory(methods)
+
 
 BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
 
@@ -32,25 +30,13 @@ add_executable(fastd
   shell.c
   socket.c
   tuntap.c
-  protocol_ec25519_fhmqvc.c
   ${BISON_fastd_config_parse_OUTPUTS}
-  ${METHODS}
+  ${PROTOCOL_OBJECTS}
+  ${METHOD_OBJECTS}
 )
-set_property(TARGET fastd PROPERTY COMPILE_FLAGS "-Wall -pthread ${UECC_CFLAGS_OTHER}")
-set_property(TARGET fastd PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE)
+set_property(TARGET fastd PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
 set_property(TARGET fastd PROPERTY LINK_FLAGS "-pthread ${UECC_LDFLAGS_OTHER}")
 target_link_libraries(fastd ${RT_LIBRARY} ${CAP_LIBRARY} ${UECC_LIBRARIES} ${NACL_LIBRARY})
-
-add_custom_target(
-    version
-    COMMAND echo "#ifndef _FASTD_VERSION_H_" > ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
-    COMMAND echo "#define _FASTD_VERSION_H_" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
-    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"$(git --git-dir=./.git describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
-    COMMAND echo "#endif /* _FASTD_VERSION_H_ */" >> ${CMAKE_CURRENT_BINARY_DIR}/version.h.new
-    COMMAND cmp -s ${CMAKE_CURRENT_BINARY_DIR}/version.h.new ${CMAKE_CURRENT_BINARY_DIR}/version.h && rm ${CMAKE_CURRENT_BINARY_DIR}/version.h.new || mv ${CMAKE_CURRENT_BINARY_DIR}/version.h.new ${CMAKE_CURRENT_BINARY_DIR}/version.h
-    WORKING_DIRECTORY "${FASTD_SOURCE_DIR}"
-    VERBATIM
-)
 
 add_dependencies(fastd version)
 

@@ -26,6 +26,7 @@
 
 #include "fastd.h"
 #include "peer.h"
+#include <version.h>
 
 #include <arpa/inet.h>
 
