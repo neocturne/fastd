@@ -42,25 +42,6 @@
 
 extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
-extern const fastd_method_t fastd_method_null;
-#ifdef WITH_METHOD_XSALSA20_POLY1305
-extern const fastd_method_t fastd_method_xsalsa20_poly1305;
-#endif
-#ifdef WITH_METHOD_AES128_GCM
-extern const fastd_method_t fastd_method_aes128_gcm;
-#endif
-
-static const fastd_method_t *const METHODS[] = {
-	&fastd_method_null,
-#ifdef WITH_METHOD_XSALSA20_POLY1305
-	&fastd_method_xsalsa20_poly1305,
-#endif
-#ifdef WITH_METHOD_AES128_GCM
-	&fastd_method_aes128_gcm,
-#endif
-	NULL
-};
-
 
 #ifdef USE_CRYPTO_AES128CTR
 #ifdef WITH_CRYPTO_AES128CTR_NACL
@@ -140,16 +121,6 @@ bool fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, co
 		return false;
 
 	return true;
-}
-
-const fastd_method_t* fastd_parse_method_name(const char *name) {
-	int i;
-	for (i = 0; METHODS[i]; i++) {
-		if (!strcmp(METHODS[i]->name, name))
-			return METHODS[i];
-	}
-
-	return NULL;
 }
 
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
@@ -618,7 +589,8 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 
 	if (!conf->methods) {
 		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
-		conf->methods = fastd_string_stack_dup(fastd_method_null.name);
+		if (!fastd_config_method(ctx, conf, "null"))
+			exit_bug(ctx, "method `null' not supported");
 	}
 
 	ctx->conf = conf;

@@ -12,15 +12,26 @@ if(WITH_METHOD_AES128_GCM)
 endif(WITH_METHOD_AES128_GCM)
 
 
-set(METHOD_SOURCES "")
+set(METHOD_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/methods.c")
+
+set(METHOD_DEFINITIONS "")
+set(METHOD_LIST "")
 
 foreach(method ${METHODS})
   add_subdirectory(${method})
+
   list(APPEND METHOD_SOURCES $<TARGET_OBJECTS:method_${method}>)
+
+  set(METHOD_DEFINITIONS "${METHOD_DEFINITIONS}\nextern const fastd_method_t fastd_method_${method};")
+  set(METHOD_LIST "${METHOD_LIST}\n&fastd_method_${method},")
 endforeach(method)
 
 if(METHOD_COMMON)
   list(APPEND METHOD_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/common.c)
 endif(METHOD_COMMON)
+
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/methods.c.in ${CMAKE_CURRENT_BINARY_DIR}/methods.c)
+
 
 set(METHOD_SOURCES "${METHOD_SOURCES}" PARENT_SCOPE)
