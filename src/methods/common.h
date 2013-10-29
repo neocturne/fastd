@@ -27,7 +27,7 @@
 #ifndef _FASTD_METHODS_COMMON_H_
 #define _FASTD_METHODS_COMMON_H_
 
-#include <fastd.h>
+#include "../fastd.h"
 
 
 #define COMMON_NONCEBYTES 7

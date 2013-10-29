@@ -27,7 +27,7 @@
 #ifndef _FASTD_COMPAT_H_
 #define _FASTD_COMPAT_H_
 
-#include <config.h>
+#include <fastd_config.h>
 
 #include <stdint.h>
 #include <unistd.h>

@@ -28,7 +28,7 @@
 #include "crypto.h"
 #include "handshake.h"
 #include "peer.h"
-#include <version.h>
+#include <fastd_version.h>
 
 #include <fcntl.h>
 #include <grp.h>
@@ -38,6 +38,10 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/resource.h>
+
+#ifdef USE_LIBSODIUM
+#include <sodium/core.h>
+#endif
 
 
 static volatile bool sighup = false;
@@ -751,6 +755,10 @@ static void drop_caps(fastd_context_t *ctx) {
 }
 
 int main(int argc, char *argv[]) {
+#ifdef USE_LIBSODIUM
+	sodium_init();
+#endif
+
 	fastd_context_t ctx = {};
 
 	close_fds(&ctx);

@@ -24,7 +24,7 @@
 */
 
 
-#include <fastd.h>
+#include "../../fastd.h"
 #include "../common.h"
 
 #include <crypto_secretbox_xsalsa20poly1305.h>

@@ -33,7 +33,7 @@
 #ifndef _FASTD_TYPES_H_
 #define _FASTD_TYPES_H_
 
-#include <config.h>
+#include <fastd_config.h>
 
 #include <stdbool.h>
 

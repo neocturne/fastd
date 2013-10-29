@@ -41,6 +41,8 @@ endif(LINUX)
 set(WITH_METHOD_XSALSA20_POLY1305 TRUE CACHE BOOL "Include xsalsa20-poly1305 method")
 set(WITH_METHOD_AES128_GCM TRUE CACHE BOOL "Include aes128-gcm method")
 
+set(USE_LIBSODIUM FALSE CACHE BOOL "Use libsodium instead of NaCl")
+
 
 set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
 
@@ -87,11 +89,31 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(UECC REQUIRED libuecc>=3)
 
 
+set(NACL_INCLUDE_DIRS "")
+set(NACL_CFLAGS_OTHER "")
+set(NACL_LIBRARY_DIRS "")
+set(NACL_LIBRARIES "")
+set(NACL_LDFLAGS_OTHER "")
+
 if(WITH_METHOD_XSALSA20_POLY1305 OR WITH_CRYPTO_AES128CTR_NACL)
-  find_package(NaCl REQUIRED)
-else(WITH_METHOD_XSALSA20_POLY1305 OR WITH_CRYPTO_AES128CTR_NACL)
-  set(NACL_INCLUDE_DIR "")
-  set(NACL_LIBRARY "")
+  if(USE_LIBSODIUM)
+    pkg_check_modules(SODIUM REQUIRED libsodium)
+
+    set(NACL_INCLUDE_DIRS "${SODIUM_INCLUDE_DIRS}")
+    foreach(dir "${SODIUM_INCLUDEDIR}" ${SODIUM_INCLUDE_DIRS})
+      list(APPEND NACL_INCLUDE_DIRS "${dir}/sodium")
+    endforeach(dir)
+
+    set(NACL_CFLAGS_OTHER "${SODIUM_CFLAGS_OTHER}")
+    set(NACL_LIBRARY_DIRS "${SODIUM_LIBRARY_DIRS}")
+    set(NACL_LIBRARIES "${SODIUM_LIBRARIES}")
+    set(NACL_LDFLAGS_OTHER "${SODIUM_LDFLAGS_OTHER}")
+  else(USE_LIBSODIUM)
+    find_package(NaCl REQUIRED)
+
+    set(NACL_INCLUDE_DIRS "${NACL_INCLUDE_DIR}")
+    set(NACL_LIBRARIES "${NACL_LIBRARY}")
+  endif(USE_LIBSODIUM)
 endif(WITH_METHOD_XSALSA20_POLY1305 OR WITH_CRYPTO_AES128CTR_NACL)
 
 
@@ -143,15 +165,15 @@ check_type_size("struct ethhdr" SIZEOF_ETHHDR)
 string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
 
 
-configure_file(${FASTD_SOURCE_DIR}/config.h.in ${FASTD_BINARY_DIR}/config.h)
+configure_file(${FASTD_SOURCE_DIR}/fastd_config.h.in ${FASTD_BINARY_DIR}/fastd_config.h)
 
 add_custom_target(
     version
-    COMMAND echo "#ifndef _FASTD_VERSION_H_" > ${FASTD_BINARY_DIR}/version.h.new
-    COMMAND echo "#define _FASTD_VERSION_H_" >> ${FASTD_BINARY_DIR}/version.h.new
-    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"$(git --git-dir=./.git describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${FASTD_BINARY_DIR}/version.h.new
-    COMMAND echo "#endif /* _FASTD_VERSION_H_ */" >> ${FASTD_BINARY_DIR}/version.h.new
-    COMMAND cmp -s ${FASTD_BINARY_DIR}/version.h.new ${FASTD_BINARY_DIR}/version.h && rm ${FASTD_BINARY_DIR}/version.h.new || mv ${FASTD_BINARY_DIR}/version.h.new ${FASTD_BINARY_DIR}/version.h
+    COMMAND echo "#ifndef _FASTD_VERSION_H_" > ${FASTD_BINARY_DIR}/fastd_version.h.new
+    COMMAND echo "#define _FASTD_VERSION_H_" >> ${FASTD_BINARY_DIR}/fastd_version.h.new
+    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"$(git --git-dir=./.git describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${FASTD_BINARY_DIR}/fastd_version.h.new
+    COMMAND echo "#endif /* _FASTD_VERSION_H_ */" >> ${FASTD_BINARY_DIR}/fastd_version.h.new
+    COMMAND cmp -s ${FASTD_BINARY_DIR}/fastd_version.h.new ${FASTD_BINARY_DIR}/fastd_version.h && rm ${FASTD_BINARY_DIR}/fastd_version.h.new || mv ${FASTD_BINARY_DIR}/fastd_version.h.new ${FASTD_BINARY_DIR}/fastd_version.h
     WORKING_DIRECTORY "${FASTD_SOURCE_DIR}"
     VERBATIM
 )

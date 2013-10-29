@@ -26,7 +26,7 @@
 
 #include "handshake.h"
 #include "peer.h"
-#include <version.h>
+#include <fastd_version.h>
 
 
 static const char *const RECORD_TYPES[RECORD_MAX] = {

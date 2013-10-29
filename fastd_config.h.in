@@ -45,6 +45,8 @@
 #cmakedefine WITH_CMDLINE_COMMANDS
 
 
+#cmakedefine USE_LIBSODIUM
+
 #cmakedefine USE_CRYPTO_AES128CTR
 #cmakedefine USE_CRYPTO_GHASH
 
