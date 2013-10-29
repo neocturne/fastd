@@ -30,6 +30,7 @@
 @METHOD_DEFINITIONS@
 
 static const fastd_method_t *const methods[] = { @METHOD_LIST@
+	NULL
 };
 
 
