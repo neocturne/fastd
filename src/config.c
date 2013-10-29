@@ -591,13 +591,15 @@ static void configure_method_parameters(fastd_context_t *ctx, fastd_config_t *co
 	conf->min_encrypt_tail_space = 0;
 	conf->min_decrypt_tail_space = 0;
 
-	int i;
-	for (i = 0; METHODS[i]; i++) {
-		conf->max_packet_size = max_size_t(conf->max_packet_size, METHODS[i]->max_packet_size(ctx));
-		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, METHODS[i]->min_encrypt_head_space(ctx));
-		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, METHODS[i]->min_decrypt_head_space(ctx));
-		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, METHODS[i]->min_encrypt_tail_space(ctx));
-		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, METHODS[i]->min_decrypt_tail_space(ctx));
+	fastd_string_stack_t *method_name;
+	for (method_name = conf->methods; method_name; method_name = method_name->next) {
+		const fastd_method_t *method = fastd_parse_method_name(method_name->str);
+
+		conf->max_packet_size = max_size_t(conf->max_packet_size, method->max_packet_size(ctx));
+		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, method->min_encrypt_head_space(ctx));
+		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, method->min_decrypt_head_space(ctx));
+		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, method->min_encrypt_tail_space(ctx));
+		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, method->min_decrypt_tail_space(ctx));
 	}
 
 	conf->min_encrypt_head_space = alignto(conf->min_encrypt_head_space, 16);
