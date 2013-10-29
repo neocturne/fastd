@@ -152,10 +152,7 @@ static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const ch
 }
 
 fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space) {
-	if (ctx->conf->secure_handshakes)
-		return new_handshake(ctx, 1, NULL, false, tail_space);
-	else
-		return new_handshake(ctx, 1, "xsalsa20-poly1305" /* for backwards compatiblity with fastd 0.4 */, true, tail_space);
+	return new_handshake(ctx, 1, NULL, !ctx->conf->secure_handshakes, tail_space);
 }
 
 fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_handshake_t *handshake, const char *method, bool with_method_list, size_t tail_space) {
