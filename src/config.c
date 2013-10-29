@@ -43,13 +43,23 @@
 extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
 extern const fastd_method_t fastd_method_null;
-
 #ifdef WITH_METHOD_XSALSA20_POLY1305
 extern const fastd_method_t fastd_method_xsalsa20_poly1305;
 #endif
 #ifdef WITH_METHOD_AES128_GCM
 extern const fastd_method_t fastd_method_aes128_gcm;
 #endif
+
+static const fastd_method_t *const METHODS[] = {
+	&fastd_method_null,
+#ifdef WITH_METHOD_XSALSA20_POLY1305
+	&fastd_method_xsalsa20_poly1305,
+#endif
+#ifdef WITH_METHOD_AES128_GCM
+	&fastd_method_aes128_gcm,
+#endif
+	NULL
+};
 
 
 #ifdef USE_CRYPTO_AES128CTR
@@ -106,7 +116,6 @@ static void default_config(fastd_config_t *conf) {
 	conf->drop_caps = DROP_CAPS_ON;
 
 	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
-	conf->method_default = &fastd_method_null;
 	conf->key_valid = 3600;		/* 60 minutes */
 	conf->key_valid_old = 60;	/* 1 minute */
 	conf->key_refresh = 3300;	/* 55 minutes */
@@ -133,41 +142,34 @@ bool fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, co
 	return true;
 }
 
-static inline const fastd_method_t* parse_method_name(const char *name) {
-	if (!strcmp(name, "null"))
-		return &fastd_method_null;
-#ifdef WITH_METHOD_XSALSA20_POLY1305
-	else if (!strcmp(name, "xsalsa20-poly1305"))
-		return &fastd_method_xsalsa20_poly1305;
-#endif
-#ifdef WITH_METHOD_AES128_GCM
-	else if (!strcmp(name, "aes128-gcm"))
-		return &fastd_method_aes128_gcm;
-#endif
-	else
-		return NULL;
+const fastd_method_t* fastd_parse_method_name(const char *name) {
+	int i;
+	for (i = 0; METHODS[i]; i++) {
+		if (!strcmp(METHODS[i]->name, name))
+			return METHODS[i];
+	}
+
+	return NULL;
 }
 
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
-	const fastd_method_t *method = parse_method_name(name);
+	const fastd_method_t *parsed_method = fastd_parse_method_name(name);
 
-	if (!method)
+	if (!parsed_method)
 		return false;
 
-	conf->method_default = method;
+	fastd_string_stack_t **method;
 
-	int i;
-	for (i = 0; i < MAX_METHODS; i++) {
-		if (conf->methods[i] == method)
-			return true;
-
-		if (conf->methods[i] == NULL) {
-			conf->methods[i] = method;
+	for (method = &conf->methods; *method; method = &(*method)->next) {
+		if (!strcmp((*method)->str, name)) {
+			pr_debug(ctx, "duplicate method name `%s', ignoring", name);
 			return true;
 		}
 	}
 
-	exit_bug(ctx, "MAX_METHODS too low");
+	*method = fastd_string_stack_dup(name);
+
+	return true;
 }
 
 bool fastd_config_crypto(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED, const char *alg UNUSED, const char *impl UNUSED) {
@@ -590,15 +592,12 @@ static void configure_method_parameters(fastd_context_t *ctx, fastd_config_t *co
 	conf->min_decrypt_tail_space = 0;
 
 	int i;
-	for (i = 0; i < MAX_METHODS; i++) {
-		if (!conf->methods[i])
-			break;
-
-		conf->max_packet_size = max_size_t(conf->max_packet_size, conf->methods[i]->max_packet_size(ctx));
-		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, conf->methods[i]->min_encrypt_head_space(ctx));
-		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, conf->methods[i]->min_decrypt_head_space(ctx));
-		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, conf->methods[i]->min_encrypt_tail_space(ctx));
-		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, conf->methods[i]->min_decrypt_tail_space(ctx));
+	for (i = 0; METHODS[i]; i++) {
+		conf->max_packet_size = max_size_t(conf->max_packet_size, METHODS[i]->max_packet_size(ctx));
+		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, METHODS[i]->min_encrypt_head_space(ctx));
+		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, METHODS[i]->min_decrypt_head_space(ctx));
+		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, METHODS[i]->min_encrypt_tail_space(ctx));
+		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, METHODS[i]->min_decrypt_tail_space(ctx));
 	}
 
 	conf->min_encrypt_head_space = alignto(conf->min_encrypt_head_space, 16);
@@ -615,9 +614,9 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 	if (!conf->log_stderr_level && !conf->log_syslog_level && !conf->log_files)
 		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
 
-	if (!conf->methods[0]) {
+	if (!conf->methods) {
 		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
-		conf->methods[0] = conf->method_default;
+		conf->methods = fastd_string_stack_dup(fastd_method_null.name);
 	}
 
 	ctx->conf = conf;
@@ -751,6 +750,8 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 	}
 
 	free_peer_group(conf->peer_group);
+
+	fastd_string_stack_free(conf->methods);
 
 	free(conf->user);
 	free(conf->group);

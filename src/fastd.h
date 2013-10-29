@@ -41,9 +41,6 @@
 
 #include <sys/uio.h>
 
-/* This must be adjusted when new methods are added */
-#define MAX_METHODS 3
-
 
 struct fastd_buffer {
 	void *base;
@@ -66,7 +63,7 @@ struct fastd_protocol {
 	bool (*peer_check_temporary)(fastd_context_t *ctx, fastd_peer_t *peer);
 
 	void (*handshake_init)(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
-	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_t *method);
+	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const char *method);
 
 	void (*handle_recv)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 	void (*send)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
@@ -212,8 +209,7 @@ struct fastd_config {
 	gid_t *groups;
 
 	const fastd_protocol_t *protocol;
-	const fastd_method_t *methods[MAX_METHODS];
-	const fastd_method_t *method_default;
+	fastd_string_stack_t *methods;
 
 	size_t max_packet_size;
 	size_t min_encrypt_head_space;
@@ -351,6 +347,8 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 
 void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
+
+const fastd_method_t* fastd_parse_method_name(const char *name);
 
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
