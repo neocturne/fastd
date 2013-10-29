@@ -408,7 +408,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 		return false;
 	}
 
-	const fastd_method_t *method = fastd_parse_method_name(method_name);
+	const fastd_method_t *method = fastd_method_get_by_name(method_name);
 
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		if (peer->protocol_state->old_session.method)

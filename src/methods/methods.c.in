@@ -33,7 +33,7 @@ static const fastd_method_t *const methods[] = { @METHOD_LIST@
 };
 
 
-const fastd_method_t* fastd_parse_method_name(const char *name) {
+const fastd_method_t* fastd_method_get_by_name(const char *name) {
 	int i;
 	for (i = 0; methods[i]; i++) {
 		if (!strcmp(methods[i]->name, name))

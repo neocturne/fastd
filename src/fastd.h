@@ -348,7 +348,7 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
 
-const fastd_method_t* fastd_parse_method_name(const char *name);
+const fastd_method_t* fastd_method_get_by_name(const char *name);
 
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
