@@ -298,15 +298,13 @@ static inline const char* get_method(fastd_context_t *ctx, const fastd_handshake
 		fastd_string_stack_t *method_list = parse_string_list(handshake->records[RECORD_METHOD_LIST].data, handshake->records[RECORD_METHOD_LIST].length);
 
 		const char *method = NULL;
-		fastd_string_stack_t *method_name = method_list;
 
-		while (method_name) {
+		fastd_string_stack_t *method_name;
+		for (method_name = method_list; method_name; method_name = method_name->next) {
 			const char *cur_method = method_from_name(ctx, method_name->str, SIZE_MAX);
 
 			if (cur_method)
 				method = cur_method;
-
-			method_name = method_name->next;
 		}
 
 		fastd_string_stack_free(method_list);
