@@ -59,7 +59,7 @@ static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 static inline bool has_group_config_constraints(const fastd_peer_group_config_t *group) {
 	for (; group; group = group->parent) {
-		if (group->max_connections)
+		if (group->max_connections >= 0)
 			return true;
 	}
 
