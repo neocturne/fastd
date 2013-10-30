@@ -119,6 +119,13 @@ static inline void fastd_handshake_add(fastd_context_t *ctx, fastd_buffer_t *buf
 	memcpy(dst, data, len);
 }
 
+static inline uint8_t* fastd_handshake_add_zero(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
+	uint8_t *dst = fastd_handshake_extend(ctx, buffer, type, len);
+
+	memset(dst, 0, len);
+	return dst;
+}
+
 static inline void fastd_handshake_add_uint8(fastd_context_t *ctx, fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint8_t value) {
 	uint8_t *dst = fastd_handshake_extend(ctx, buffer, type, 1);
 

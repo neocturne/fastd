@@ -160,10 +160,9 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 		fastd_handshake_add(ctx, &buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 	}
 
-	memset(&hmacbuf, 0, sizeof(hmacbuf));
-	fastd_handshake_add(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES, hmacbuf.b);
+	uint8_t *hmac = fastd_handshake_add_zero(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES);
 	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
-	memcpy(buffer.data+buffer.len-HASHBYTES, hmacbuf.b, HASHBYTES);
+	memcpy(hmac, hmacbuf.b, HASHBYTES);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
@@ -328,10 +327,9 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 		fastd_handshake_add(ctx, &buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 	}
 
-	memset(&hmacbuf, 0, sizeof(hmacbuf));
-	fastd_handshake_add(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES, hmacbuf.b);
+	uint8_t *hmac = fastd_handshake_add_zero(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES);
 	fastd_hmacsha256(&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
-	memcpy(buffer.data+buffer.len-HASHBYTES, hmacbuf.b, HASHBYTES);
+	memcpy(hmac, hmacbuf.b, HASHBYTES);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
