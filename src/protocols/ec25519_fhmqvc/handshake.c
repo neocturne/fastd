@@ -236,6 +236,10 @@ static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, s
 	return (handshake->records[type].length == length);
 }
 
+static inline bool secure_handshake(const fastd_handshake_t *handshake) {
+	return has_field(handshake, RECORD_TLV_MAC, HASHBYTES);
+}
+
 static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key,
 			     const fastd_handshake_t *handshake, const char *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, remote_addr);
@@ -290,7 +294,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 			    NULL);
 
 	bool valid;
-	if (has_field(handshake, RECORD_TLV_MAC, HASHBYTES)) {
+	if (secure_handshake(handshake)) {
 		uint8_t mac[HASHBYTES];
 		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
@@ -341,7 +345,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 		return;
 
 	bool valid;
-	if (has_field(handshake, RECORD_TLV_MAC, HASHBYTES)) {
+	if (secure_handshake(handshake)) {
 		uint8_t mac[HASHBYTES];
 		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
@@ -578,7 +582,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_
 		return;
 	}
 
-	if (!has_field(handshake, RECORD_TLV_MAC, HASHBYTES)) {
+	if (!secure_handshake(handshake)) {
 		if (ctx->conf->secure_handshakes || !has_field(handshake, RECORD_T, HASHBYTES)) {
 			pr_debug(ctx, "received handshake reply without HMAC from %P[%I]", peer, remote_addr);
 			return;
