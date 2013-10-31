@@ -69,7 +69,7 @@ struct fastd_protocol_peer_state {
 	uint64_t last_handshake_serial;
 	aligned_int256_t peer_handshake_key;
 	aligned_int256_t sigma;
-	fastd_sha256_t shared_handshake_key;
+	fastd_sha256_t shared_handshake_key_compat;
 };
 
 

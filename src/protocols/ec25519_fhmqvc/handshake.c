@@ -134,7 +134,7 @@ static inline bool secure_handshake(const fastd_handshake_t *handshake) {
 static bool make_shared_handshake_key(fastd_context_t *ctx, const handshake_key_t *handshake_key, bool initiator,
 				      const aligned_int256_t *A, const aligned_int256_t *B,
 				      const aligned_int256_t *X, const aligned_int256_t *Y,
-				      aligned_int256_t *sigma, fastd_sha256_t *shared_handshake_key) {
+				      aligned_int256_t *sigma, fastd_sha256_t *shared_handshake_key_compat) {
 	ecc_25519_work_t work, workXY;
 
 	if (!ecc_25519_load_packed(&workXY, initiator ? Y : X))
@@ -180,7 +180,7 @@ static bool make_shared_handshake_key(fastd_context_t *ctx, const handshake_key_
 		return false;
 
 	ecc_25519_store_packed(sigma, &work);
-	fastd_sha256_blocks(shared_handshake_key, Y->p, X->p, B->p, A->p, sigma->p, NULL);
+	fastd_sha256_blocks(shared_handshake_key_compat, Y->p, X->p, B->p, A->p, sigma->p, NULL);
 
 	return true;
 }
@@ -197,7 +197,7 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 				       peer_handshake_key,
 				       &handshake_key->key2.public,
 				       &peer->protocol_state->sigma,
-				       &peer->protocol_state->shared_handshake_key))
+				       &peer->protocol_state->shared_handshake_key_compat))
 		return false;
 
 	peer->protocol_state->last_handshake_serial = handshake_key->serial;
@@ -208,7 +208,7 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 
 static void clear_shared_handshake_key(fastd_context_t *ctx UNUSED, const fastd_peer_t *peer) {
 	memset(&peer->protocol_state->sigma, 0, sizeof(peer->protocol_state->sigma));
-	memset(&peer->protocol_state->shared_handshake_key, 0, sizeof(peer->protocol_state->shared_handshake_key));
+	memset(&peer->protocol_state->shared_handshake_key_compat, 0, sizeof(peer->protocol_state->shared_handshake_key_compat));
 
 	peer->protocol_state->last_handshake_serial = 0;
 	memset(&peer->protocol_state->peer_handshake_key, 0, sizeof(peer->protocol_state->peer_handshake_key));
@@ -231,12 +231,12 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	fastd_sha256_t hmacbuf;
 
 	if (!ctx->conf->secure_handshakes) {
-		fastd_hmacsha256_blocks(&hmacbuf, peer->protocol_state->shared_handshake_key.w, ctx->conf->protocol_config->key.public.p, handshake_key->key2.public.p, NULL);
+		fastd_hmacsha256_blocks(&hmacbuf, peer->protocol_state->shared_handshake_key_compat.w, ctx->conf->protocol_config->key.public.p, handshake_key->key2.public.p, NULL);
 		fastd_handshake_add(ctx, &buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 	}
 
 	uint8_t *mac = fastd_handshake_add_zero(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES);
-	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
+	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key_compat.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
@@ -314,10 +314,10 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
 
-		valid = fastd_hmacsha256_verify(mac, peer->protocol_state->shared_handshake_key.w, handshake->tlv_data, handshake->tlv_len);
+		valid = fastd_hmacsha256_verify(mac, peer->protocol_state->shared_handshake_key_compat.w, handshake->tlv_data, handshake->tlv_len);
 	}
 	else {
-		valid = fastd_hmacsha256_blocks_verify(handshake->records[RECORD_T].data, peer->protocol_state->shared_handshake_key.w, peer->protocol_config->public_key.p, peer_handshake_key->p, NULL);
+		valid = fastd_hmacsha256_blocks_verify(handshake->records[RECORD_T].data, peer->protocol_state->shared_handshake_key_compat.w, peer->protocol_config->public_key.p, peer_handshake_key->p, NULL);
 	}
 
 	if (!valid) {
