@@ -41,13 +41,21 @@ static size_t method_min_head_tail_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, uint8_t *secret UNUSED, size_t length UNUSED, bool initiator) {
+static size_t method_key_length(fastd_context_t *ctx UNUSED) {
+	return 0;
+}
+
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, uint8_t *secret UNUSED, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	session->valid = true;
 	session->initiator = initiator;
 
 	return session;
+}
+
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, uint8_t *secret, size_t length UNUSED, bool initiator) {
+	return method_session_init(ctx, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
@@ -84,7 +92,9 @@ const fastd_method_t fastd_method_null = {
 	.min_encrypt_tail_space = method_min_head_tail_space,
 	.min_decrypt_tail_space = method_min_head_tail_space,
 
-	.session_init_compat = method_session_init,
+	.key_length = method_key_length,
+	.session_init = method_session_init,
+	.session_init_compat = method_session_init_compat,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,

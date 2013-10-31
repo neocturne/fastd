@@ -53,10 +53,12 @@ static size_t method_min_tail_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init_key(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
-	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
-		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
 
+static size_t method_key_length(fastd_context_t *ctx UNUSED) {
+	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
+}
+
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
@@ -64,6 +66,13 @@ static fastd_method_session_state_t* method_session_init_key(fastd_context_t *ct
 	memcpy(session->key, secret, crypto_secretbox_xsalsa20poly1305_KEYBYTES);
 
 	return session;
+}
+
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
+	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
+		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
+
+	return method_session_init(ctx, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
@@ -161,7 +170,9 @@ const fastd_method_t fastd_method_xsalsa20_poly1305 = {
 	.min_encrypt_tail_space = method_min_tail_space,
 	.min_decrypt_tail_space = method_min_tail_space,
 
-	.session_init_compat = method_session_init_key,
+	.key_length = method_key_length,
+	.session_init = method_session_init,
+	.session_init_compat = method_session_init_compat,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,
