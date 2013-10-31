@@ -35,11 +35,7 @@ typedef struct handshake_key {
 	struct timespec preferred_till;
 	struct timespec valid_till;
 
-	/* keypair used as initiator */
-	keypair_t key1;
-
-	/* keypair used as responder */
-	keypair_t key2;
+	keypair_t key;
 } handshake_key_t;
 
 struct fastd_protocol_state {

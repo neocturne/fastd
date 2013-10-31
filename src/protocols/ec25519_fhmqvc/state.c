@@ -55,8 +55,7 @@ void fastd_protocol_ec25519_fhmqvc_maintenance(fastd_context_t *ctx) {
 
 		ctx->protocol_state->handshake_key.serial++;
 
-		new_handshake_key(ctx, &ctx->protocol_state->handshake_key.key1);
-		new_handshake_key(ctx, &ctx->protocol_state->handshake_key.key2);
+		new_handshake_key(ctx, &ctx->protocol_state->handshake_key.key);
 
 		ctx->protocol_state->handshake_key.preferred_till = ctx->now;
 		ctx->protocol_state->handshake_key.preferred_till.tv_sec += 15;
