@@ -24,7 +24,7 @@
 */
 
 
-#include "ec25519_fhmqvc.h"
+#include "handshake.h"
 #include "../../handshake.h"
 
 

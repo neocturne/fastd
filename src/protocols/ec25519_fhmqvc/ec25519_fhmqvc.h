@@ -45,23 +45,6 @@ struct fastd_protocol_config {
 	keypair_t key;
 };
 
-typedef struct handshake_key {
-	uint64_t serial;
-	struct timespec preferred_till;
-	struct timespec valid_till;
-
-	/* keypair used as initiator */
-	keypair_t key1;
-
-	/* keypair used as responder */
-	keypair_t key2;
-} handshake_key_t;
-
-struct fastd_protocol_state {
-	handshake_key_t prev_handshake_key;
-	handshake_key_t handshake_key;
-};
-
 struct fastd_protocol_peer_config {
 	aligned_int256_t public_key;
 };
@@ -115,14 +98,6 @@ static inline void hexdump(char out[65], const unsigned char d[32]) {
 		snprintf(out+2*i, 3, "%02x", d[i]);
 }
 
-
-static inline bool is_handshake_key_valid(fastd_context_t *ctx, const handshake_key_t *handshake_key) {
-	return timespec_after(&handshake_key->valid_till, &ctx->now);
-}
-
-static inline bool is_handshake_key_preferred(fastd_context_t *ctx, const handshake_key_t *handshake_key) {
-	return timespec_after(&handshake_key->preferred_till, &ctx->now);
-}
 
 static inline bool is_session_valid(fastd_context_t *ctx, const protocol_session_t *session) {
 	return (session->method && session->method->session_is_valid(ctx, session->method_state));
