@@ -407,8 +407,12 @@ static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 			(type *)( (char *)__mptr - offsetof(type,member) );})
 
 
+static inline size_t block_count(size_t l, size_t a) {
+	return (l+a-1)/a;
+}
+
 static inline size_t alignto(size_t l, size_t a) {
-	return ((l+a-1)/a)*a;
+	return block_count(l, a)*a;
 }
 
 static inline fastd_buffer_t fastd_buffer_alloc(const fastd_context_t *ctx, size_t len, size_t head_space, size_t tail_space) {

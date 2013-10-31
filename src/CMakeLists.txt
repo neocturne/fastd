@@ -18,6 +18,7 @@ add_executable(fastd
   crypto.c
   crypto_linux.c
   handshake.c
+  hkdf_sha256.c
   lex.c
   options.c
   peer.c
