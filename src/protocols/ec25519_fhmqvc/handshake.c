@@ -49,26 +49,85 @@
 #define RECORD_T RECORD_PROTOCOL5
 
 
-static bool backoff(fastd_context_t *ctx, const fastd_peer_t *peer) {
-	return (peer->protocol_state && is_session_valid(ctx, &peer->protocol_state->session)
-		&& timespec_diff(&ctx->now, &peer->protocol_state->session.established) < 15000);
+static inline void supersede_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method) {
+	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
+		if (peer->protocol_state->old_session.method)
+			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
+		peer->protocol_state->old_session = peer->protocol_state->session;
+	}
+	else {
+		if (peer->protocol_state->session.method)
+			peer->protocol_state->session.method->session_free(ctx, peer->protocol_state->session.method_state);
+	}
+
+	if (peer->protocol_state->old_session.method) {
+		if (peer->protocol_state->old_session.method != method) {
+			pr_debug(ctx, "method of %P has changed, terminating old session", peer);
+			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session = (protocol_session_t){};
+		}
+		else {
+			peer->protocol_state->old_session.method->session_superseded(ctx, peer->protocol_state->old_session.method_state);
+		}
+	}
 }
 
-void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
-	fastd_protocol_ec25519_fhmqvc_maintenance(ctx);
+static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, bool initiator,
+				const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X,
+				const aligned_int256_t *Y, const aligned_int256_t *sigma, uint64_t serial) {
+	supersede_session(ctx, peer, method);
 
-	fastd_buffer_t buffer = fastd_handshake_new_init(ctx, 3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
+	fastd_sha256_t hash;
+	fastd_sha256_blocks(&hash, X->p, Y->p, A->p, B->p, sigma->p, NULL);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->key.public.p);
+	peer->protocol_state->session.established = ctx->now;
+	peer->protocol_state->session.handshakes_cleaned = false;
+	peer->protocol_state->session.refreshing = false;
+	peer->protocol_state->session.method = method;
+	peer->protocol_state->session.method_state = method->session_init_compat(ctx, hash.b, HASHBYTES, initiator);
+	peer->protocol_state->last_serial = serial;
+}
 
-	if (peer)
-		fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
+static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, fastd_socket_t *sock,
+		      const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
+		      const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X,
+		      const aligned_int256_t *Y, const aligned_int256_t *sigma, uint64_t serial) {
+	if (serial <= peer->protocol_state->last_serial) {
+		pr_debug(ctx, "ignoring handshake from %P[%I] because of handshake key reuse", peer, remote_addr);
+		return false;
+	}
+
+	pr_verbose(ctx, "%I authorized as %P", remote_addr, peer);
+
+	if (!fastd_peer_claim_address(ctx, peer, sock, local_addr, remote_addr)) {
+		pr_warn(ctx, "can't set address %I which is used by a fixed peer", remote_addr);
+		fastd_peer_reset(ctx, peer);
+		return false;
+	}
+
+	const fastd_method_t *method = fastd_method_get_by_name(method_name);
+	new_session(ctx, peer, method, initiator, A, B, X, Y, sigma, serial);
+
+	fastd_peer_seen(ctx, peer);
+	fastd_peer_set_established(ctx, peer);
+
+	pr_verbose(ctx, "new session with %P established using method `%s'.", peer, method_name);
+
+	if (initiator)
+		fastd_peer_schedule_handshake_default(ctx, peer);
 	else
-		pr_debug(ctx, "sending handshake to unknown peer %I", remote_addr);
+		fastd_protocol_ec25519_fhmqvc_send_empty(ctx, peer, &peer->protocol_state->session);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, ctx->protocol_state->handshake_key.key1.public.p);
+	return true;
+}
 
-	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
+
+static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, size_t length) {
+	return (handshake->records[type].length == length);
+}
+
+static inline bool secure_handshake(const fastd_handshake_t *handshake) {
+	return has_field(handshake, RECORD_TLV_MAC, HASHBYTES);
 }
 
 
@@ -181,78 +240,6 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
-}
-
-static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, fastd_socket_t *sock,
-		      const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
-		      const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X,
-		      const aligned_int256_t *Y, const aligned_int256_t *sigma, uint64_t serial) {
-	if (serial <= peer->protocol_state->last_serial) {
-		pr_debug(ctx, "ignoring handshake from %P[%I] because of handshake key reuse", peer, remote_addr);
-		return false;
-	}
-
-	pr_verbose(ctx, "%I authorized as %P", remote_addr, peer);
-
-	if (!fastd_peer_claim_address(ctx, peer, sock, local_addr, remote_addr)) {
-		pr_warn(ctx, "can't set address %I which is used by a fixed peer", remote_addr);
-		fastd_peer_reset(ctx, peer);
-		return false;
-	}
-
-	const fastd_method_t *method = fastd_method_get_by_name(method_name);
-
-	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
-		if (peer->protocol_state->old_session.method)
-			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
-		peer->protocol_state->old_session = peer->protocol_state->session;
-	}
-	else {
-		if (peer->protocol_state->session.method)
-			peer->protocol_state->session.method->session_free(ctx, peer->protocol_state->session.method_state);
-	}
-
-	if (peer->protocol_state->old_session.method) {
-		if (peer->protocol_state->old_session.method != method) {
-			pr_debug(ctx, "method of %P[%I] has changed, terminating old session", peer, remote_addr);
-			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
-			peer->protocol_state->old_session = (protocol_session_t){};
-		}
-		else {
-			peer->protocol_state->old_session.method->session_superseded(ctx, peer->protocol_state->old_session.method_state);
-		}
-	}
-
-	fastd_sha256_t hash;
-	fastd_sha256_blocks(&hash, X->p, Y->p, A->p, B->p, sigma->p, NULL);
-
-	peer->protocol_state->session.established = ctx->now;
-	peer->protocol_state->session.handshakes_cleaned = false;
-	peer->protocol_state->session.refreshing = false;
-	peer->protocol_state->session.method = method;
-	peer->protocol_state->session.method_state = method->session_init_compat(ctx, hash.b, HASHBYTES, initiator);
-	peer->protocol_state->last_serial = serial;
-
-	fastd_peer_seen(ctx, peer);
-
-	fastd_peer_set_established(ctx, peer);
-
-	pr_verbose(ctx, "new session with %P established using method `%s'.", peer, method_name);
-
-	if (initiator)
-		fastd_peer_schedule_handshake_default(ctx, peer);
-	else
-		fastd_protocol_ec25519_fhmqvc_send_empty(ctx, peer, &peer->protocol_state->session);
-
-	return true;
-}
-
-static inline bool has_field(const fastd_handshake_t *handshake, uint8_t type, size_t length) {
-	return (handshake->records[type].length == length);
-}
-
-static inline bool secure_handshake(const fastd_handshake_t *handshake) {
-	return has_field(handshake, RECORD_TLV_MAC, HASHBYTES);
 }
 
 static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key,
@@ -467,8 +454,31 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer
 	return peer;
 }
 
+
+static inline bool backoff(fastd_context_t *ctx, const fastd_peer_t *peer) {
+	return (peer->protocol_state && is_session_valid(ctx, &peer->protocol_state->session)
+		&& timespec_diff(&ctx->now, &peer->protocol_state->session.established) < 15000);
+}
+
 static inline keypair_t* get_handshake_keypair(handshake_key_t *handshake_key, uint8_t type) {
 	return (type % 2) ? &handshake_key->key2 : &handshake_key->key1;
+}
+
+void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
+	fastd_protocol_ec25519_fhmqvc_maintenance(ctx);
+
+	fastd_buffer_t buffer = fastd_handshake_new_init(ctx, 3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
+
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, ctx->conf->protocol_config->key.public.p);
+
+	if (peer)
+		fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, peer->protocol_config->public_key.p);
+	else
+		pr_debug(ctx, "sending handshake to unknown peer %I", remote_addr);
+
+	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, ctx->protocol_state->handshake_key.key1.public.p);
+
+	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
 
 void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const char *method) {
