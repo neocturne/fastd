@@ -45,7 +45,7 @@ static size_t method_key_length(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, uint8_t *secret UNUSED, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, const uint8_t *secret UNUSED, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	session->valid = true;
@@ -54,7 +54,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UN
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, uint8_t *secret, size_t length UNUSED, bool initiator) {
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const uint8_t *secret, size_t length UNUSED, bool initiator) {
 	return method_session_init(ctx, secret, initiator);
 }
 
