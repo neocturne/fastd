@@ -347,7 +347,7 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	}
 
 	if (handshake.type > 1 && !method) {
-		send_error(ctx, sock, local_addr, remote_addr, peer, &handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_METHOD_NAME);
+		send_error(ctx, sock, local_addr, remote_addr, peer, &handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_METHOD_LIST);
 		goto end_free;
 	}
 
