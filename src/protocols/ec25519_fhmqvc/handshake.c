@@ -198,6 +198,8 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 			return true;
 	}
 
+	bool compat = !ctx->conf->secure_handshakes;
+
 	if (!make_shared_handshake_key(ctx, &handshake_key->key.secret, false,
 				       &peer->protocol_config->public_key,
 				       &ctx->conf->protocol_config->key.public,
@@ -205,7 +207,7 @@ static bool update_shared_handshake_key(fastd_context_t *ctx, const fastd_peer_t
 				       &handshake_key->key.public,
 				       &peer->protocol_state->sigma,
 				       &peer->protocol_state->shared_handshake_key,
-				       &peer->protocol_state->shared_handshake_key_compat))
+				       compat ? &peer->protocol_state->shared_handshake_key_compat : NULL))
 		return false;
 
 	peer->protocol_state->last_handshake_serial = handshake_key->serial;
@@ -255,6 +257,8 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 			     const fastd_handshake_t *handshake, const char *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, remote_addr);
 
+	bool compat = !secure_handshake(handshake);
+
 	aligned_int256_t sigma;
 	fastd_sha256_t shared_handshake_key, shared_handshake_key_compat;
 	if (!make_shared_handshake_key(ctx, &handshake_key->key.secret, true,
@@ -263,12 +267,12 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 				       &handshake_key->key.public,
 				       peer_handshake_key,
 				       &sigma,
-				       &shared_handshake_key,
-				       &shared_handshake_key_compat))
+				       compat ? NULL : &shared_handshake_key,
+				       compat ? &shared_handshake_key_compat : NULL))
 		return;
 
 	bool valid;
-	if (secure_handshake(handshake)) {
+	if (!compat) {
 		uint8_t mac[HASHBYTES];
 		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
@@ -295,7 +299,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, handshake_key->key.public.p);
 	fastd_handshake_add(ctx, &buffer, RECORD_RECEIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key->p);
 
-	if (secure_handshake(handshake)) {
+	if (!compat) {
 		fastd_sha256_t hmacbuf;
 		uint8_t *mac = fastd_handshake_add_zero(ctx, &buffer, RECORD_TLV_MAC, HASHBYTES);
 		fastd_hmacsha256(&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
@@ -315,11 +319,13 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 				    const fastd_handshake_t *handshake, const char *method) {
 	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, remote_addr);
 
+	bool compat = !secure_handshake(handshake);
+
 	if (!update_shared_handshake_key(ctx, peer, handshake_key, peer_handshake_key))
 		return;
 
 	bool valid;
-	if (secure_handshake(handshake)) {
+	if (!compat) {
 		uint8_t mac[HASHBYTES];
 		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
