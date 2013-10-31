@@ -230,7 +230,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 	peer->protocol_state->session.handshakes_cleaned = false;
 	peer->protocol_state->session.refreshing = false;
 	peer->protocol_state->session.method = method;
-	peer->protocol_state->session.method_state = method->session_init(ctx, hash.b, HASHBYTES, initiator);
+	peer->protocol_state->session.method_state = method->session_init_compat(ctx, hash.b, HASHBYTES, initiator);
 	peer->protocol_state->last_serial = serial;
 
 	fastd_peer_seen(ctx, peer);

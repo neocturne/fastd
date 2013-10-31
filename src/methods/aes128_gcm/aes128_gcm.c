@@ -29,8 +29,6 @@
 #include "../common.h"
 
 
-#define KEYBYTES 16
-
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
@@ -61,8 +59,8 @@ static size_t method_min_decrypt_tail_space(fastd_context_t *ctx UNUSED) {
 }
 
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
-	if (length < KEYBYTES)
+static fastd_method_session_state_t* method_session_init_key(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
+	if (length < sizeof(fastd_block128_t))
 		exit_bug(ctx, "aes128-gcm: tried to init with short secret");
 
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
@@ -232,7 +230,7 @@ const fastd_method_t fastd_method_aes128_gcm = {
 	.min_encrypt_tail_space = method_min_encrypt_tail_space,
 	.min_decrypt_tail_space = method_min_decrypt_tail_space,
 
-	.session_init = method_session_init,
+	.session_init_compat = method_session_init_key,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,

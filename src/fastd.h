@@ -87,7 +87,7 @@ struct fastd_method {
 	size_t (*min_encrypt_tail_space)(fastd_context_t *ctx);
 	size_t (*min_decrypt_tail_space)(fastd_context_t *ctx);
 
-	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator);
+	fastd_method_session_state_t* (*session_init_compat)(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator);
 	bool (*session_is_valid)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 	bool (*session_is_initiator)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 	bool (*session_want_refresh)(fastd_context_t *ctx, fastd_method_session_state_t *session);

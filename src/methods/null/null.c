@@ -84,7 +84,7 @@ const fastd_method_t fastd_method_null = {
 	.min_encrypt_tail_space = method_min_head_tail_space,
 	.min_decrypt_tail_space = method_min_head_tail_space,
 
-	.session_init = method_session_init,
+	.session_init_compat = method_session_init,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,

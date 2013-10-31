@@ -53,7 +53,7 @@ static size_t method_min_tail_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init_key(fastd_context_t *ctx, uint8_t *secret, size_t length, bool initiator) {
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
 
@@ -161,7 +161,7 @@ const fastd_method_t fastd_method_xsalsa20_poly1305 = {
 	.min_encrypt_tail_space = method_min_tail_space,
 	.min_decrypt_tail_space = method_min_tail_space,
 
-	.session_init = method_session_init,
+	.session_init_compat = method_session_init_key,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,
