@@ -26,6 +26,7 @@
 
 #include "handshake.h"
 #include "../../handshake.h"
+#include "../../hkdf_sha256.h"
 
 
 #define PUBLICKEYBYTES 32
@@ -72,28 +73,56 @@ static inline void supersede_session(fastd_context_t *ctx, fastd_peer_t *peer, c
 	}
 }
 
-static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method, bool initiator,
-				const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X,
-				const aligned_int256_t *Y, const aligned_int256_t *sigma, uint64_t serial) {
+static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, const fastd_method_t *method, bool initiator,
+			       const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
+			       const aligned_int256_t *sigma, const uint32_t *salt, uint64_t serial) {
+
 	supersede_session(ctx, peer, method);
 
-	fastd_sha256_t hash;
-	fastd_sha256_blocks(&hash, X->p, Y->p, A->p, B->p, sigma->p, NULL);
+	if (salt) {
+		size_t methodlen = strlen(method_name);
+		uint8_t info[4*PUBLICKEYBYTES + methodlen];
+
+		memcpy(info, A->p, PUBLICKEYBYTES);
+		memcpy(info+PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
+		memcpy(info+2*PUBLICKEYBYTES, X->p, PUBLICKEYBYTES);
+		memcpy(info+3*PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
+		memcpy(info+4*PUBLICKEYBYTES, method_name, methodlen);
+
+		fastd_sha256_t prk;
+		fastd_hkdf_sha256_extract(&prk, salt, (const uint32_t*)sigma->p, PUBLICKEYBYTES);
+
+		size_t blocks = block_count(method->key_length(ctx), sizeof(fastd_sha256_t));
+		fastd_sha256_t secret[blocks];
+		fastd_hkdf_sha256_expand(secret, blocks, &prk, info, sizeof(info));
+
+		peer->protocol_state->session.method_state = method->session_init(ctx, (const uint8_t*)secret, initiator);
+	}
+	else {
+		fastd_sha256_t hash;
+		fastd_sha256_blocks(&hash, X->p, Y->p, A->p, B->p, sigma->p, NULL);
+		peer->protocol_state->session.method_state = method->session_init_compat(ctx, hash.b, HASHBYTES, initiator);
+	}
 
 	peer->protocol_state->session.established = ctx->now;
 	peer->protocol_state->session.handshakes_cleaned = false;
 	peer->protocol_state->session.refreshing = false;
 	peer->protocol_state->session.method = method;
-	peer->protocol_state->session.method_state = method->session_init_compat(ctx, hash.b, HASHBYTES, initiator);
 	peer->protocol_state->last_serial = serial;
 }
 
 static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, fastd_socket_t *sock,
 		      const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
-		      const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X,
-		      const aligned_int256_t *Y, const aligned_int256_t *sigma, uint64_t serial) {
+		      const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
+		      const aligned_int256_t *sigma, const uint32_t *salt, uint64_t serial) {
 	if (serial <= peer->protocol_state->last_serial) {
 		pr_debug(ctx, "ignoring handshake from %P[%I] because of handshake key reuse", peer, remote_addr);
+		return false;
+	}
+
+	const fastd_method_t *method = fastd_method_get_by_name(method_name);
+	if (!salt && !method->session_init_compat) {
+		pr_warn(ctx, "can't establish session with %P[%I] (method without compat support)");
 		return false;
 	}
 
@@ -105,13 +134,12 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 		return false;
 	}
 
-	const fastd_method_t *method = fastd_method_get_by_name(method_name);
-	new_session(ctx, peer, method, initiator, A, B, X, Y, sigma, serial);
+	new_session(ctx, peer, method_name, method, initiator, A, B, X, Y, sigma, salt, serial);
 
 	fastd_peer_seen(ctx, peer);
 	fastd_peer_set_established(ctx, peer);
 
-	pr_verbose(ctx, "new session with %P established using method `%s'.", peer, method_name);
+	pr_verbose(ctx, "new session with %P established using method `%s'%s.", peer, method_name, salt ? "" : " (compat mode)");
 
 	if (initiator)
 		fastd_peer_schedule_handshake_default(ctx, peer);
@@ -289,7 +317,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 	}
 
 	if (!establish(ctx, peer, method, sock, local_addr, remote_addr, true, &handshake_key->key.public, peer_handshake_key, &ctx->conf->protocol_config->key.public,
-		       &peer->protocol_config->public_key, &sigma, handshake_key->serial))
+		       &peer->protocol_config->public_key, &sigma, compat ? NULL : shared_handshake_key.w, handshake_key->serial))
 		return;
 
 	fastd_buffer_t buffer = fastd_handshake_new_reply(ctx, handshake, method, false, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
@@ -342,7 +370,7 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	}
 
 	establish(ctx, peer, method, sock, local_addr, remote_addr, false, peer_handshake_key, &handshake_key->key.public, &peer->protocol_config->public_key,
-		  &ctx->conf->protocol_config->key.public, &peer->protocol_state->sigma, handshake_key->serial);
+		  &ctx->conf->protocol_config->key.public, &peer->protocol_state->sigma, compat ? NULL : peer->protocol_state->shared_handshake_key.w, handshake_key->serial);
 
 	clear_shared_handshake_key(ctx, peer);
 }
