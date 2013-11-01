@@ -35,7 +35,7 @@ void fastd_hkdf_sha256_expand(fastd_sha256_t *out, size_t blocks, fastd_sha256_t
 
 	size_t len = sizeof(fastd_sha256_t) + infolen + 1;
 
-	uint8_t buf[len] __attribute__((align(4)));
+	uint8_t buf[len] __attribute__((aligned(4)));
 
 	memset(buf, 0, sizeof(fastd_sha256_t));
 	memcpy(buf+sizeof(fastd_sha256_t), info, infolen);
