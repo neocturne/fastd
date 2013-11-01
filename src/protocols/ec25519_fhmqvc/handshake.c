@@ -50,6 +50,24 @@
 #define RECORD_T RECORD_PROTOCOL5
 
 
+static void derive_key(fastd_sha256_t *out, size_t blocks, const uint32_t *salt, const char *method_name,
+		       const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
+		       const aligned_int256_t *sigma) {
+	size_t methodlen = strlen(method_name);
+	uint8_t info[4*PUBLICKEYBYTES + methodlen];
+
+	memcpy(info, A->p, PUBLICKEYBYTES);
+	memcpy(info+PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
+	memcpy(info+2*PUBLICKEYBYTES, X->p, PUBLICKEYBYTES);
+	memcpy(info+3*PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
+	memcpy(info+4*PUBLICKEYBYTES, method_name, methodlen);
+
+	fastd_sha256_t prk;
+	fastd_hkdf_sha256_extract(&prk, salt, (const uint32_t*)sigma->p, PUBLICKEYBYTES);
+
+	fastd_hkdf_sha256_expand(out, blocks, &prk, info, sizeof(info));
+}
+
 static inline void supersede_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method) {
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		if (peer->protocol_state->old_session.method)
@@ -80,21 +98,9 @@ static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const c
 	supersede_session(ctx, peer, method);
 
 	if (salt) {
-		size_t methodlen = strlen(method_name);
-		uint8_t info[4*PUBLICKEYBYTES + methodlen];
-
-		memcpy(info, A->p, PUBLICKEYBYTES);
-		memcpy(info+PUBLICKEYBYTES, B->p, PUBLICKEYBYTES);
-		memcpy(info+2*PUBLICKEYBYTES, X->p, PUBLICKEYBYTES);
-		memcpy(info+3*PUBLICKEYBYTES, Y->p, PUBLICKEYBYTES);
-		memcpy(info+4*PUBLICKEYBYTES, method_name, methodlen);
-
-		fastd_sha256_t prk;
-		fastd_hkdf_sha256_extract(&prk, salt, (const uint32_t*)sigma->p, PUBLICKEYBYTES);
-
 		size_t blocks = block_count(method->key_length(ctx), sizeof(fastd_sha256_t));
 		fastd_sha256_t secret[blocks];
-		fastd_hkdf_sha256_expand(secret, blocks, &prk, info, sizeof(info));
+		derive_key(secret, blocks, salt, method_name, A, B, X, Y, sigma);
 
 		peer->protocol_state->session.method_state = method->session_init(ctx, (const uint8_t*)secret, initiator);
 	}
@@ -165,6 +171,8 @@ static bool make_shared_handshake_key(fastd_context_t *ctx, const ecc_int256_t *
 				      aligned_int256_t *sigma,
 				      fastd_sha256_t *shared_handshake_key,
 				      fastd_sha256_t *shared_handshake_key_compat) {
+	static const uint32_t zero_salt[FASTD_HMACSHA256_KEY_WORDS] = {};
+
 	ecc_25519_work_t work, workXY;
 
 	if (!ecc_25519_load_packed(&workXY, initiator ? Y : X))
@@ -212,7 +220,7 @@ static bool make_shared_handshake_key(fastd_context_t *ctx, const ecc_int256_t *
 	ecc_25519_store_packed(sigma, &work);
 
 	if (shared_handshake_key)
-		fastd_sha256_blocks(shared_handshake_key, Y->p, X->p, B->p, A->p, sigma->p, NULL);
+		derive_key(shared_handshake_key, 1, zero_salt, "", A, B, X, Y, sigma);
 
 	if (shared_handshake_key_compat)
 		fastd_sha256_blocks(shared_handshake_key_compat, Y->p, X->p, B->p, A->p, sigma->p, NULL);
