@@ -91,6 +91,17 @@ void fastd_cipher_free(fastd_context_t *ctx) {
 	free(ctx->cipher_contexts);
 }
 
+bool fastd_cipher_available(const char *name) {
+	size_t i;
+	for (i = 0; i < array_size(ciphers); i++) {
+		if (!strcmp(ciphers[i].name, name)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, fastd_cipher_context_t **cctx) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {

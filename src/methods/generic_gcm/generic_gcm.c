@@ -32,16 +32,39 @@
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
-	const fastd_cipher_t *aes128_ctr;
-	fastd_cipher_context_t *aes128_ctr_ctx;
-	fastd_cipher_state_t *aes128_ctr_state;
+	const fastd_cipher_t *cipher;
+	fastd_cipher_context_t *cipher_ctx;
+	fastd_cipher_state_t *cipher_state;
 
 	fastd_crypto_ghash_state_t *cstate_ghash;
 };
 
 
-static bool method_provides(fastd_context_t *ctx UNUSED, const char *name) {
-	return !strcmp(name, "aes128-gcm");
+static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, fastd_cipher_context_t **cctx) {
+	size_t len = strlen(name);
+
+	if (len < 4)
+		return NULL;
+
+	if (strcmp(name+len-4, "-gcm"))
+		return NULL;
+
+	char name_ctr[len+1];
+	memcpy(name_ctr, name, len-3);
+	strncpy(name_ctr+len-3, "ctr", 4);
+
+	if (ctx) {
+		*cipher = fastd_cipher_get_by_name(ctx, name_ctr, cctx);
+		return *cipher;
+	}
+	else {
+		return fastd_cipher_available(name_ctr);
+	}
+}
+
+
+static bool method_provides(const char *name) {
+	return cipher_get(NULL, name, NULL, NULL);
 }
 
 static size_t method_max_packet_size(fastd_context_t *ctx) {
@@ -70,21 +93,20 @@ static size_t method_key_length(fastd_context_t *ctx UNUSED) {
 	return sizeof(fastd_block128_t);
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name UNUSED, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 
-	session->aes128_ctr = fastd_cipher_get_by_name(ctx, "aes128-ctr", &session->aes128_ctr_ctx);
-	if (!session->aes128_ctr)
-		exit_bug(ctx, "aes128-gcm: can't instanciate aes128-ctr");
+	if (!cipher_get(ctx, name, &session->cipher, &session->cipher_ctx))
+		exit_bug(ctx, "generic-gcm: can't instanciate cipher");
 
-	session->aes128_ctr_state = session->aes128_ctr->init_state(ctx, session->aes128_ctr_ctx, secret);
+	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);
 
 	static const fastd_block128_t zeroblock = {};
 	fastd_block128_t H;
 
-	session->aes128_ctr->crypt(ctx, session->aes128_ctr_state, &H, &zeroblock, sizeof(fastd_block128_t), &zeroblock);
+	session->cipher->crypt(ctx, session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), &zeroblock);
 
 	session->cstate_ghash = ctx->conf->crypto_ghash->set_h(ctx, ctx->crypto_ghash, &H);
 
@@ -93,7 +115,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < sizeof(fastd_block128_t))
-		exit_bug(ctx, "aes128-gcm: tried to init with short secret");
+		exit_bug(ctx, "generic-gcm: tried to init with short secret");
 
 	return method_session_init(ctx, name, secret, initiator);
 }
@@ -116,7 +138,7 @@ static void method_session_superseded(fastd_context_t *ctx, fastd_method_session
 
 static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	if (session) {
-		session->aes128_ctr->free_state(ctx, session->aes128_ctr_state);
+		session->cipher->free_state(ctx, session->cipher_state);
 		ctx->conf->crypto_ghash->free_state(ctx, session->cstate_ghash);
 
 		secure_memzero(session, sizeof(fastd_method_session_state_t));
@@ -154,7 +176,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = session->aes128_ctr->crypt(ctx, session->aes128_ctr_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
+	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
 
 	if (ok) {
 		if (tail_len)
@@ -210,7 +232,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = session->aes128_ctr->crypt(ctx, session->aes128_ctr_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
+	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
 
 	if (ok) {
 		if (tail_len)
@@ -238,7 +260,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	return true;
 }
 
-const fastd_method_t fastd_method_aes128_gcm = {
+const fastd_method_t fastd_method_generic_gcm = {
 	.provides = method_provides,
 
 	.max_packet_size = method_max_packet_size,

@@ -79,7 +79,7 @@ struct fastd_protocol {
 };
 
 struct fastd_method {
-	bool (*provides)(fastd_context_t *ctx, const char *name);
+	bool (*provides)(const char *name);
 
 	size_t (*max_packet_size)(fastd_context_t *ctx);
 	size_t (*min_encrypt_head_space)(fastd_context_t *ctx);
@@ -359,7 +359,8 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
 
-const fastd_method_t* fastd_method_get_by_name(fastd_context_t *ctx, const char *name);
+bool fastd_cipher_available(const char *name);
+const fastd_method_t* fastd_method_get_by_name(const char *name);
 
 const fastd_cipher_t** fastd_cipher_config_alloc(void);
 void fastd_cipher_config_free(const fastd_cipher_t **cipher_conf);

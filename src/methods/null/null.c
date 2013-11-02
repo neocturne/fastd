@@ -33,7 +33,7 @@ struct fastd_method_session_state {
 };
 
 
-static bool method_provides(fastd_context_t *ctx UNUSED, const char *name) {
+static bool method_provides(const char *name) {
 	return !strcmp(name, "null");
 }
 

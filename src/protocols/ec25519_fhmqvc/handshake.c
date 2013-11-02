@@ -126,7 +126,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 		return false;
 	}
 
-	const fastd_method_t *method = fastd_method_get_by_name(ctx, method_name);
+	const fastd_method_t *method = fastd_method_get_by_name(method_name);
 	if (!salt && !method->session_init_compat) {
 		pr_warn(ctx, "can't establish session with %P[%I] (method without compat support)");
 		return false;

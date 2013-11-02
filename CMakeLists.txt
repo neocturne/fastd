@@ -36,7 +36,7 @@ set(WITH_CIPHER_AES128_CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implemen
 set(WITH_CRYPTO_GHASH_BUILTIN TRUE CACHE BOOL "Include the built-in GHASH implementation")
 
 set(WITH_METHOD_XSALSA20_POLY1305 TRUE CACHE BOOL "Include xsalsa20-poly1305 method")
-set(WITH_METHOD_AES128_GCM TRUE CACHE BOOL "Include aes128-gcm method")
+set(WITH_METHOD_GENERIC_GCM TRUE CACHE BOOL "Include generic gcm method")
 
 set(USE_LIBSODIUM FALSE CACHE BOOL "Use libsodium instead of NaCl")
 

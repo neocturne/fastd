@@ -33,10 +33,10 @@ static const fastd_method_t *const methods[] = { @METHOD_LIST@
 };
 
 
-const fastd_method_t* fastd_method_get_by_name(fastd_context_t *ctx, const char *name) {
+const fastd_method_t* fastd_method_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(methods); i++) {
-		if (methods[i]->provides(ctx, name))
+		if (methods[i]->provides(name))
 			return methods[i];
 	}
 
