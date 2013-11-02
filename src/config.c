@@ -43,10 +43,6 @@
 extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
 
-#ifdef USE_CRYPTO_GHASH
-extern const fastd_crypto_ghash_t fastd_crypto_ghash_builtin;
-#endif
-
 static void default_config(fastd_config_t *conf) {
 	memset(conf, 0, sizeof(fastd_config_t));
 
@@ -74,15 +70,12 @@ static void default_config(fastd_config_t *conf) {
 	conf->key_refresh = 3300;	/* 55 minutes */
 	conf->key_refresh_splay = 300;	/* 5 minutes */
 
-#ifdef USE_CRYPTO_GHASH
-	conf->crypto_ghash = &fastd_crypto_ghash_builtin;
-#endif
-
 	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
 	conf->peer_group->name = strdup("default");
 	conf->peer_group->max_connections = -1;
 
 	conf->ciphers = fastd_cipher_config_alloc();
+	conf->macs = fastd_mac_config_alloc();
 }
 
 bool fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
@@ -110,23 +103,6 @@ bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	*method = fastd_string_stack_dup(name);
 
 	return true;
-}
-
-bool fastd_config_crypto(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED, const char *alg UNUSED, const char *impl UNUSED) {
-#ifdef USE_CRYPTO_GHASH
-	if (!strcasecmp(alg, "ghash")) {
-		if (!strcasecmp(impl, "default"))
-			conf->crypto_ghash = &fastd_crypto_ghash_builtin;
-		else if (!strcasecmp(impl, "builtin"))
-			conf->crypto_ghash = &fastd_crypto_ghash_builtin;
-		else
-			return false;
-
-		return true;
-	}
-	else
-#endif
-	return false;
 }
 
 bool fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
@@ -671,6 +647,7 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 
 	fastd_string_stack_free(conf->methods);
 
+	fastd_mac_config_free(conf->macs);
 	fastd_cipher_config_free(conf->ciphers);
 
 	free(conf->user);

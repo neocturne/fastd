@@ -115,6 +115,7 @@ typedef struct fastd_context fastd_context_t;
 typedef struct fastd_protocol fastd_protocol_t;
 typedef struct fastd_method fastd_method_t;
 typedef struct fastd_cipher fastd_cipher_t;
+typedef struct fastd_mac fastd_mac_t;
 
 typedef struct fastd_handshake fastd_handshake_t;
 
@@ -122,10 +123,6 @@ typedef struct fastd_lex fastd_lex_t;
 typedef struct fastd_string_stack fastd_string_stack_t;
 
 typedef struct fastd_resolve_return fastd_resolve_return_t;
-
-#ifdef USE_CRYPTO_GHASH
-typedef struct fastd_crypto_ghash fastd_crypto_ghash_t;
-#endif
 
 
 typedef union fastd_block128 {
@@ -145,9 +142,7 @@ typedef struct fastd_method_session_state fastd_method_session_state_t;
 typedef struct fastd_cipher_context fastd_cipher_context_t;
 typedef struct fastd_cipher_state fastd_cipher_state_t;
 
-#ifdef USE_CRYPTO_GHASH
-typedef struct fastd_crypto_ghash_context fastd_crypto_ghash_context_t;
-typedef struct fastd_crypto_ghash_state fastd_crypto_ghash_state_t;
-#endif
+typedef struct fastd_mac_context fastd_mac_context_t;
+typedef struct fastd_mac_state fastd_mac_state_t;
 
 #endif /* _FASTD_TYPES_H_ */

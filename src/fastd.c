@@ -25,7 +25,6 @@
 
 
 #include "fastd.h"
-#include "crypto.h"
 #include "handshake.h"
 #include "peer.h"
 #include <fastd_version.h>
@@ -147,20 +146,11 @@ static void close_log(fastd_context_t *ctx) {
 
 static void crypto_init(fastd_context_t *ctx) {
 	fastd_cipher_init(ctx);
-
-#ifdef USE_CRYPTO_GHASH
-	ctx->crypto_ghash = ctx->conf->crypto_ghash->init(ctx);
-	if (!ctx->crypto_ghash)
-		exit_error(ctx, "Unable to initialize GHASH implementation");
-#endif
+	fastd_mac_init(ctx);
 }
 
 static void crypto_free(fastd_context_t *ctx UNUSED) {
-#ifdef USE_CRYPTO_GHASH
-	ctx->conf->crypto_ghash->free(ctx, ctx->crypto_ghash);
-	ctx->crypto_ghash = NULL;
-#endif
-
+	fastd_mac_free(ctx);
 	fastd_cipher_free(ctx);
 }
 

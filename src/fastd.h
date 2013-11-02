@@ -105,10 +105,21 @@ struct fastd_cipher {
 
 	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
 	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
-	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv);
+	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv);
 
-	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *cstate);
+	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *state);
 	void (*free)(fastd_context_t *ctx, fastd_cipher_context_t *cctx);
+};
+
+struct fastd_mac {
+	const char *name;
+
+	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
+	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
+	bool (*hash)(fastd_context_t *ctx, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
+
+	void (*free_state)(fastd_context_t *ctx, fastd_mac_state_t *state);
+	void (*free)(fastd_context_t *ctx, fastd_mac_context_t *mctx);
 };
 
 union fastd_peer_address {
@@ -237,10 +248,7 @@ struct fastd_config {
 	unsigned key_refresh_splay;
 
 	const fastd_cipher_t **ciphers;
-
-#ifdef USE_CRYPTO_GHASH
-	const fastd_crypto_ghash_t *crypto_ghash;
-#endif
+	const fastd_mac_t **macs;
 
 	fastd_peer_group_config_t *peer_group;
 	fastd_peer_config_t *peers;
@@ -316,10 +324,7 @@ struct fastd_context {
 	fastd_stats_t tx_error;
 
 	fastd_cipher_context_t **cipher_contexts;
-
-#ifdef USE_CRYPTO_GHASH
-	fastd_crypto_ghash_context_t *crypto_ghash;
-#endif
+	fastd_mac_context_t **mac_contexts;
 
 	size_t eth_addr_size;
 	size_t n_eth_addr;
@@ -359,7 +364,6 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
 
-bool fastd_cipher_available(const char *name);
 const fastd_method_t* fastd_method_get_by_name(const char *name);
 
 const fastd_cipher_t** fastd_cipher_config_alloc(void);
@@ -368,11 +372,20 @@ bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, c
 
 void fastd_cipher_init(fastd_context_t *ctx);
 void fastd_cipher_free(fastd_context_t *ctx);
+bool fastd_cipher_available(const char *name);
 const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, fastd_cipher_context_t **cctx);
+
+const fastd_mac_t** fastd_mac_config_alloc(void);
+void fastd_mac_config_free(const fastd_mac_t **mac_conf);
+bool fastd_mac_config(const fastd_mac_t **mac_conf, const char *name, const char *impl);
+
+void fastd_mac_init(fastd_context_t *ctx);
+void fastd_mac_free(fastd_context_t *ctx);
+bool fastd_mac_available(const char *name);
+const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, fastd_mac_context_t **cctx);
 
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
-bool fastd_config_crypto(fastd_context_t *ctx, fastd_config_t *conf, const char *alg, const char *impl);
 bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level);
 bool fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);
 void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
@@ -544,6 +557,15 @@ static inline size_t min_size_t(size_t a, size_t b) {
 static inline void secure_memzero(void *s, size_t n) {
 	memset(s, 0, n);
 	asm volatile("" : : "m"(s));
+}
+
+static inline void xor(fastd_block128_t *x, const fastd_block128_t *a, const fastd_block128_t *b) {
+	x->qw[0] = a->qw[0] ^ b->qw[0];
+	x->qw[1] = a->qw[1] ^ b->qw[1];
+}
+
+static inline void xor_a(fastd_block128_t *x, const fastd_block128_t *a) {
+	xor(x, x, a);
 }
 
 #endif /* _FASTD_FASTD_H_ */

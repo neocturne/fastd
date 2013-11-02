@@ -33,7 +33,8 @@ set(WITH_CMDLINE_COMMANDS TRUE CACHE BOOL "Include support for setting handler s
 set(WITH_CIPHER_AES128_CTR TRUE CACHE BOOL "Include the AES128-CTR cipher algorithm")
 set(WITH_CIPHER_AES128_CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implementation from the NaCl library")
 
-set(WITH_CRYPTO_GHASH_BUILTIN TRUE CACHE BOOL "Include the built-in GHASH implementation")
+set(WITH_MAC_GHASH TRUE CACHE BOOL "Include the GHASH MAC algorithm")
+set(WITH_MAC_GHASH_BUILTIN TRUE CACHE BOOL "Include the built-in GHASH implementation")
 
 set(WITH_METHOD_XSALSA20_POLY1305 TRUE CACHE BOOL "Include xsalsa20-poly1305 method")
 set(WITH_METHOD_GENERIC_GCM TRUE CACHE BOOL "Include generic gcm method")
@@ -44,24 +45,8 @@ set(USE_LIBSODIUM FALSE CACHE BOOL "Use libsodium instead of NaCl")
 set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
 
 
-if(WITH_CRYPTO_GHASH_BUILTIN)
-  set(WITH_CRYPTO_GHASH TRUE)
-endif(WITH_CRYPTO_GHASH_BUILTIN)
-
-
 # Ensure the value is numeric
 math(EXPR MAX_CONFIG_DEPTH_NUM ${MAX_CONFIG_DEPTH})
-
-set(USE_CRYPTO_GHASH FALSE)
-
-if(WITH_METHOD_AES128_GCM)
-  set(USE_CRYPTO_GHASH TRUE)
-endif(WITH_METHOD_AES128_GCM)
-
-
-if(USE_CRYPTO_GHASH AND NOT WITH_CRYPTO_GHASH)
-  MESSAGE(FATAL_ERROR "No GHASH implementation was selected, but a selected method needs it.")
-endif(USE_CRYPTO_GHASH AND NOT WITH_CRYPTO_GHASH)
 
 
 find_package(BISON 2.5 REQUIRED)

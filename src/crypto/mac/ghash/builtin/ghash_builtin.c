@@ -24,14 +24,10 @@
 */
 
 
-#include "fastd.h"
-#include "crypto.h"
+#include "../../../../fastd.h"
 
 
-#ifdef USE_CRYPTO_GHASH
-#ifdef WITH_CRYPTO_GHASH_BUILTIN
-
-struct fastd_crypto_ghash_state {
+struct fastd_mac_state {
 	fastd_block128_t H[32][16];
 };
 
@@ -52,7 +48,7 @@ static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int
 	return (c >> (8-n));
 }
 
-static inline void mulH_a(fastd_block128_t *x, const fastd_crypto_ghash_state_t *cstate) {
+static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) {
 	fastd_block128_t out = {};
 
 	int i;
@@ -65,17 +61,17 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_crypto_ghash_state_t 
 }
 
 
-static fastd_crypto_ghash_context_t* ghash_init(fastd_context_t *ctx UNUSED) {
-	return (fastd_crypto_ghash_context_t*)1;
+static fastd_mac_context_t* ghash_initialize(fastd_context_t *ctx UNUSED) {
+	return NULL;
 }
 
-static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx UNUSED, const fastd_crypto_ghash_context_t *cctx UNUSED, const fastd_block128_t *h) {
-	fastd_crypto_ghash_state_t *cstate = malloc(sizeof(fastd_crypto_ghash_state_t));
+static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *mctx UNUSED, const uint8_t *key) {
+	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
 
 	fastd_block128_t Hbase[4];
 	fastd_block128_t Rbase[4];
 
-	Hbase[0] = *h;
+	memcpy(&Hbase[0], key, sizeof(fastd_block128_t));
 	Rbase[0] = r;
 
 	int i;
@@ -88,14 +84,14 @@ static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx UNUSED, cons
 	}
 
 	fastd_block128_t R[16];
-	memset(cstate->H, 0, sizeof(cstate->H));
+	memset(state->H, 0, sizeof(state->H));
 	memset(R, 0, sizeof(R));
 
 	for (i = 0; i < 16; i++) {
 		int j;
 		for (j = 0; j < 4; j++) {
 			if (i & (8 >> j)) {
-				xor_a(&cstate->H[0][i], &Hbase[j]);
+				xor_a(&state->H[0][i], &Hbase[j]);
 				xor_a(&R[i], &Rbase[j]);
 			}
 		}
@@ -105,43 +101,40 @@ static fastd_crypto_ghash_state_t* ghash_set_h(fastd_context_t *ctx UNUSED, cons
 		int j;
 
 		for (j = 0; j < 16; j++) {
-			uint8_t carry = shr(&cstate->H[i][j], &cstate->H[i-1][j], 4);
-			xor_a(&cstate->H[i][j], &R[carry]);
+			uint8_t carry = shr(&state->H[i][j], &state->H[i-1][j], 4);
+			xor_a(&state->H[i][j], &R[carry]);
 		}
 	}
 
-	return cstate;
+	return state;
 }
 
-static bool ghash_hash(fastd_context_t *ctx UNUSED, const fastd_crypto_ghash_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
+static bool ghash_hash(fastd_context_t *ctx UNUSED, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
 	memset(out, 0, sizeof(fastd_block128_t));
 
 	size_t i;
 	for (i = 0; i < n_blocks; i++) {
 		xor_a(out, &in[i]);
-		mulH_a(out, cstate);
+		mulH_a(out, state);
 	}
 
 	return true;
 }
 
-static void ghash_free_state(fastd_context_t *ctx UNUSED, fastd_crypto_ghash_state_t *cstate) {
-	free(cstate);
+static void ghash_free_state(fastd_context_t *ctx UNUSED, fastd_mac_state_t *state) {
+	free(state);
 }
 
-static void ghash_free(fastd_context_t *ctx UNUSED, fastd_crypto_ghash_context_t *cctx UNUSED) {
+static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_context_t *mctx UNUSED) {
 }
 
-const fastd_crypto_ghash_t fastd_crypto_ghash_builtin = {
+const fastd_mac_t fastd_mac_ghash_builtin = {
 	.name = "builtin",
 
-	.init = ghash_init,
-	.set_h = ghash_set_h,
+	.initialize = ghash_initialize,
+	.init_state = ghash_init_state,
 	.hash = ghash_hash,
 
 	.free_state = ghash_free_state,
 	.free = ghash_free,
 };
-
-#endif
-#endif

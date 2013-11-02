@@ -25,7 +25,6 @@
 
 
 #include "../../fastd.h"
-#include "../../crypto.h"
 #include "../common.h"
 
 
@@ -36,11 +35,16 @@ struct fastd_method_session_state {
 	fastd_cipher_context_t *cipher_ctx;
 	fastd_cipher_state_t *cipher_state;
 
-	fastd_crypto_ghash_state_t *cstate_ghash;
+	const fastd_mac_t *ghash;
+	fastd_mac_context_t *ghash_ctx;
+	fastd_mac_state_t *ghash_state;
 };
 
 
 static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, fastd_cipher_context_t **cctx) {
+	if (!fastd_mac_available("ghash"))
+		return false;
+
 	size_t len = strlen(name);
 
 	if (len < 4)
@@ -108,7 +112,11 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	session->cipher->crypt(ctx, session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), &zeroblock);
 
-	session->cstate_ghash = ctx->conf->crypto_ghash->set_h(ctx, ctx->crypto_ghash, &H);
+	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_ctx);
+	if (!session->ghash)
+		exit_bug(ctx, "generic-gcm: can't instanciate ghash mac");
+
+	session->ghash_state = session->ghash->init_state(ctx, session->ghash_ctx, H.b);
 
 	return session;
 }
@@ -139,7 +147,7 @@ static void method_session_superseded(fastd_context_t *ctx, fastd_method_session
 static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	if (session) {
 		session->cipher->free_state(ctx, session->cipher_state);
-		ctx->conf->crypto_ghash->free_state(ctx, session->cstate_ghash);
+		session->ghash->free_state(ctx, session->ghash_state);
 
 		secure_memzero(session, sizeof(fastd_method_session_state_t));
 		free(session);
@@ -184,7 +192,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 		put_size(&outblocks[n_blocks], in.len-sizeof(fastd_block128_t));
 
-		ok = ctx->conf->crypto_ghash->hash(ctx, session->cstate_ghash, &sig, outblocks+1, n_blocks);
+		ok = session->ghash->hash(ctx, session->ghash_state, &sig, outblocks+1, n_blocks);
 	}
 
 	if (!ok) {
@@ -240,7 +248,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 		put_size(&inblocks[n_blocks], in.len-sizeof(fastd_block128_t));
 
-		ok = ctx->conf->crypto_ghash->hash(ctx, session->cstate_ghash, &sig, inblocks+1, n_blocks);
+		ok = session->ghash->hash(ctx, session->ghash_state, &sig, inblocks+1, n_blocks);
 	}
 
 	if (!ok || memcmp(&sig, &outblocks[0], sizeof(fastd_block128_t)) != 0) {

@@ -16,7 +16,6 @@ add_executable(fastd
   fastd.c
   capabilities.c
   config.c
-  crypto.c
   handshake.c
   hkdf_sha256.c
   lex.c

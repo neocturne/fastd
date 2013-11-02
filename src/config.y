@@ -177,7 +177,6 @@ statement:	peer_group_statement
 	|	TOK_MODE mode ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_METHOD method ';'
-	|	TOK_CRYPTO crypto ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_PRE_UP on_pre_up ';'
 	|	TOK_ON TOK_UP on_up ';'
@@ -352,14 +351,6 @@ protocol:	TOK_STRING {
 method:		TOK_STRING {
 			if (!fastd_config_method(ctx, conf, $1->str)) {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid method");
-				YYERROR;
-			}
-		}
-	;
-
-crypto:	TOK_STRING TOK_USE TOK_STRING {
-			if (!fastd_config_crypto(ctx, conf, $1->str, $3->str)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid crypto algorithm/implementation");
 				YYERROR;
 			}
 		}
