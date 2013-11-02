@@ -342,7 +342,7 @@ mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
 
 protocol:	TOK_STRING {
 			if (!fastd_config_protocol(ctx, conf, $1->str)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid protocol");
+				fastd_config_error(&@$, ctx, conf, filename, depth, "unsupported protocol");
 				YYERROR;
 			}
 		}
@@ -350,7 +350,7 @@ protocol:	TOK_STRING {
 
 method:		TOK_STRING {
 			if (!fastd_config_method(ctx, conf, $1->str)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid method");
+				fastd_config_error(&@$, ctx, conf, filename, depth, "unsupported method");
 				YYERROR;
 			}
 		}
