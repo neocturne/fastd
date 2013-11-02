@@ -102,12 +102,12 @@ static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const c
 		fastd_sha256_t secret[blocks];
 		derive_key(secret, blocks, salt, method_name, A, B, X, Y, sigma);
 
-		peer->protocol_state->session.method_state = method->session_init(ctx, (const uint8_t*)secret, initiator);
+		peer->protocol_state->session.method_state = method->session_init(ctx, method_name, (const uint8_t*)secret, initiator);
 	}
 	else {
 		fastd_sha256_t hash;
 		fastd_sha256_blocks(&hash, X->p, Y->p, A->p, B->p, sigma->p, NULL);
-		peer->protocol_state->session.method_state = method->session_init_compat(ctx, hash.b, HASHBYTES, initiator);
+		peer->protocol_state->session.method_state = method->session_init_compat(ctx, method_name, hash.b, HASHBYTES, initiator);
 	}
 
 	peer->protocol_state->session.established = ctx->now;
@@ -126,7 +126,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 		return false;
 	}
 
-	const fastd_method_t *method = fastd_method_get_by_name(method_name);
+	const fastd_method_t *method = fastd_method_get_by_name(ctx, method_name);
 	if (!salt && !method->session_init_compat) {
 		pr_warn(ctx, "can't establish session with %P[%I] (method without compat support)");
 		return false;

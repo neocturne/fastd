@@ -40,6 +40,10 @@ struct fastd_method_session_state {
 };
 
 
+static bool method_provides(fastd_context_t *ctx UNUSED, const char *name) {
+	return !strcmp(name, "aes128-gcm");
+}
+
 static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return (fastd_max_packet_size(ctx) + COMMON_NONCEBYTES + sizeof(fastd_block128_t));
 }
@@ -66,7 +70,7 @@ static size_t method_key_length(fastd_context_t *ctx UNUSED) {
 	return sizeof(fastd_block128_t);
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name UNUSED, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
@@ -87,11 +91,11 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < sizeof(fastd_block128_t))
 		exit_bug(ctx, "aes128-gcm: tried to init with short secret");
 
-	return method_session_init(ctx, secret, initiator);
+	return method_session_init(ctx, name, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
@@ -235,7 +239,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 }
 
 const fastd_method_t fastd_method_aes128_gcm = {
-	.name = "aes128-gcm",
+	.provides = method_provides,
 
 	.max_packet_size = method_max_packet_size,
 	.min_encrypt_head_space = method_min_encrypt_head_space,

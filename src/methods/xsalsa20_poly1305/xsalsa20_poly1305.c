@@ -37,6 +37,10 @@ struct fastd_method_session_state {
 };
 
 
+static bool method_provides(fastd_context_t *ctx UNUSED, const char *name) {
+	return !strcmp(name, "xsalsa20-poly1305");
+}
+
 static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return (fastd_max_packet_size(ctx) + COMMON_NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 }
@@ -58,7 +62,7 @@ static size_t method_key_length(fastd_context_t *ctx UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name UNUSED, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
@@ -68,11 +72,11 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
 
-	return method_session_init(ctx, secret, initiator);
+	return method_session_init(ctx, name, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
@@ -162,7 +166,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 }
 
 const fastd_method_t fastd_method_xsalsa20_poly1305 = {
-	.name = "xsalsa20-poly1305",
+	.provides = method_provides,
 
 	.max_packet_size = method_max_packet_size,
 	.min_encrypt_head_space = method_min_encrypt_head_space,
