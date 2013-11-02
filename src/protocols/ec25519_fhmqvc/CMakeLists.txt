@@ -1,4 +1,4 @@
-include_directories(${FASTD_SOURCE_DIR}/src ${FASTD_BINARY_DIR} ${UECC_INCLUDE_DIRS})
+include_directories(${FASTD_SOURCE_DIR}/src ${FASTD_BINARY_DIR}/src ${UECC_INCLUDE_DIRS})
 
 add_library(protocol_ec25519_fhmqvc OBJECT
   ec25519_fhmqvc.c

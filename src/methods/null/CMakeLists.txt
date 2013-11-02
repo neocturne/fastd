@@ -1,4 +1,4 @@
-include_directories(${FASTD_SOURCE_DIR}/src ${FASTD_BINARY_DIR})
+include_directories(${FASTD_SOURCE_DIR}/src ${FASTD_BINARY_DIR}/src)
 
 add_library(method_null OBJECT
   null.c

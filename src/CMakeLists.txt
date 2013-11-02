@@ -1,14 +1,27 @@
 set_directory_properties(PROPERTIES COMPILE_DEFINITIONS _GNU_SOURCE)
 set(FASTD_CFLAGS "-Wall -pthread ${UECC_CFLAGS_OTHER} ${NACL_CFLAGS_OTHER}")
 
-include_directories(${FASTD_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CAP_INCLUDE_DIR} ${NACL_INCLUDE_DIRS})
+include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CAP_INCLUDE_DIR} ${NACL_INCLUDE_DIRS})
 link_directories(${UECC_LIBRARY_DIRS} ${NACL_LIBRARY_DIRS})
 
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fastd_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fastd_config.h)
 
 add_subdirectory(protocols)
 add_subdirectory(methods)
 add_subdirectory(crypto)
 
+
+add_custom_target(
+    version
+    COMMAND echo "#ifndef _FASTD_FASTD_VERSION_H_" > ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
+    COMMAND echo "#define _FASTD_FASTD_VERSION_H_" >> ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
+    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"$(git --git-dir=./.git describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
+    COMMAND echo "#endif /* _FASTD_FASTD_VERSION_H_ */" >> ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
+    COMMAND cmp -s ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h && rm ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new || mv ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h
+    WORKING_DIRECTORY "${FASTD_SOURCE_DIR}"
+    VERBATIM
+)
 
 BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
 
