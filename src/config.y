@@ -128,8 +128,6 @@
 	#include <peer.h>
 
 	#include <limits.h>
-	#include <stdint.h>
-	#include <unistd.h>
 
 	void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, const char *s);
 }

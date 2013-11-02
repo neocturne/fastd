@@ -145,12 +145,8 @@ static void close_log(fastd_context_t *ctx) {
 	closelog();
 }
 
-static void crypto_init(fastd_context_t *ctx UNUSED) {
-#ifdef USE_CRYPTO_AES128CTR
-	ctx->crypto_aes128ctr = ctx->conf->crypto_aes128ctr->init(ctx);
-	if (!ctx->crypto_aes128ctr)
-		exit_error(ctx, "Unable to initialize AES128-CTR implementation");
-#endif
+static void crypto_init(fastd_context_t *ctx) {
+	fastd_cipher_init(ctx);
 
 #ifdef USE_CRYPTO_GHASH
 	ctx->crypto_ghash = ctx->conf->crypto_ghash->init(ctx);
@@ -160,15 +156,12 @@ static void crypto_init(fastd_context_t *ctx UNUSED) {
 }
 
 static void crypto_free(fastd_context_t *ctx UNUSED) {
-#ifdef USE_CRYPTO_AES128CTR
-	ctx->conf->crypto_aes128ctr->free(ctx, ctx->crypto_aes128ctr);
-	ctx->crypto_aes128ctr = NULL;
-#endif
-
 #ifdef USE_CRYPTO_GHASH
 	ctx->conf->crypto_ghash->free(ctx, ctx->crypto_ghash);
 	ctx->crypto_ghash = NULL;
 #endif
+
+	fastd_cipher_free(ctx);
 }
 
 

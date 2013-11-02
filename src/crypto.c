@@ -28,59 +28,6 @@
 #include "crypto.h"
 
 
-#ifdef USE_CRYPTO_AES128CTR
-#ifdef WITH_CRYPTO_AES128CTR_NACL
-
-#include <crypto_stream_aes128ctr.h>
-
-
-struct fastd_crypto_aes128ctr_state {
-	fastd_buffer_t d;
-};
-
-
-static fastd_crypto_aes128ctr_context_t* aes128ctr_init(fastd_context_t *ctx UNUSED) {
-	return (fastd_crypto_aes128ctr_context_t*)1;
-}
-
-static fastd_crypto_aes128ctr_state_t* aes128ctr_set_key(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx UNUSED, const fastd_block128_t *key) {
-	fastd_crypto_aes128ctr_state_t *cstate = malloc(sizeof(fastd_crypto_aes128ctr_state_t));
-
-	cstate->d = fastd_buffer_alloc(ctx, crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
-	crypto_stream_aes128ctr_beforenm(cstate->d.data, key->b);
-
-	return cstate;
-}
-
-static bool aes128ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_crypto_aes128ctr_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv) {
-	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv->b, cstate->d.data);
-	return true;
-}
-
-static void aes128ctr_free_state(fastd_context_t *ctx UNUSED, fastd_crypto_aes128ctr_state_t *cstate) {
-	if (cstate) {
-		fastd_buffer_free(cstate->d);
-		free(cstate);
-	}
-}
-
-static void aes128ctr_free(fastd_context_t *ctx UNUSED, fastd_crypto_aes128ctr_context_t *cctx UNUSED) {
-}
-
-const fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_nacl = {
-	.name = "nacl",
-
-	.init = aes128ctr_init,
-	.set_key = aes128ctr_set_key,
-	.crypt = aes128ctr_crypt,
-
-	.free_state = aes128ctr_free_state,
-	.free = aes128ctr_free,
-};
-
-#endif
-#endif
-
 #ifdef USE_CRYPTO_GHASH
 #ifdef WITH_CRYPTO_GHASH_BUILTIN
 

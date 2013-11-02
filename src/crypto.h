@@ -29,27 +29,6 @@
 
 #include "types.h"
 
-#include <stdint.h>
-
-
-typedef union fastd_block128 {
-	uint8_t b[16];
-	uint64_t qw[2];
-} __attribute__((aligned(16))) fastd_block128_t;
-
-
-#ifdef USE_CRYPTO_AES128CTR
-struct fastd_crypto_aes128ctr {
-	const char *name;
-
-	fastd_crypto_aes128ctr_context_t* (*init)(fastd_context_t *ctx);
-	fastd_crypto_aes128ctr_state_t* (*set_key)(fastd_context_t *ctx, const fastd_crypto_aes128ctr_context_t *cctx, const fastd_block128_t *key);
-	bool (*crypt)(fastd_context_t *ctx, const fastd_crypto_aes128ctr_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv);
-
-	void (*free_state)(fastd_context_t *ctx, fastd_crypto_aes128ctr_state_t *cstate);
-	void (*free)(fastd_context_t *ctx, fastd_crypto_aes128ctr_context_t *cctx);
-};
-#endif
 
 #ifdef USE_CRYPTO_GHASH
 struct fastd_crypto_ghash {

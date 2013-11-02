@@ -30,13 +30,12 @@
 @METHOD_DEFINITIONS@
 
 static const fastd_method_t *const methods[] = { @METHOD_LIST@
-	NULL
 };
 
 
 const fastd_method_t* fastd_method_get_by_name(const char *name) {
-	int i;
-	for (i = 0; methods[i]; i++) {
+	size_t i;
+	for (i = 0; i < array_size(methods); i++) {
 		if (!strcmp(methods[i]->name, name))
 			return methods[i];
 	}

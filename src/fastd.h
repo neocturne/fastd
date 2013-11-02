@@ -100,6 +100,17 @@ struct fastd_method {
 	bool (*decrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
 };
 
+struct fastd_cipher {
+	const char *name;
+
+	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
+	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
+	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *cstate, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv);
+
+	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *cstate);
+	void (*free)(fastd_context_t *ctx, fastd_cipher_context_t *cctx);
+};
+
 union fastd_peer_address {
 	struct sockaddr sa;
 	struct sockaddr_in in;
@@ -225,9 +236,8 @@ struct fastd_config {
 	unsigned key_refresh;
 	unsigned key_refresh_splay;
 
-#ifdef USE_CRYPTO_AES128CTR
-	const fastd_crypto_aes128ctr_t *crypto_aes128ctr;
-#endif
+	const fastd_cipher_t **ciphers;
+
 #ifdef USE_CRYPTO_GHASH
 	const fastd_crypto_ghash_t *crypto_ghash;
 #endif
@@ -305,9 +315,8 @@ struct fastd_context {
 	fastd_stats_t tx_dropped;
 	fastd_stats_t tx_error;
 
-#ifdef USE_CRYPTO_AES128CTR
-	fastd_crypto_aes128ctr_context_t *crypto_aes128ctr;
-#endif
+	fastd_cipher_context_t **cipher_contexts;
+
 #ifdef USE_CRYPTO_GHASH
 	fastd_crypto_ghash_context_t *crypto_ghash;
 #endif
@@ -340,8 +349,8 @@ void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock);
 void fastd_socket_error(fastd_context_t *ctx, fastd_socket_t *sock);
 
 void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset);
-void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset);
-
+void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset)
+;
 void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote);
 
 int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
@@ -351,6 +360,14 @@ void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
 
 const fastd_method_t* fastd_method_get_by_name(const char *name);
+
+const fastd_cipher_t** fastd_cipher_config_alloc(void);
+void fastd_cipher_config_free(const fastd_cipher_t **cipher_conf);
+bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, const char *impl);
+
+void fastd_cipher_init(fastd_context_t *ctx);
+void fastd_cipher_free(fastd_context_t *ctx);
+bool fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, fastd_cipher_context_t **cctx);
 
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
@@ -408,6 +425,7 @@ static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 			const typeof( ((type *)0)->member ) *__mptr = (ptr); \
 			(type *)( (char *)__mptr - offsetof(type,member) );})
 
+#define array_size(array) (sizeof(array)/sizeof((array)[0]))
 
 static inline size_t block_count(size_t l, size_t a) {
 	return (l+a-1)/a;

@@ -36,6 +36,7 @@
 #include <fastd_config.h>
 
 #include <stdbool.h>
+#include <stdint.h>
 
 
 #define UNUSED __attribute__((unused))
@@ -113,6 +114,7 @@ typedef struct fastd_context fastd_context_t;
 
 typedef struct fastd_protocol fastd_protocol_t;
 typedef struct fastd_method fastd_method_t;
+typedef struct fastd_cipher fastd_cipher_t;
 
 typedef struct fastd_handshake fastd_handshake_t;
 
@@ -121,12 +123,15 @@ typedef struct fastd_string_stack fastd_string_stack_t;
 
 typedef struct fastd_resolve_return fastd_resolve_return_t;
 
-#ifdef USE_CRYPTO_AES128CTR
-typedef struct fastd_crypto_aes128ctr fastd_crypto_aes128ctr_t;
-#endif
 #ifdef USE_CRYPTO_GHASH
 typedef struct fastd_crypto_ghash fastd_crypto_ghash_t;
 #endif
+
+
+typedef union fastd_block128 {
+	uint8_t b[16];
+	uint64_t qw[2];
+} __attribute__((aligned(16))) fastd_block128_t;
 
 
 /* May be defined by the protocol/method/crypto implementations however they like */
@@ -137,10 +142,8 @@ typedef struct fastd_protocol_peer_state fastd_protocol_peer_state_t;
 
 typedef struct fastd_method_session_state fastd_method_session_state_t;
 
-#ifdef USE_CRYPTO_AES128CTR
-typedef struct fastd_crypto_aes128ctr_context fastd_crypto_aes128ctr_context_t;
-typedef struct fastd_crypto_aes128ctr_state fastd_crypto_aes128ctr_state_t;
-#endif
+typedef struct fastd_cipher_context fastd_cipher_context_t;
+typedef struct fastd_cipher_state fastd_cipher_state_t;
 
 #ifdef USE_CRYPTO_GHASH
 typedef struct fastd_crypto_ghash_context fastd_crypto_ghash_context_t;

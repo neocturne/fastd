@@ -32,7 +32,10 @@
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
-	fastd_crypto_aes128ctr_state_t *cstate_aes128ctr;
+	const fastd_cipher_t *aes128_ctr;
+	fastd_cipher_context_t *aes128_ctr_ctx;
+	fastd_cipher_state_t *aes128_ctr_state;
+
 	fastd_crypto_ghash_state_t *cstate_ghash;
 };
 
@@ -68,14 +71,15 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 
-	fastd_block128_t key;
-	memcpy(key.b, secret, sizeof(fastd_block128_t));
-	session->cstate_aes128ctr = ctx->conf->crypto_aes128ctr->set_key(ctx, ctx->crypto_aes128ctr, &key);
+	if (!fastd_cipher_get_by_name(ctx, "aes128-ctr", &session->aes128_ctr, &session->aes128_ctr_ctx))
+		exit_bug(ctx, "aes128-gcm: can't instanciate aes128-ctr");
+
+	session->aes128_ctr_state = session->aes128_ctr->init_state(ctx, session->aes128_ctr_ctx, secret);
 
 	static const fastd_block128_t zeroblock = {};
 	fastd_block128_t H;
 
-	ctx->conf->crypto_aes128ctr->crypt(ctx, session->cstate_aes128ctr, &H, &zeroblock, sizeof(fastd_block128_t), &zeroblock);
+	session->aes128_ctr->crypt(ctx, session->aes128_ctr_state, &H, &zeroblock, sizeof(fastd_block128_t), &zeroblock);
 
 	session->cstate_ghash = ctx->conf->crypto_ghash->set_h(ctx, ctx->crypto_ghash, &H);
 
@@ -107,7 +111,7 @@ static void method_session_superseded(fastd_context_t *ctx, fastd_method_session
 
 static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	if (session) {
-		ctx->conf->crypto_aes128ctr->free_state(ctx, session->cstate_aes128ctr);
+		session->aes128_ctr->free_state(ctx, session->aes128_ctr_state);
 		ctx->conf->crypto_ghash->free_state(ctx, session->cstate_ghash);
 
 		secure_memzero(session, sizeof(fastd_method_session_state_t));
@@ -145,7 +149,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = ctx->conf->crypto_aes128ctr->crypt(ctx, session->cstate_aes128ctr, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
+	bool ok = session->aes128_ctr->crypt(ctx, session->aes128_ctr_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
 
 	if (ok) {
 		if (tail_len)
@@ -201,7 +205,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = ctx->conf->crypto_aes128ctr->crypt(ctx, session->cstate_aes128ctr, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
+	bool ok = session->aes128_ctr->crypt(ctx, session->aes128_ctr_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
 
 	if (ok) {
 		if (tail_len)

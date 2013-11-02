@@ -7,6 +7,7 @@ link_directories(${UECC_LIBRARY_DIRS} ${NACL_LIBRARY_DIRS})
 
 add_subdirectory(protocols)
 add_subdirectory(methods)
+add_subdirectory(crypto)
 
 
 BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
@@ -16,7 +17,6 @@ add_executable(fastd
   capabilities.c
   config.c
   crypto.c
-  crypto_linux.c
   handshake.c
   hkdf_sha256.c
   lex.c
@@ -34,6 +34,7 @@ add_executable(fastd
   ${BISON_fastd_config_parse_OUTPUTS}
   ${PROTOCOL_SOURCES}
   ${METHOD_SOURCES}
+  ${CRYPTO_SOURCES}
 )
 set_property(TARGET fastd PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
 set_property(TARGET fastd PROPERTY LINK_FLAGS "-pthread ${UECC_LDFLAGS_OTHER} ${NACL_LDFLAGS_OTHER}")

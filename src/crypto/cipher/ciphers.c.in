@@ -1,0 +1,103 @@
+/*
+  Copyright (c) 2012-2013, Matthias Schiffer <mschiffer@universe-factory.net>
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice,
+       this list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+
+#include <fastd.h>
+
+
+@CIPHER_DEFINITIONS@
+
+typedef struct cipher_impl_list {
+	const char *name;
+	const fastd_cipher_t *const *impls;
+} cipher_impl_list_t;
+
+@CIPHER_IMPLS@
+
+static const cipher_impl_list_t ciphers[] = { @CIPHER_LIST@
+};
+
+
+const fastd_cipher_t** fastd_cipher_config_alloc(void) {
+	const fastd_cipher_t **cipher_conf = calloc(array_size(ciphers), sizeof(const fastd_cipher_t*));
+
+	size_t i;
+	for (i = 0; i < array_size(ciphers); i++)
+		cipher_conf[i] = ciphers[i].impls[0];
+
+	return cipher_conf;
+}
+
+void fastd_cipher_config_free(const fastd_cipher_t **cipher_conf) {
+	free(cipher_conf);
+}
+
+bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, const char *impl) {
+	size_t i;
+	for (i = 0; i < array_size(ciphers); i++) {
+		if (!strcmp(ciphers[i].name, name)) {
+			size_t j;
+			for (j = 0; ciphers[i].impls[j]; j++) {
+				if (!strcmp(ciphers[i].impls[j]->name, impl)) {
+					cipher_conf[i] = ciphers[i].impls[j];
+					return true;
+				}
+			}
+
+			return false;
+		}
+	}
+
+	return false;
+}
+
+void fastd_cipher_init(fastd_context_t *ctx) {
+	ctx->cipher_contexts = calloc(array_size(ciphers), sizeof(fastd_cipher_context_t*));
+
+	size_t i;
+	for (i = 0; i < array_size(ciphers); i++)
+		ctx->cipher_contexts[i] = ctx->conf->ciphers[i]->initialize(ctx);
+}
+
+void fastd_cipher_free(fastd_context_t *ctx) {
+	size_t i;
+	for (i = 0; i < array_size(ciphers); i++)
+		ctx->conf->ciphers[i]->free(ctx, ctx->cipher_contexts[i]);
+
+	free(ctx->cipher_contexts);
+}
+
+bool fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, fastd_cipher_context_t **cctx) {
+	size_t i;
+	for (i = 0; i < array_size(ciphers); i++) {
+		if (!strcmp(ciphers[i].name, name)) {
+			*cipher = ctx->conf->ciphers[i];
+			*cctx = ctx->cipher_contexts[i];
+			return true;
+		}
+	}
+
+	return false;
+}

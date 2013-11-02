@@ -43,36 +43,8 @@
 extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
 
-#ifdef USE_CRYPTO_AES128CTR
-#ifdef WITH_CRYPTO_AES128CTR_NACL
-extern const fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_nacl;
-#endif
-#ifdef WITH_CRYPTO_AES128CTR_LINUX
-extern const fastd_crypto_aes128ctr_t fastd_crypto_aes128ctr_linux;
-#endif
-
-#ifdef WITH_CRYPTO_AES128CTR_NACL
-static const fastd_crypto_aes128ctr_t *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_nacl;
-#else
-static const fastd_crypto_aes128ctr_t *fastd_crypto_aes128ctr_default = &fastd_crypto_aes128ctr_linux;
-#endif
-
-#endif
-
 #ifdef USE_CRYPTO_GHASH
-#ifdef WITH_CRYPTO_GHASH_BUILTIN
 extern const fastd_crypto_ghash_t fastd_crypto_ghash_builtin;
-#endif
-#ifdef WITH_CRYPTO_GHASH_LINUX
-extern const fastd_crypto_ghash_t fastd_crypto_ghash_linux;
-#endif
-
-#ifdef WITH_CRYPTO_GHASH_BUILTIN
-static const fastd_crypto_ghash_t *fastd_crypto_ghash_default = &fastd_crypto_ghash_builtin;
-#else
-static const fastd_crypto_ghash_t *fastd_crypto_ghash_default = &fastd_crypto_ghash_linux;
-#endif
-
 #endif
 
 static void default_config(fastd_config_t *conf) {
@@ -102,16 +74,15 @@ static void default_config(fastd_config_t *conf) {
 	conf->key_refresh = 3300;	/* 55 minutes */
 	conf->key_refresh_splay = 300;	/* 5 minutes */
 
-#ifdef USE_CRYPTO_AES128CTR
-	conf->crypto_aes128ctr = fastd_crypto_aes128ctr_default;
-#endif
 #ifdef USE_CRYPTO_GHASH
-	conf->crypto_ghash = fastd_crypto_ghash_default;
+	conf->crypto_ghash = &fastd_crypto_ghash_builtin;
 #endif
 
 	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
 	conf->peer_group->name = strdup("default");
 	conf->peer_group->max_connections = -1;
+
+	conf->ciphers = fastd_cipher_config_alloc();
 }
 
 bool fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
@@ -142,37 +113,12 @@ bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char 
 }
 
 bool fastd_config_crypto(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED, const char *alg UNUSED, const char *impl UNUSED) {
-#ifdef USE_CRYPTO_AES128CTR
-	if (!strcasecmp(alg, "aes128-ctr") || !strcasecmp(alg, "aes128") || !strcasecmp(alg, "aes-ctr") || !strcasecmp(alg, "aes")) {
-		if (!strcasecmp(impl, "default"))
-			conf->crypto_aes128ctr = fastd_crypto_aes128ctr_default;
-#ifdef WITH_CRYPTO_AES128CTR_NACL
-		else if (!strcasecmp(impl, "nacl"))
-			conf->crypto_aes128ctr = &fastd_crypto_aes128ctr_nacl;
-#endif
-#ifdef WITH_CRYPTO_AES128CTR_LINUX
-		else if (!strcasecmp(impl, "linux"))
-			conf->crypto_aes128ctr = &fastd_crypto_aes128ctr_linux;
-#endif
-		else
-			return false;
-
-		return true;
-	}
-	else
-#endif
 #ifdef USE_CRYPTO_GHASH
 	if (!strcasecmp(alg, "ghash")) {
 		if (!strcasecmp(impl, "default"))
-			conf->crypto_ghash = fastd_crypto_ghash_default;
-#ifdef WITH_CRYPTO_GHASH_BUILTIN
+			conf->crypto_ghash = &fastd_crypto_ghash_builtin;
 		else if (!strcasecmp(impl, "builtin"))
 			conf->crypto_ghash = &fastd_crypto_ghash_builtin;
-#endif
-#ifdef WITH_CRYPTO_GHASH_LINUX
-		else if (!strcasecmp(impl, "linux"))
-			conf->crypto_ghash = &fastd_crypto_ghash_linux;
-#endif
 		else
 			return false;
 
@@ -724,6 +670,8 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 	free_peer_group(conf->peer_group);
 
 	fastd_string_stack_free(conf->methods);
+
+	fastd_cipher_config_free(conf->ciphers);
 
 	free(conf->user);
 	free(conf->group);
