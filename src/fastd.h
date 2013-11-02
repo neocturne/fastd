@@ -367,7 +367,7 @@ bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, c
 
 void fastd_cipher_init(fastd_context_t *ctx);
 void fastd_cipher_free(fastd_context_t *ctx);
-bool fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, fastd_cipher_context_t **cctx);
+const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, fastd_cipher_context_t **cctx);
 
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);

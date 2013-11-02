@@ -71,7 +71,8 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 
-	if (!fastd_cipher_get_by_name(ctx, "aes128-ctr", &session->aes128_ctr, &session->aes128_ctr_ctx))
+	session->aes128_ctr = fastd_cipher_get_by_name(ctx, "aes128-ctr", &session->aes128_ctr_ctx);
+	if (!session->aes128_ctr)
 		exit_bug(ctx, "aes128-gcm: can't instanciate aes128-ctr");
 
 	session->aes128_ctr_state = session->aes128_ctr->init_state(ctx, session->aes128_ctr_ctx, secret);

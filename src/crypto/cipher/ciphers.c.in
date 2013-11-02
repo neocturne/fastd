@@ -77,8 +77,10 @@ void fastd_cipher_init(fastd_context_t *ctx) {
 	ctx->cipher_contexts = calloc(array_size(ciphers), sizeof(fastd_cipher_context_t*));
 
 	size_t i;
-	for (i = 0; i < array_size(ciphers); i++)
-		ctx->cipher_contexts[i] = ctx->conf->ciphers[i]->initialize(ctx);
+	for (i = 0; i < array_size(ciphers); i++) {
+		if (ctx->conf->ciphers[i])
+			ctx->cipher_contexts[i] = ctx->conf->ciphers[i]->initialize(ctx);
+	}
 }
 
 void fastd_cipher_free(fastd_context_t *ctx) {
@@ -89,15 +91,16 @@ void fastd_cipher_free(fastd_context_t *ctx) {
 	free(ctx->cipher_contexts);
 }
 
-bool fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, fastd_cipher_context_t **cctx) {
+const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, fastd_cipher_context_t **cctx) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (!strcmp(ciphers[i].name, name)) {
-			*cipher = ctx->conf->ciphers[i];
-			*cctx = ctx->cipher_contexts[i];
-			return true;
+			if (cctx)
+				*cctx = ctx->cipher_contexts[i];
+
+			return ctx->conf->ciphers[i];
 		}
 	}
 
-	return false;
+	return NULL;
 }
