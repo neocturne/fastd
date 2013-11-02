@@ -5,23 +5,14 @@ include_directories(${FASTD_SOURCE_DIR} ${FASTD_BINARY_DIR}/src  ${CAP_INCLUDE_D
 link_directories(${UECC_LIBRARY_DIRS} ${NACL_LIBRARY_DIRS})
 
 
+include(generate_version)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fastd_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fastd_config.h)
+
 
 add_subdirectory(protocols)
 add_subdirectory(methods)
 add_subdirectory(crypto)
 
-
-add_custom_target(
-    version
-    COMMAND echo "#ifndef _FASTD_FASTD_VERSION_H_" > ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
-    COMMAND echo "#define _FASTD_FASTD_VERSION_H_" >> ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
-    COMMAND sh -c "echo \"#define FASTD_VERSION \\\"$(git --git-dir=./.git describe --dirty 2>/dev/null || echo ${FASTD_VERSION})\\\"\"" >> ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
-    COMMAND echo "#endif /* _FASTD_FASTD_VERSION_H_ */" >> ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new
-    COMMAND cmp -s ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h && rm ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new || mv ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h.new ${CMAKE_CURRENT_BINARY_DIR}/fastd_version.h
-    WORKING_DIRECTORY "${FASTD_SOURCE_DIR}"
-    VERBATIM
-)
 
 BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
 
