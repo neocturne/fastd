@@ -25,6 +25,7 @@
 
 
 #include "fastd.h"
+#include "config.h"
 #include "lex.h"
 #include "peer.h"
 #include <config.yy.h>

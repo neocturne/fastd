@@ -34,7 +34,7 @@
 %parse-param {int depth}
 
 %code requires {
-	#include <fastd.h>
+	#include <src/fastd.h>
 	#include <arpa/inet.h>
 }
 
@@ -125,7 +125,8 @@
 
 
 %code {
-	#include <peer.h>
+	#include <src/peer.h>
+	#include <src/config.h>
 
 	#include <limits.h>
 

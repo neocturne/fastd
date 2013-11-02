@@ -361,39 +361,17 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
 void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *format, ...);
 
-void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
-bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
-
 const fastd_method_t* fastd_method_get_by_name(const char *name);
-
-const fastd_cipher_t** fastd_cipher_config_alloc(void);
-void fastd_cipher_config_free(const fastd_cipher_t **cipher_conf);
-bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, const char *impl);
 
 void fastd_cipher_init(fastd_context_t *ctx);
 void fastd_cipher_free(fastd_context_t *ctx);
 bool fastd_cipher_available(const char *name);
 const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, fastd_cipher_context_t **cctx);
 
-const fastd_mac_t** fastd_mac_config_alloc(void);
-void fastd_mac_config_free(const fastd_mac_t **mac_conf);
-bool fastd_mac_config(const fastd_mac_t **mac_conf, const char *name, const char *impl);
-
 void fastd_mac_init(fastd_context_t *ctx);
 void fastd_mac_free(fastd_context_t *ctx);
 bool fastd_mac_available(const char *name);
 const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, fastd_mac_context_t **cctx);
-
-bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
-bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
-bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level);
-bool fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);
-void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
-void fastd_config_peer_group_pop(fastd_context_t *ctx, fastd_config_t *conf);
-void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf);
-void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
-void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf);
-void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
 
 void fastd_tuntap_open(fastd_context_t *ctx);
 fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx);

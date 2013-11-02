@@ -24,7 +24,7 @@
 */
 
 
-#include <fastd.h>
+#include <src/fastd.h>
 
 
 @METHOD_DEFINITIONS@

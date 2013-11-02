@@ -25,6 +25,7 @@
 
 
 #include "fastd.h"
+#include "config.h"
 #include "handshake.h"
 #include "peer.h"
 #include <fastd_version.h>
