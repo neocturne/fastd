@@ -94,9 +94,8 @@ void fastd_mac_free(fastd_context_t *ctx) {
 bool fastd_mac_available(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
-		if (!strcmp(macs[i].name, name)) {
-			return true;
-		}
+		if (!strcmp(macs[i].name, name))
+			return macs[i].impls[0];
 	}
 
 	return false;

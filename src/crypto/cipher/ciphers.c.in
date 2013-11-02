@@ -94,9 +94,8 @@ void fastd_cipher_free(fastd_context_t *ctx) {
 bool fastd_cipher_available(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
-		if (!strcmp(ciphers[i].name, name)) {
-			return true;
-		}
+		if (!strcmp(ciphers[i].name, name))
+			return ciphers[i].impls[0];
 	}
 
 	return false;
