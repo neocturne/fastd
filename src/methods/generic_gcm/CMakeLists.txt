@@ -1,4 +1,3 @@
-add_library(method_generic_gcm OBJECT
+fastd_method(generic-gcm TRUE
   generic_gcm.c
 )
-set_property(TARGET method_generic_gcm PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")

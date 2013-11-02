@@ -32,9 +32,6 @@ set(WITH_CIPHER_AES128_CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implemen
 set(WITH_MAC_GHASH TRUE CACHE BOOL "Include the GHASH MAC algorithm")
 set(WITH_MAC_GHASH_BUILTIN TRUE CACHE BOOL "Include the built-in GHASH implementation")
 
-set(WITH_METHOD_XSALSA20_POLY1305 TRUE CACHE BOOL "Include xsalsa20-poly1305 method")
-set(WITH_METHOD_GENERIC_GCM TRUE CACHE BOOL "Include generic gcm method")
-
 
 # Ensure the value is numeric
 math(EXPR MAX_CONFIG_DEPTH_NUM ${MAX_CONFIG_DEPTH})
