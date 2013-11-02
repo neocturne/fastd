@@ -1,5 +1,3 @@
-include_directories(${FASTD_SOURCE_DIR} ${FASTD_BINARY_DIR}/src ${UECC_INCLUDE_DIRS})
-
 add_library(protocol_ec25519_fhmqvc OBJECT
   ec25519_fhmqvc.c
   handshake.c
@@ -7,3 +5,4 @@ add_library(protocol_ec25519_fhmqvc OBJECT
   util.c
 )
 set_property(TARGET protocol_ec25519_fhmqvc PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
+target_include_directories(protocol_ec25519_fhmqvc PRIVATE ${UECC_INCLUDE_DIRS})
