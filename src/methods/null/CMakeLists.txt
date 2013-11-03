@@ -1,3 +1,3 @@
-fastd_method(null FALSE
+fastd_method(null
   null.c
 )
