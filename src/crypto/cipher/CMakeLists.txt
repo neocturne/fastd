@@ -16,9 +16,11 @@ macro(fastd_cipher_impl cipher name)
   string(REPLACE - _ cipher_ "${cipher}")
   string(TOUPPER "${cipher_}" CIPHER)
 
-  set_property(GLOBAL APPEND PROPERTY FASTD_CIPHER_${CIPHER}_IMPLS ${name})
+  fastd_module(cipher enabled "cipher implementation" "${cipher} ${name}" ${ARGN})
 
-  fastd_module(cipher "cipher implementation" "${cipher} ${name}" ${ARGN})
+  if(${enabled})
+    set_property(GLOBAL APPEND PROPERTY FASTD_CIPHER_${CIPHER}_IMPLS ${name})
+  endif(${enabled})
 endmacro(fastd_cipher_impl)
 
 macro(fastd_cipher_impl_include_directories cipher name)

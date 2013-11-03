@@ -16,9 +16,11 @@ macro(fastd_mac_impl mac name)
   string(REPLACE - _ mac_ "${mac}")
   string(TOUPPER "${mac_}" MAC)
 
-  set_property(GLOBAL APPEND PROPERTY FASTD_MAC_${MAC}_IMPLS ${name})
+  fastd_module(mac enabled "MAC implementation" "${mac} ${name}" ${ARGN})
 
-  fastd_module(mac "MAC implementation" "${mac} ${name}" ${ARGN})
+  if(${enabled})
+    set_property(GLOBAL APPEND PROPERTY FASTD_MAC_${MAC}_IMPLS ${name})
+  endif(${enabled})
 endmacro(fastd_mac_impl)
 
 macro(fastd_mac_impl_include_directories mac name)

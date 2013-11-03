@@ -1,4 +1,4 @@
-function(fastd_module type info name)
+function(fastd_module type enabled_var info name)
   string(TOUPPER "${type}" TYPE)
 
   string(REPLACE - _ name_ "${name}")
@@ -14,7 +14,10 @@ function(fastd_module type info name)
     set_property(TARGET ${type}s APPEND PROPERTY LINK_LIBRARIES ${type}_${name_})
 
     list(APPEND ${TYPE}S ${name_})
+
   endif(WITH_${TYPE}_${NAME})
+
+  set(${enabled_var} ${WITH_${TYPE}_${NAME}} PARENT_SCOPE)
 endfunction(fastd_module)
 
 function(fastd_module_include_directories type name)

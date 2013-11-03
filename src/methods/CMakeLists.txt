@@ -1,9 +1,12 @@
 add_library(methods STATIC "${CMAKE_CURRENT_BINARY_DIR}/methods.c")
-add_library(method_common STATIC "common.c")
+add_library(method_common STATIC EXCLUDE_FROM_ALL "common.c")
 
 macro(fastd_method name)
-  fastd_module(method "method" ${name} ${ARGN})
-  set_property(GLOBAL APPEND PROPERTY FASTD_METHODS ${name})
+  fastd_module(method enabled "method" ${name} ${ARGN})
+
+  if(${enabled})
+    set_property(GLOBAL APPEND PROPERTY FASTD_METHODS ${name})
+  endif(${enabled})
 endmacro(fastd_method)
 
 macro(fastd_method_include_directories)
