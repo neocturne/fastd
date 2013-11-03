@@ -7,4 +7,4 @@ foreach(protocol ${PROTOCOLS})
   list(APPEND PROTOCOL_SOURCES $<TARGET_OBJECTS:protocol_${protocol}>)
 endforeach(protocol)
 
-set(PROTOCOL_SOURCES "${PROTOCOL_SOURCES}" PARENT_SCOPE)
+add_library(protocols STATIC ${PROTOCOL_SOURCES})
