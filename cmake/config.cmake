@@ -26,12 +26,6 @@ set(WITH_CMDLINE_COMMANDS TRUE CACHE BOOL "Include support for setting handler s
 
 set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
 
-set(WITH_CIPHER_AES128_CTR TRUE CACHE BOOL "Include the AES128-CTR cipher algorithm")
-set(WITH_CIPHER_AES128_CTR_NACL TRUE CACHE BOOL "Include the AES128-CTR implementation from the NaCl library")
-
-set(WITH_MAC_GHASH TRUE CACHE BOOL "Include the GHASH MAC algorithm")
-set(WITH_MAC_GHASH_BUILTIN TRUE CACHE BOOL "Include the built-in GHASH implementation")
-
 
 # Ensure the value is numeric
 math(EXPR MAX_CONFIG_DEPTH_NUM ${MAX_CONFIG_DEPTH})

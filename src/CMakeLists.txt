@@ -37,12 +37,11 @@ add_executable(fastd
   tuntap.c
   ${BISON_fastd_config_parse_OUTPUTS}
   ${PROTOCOL_SOURCES}
-  ${CRYPTO_SOURCES}
 )
 set_property(TARGET fastd PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
 set_property(TARGET fastd PROPERTY LINK_FLAGS "-pthread ${UECC_LDFLAGS_OTHER} ${NACL_LDFLAGS_OTHER}")
 target_include_directories(fastd PRIVATE ${CAP_INCLUDE_DIR} ${NACL_INCLUDE_DIRS})
-target_link_libraries(fastd methods ${RT_LIBRARY} ${CAP_LIBRARY} ${UECC_LIBRARIES} ${NACL_LIBRARIES})
+target_link_libraries(fastd methods ciphers macs ${RT_LIBRARY} ${CAP_LIBRARY} ${UECC_LIBRARIES} ${NACL_LIBRARIES})
 
 add_dependencies(fastd version)
 

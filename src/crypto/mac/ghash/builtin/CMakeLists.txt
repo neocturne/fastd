@@ -1,4 +1,3 @@
-add_library(mac_ghash_builtin OBJECT
+fastd_mac_impl(ghash builtin
   ghash_builtin.c
 )
-set_property(TARGET mac_ghash_builtin PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")

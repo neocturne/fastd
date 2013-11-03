@@ -1,10 +1,11 @@
-function(fastd_module type name)
+function(fastd_module type info name)
   string(TOUPPER "${type}" TYPE)
 
   string(REPLACE - _ name_ "${name}")
+  string(REPLACE " " _ name_ "${name_}")
   string(TOUPPER "${name_}" NAME)
 
-  set(WITH_${TYPE}_${NAME} TRUE CACHE BOOL "Include the ${name} ${type}")
+  set(WITH_${TYPE}_${NAME} TRUE CACHE BOOL "Include the ${name} ${info}")
 
   if(WITH_${TYPE}_${NAME})
     add_library(${type}_${name_} STATIC ${ARGN})
@@ -13,8 +14,6 @@ function(fastd_module type name)
     set_property(TARGET ${type}s APPEND PROPERTY LINK_LIBRARIES ${type}_${name_})
 
     list(APPEND ${TYPE}S ${name_})
-
-    set_property(GLOBAL APPEND PROPERTY FASTD_${TYPE}S ${name_})
   endif(WITH_${TYPE}_${NAME})
 endfunction(fastd_module)
 
@@ -22,6 +21,7 @@ function(fastd_module_include_directories type name)
   string(TOUPPER "${type}" TYPE)
 
   string(REPLACE - _ name_ "${name}")
+  string(REPLACE " " _ name_ "${name_}")
   string(TOUPPER "${name_}" NAME)
 
   if(WITH_${TYPE}_${NAME})
@@ -33,6 +33,7 @@ function(fastd_module_link_libraries type name)
   string(TOUPPER "${type}" TYPE)
 
   string(REPLACE - _ name_ "${name}")
+  string(REPLACE " " _ name_ "${name_}")
   string(TOUPPER "${name_}" NAME)
 
   if(WITH_${TYPE}_${NAME})

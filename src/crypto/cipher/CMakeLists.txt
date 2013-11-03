@@ -1,34 +1,58 @@
-set(CIPHERS "")
+add_library(ciphers STATIC "${CMAKE_CURRENT_BINARY_DIR}/ciphers.c")
 
-if(WITH_CIPHER_AES128_CTR)
-  list(APPEND CIPHERS aes128_ctr)
-endif(WITH_CIPHER_AES128_CTR)
+function(fastd_cipher name)
+  string(REPLACE - _ name_ "${name}")
+  string(TOUPPER "${name_}" NAME)
 
-set(CIPHER_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/ciphers.c")
+  set(WITH_CIPHER_${NAME} TRUE CACHE BOOL "Include the ${name} cipher")
+
+  if(WITH_CIPHER_${NAME})
+    set_property(GLOBAL APPEND PROPERTY FASTD_CIPHERS ${name})
+  endif(WITH_CIPHER_${NAME})
+endfunction(fastd_cipher)
+
+
+macro(fastd_cipher_impl cipher name)
+  string(REPLACE - _ cipher_ "${cipher}")
+  string(TOUPPER "${cipher_}" CIPHER)
+
+  set_property(GLOBAL APPEND PROPERTY FASTD_CIPHER_${CIPHER}_IMPLS ${name})
+
+  fastd_module(cipher "cipher implementation" "${cipher} ${name}" ${ARGN})
+endmacro(fastd_cipher_impl)
+
+macro(fastd_cipher_impl_include_directories cipher name)
+  fastd_module_include_directories(cipher "${cipher} ${name}" ${ARGN})
+endmacro(fastd_cipher_impl_include_directories)
+
+macro(fastd_cipher_impl_link_libraries cipher name)
+  fastd_module_link_libraries(cipher "${cipher} ${name}" ${ARGN})
+endmacro(fastd_cipher_impl_link_libraries)
+
+
+add_subdirectory(aes128_ctr)
+
 
 set(CIPHER_DEFINITIONS "")
 set(CIPHER_IMPLS "")
 set(CIPHER_LIST "")
 
+get_property(CIPHERS GLOBAL PROPERTY FASTD_CIPHERS)
 foreach(cipher ${CIPHERS})
-  add_subdirectory(${cipher})
+  string(REPLACE - _ cipher_ "${cipher}")
+  string(TOUPPER "${cipher_}" CIPHER)
 
-  list(APPEND CIPHER_SOURCES ${IMPL_SOURCES})
+  set(CIPHER_LIST "${CIPHER_LIST}\n{\"${cipher}\", cipher_${cipher_}_impls},")
+  set(CIPHER_IMPLS "${CIPHER_IMPLS}\nstatic const fastd_cipher_t *const cipher_${cipher_}_impls[] = {")
 
-  set(CIPHER_LIST "${CIPHER_LIST}\n{\"${CIPHER_NAME}\", cipher_${cipher}_impls},")
-  set(CIPHER_IMPLS "${CIPHER_IMPLS}\nstatic const fastd_cipher_t *const cipher_${cipher}_impls[] = {")
-
+  get_property(IMPLS GLOBAL PROPERTY FASTD_CIPHER_${CIPHER}_IMPLS)
   foreach(impl ${IMPLS})
-    set(CIPHER_DEFINITIONS "${CIPHER_DEFINITIONS}\nextern const fastd_cipher_t fastd_cipher_${cipher}_${impl};")
-    set(CIPHER_IMPLS "${CIPHER_IMPLS}&fastd_cipher_${cipher}_${impl}, ")
+    set(CIPHER_DEFINITIONS "${CIPHER_DEFINITIONS}\nextern const fastd_cipher_t fastd_cipher_${cipher_}_${impl};")
+    set(CIPHER_IMPLS "${CIPHER_IMPLS}&fastd_cipher_${cipher_}_${impl}, ")
   endforeach(impl)
 
   set(CIPHER_IMPLS "${CIPHER_IMPLS}NULL};")
 
 endforeach(cipher)
 
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ciphers.c.in ${CMAKE_CURRENT_BINARY_DIR}/ciphers.c)
-
-
-set(CIPHER_SOURCES "${CIPHER_SOURCES}" PARENT_SCOPE)

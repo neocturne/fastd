@@ -1,5 +1,5 @@
-add_library(cipher_aes128_ctr_nacl OBJECT
+fastd_cipher_impl(aes128-ctr nacl
   cipher_aes128_ctr_nacl.c
 )
-set_property(TARGET cipher_aes128_ctr_nacl PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
-target_include_directories(cipher_aes128_ctr_nacl PRIVATE ${NACL_INCLUDE_DIRS})
+fastd_cipher_impl_include_directories(aes128-ctr nacl ${NACL_INCLUDE_DIRS})
+fastd_cipher_impl_link_libraries(aes128-ctr nacl ${NACL_LIBRARIES})
