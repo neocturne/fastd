@@ -31,6 +31,10 @@ macro(fastd_mac_impl_link_libraries mac name)
   fastd_module_link_libraries(mac "${mac} ${name}" ${ARGN})
 endmacro(fastd_mac_impl_link_libraries)
 
+macro(fastd_mac_impl_require mac name)
+  fastd_module_require(mac "${mac} ${name}" ${ARGN})
+endmacro(fastd_mac_impl_require)
+
 
 add_subdirectory(ghash)
 

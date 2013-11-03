@@ -6,14 +6,14 @@ link_directories(${UECC_LIBRARY_DIRS} ${NACL_LIBRARY_DIRS})
 
 
 include(generate_version)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fastd_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fastd_config.h)
-
 
 include(fastd_module)
 add_subdirectory(protocols)
 add_subdirectory(methods)
 add_subdirectory(crypto)
 
+include(check_reqs)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fastd_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fastd_config.h)
 
 BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
 

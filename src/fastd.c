@@ -39,7 +39,7 @@
 #include <syslog.h>
 #include <sys/resource.h>
 
-#ifdef USE_LIBSODIUM
+#ifdef HAVE_LIBSODIUM
 #include <sodium/core.h>
 #endif
 
@@ -739,7 +739,7 @@ static void drop_caps(fastd_context_t *ctx) {
 }
 
 int main(int argc, char *argv[]) {
-#ifdef USE_LIBSODIUM
+#ifdef HAVE_LIBSODIUM
 	sodium_init();
 #endif
 

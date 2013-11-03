@@ -45,7 +45,7 @@
 #cmakedefine WITH_CMDLINE_COMMANDS
 
 
-#cmakedefine USE_LIBSODIUM
+#cmakedefine HAVE_LIBSODIUM
 
 #define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
 

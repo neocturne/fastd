@@ -17,6 +17,10 @@ macro(fastd_method_link_libraries)
   fastd_module_link_libraries(method ${ARGN})
 endmacro(fastd_method_link_libraries)
 
+macro(fastd_method_require)
+  fastd_module_require(method ${ARGN})
+endmacro(fastd_method_require)
+
 
 add_subdirectory(null)
 add_subdirectory(generic_gcm)

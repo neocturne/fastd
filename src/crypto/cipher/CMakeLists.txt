@@ -31,6 +31,10 @@ macro(fastd_cipher_impl_link_libraries cipher name)
   fastd_module_link_libraries(cipher "${cipher} ${name}" ${ARGN})
 endmacro(fastd_cipher_impl_link_libraries)
 
+macro(fastd_cipher_impl_require cipher name)
+  fastd_module_require(cipher "${cipher} ${name}" ${ARGN})
+endmacro(fastd_cipher_impl_require)
+
 
 add_subdirectory(aes128_ctr)
 
