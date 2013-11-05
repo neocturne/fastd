@@ -45,7 +45,7 @@ static size_t method_min_head_tail_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED) {
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const char *name UNUSED) {
 	return 0;
 }
 

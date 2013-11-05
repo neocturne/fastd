@@ -37,6 +37,10 @@ static fastd_cipher_context_t* aes128_ctr_initialize(fastd_context_t *ctx UNUSED
 	return NULL;
 }
 
+static size_t aes128_ctr_key_length(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED) {
+	return 16;
+}
+
 static fastd_cipher_state_t* aes128_ctr_init_state(fastd_context_t *ctx, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key) {
 	fastd_block128_t k;
 	memcpy(k.b, key, sizeof(fastd_block128_t));
@@ -49,8 +53,12 @@ static fastd_cipher_state_t* aes128_ctr_init_state(fastd_context_t *ctx, const f
 	return state;
 }
 
-static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv) {
-	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv->b, state->d.data);
+static size_t aes128_ctr_iv_length(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state UNUSED) {
+	return 16;
+}
+
+static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv, state->d.data);
 	return true;
 }
 
@@ -68,7 +76,11 @@ const fastd_cipher_t fastd_cipher_aes128_ctr_nacl = {
 	.name = "nacl",
 
 	.initialize = aes128_ctr_initialize,
+
+	.key_length = aes128_ctr_key_length,
 	.init_state = aes128_ctr_init_state,
+
+	.iv_length = aes128_ctr_iv_length,
 	.crypt = aes128_ctr_crypt,
 
 	.free_state = aes128_ctr_free_state,

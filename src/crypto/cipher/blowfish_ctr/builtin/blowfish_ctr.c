@@ -223,6 +223,10 @@ static fastd_cipher_context_t* blowfish_ctr_initialize(fastd_context_t *ctx UNUS
 	return NULL;
 }
 
+static size_t blowfish_ctr_key_length(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED) {
+	return 56;
+}
+
 static inline void bf_swap(uint32_t *L, uint32_t *R) {
 	uint32_t tmp = *L;
 	*L = *R;
@@ -292,7 +296,11 @@ static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED
 	return state;
 }
 
-static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv) {
+static size_t blowfish_ctr_iv_length(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state UNUSED) {
+	return 8;
+}
+
+static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	uint32_t ctr[2];
 
 	fastd_block128_t block;
@@ -329,7 +337,11 @@ const fastd_cipher_t fastd_cipher_blowfish_ctr_builtin = {
 	.name = "builtin",
 
 	.initialize = blowfish_ctr_initialize,
+
+	.key_length = blowfish_ctr_key_length,
 	.init_state = blowfish_ctr_init_state,
+
+	.iv_length = blowfish_ctr_iv_length,
 	.crypt = blowfish_ctr_crypt,
 
 	.free_state = blowfish_ctr_free_state,

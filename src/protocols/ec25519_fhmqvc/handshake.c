@@ -98,7 +98,7 @@ static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const c
 	supersede_session(ctx, peer, method);
 
 	if (salt) {
-		size_t blocks = block_count(method->key_length(ctx), sizeof(fastd_sha256_t));
+		size_t blocks = block_count(method->key_length(ctx, method_name), sizeof(fastd_sha256_t));
 		fastd_sha256_t secret[blocks];
 		derive_key(secret, blocks, salt, method_name, A, B, X, Y, sigma);
 

@@ -32,16 +32,17 @@ struct fastd_method_session_state {
 	fastd_method_common_t common;
 
 	const fastd_cipher_t *cipher;
-	fastd_cipher_context_t *cipher_ctx;
+	const fastd_cipher_context_t *cipher_ctx;
 	fastd_cipher_state_t *cipher_state;
+	size_t ivlen;
 
 	const fastd_mac_t *ghash;
-	fastd_mac_context_t *ghash_ctx;
+	const fastd_mac_context_t *ghash_ctx;
 	fastd_mac_state_t *ghash_state;
 };
 
 
-static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, fastd_cipher_context_t **cctx) {
+static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx) {
 	if (!fastd_mac_available("ghash"))
 		return false;
 
@@ -93,8 +94,13 @@ static size_t method_min_decrypt_tail_space(fastd_context_t *ctx UNUSED) {
 }
 
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED) {
-	return sizeof(fastd_block128_t);
+static size_t method_key_length(fastd_context_t *ctx, const char *name) {
+	const fastd_cipher_t *cipher;
+	const fastd_cipher_context_t *cctx;
+	if (!cipher_get(ctx, name, &cipher, &cctx))
+		exit_bug(ctx, "generic-gcm: can't get cipher key length");
+
+	return cipher->key_length(ctx, cctx);
 }
 
 static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator) {
@@ -110,7 +116,14 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	static const fastd_block128_t zeroblock = {};
 	fastd_block128_t H;
 
-	session->cipher->crypt(ctx, session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), &zeroblock);
+	session->ivlen = session->cipher->iv_length(ctx, session->cipher_state);
+	if (session->ivlen <= COMMON_NONCEBYTES)
+		exit_bug(ctx, "generic-gcm: iv_length to small");
+
+	uint8_t zeroiv[session->ivlen];
+	memset(zeroiv, 0, session->ivlen);
+
+	session->cipher->crypt(ctx, session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), zeroiv);
 
 	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_ctx);
 	if (!session->ghash)
@@ -173,18 +186,18 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	fastd_block128_t nonce;
-	memcpy(nonce.b, session->common.send_nonce, COMMON_NONCEBYTES);
-	memset(nonce.b+COMMON_NONCEBYTES, 0, sizeof(fastd_block128_t)-COMMON_NONCEBYTES-1);
-	nonce.b[sizeof(fastd_block128_t)-1] = 1;
+	uint8_t nonce[session->ivlen];
+	memset(nonce, 0, session->ivlen);
+	memcpy(nonce, session->common.send_nonce, COMMON_NONCEBYTES);
+	nonce[session->ivlen-1] = 1;
 
-	int n_blocks = (in.len+sizeof(fastd_block128_t)-1)/sizeof(fastd_block128_t);
+	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
+	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
 	if (ok) {
 		if (tail_len)
@@ -220,13 +233,13 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (!method_session_is_valid(ctx, session))
 		return false;
 
-	fastd_block128_t nonce;
-	memcpy(nonce.b, in.data, COMMON_NONCEBYTES);
-	memset(nonce.b+COMMON_NONCEBYTES, 0, sizeof(fastd_block128_t)-COMMON_NONCEBYTES-1);
-	nonce.b[sizeof(fastd_block128_t)-1] = 1;
+	uint8_t nonce[session->ivlen];
+	memset(nonce, 0, session->ivlen);
+	memcpy(nonce, in.data, COMMON_NONCEBYTES);
+	nonce[session->ivlen-1] = 1;
 
 	int64_t age;
-	if (!fastd_method_is_nonce_valid(ctx, &session->common, nonce.b, &age))
+	if (!fastd_method_is_nonce_valid(ctx, &session->common, nonce, &age))
 		return false;
 
 	fastd_buffer_push_head(ctx, &in, COMMON_NONCEBYTES);
@@ -234,13 +247,13 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
 
-	int n_blocks = (in.len+sizeof(fastd_block128_t)-1)/sizeof(fastd_block128_t);
+	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), &nonce);
+	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
 	if (ok) {
 		if (tail_len)
@@ -260,7 +273,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_buffer_push_head(ctx, out, sizeof(fastd_block128_t));
 
-	if (!fastd_method_reorder_check(ctx, peer, &session->common, nonce.b, age)) {
+	if (!fastd_method_reorder_check(ctx, peer, &session->common, nonce, age)) {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(ctx, 0, 0, 0);
 	}

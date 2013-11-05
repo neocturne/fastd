@@ -58,7 +58,7 @@ static size_t method_min_tail_space(fastd_context_t *ctx UNUSED) {
 }
 
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED) {
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const char *name UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
 }
 

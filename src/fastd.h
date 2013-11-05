@@ -87,7 +87,7 @@ struct fastd_method {
 	size_t (*min_encrypt_tail_space)(fastd_context_t *ctx);
 	size_t (*min_decrypt_tail_space)(fastd_context_t *ctx);
 
-	size_t (*key_length)(fastd_context_t *ctx);
+	size_t (*key_length)(fastd_context_t *ctx, const char *name);
 	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator);
 	fastd_method_session_state_t* (*session_init_compat)(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length, bool initiator);
 	bool (*session_is_valid)(fastd_context_t *ctx, fastd_method_session_state_t *session);
@@ -104,8 +104,12 @@ struct fastd_cipher {
 	const char *name;
 
 	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
+
+	size_t (*key_length)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx);
 	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
-	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const fastd_block128_t *iv);
+
+	size_t (*iv_length)(fastd_context_t *ctx, const fastd_cipher_state_t *state);
+	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv);
 
 	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *state);
 	void (*free)(fastd_context_t *ctx, fastd_cipher_context_t *cctx);
@@ -115,7 +119,10 @@ struct fastd_mac {
 	const char *name;
 
 	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
+
+	size_t (*key_length)(fastd_context_t *ctx, const fastd_mac_context_t *mctx);
 	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
+
 	bool (*hash)(fastd_context_t *ctx, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
 
 	void (*free_state)(fastd_context_t *ctx, fastd_mac_state_t *state);
@@ -366,12 +373,12 @@ const fastd_method_t* fastd_method_get_by_name(const char *name);
 void fastd_cipher_init(fastd_context_t *ctx);
 void fastd_cipher_free(fastd_context_t *ctx);
 bool fastd_cipher_available(const char *name);
-const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, fastd_cipher_context_t **cctx);
+const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_context_t **cctx);
 
 void fastd_mac_init(fastd_context_t *ctx);
 void fastd_mac_free(fastd_context_t *ctx);
 bool fastd_mac_available(const char *name);
-const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, fastd_mac_context_t **cctx);
+const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_context_t **cctx);
 
 void fastd_tuntap_open(fastd_context_t *ctx);
 fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx);

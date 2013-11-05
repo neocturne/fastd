@@ -65,6 +65,10 @@ static fastd_mac_context_t* ghash_initialize(fastd_context_t *ctx UNUSED) {
 	return NULL;
 }
 
+static size_t ghash_key_length(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *cctx UNUSED) {
+	return sizeof(fastd_block128_t);
+}
+
 static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *mctx UNUSED, const uint8_t *key) {
 	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
 
@@ -132,7 +136,10 @@ const fastd_mac_t fastd_mac_ghash_builtin = {
 	.name = "builtin",
 
 	.initialize = ghash_initialize,
+
+	.key_length = ghash_key_length,
 	.init_state = ghash_init_state,
+
 	.hash = ghash_hash,
 
 	.free_state = ghash_free_state,

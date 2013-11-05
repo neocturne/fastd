@@ -102,7 +102,7 @@ bool fastd_mac_available(const char *name) {
 	return false;
 }
 
-const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, fastd_mac_context_t **cctx) {
+const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_context_t **cctx) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
 		if (!strcmp(macs[i].name, name)) {
