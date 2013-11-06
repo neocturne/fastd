@@ -265,9 +265,9 @@ static inline void bf_encrypt(const fastd_cipher_state_t *state, uint32_t *L, ui
 }
 
 static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key) {
-	uint32_t key32[4];
-	memcpy(key32, key, 16);
-	bf_ntohl(key32, 4);
+	uint32_t key32[14];
+	memcpy(key32, key, 56);
+	bf_ntohl(key32, 14);
 
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 
@@ -276,7 +276,7 @@ static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED
 
 	size_t i, j;
 	for (i = 0; i < 18; i++)
-		state->P[i] ^= key32[i % 4];
+		state->P[i] ^= key32[i % 14];
 
 	uint32_t L = 0, R = 0;
 	for (i = 0; i < 18; i += 2) {
