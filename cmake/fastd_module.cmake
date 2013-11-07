@@ -28,7 +28,7 @@ function(fastd_module_include_directories type name)
   _fastd_module_handle_name()
 
   if(WITH_${TYPE}_${NAME})
-    target_include_directories(${type}_${name_} PRIVATE ${ARGN})
+    set_property(TARGET ${type}_${name_} APPEND PROPERTY INCLUDE_DIRECTORIES ${ARGN})
   endif(WITH_${TYPE}_${NAME})
 endfunction(fastd_module_include_directories)
 
