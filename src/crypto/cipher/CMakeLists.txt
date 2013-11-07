@@ -59,7 +59,9 @@ foreach(cipher ${CIPHERS})
   endforeach(impl)
 
   set(CIPHER_IMPLS "${CIPHER_IMPLS}NULL};")
-
 endforeach(cipher)
+
+get_property(LIBS TARGET ciphers PROPERTY FASTD_LINK_LIBRARIES)
+target_link_libraries(ciphers ${LIBS})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ciphers.c.in ${CMAKE_CURRENT_BINARY_DIR}/ciphers.c)

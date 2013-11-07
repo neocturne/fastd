@@ -15,7 +15,7 @@ function(fastd_module type enabled_var info name)
     add_library(${type}_${name_} STATIC ${ARGN})
     set_property(TARGET ${type}_${name_} PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
 
-    set_property(TARGET ${type}s APPEND PROPERTY LINK_LIBRARIES ${type}_${name_})
+    set_property(TARGET ${type}s APPEND PROPERTY FASTD_LINK_LIBRARIES ${type}_${name_})
 
     list(APPEND ${TYPE}S ${name_})
 

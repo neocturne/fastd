@@ -38,4 +38,7 @@ foreach(method ${METHODS})
   set(METHOD_LIST "${METHOD_LIST}\n&fastd_method_${method_},")
 endforeach(method)
 
+get_property(LIBS TARGET methods PROPERTY FASTD_LINK_LIBRARIES)
+target_link_libraries(methods ${LIBS})
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/methods.c.in ${CMAKE_CURRENT_BINARY_DIR}/methods.c)

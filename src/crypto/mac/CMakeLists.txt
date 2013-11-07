@@ -58,7 +58,9 @@ foreach(mac ${MACS})
   endforeach(impl)
 
   set(MAC_IMPLS "${MAC_IMPLS}NULL};")
-
 endforeach(mac)
+
+get_property(LIBS TARGET macs PROPERTY FASTD_LINK_LIBRARIES)
+target_link_libraries(macs ${LIBS})
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/macs.c.in ${CMAKE_CURRENT_BINARY_DIR}/macs.c)
