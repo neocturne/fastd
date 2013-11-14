@@ -59,7 +59,7 @@ static inline bool fastd_method_session_common_is_initiator(const fastd_method_c
 }
 
 static inline bool fastd_method_session_common_want_refresh(fastd_context_t *ctx, const fastd_method_common_t *session) {
-	return timespec_after(&ctx->now, &session->refresh_after);
+	return fastd_method_session_common_is_initiator(session) && timespec_after(&ctx->now, &session->refresh_after);
 }
 
 static inline void fastd_method_session_common_superseded(fastd_context_t *ctx, fastd_method_common_t *session) {

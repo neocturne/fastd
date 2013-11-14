@@ -41,7 +41,7 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 static inline void check_session_refresh(fastd_context_t *ctx, fastd_peer_t *peer) {
 	protocol_session_t *session = &peer->protocol_state->session;
 
-	if (!session->refreshing && session->method->session_is_initiator(ctx, session->method_state) && session->method->session_want_refresh(ctx, session->method_state)) {
+	if (!session->refreshing && session->method->session_want_refresh(ctx, session->method_state)) {
 		pr_verbose(ctx, "refreshing session with %P", peer);
 		session->handshakes_cleaned = true;
 		session->refreshing = true;
