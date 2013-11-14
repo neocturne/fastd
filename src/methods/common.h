@@ -51,6 +51,9 @@ bool fastd_method_reorder_check(fastd_context_t *ctx, fastd_peer_t *peer, fastd_
 
 
 static inline bool fastd_method_session_common_is_valid(fastd_context_t *ctx, const fastd_method_common_t *session) {
+	if (session->send_nonce[COMMON_NONCEBYTES-1] == 0xff && session->send_nonce[COMMON_NONCEBYTES-2] == 0xff)
+		return false;
+
 	return (timespec_after(&session->valid_till, &ctx->now));
 }
 
@@ -59,7 +62,13 @@ static inline bool fastd_method_session_common_is_initiator(const fastd_method_c
 }
 
 static inline bool fastd_method_session_common_want_refresh(fastd_context_t *ctx, const fastd_method_common_t *session) {
-	return fastd_method_session_common_is_initiator(session) && timespec_after(&ctx->now, &session->refresh_after);
+	if (session->send_nonce[COMMON_NONCEBYTES-1] == 0xff)
+		return true;
+
+	if (fastd_method_session_common_is_initiator(session) && timespec_after(&ctx->now, &session->refresh_after))
+		return true;
+
+	return false;
 }
 
 static inline void fastd_method_session_common_superseded(fastd_context_t *ctx, fastd_method_common_t *session) {
