@@ -508,12 +508,6 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 	if (!conf->log_stderr_level && !conf->log_syslog_level && !conf->log_files)
 		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
 
-	if (!conf->methods) {
-		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
-		if (!fastd_config_method(ctx, conf, "null"))
-			exit_bug(ctx, "method `null' not supported");
-	}
-
 	ctx->conf = conf;
 
 	if (conf->generate_key || conf->show_key)
@@ -540,6 +534,12 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 	if (conf->pmtu.set)
 		exit_error(ctx, "config error: setting pmtu is not supported on this system");
 #endif
+
+	if (!conf->methods) {
+		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
+		if (!fastd_config_method(ctx, conf, "null"))
+			exit_error(ctx, "method `null' not supported");
+	}
 
 	if (!conf->secure_handshakes_set)
 		pr_warn(ctx, "`secure handshakes' not set, please read the documentation about this option; defaulting to no");
