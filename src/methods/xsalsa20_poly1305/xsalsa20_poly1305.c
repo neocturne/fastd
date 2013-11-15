@@ -42,7 +42,7 @@ static bool method_provides(const char *name) {
 }
 
 static size_t method_max_packet_size(fastd_context_t *ctx) {
-	return (fastd_max_packet_size(ctx) + COMMON_NONCEBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+	return (fastd_max_packet_size(ctx) + COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 }
 
 static size_t method_min_encrypt_head_space(fastd_context_t *ctx UNUSED) {
@@ -50,7 +50,7 @@ static size_t method_min_encrypt_head_space(fastd_context_t *ctx UNUSED) {
 }
 
 static size_t method_min_decrypt_head_space(fastd_context_t *ctx UNUSED) {
-	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - COMMON_NONCEBYTES);
+	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - COMMON_HEADBYTES);
 }
 
 static size_t method_min_tail_space(fastd_context_t *ctx UNUSED) {
@@ -116,8 +116,9 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(ctx, out, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-COMMON_NONCEBYTES);
+	fastd_buffer_push_head(ctx, out, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-COMMON_HEADBYTES);
 	memcpy(out->data, session->common.send_nonce, COMMON_NONCEBYTES);
+	/* flags are 0, no need to set */
 
 	fastd_method_increment_nonce(&session->common);
 
@@ -125,10 +126,13 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 }
 
 static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	if (in.len < COMMON_NONCEBYTES)
+	if (in.len < COMMON_HEADBYTES)
 		return false;
 
 	if (!method_session_is_valid(ctx, session))
+		return false;
+
+	if (((const uint8_t*)in.data)[COMMON_NONCEBYTES]) /* flags */
 		return false;
 
 	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES];
@@ -139,7 +143,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (!fastd_method_is_nonce_valid(ctx, &session->common, nonce, &age))
 		return false;
 
-	fastd_buffer_pull_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-COMMON_NONCEBYTES);
+	fastd_buffer_pull_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-COMMON_HEADBYTES);
 	memset(in.data, 0, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 
 	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
@@ -148,7 +152,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_push_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-COMMON_NONCEBYTES);
+		fastd_buffer_push_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES-COMMON_HEADBYTES);
 		memcpy(in.data, nonce, COMMON_NONCEBYTES);
 		return false;
 	}

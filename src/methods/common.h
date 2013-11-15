@@ -30,8 +30,10 @@
 #include "../fastd.h"
 
 
-#define COMMON_NONCEBYTES 7
+#define COMMON_NONCEBYTES 6
+#define COMMON_FLAGBYTES 1
 
+#define COMMON_HEADBYTES (COMMON_NONCEBYTES+COMMON_FLAGBYTES)
 
 typedef struct fastd_method_common {
 	struct timespec valid_till;

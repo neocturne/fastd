@@ -73,7 +73,7 @@ static bool method_provides(const char *name) {
 }
 
 static size_t method_max_packet_size(fastd_context_t *ctx) {
-	return (fastd_max_packet_size(ctx) + COMMON_NONCEBYTES + sizeof(fastd_block128_t));
+	return (fastd_max_packet_size(ctx) + COMMON_HEADBYTES + sizeof(fastd_block128_t));
 }
 
 
@@ -181,7 +181,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	memset(in.data, 0, sizeof(fastd_block128_t));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
-	*out = fastd_buffer_alloc(ctx, in.len, alignto(COMMON_NONCEBYTES, 16), sizeof(fastd_block128_t)+tail_len);
+	*out = fastd_buffer_alloc(ctx, in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
@@ -219,18 +219,24 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_pull_head(ctx, out, COMMON_NONCEBYTES);
+	fastd_buffer_pull_head(ctx, out, COMMON_HEADBYTES);
+
 	memcpy(out->data, session->common.send_nonce, COMMON_NONCEBYTES);
 	fastd_method_increment_nonce(&session->common);
+
+	((uint8_t*)out->data)[COMMON_NONCEBYTES] = 0; /* flags */
 
 	return true;
 }
 
 static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	if (in.len < COMMON_NONCEBYTES+sizeof(fastd_block128_t))
+	if (in.len < COMMON_HEADBYTES+sizeof(fastd_block128_t))
 		return false;
 
 	if (!method_session_is_valid(ctx, session))
+		return false;
+
+	if (((const uint8_t*)in.data)[COMMON_NONCEBYTES]) /* flags */
 		return false;
 
 	uint8_t nonce[session->ivlen];
@@ -242,7 +248,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (!fastd_method_is_nonce_valid(ctx, &session->common, nonce, &age))
 		return false;
 
-	fastd_buffer_push_head(ctx, &in, COMMON_NONCEBYTES);
+	fastd_buffer_push_head(ctx, &in, COMMON_HEADBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
