@@ -95,7 +95,7 @@ static size_t method_min_decrypt_tail_space(fastd_context_t *ctx UNUSED) {
 
 
 static size_t method_key_length(fastd_context_t *ctx, const char *name) {
-	const fastd_cipher_t *cipher;
+	const fastd_cipher_t *cipher = NULL;
 	const fastd_cipher_context_t *cctx;
 	if (!cipher_get(ctx, name, &cipher, &cctx))
 		exit_bug(ctx, "generic-gcm: can't get cipher key length");
