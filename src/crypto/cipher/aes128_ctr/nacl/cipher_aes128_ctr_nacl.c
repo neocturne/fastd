@@ -28,8 +28,8 @@
 #include <crypto_stream_aes128ctr.h>
 
 
-struct fastd_cipher_state {
-	fastd_buffer_t d;
+struct __attribute__((aligned(16))) fastd_cipher_state {
+	uint8_t d[crypto_stream_aes128ctr_BEFORENMBYTES] __attribute__((aligned(16)));
 };
 
 
@@ -45,10 +45,12 @@ static fastd_cipher_state_t* aes128_ctr_init_state(fastd_context_t *ctx, const f
 	fastd_block128_t k;
 	memcpy(k.b, key, sizeof(fastd_block128_t));
 
-	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
+	fastd_cipher_state_t *state;
+	int err = posix_memalign((void**)&state, 16, sizeof(fastd_cipher_state_t));
+	if (err)
+		exit_error(ctx, "posix_memalign: %s", strerror(err));
 
-	state->d = fastd_buffer_alloc(ctx, crypto_stream_aes128ctr_BEFORENMBYTES, 0, 0);
-	crypto_stream_aes128ctr_beforenm(state->d.data, k.b);
+	crypto_stream_aes128ctr_beforenm(state->d, k.b);
 
 	return state;
 }
@@ -58,15 +60,12 @@ static size_t aes128_ctr_iv_length(fastd_context_t *ctx UNUSED, const fastd_ciph
 }
 
 static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
-	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv, state->d.data);
+	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv, state->d);
 	return true;
 }
 
 static void aes128_ctr_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
-	if (state) {
-		fastd_buffer_free(state->d);
-		free(state);
-	}
+	free(state);
 }
 
 static void aes128_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {
