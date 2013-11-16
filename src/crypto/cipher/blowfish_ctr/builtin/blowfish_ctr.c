@@ -227,11 +227,6 @@ static size_t blowfish_ctr_key_length(fastd_context_t *ctx UNUSED, const fastd_c
 	return 56;
 }
 
-static inline void bf_swap(uint32_t *L, uint32_t *R) {
-	uint32_t tmp = *L;
-	*L = *R;
-	*R = tmp;
-}
 
 static inline void bf_ntohl(uint32_t *v, size_t len) {
 	size_t i;
@@ -239,30 +234,26 @@ static inline void bf_ntohl(uint32_t *v, size_t len) {
 		v[i] = ntohl(v[i]);
 }
 
-static inline void bf_htonl(uint32_t *v, size_t len) {
-	size_t i;
-	for (i = 0; i < len; i++)
-		v[i] = htonl(v[i]);
-}
-
 static inline uint32_t bf_f(const fastd_cipher_state_t *state, uint32_t x) {
-	uint32_t h = state->S[0][x >> 24] + state->S[1][(x >> 16) & 0xff];
+	register uint32_t h = state->S[0][x >> 24] + state->S[1][(x >> 16) & 0xff];
 	return (h ^ state->S[2][(x >> 8) & 0xff]) + state->S[3][x & 0xff];
 }
 
-static inline void bf_encrypt(const fastd_cipher_state_t *state, uint32_t *L, uint32_t *R) {
-	size_t i;
-	for (i = 0; i < 16; i += 2) {
-		*L ^= state->P[i];
-		*R ^= bf_f(state, *L);
-		*R ^= state->P[i+1];
-		*L ^= bf_f(state, *R);
-	}
+#define BF_SWAP(L, R) ({register uint32_t _tmp = (L); (L) = (R); (R) = _tmp;})
 
-	*L ^= state->P[16];
-	*R ^= state->P[17];
-	bf_swap(L, R);
-}
+#define BF_ENCRYPT(state, L, R) ({			\
+			size_t _i;			\
+			for (_i = 0; _i < 16; _i += 2) {	\
+				(L) ^= (state)->P[_i];	\
+				(R) ^= bf_f((state), (L));	\
+				(R) ^= (state)->P[_i+1];	\
+				(L) ^= bf_f((state), (R));	\
+			}				\
+							\
+			(L) ^= (state)->P[16];		\
+			(R) ^= (state)->P[17];		\
+			BF_SWAP(L, R);			\
+		})
 
 static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key) {
 	uint32_t key32[14];
@@ -278,16 +269,16 @@ static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED
 	for (i = 0; i < 18; i++)
 		state->P[i] ^= key32[i % 14];
 
-	uint32_t L = 0, R = 0;
+	register uint32_t L = 0, R = 0;
 	for (i = 0; i < 18; i += 2) {
-		bf_encrypt(state, &L, &R);
+		BF_ENCRYPT(state, L, R);
 		state->P[i] = L;
 		state->P[i+1] = R;
 	}
 
 	for (i = 0; i < 4; i++) {
 		for (j = 0; j < 256; j += 2) {
-			bf_encrypt(state, &L, &R);
+			BF_ENCRYPT(state, L, R);
 			state->S[i][j] = L;
 			state->S[i][j+1] = R;
 		}
@@ -301,26 +292,24 @@ static size_t blowfish_ctr_iv_length(fastd_context_t *ctx UNUSED, const fastd_ci
 }
 
 static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
-	uint32_t ctr[2];
+	register uint32_t ctr[2];
+	register uint32_t block[2];
 
-	fastd_block128_t block;
-	uint32_t* block4 = (uint32_t*)&block;
+	uint32_t* out4 = (uint32_t*)out;
+	uint32_t* in4 = (uint32_t*)in;
 
-	memcpy(ctr, iv, sizeof(ctr));
-	bf_ntohl(ctr, 2);
+	ctr[0] = (iv[0] << 24)|(iv[1] << 16)|(iv[2] << 8)|(iv[3]);
+	ctr[1] = (iv[4] << 24)|(iv[5] << 16)|(iv[6] << 8)|(iv[7]);
 
 	size_t i;
-	for(i = 0; i < len; i += 16) {
-		memcpy(block4, ctr, sizeof(ctr));
-		bf_encrypt(state, block4, block4+1);
-		ctr[1]++;
+	for(i = 0; i < len; i += 8) {
+		block[0] = ctr[0];
+		block[1] = ctr[1];
+		BF_ENCRYPT(state, block[0], block[1]);
 
-		memcpy(block4+2, ctr, sizeof(ctr));
-		bf_encrypt(state, block4+2, block4+3);
+		*(out4++) = *(in4++) ^ htonl(block[0]);
+		*(out4++) = *(in4++) ^ htonl(block[1]);
 		ctr[1]++;
-
-		bf_htonl(block4, 4);
-		xor(out++, in++, &block);
 	}
 
 	return true;
