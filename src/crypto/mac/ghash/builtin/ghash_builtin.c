@@ -28,7 +28,7 @@
 
 
 struct fastd_mac_state {
-	fastd_block128_t H[16][256];
+	fastd_block128_t H[32][16];
 };
 
 
@@ -40,30 +40,22 @@ static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int
 	uint8_t c = 0;
 
 	for (i = 0; i < sizeof(fastd_block128_t); i++) {
+		uint8_t c2 = in->b[i] << (8-n);
 		out->b[i] = (in->b[i] >> n) | c;
-		c = in->b[i] << (8-n);
+		c = c2;
 	}
 
 	return (c >> (8-n));
-}
-
-static inline uint8_t shr8(fastd_block128_t *out, const fastd_block128_t *in) {
-	size_t i;
-
-	out->b[0] = 0;
-
-	for (i = 1; i < sizeof(fastd_block128_t); i++)
-		out->b[i] = in->b[i-1];
-
-	return in->b[sizeof(fastd_block128_t)-1];
 }
 
 static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) {
 	fastd_block128_t out = {};
 
 	int i;
-	for (i = 0; i < 16; i++)
-		xor_a(&out, &cstate->H[i][x->b[i]]);
+	for (i = 0; i < 16; i++) {
+		xor_a(&out, &cstate->H[2*i][x->b[i]>>4]);
+		xor_a(&out, &cstate->H[2*i+1][x->b[i]&0xf]);
+	}
 
 	*x = out;
 }
@@ -78,16 +70,16 @@ static size_t ghash_key_length(fastd_context_t *ctx UNUSED, const fastd_mac_cont
 }
 
 static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *mctx UNUSED, const uint8_t *key) {
-	fastd_mac_state_t *state = calloc(1, sizeof(fastd_mac_state_t));
+	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
 
-	fastd_block128_t Hbase[8];
-	fastd_block128_t Rbase[8];
+	fastd_block128_t Hbase[4];
+	fastd_block128_t Rbase[4];
 
 	memcpy(&Hbase[0], key, sizeof(fastd_block128_t));
 	Rbase[0] = r;
 
 	int i;
-	for (i = 1; i < 8; i++) {
+	for (i = 1; i < 4; i++) {
 		uint8_t carry = shr(&Hbase[i], &Hbase[i-1], 1);
 		if (carry)
 			xor_a(&Hbase[i], &r);
@@ -95,23 +87,25 @@ static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fa
 		shr(&Rbase[i], &Rbase[i-1], 1);
 	}
 
-	fastd_block128_t R[256] = {};
+	fastd_block128_t R[16];
+	memset(state->H, 0, sizeof(state->H));
+	memset(R, 0, sizeof(R));
 
-	for (i = 0; i < 256; i++) {
+	for (i = 0; i < 16; i++) {
 		int j;
-		for (j = 0; j < 8; j++) {
-			if (i & (0x80 >> j)) {
+		for (j = 0; j < 4; j++) {
+			if (i & (8 >> j)) {
 				xor_a(&state->H[0][i], &Hbase[j]);
 				xor_a(&R[i], &Rbase[j]);
 			}
 		}
 	}
 
-	for (i = 1; i < 16; i++) {
+	for (i = 1; i < 32; i++) {
 		int j;
 
-		for (j = 0; j < 256; j++) {
-			uint8_t carry = shr8(&state->H[i][j], &state->H[i-1][j]);
+		for (j = 0; j < 16; j++) {
+			uint8_t carry = shr(&state->H[i][j], &state->H[i-1][j], 4);
 			xor_a(&state->H[i][j], &R[carry]);
 		}
 	}
