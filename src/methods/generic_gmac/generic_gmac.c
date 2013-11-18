@@ -28,6 +28,8 @@
 #include "../common.h"
 
 
+static const fastd_block128_t ZERO_BLOCK = {};
+
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
@@ -91,11 +93,7 @@ static size_t method_max_packet_size(fastd_context_t *ctx) {
 }
 
 
-static size_t method_min_encrypt_head_space(fastd_context_t *ctx UNUSED) {
-	return sizeof(fastd_block128_t);
-}
-
-static size_t method_min_decrypt_head_space(fastd_context_t *ctx UNUSED) {
+static size_t method_min_head_space(fastd_context_t *ctx UNUSED) {
 	return 0;
 }
 
@@ -139,13 +137,12 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	if (session->gmac_ivlen <= COMMON_NONCEBYTES)
 		exit_bug(ctx, "generic-gmac: gmac cipher iv_length to small");
 
-	static const fastd_block128_t zeroblock = {};
 	fastd_block128_t H;
 
 	uint8_t zeroiv[session->gmac_ivlen];
 	memset(zeroiv, 0, session->gmac_ivlen);
 
-	session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), zeroiv);
+	session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, &H, &ZERO_BLOCK, sizeof(fastd_block128_t), zeroiv);
 
 	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_ctx);
 	if (!session->ghash)
@@ -192,11 +189,8 @@ static inline void put_size(fastd_block128_t *out, size_t len) {
 }
 
 static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head(ctx, &in, sizeof(fastd_block128_t));
-	memset(in.data, 0, sizeof(fastd_block128_t));
-
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
-	*out = fastd_buffer_alloc(ctx, in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
+	*out = fastd_buffer_alloc(ctx, sizeof(fastd_block128_t)+in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
@@ -212,7 +206,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	memcpy(gmac_nonce, session->common.send_nonce, COMMON_NONCEBYTES);
 	gmac_nonce[session->gmac_ivlen-1] = 1;
 
-	bool ok = session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, outblocks, inblocks, sizeof(fastd_block128_t), gmac_nonce);
+	bool ok = session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), gmac_nonce);
 
 	if (ok) {
 		uint8_t nonce[session->ivlen];
@@ -222,21 +216,19 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 			nonce[session->ivlen-1] = 1;
 		}
 
-		ok = session->cipher->crypt(ctx, session->cipher_state, outblocks+1, inblocks+1, (n_blocks-1)*sizeof(fastd_block128_t), nonce);
+		ok = session->cipher->crypt(ctx, session->cipher_state, outblocks+1, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 	}
 
 	if (ok) {
 		if (tail_len)
 			memset(out->data+out->len, 0, tail_len);
 
-		put_size(&outblocks[n_blocks], in.len-sizeof(fastd_block128_t));
+		put_size(&outblocks[n_blocks+1], in.len);
 
-		ok = session->ghash->hash(ctx, session->ghash_state, &sig, outblocks+1, n_blocks);
+		ok = session->ghash->hash(ctx, session->ghash_state, &sig, outblocks+1, n_blocks+1);
 	}
 
 	if (!ok) {
-		/* restore original buffer */
-		fastd_buffer_push_head(ctx, &in, sizeof(fastd_block128_t));
 		fastd_buffer_free(*out);
 		return false;
 	}
@@ -329,8 +321,8 @@ const fastd_method_t fastd_method_generic_gmac = {
 	.provides = method_provides,
 
 	.max_packet_size = method_max_packet_size,
-	.min_encrypt_head_space = method_min_encrypt_head_space,
-	.min_decrypt_head_space = method_min_decrypt_head_space,
+	.min_encrypt_head_space = method_min_head_space,
+	.min_decrypt_head_space = method_min_head_space,
 	.min_encrypt_tail_space = method_min_encrypt_tail_space,
 	.min_decrypt_tail_space = method_min_decrypt_tail_space,
 
