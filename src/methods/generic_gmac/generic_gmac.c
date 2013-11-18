@@ -262,22 +262,24 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (!method_session_is_valid(ctx, session))
 		return false;
 
-	if (((const uint8_t*)in.data)[COMMON_NONCEBYTES]) /* flags */
+	const uint8_t *common_nonce = in.data;
+
+	if (common_nonce[COMMON_NONCEBYTES]) /* flags */
 		return false;
 
 	int64_t age;
-	if (!fastd_method_is_nonce_valid(ctx, &session->common, in.data, &age))
+	if (!fastd_method_is_nonce_valid(ctx, &session->common, common_nonce, &age))
 		return false;
 
 	uint8_t gmac_nonce[session->gmac_ivlen];
 	memset(gmac_nonce, 0, session->gmac_ivlen);
-	memcpy(gmac_nonce, in.data, COMMON_NONCEBYTES);
+	memcpy(gmac_nonce, common_nonce, COMMON_NONCEBYTES);
 	gmac_nonce[session->gmac_ivlen-1] = 1;
 
 	uint8_t nonce[session->ivlen];
 	if (session->ivlen) {
 		memset(nonce, 0, session->ivlen);
-		memcpy(nonce, in.data, COMMON_NONCEBYTES);
+		memcpy(nonce, common_nonce, COMMON_NONCEBYTES);
 		nonce[session->ivlen-1] = 1;
 	}
 
@@ -311,14 +313,14 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		return false;
 	}
 
-	fastd_buffer_free(in);
-
 	fastd_buffer_push_head(ctx, out, sizeof(fastd_block128_t));
 
-	if (!fastd_method_reorder_check(ctx, peer, &session->common, nonce, age)) {
+	if (!fastd_method_reorder_check(ctx, peer, &session->common, common_nonce, age)) {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(ctx, 0, 0, 0);
 	}
+
+	fastd_buffer_free(in);
 
 	return true;
 }
