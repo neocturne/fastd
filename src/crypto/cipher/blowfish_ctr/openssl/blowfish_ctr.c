@@ -91,7 +91,10 @@ static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_s
 }
 
 static void blowfish_ctr_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
-	free(state);
+	if (state) {
+		secure_memzero(state, sizeof(*state));
+		free(state);
+	}
 }
 
 static void blowfish_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {

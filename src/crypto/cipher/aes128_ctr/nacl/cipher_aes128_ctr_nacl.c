@@ -65,7 +65,10 @@ static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_sta
 }
 
 static void aes128_ctr_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
-	free(state);
+	if (state) {
+		secure_memzero(state, sizeof(*state));
+		free(state);
+	}
 }
 
 static void aes128_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {
