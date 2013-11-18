@@ -49,10 +49,10 @@ static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_ciphe
 	size_t len = strlen(name);
 
 	if (len < 4)
-		return NULL;
+		return false;
 
 	if (strcmp(name+len-4, "-gcm"))
-		return NULL;
+		return false;
 
 	char name_ctr[len+1];
 	memcpy(name_ctr, name, len-3);
