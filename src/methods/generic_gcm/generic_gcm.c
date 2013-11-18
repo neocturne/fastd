@@ -162,7 +162,6 @@ static void method_session_free(fastd_context_t *ctx, fastd_method_session_state
 		session->cipher->free_state(ctx, session->cipher_state);
 		session->ghash->free_state(ctx, session->ghash_state);
 
-		secure_memzero(session, sizeof(fastd_method_session_state_t));
 		free(session);
 	}
 }
