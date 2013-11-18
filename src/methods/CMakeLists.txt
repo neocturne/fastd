@@ -24,6 +24,7 @@ endmacro(fastd_method_require)
 
 add_subdirectory(null)
 add_subdirectory(generic_gcm)
+add_subdirectory(generic_gmac)
 add_subdirectory(xsalsa20_poly1305)
 
 
