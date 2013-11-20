@@ -145,7 +145,7 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 }
 
 void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
-	size_t max_len = PACKET_TYPE_LEN + ctx->conf->max_packet_size;
+	size_t max_len = fastd_max_outer_packet(ctx);
 	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_decrypt_head_space, ctx->conf->min_decrypt_tail_space);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;

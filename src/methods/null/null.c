@@ -37,10 +37,6 @@ static bool method_provides(const char *name) {
 	return !strcmp(name, "null");
 }
 
-static size_t method_max_packet_size(fastd_context_t *ctx) {
-	return fastd_max_packet_size(ctx);
-}
-
 static size_t method_key_length(fastd_context_t *ctx UNUSED, const char *name UNUSED) {
 	return 0;
 }
@@ -86,7 +82,7 @@ static bool method_passthrough(fastd_context_t *ctx UNUSED, fastd_peer_t *peer U
 const fastd_method_t fastd_method_null = {
 	.provides = method_provides,
 
-	.max_packet_size = method_max_packet_size,
+	.max_overhead = 0,
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,
 	.min_encrypt_tail_space = 0,

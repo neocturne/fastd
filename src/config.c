@@ -476,8 +476,8 @@ static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
 	}
 }
 
-static void configure_method_parameters(fastd_context_t *ctx, fastd_config_t *conf) {
-	conf->max_packet_size = 0;
+static void configure_method_parameters(fastd_config_t *conf) {
+	conf->max_overhead = 0;
 	conf->min_encrypt_head_space = 0;
 	conf->min_decrypt_head_space = 0;
 	conf->min_encrypt_tail_space = 0;
@@ -487,7 +487,7 @@ static void configure_method_parameters(fastd_context_t *ctx, fastd_config_t *co
 	for (method_name = conf->methods; method_name; method_name = method_name->next) {
 		const fastd_method_t *method = fastd_method_get_by_name(method_name->str);
 
-		conf->max_packet_size = max_size_t(conf->max_packet_size, method->max_packet_size(ctx));
+		conf->max_overhead = max_size_t(conf->max_overhead, method->max_overhead);
 		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, method->min_encrypt_head_space);
 		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, method->min_decrypt_head_space);
 		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, method->min_encrypt_tail_space);
@@ -545,7 +545,7 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 		pr_warn(ctx, "`secure handshakes' not set, please read the documentation about this option; defaulting to no");
 
 	configure_user(ctx, conf);
-	configure_method_parameters(ctx, conf);
+	configure_method_parameters(conf);
 }
 
 static void peer_dirs_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {

@@ -41,11 +41,6 @@ static bool method_provides(const char *name) {
 	return !strcmp(name, "xsalsa20-poly1305");
 }
 
-static size_t method_max_packet_size(fastd_context_t *ctx) {
-	return (fastd_max_packet_size(ctx) + COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
-}
-
-
 static size_t method_key_length(fastd_context_t *ctx UNUSED, const char *name UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
 }
@@ -160,7 +155,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 const fastd_method_t fastd_method_xsalsa20_poly1305 = {
 	.provides = method_provides,
 
-	.max_packet_size = method_max_packet_size,
+	.max_overhead = COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES,
 	.min_encrypt_head_space = crypto_secretbox_xsalsa20poly1305_ZEROBYTES,
 	.min_decrypt_head_space = crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - COMMON_HEADBYTES,
 	.min_encrypt_tail_space = 0,

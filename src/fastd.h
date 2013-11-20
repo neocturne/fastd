@@ -81,7 +81,7 @@ struct fastd_protocol {
 struct fastd_method {
 	bool (*provides)(const char *name);
 
-	size_t (*max_packet_size)(fastd_context_t *ctx);
+	size_t max_overhead;
 	size_t min_encrypt_head_space;
 	size_t min_decrypt_head_space;
 	size_t min_encrypt_tail_space;
@@ -240,7 +240,7 @@ struct fastd_config {
 	const fastd_protocol_t *protocol;
 	fastd_string_stack_t *methods;
 
-	size_t max_packet_size;
+	size_t max_overhead;
 	size_t min_encrypt_head_space;
 	size_t min_decrypt_head_space;
 	size_t min_encrypt_tail_space;
@@ -468,7 +468,7 @@ static inline void fastd_buffer_push_head(const fastd_context_t *ctx, fastd_buff
 	buffer->len -= len;
 }
 
-static inline size_t fastd_max_packet_size(const fastd_context_t *ctx) {
+static inline size_t fastd_max_inner_packet(const fastd_context_t *ctx) {
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
 		return ctx->conf->mtu+ETH_HLEN;
@@ -477,6 +477,10 @@ static inline size_t fastd_max_packet_size(const fastd_context_t *ctx) {
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
+}
+
+static inline size_t fastd_max_outer_packet(const fastd_context_t *ctx) {
+	return PACKET_TYPE_LEN + fastd_max_inner_packet(ctx) + ctx->conf->max_overhead;
 }
 
 static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {

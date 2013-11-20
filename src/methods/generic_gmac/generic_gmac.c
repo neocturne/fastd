@@ -86,11 +86,6 @@ static bool method_provides(const char *name) {
 	return cipher_get(NULL, name, NULL, NULL, NULL, NULL);
 }
 
-static size_t method_max_packet_size(fastd_context_t *ctx) {
-	return (fastd_max_packet_size(ctx) + COMMON_HEADBYTES + sizeof(fastd_block128_t));
-}
-
-
 static size_t method_key_length(fastd_context_t *ctx, const char *name) {
 	const fastd_cipher_t *cipher = NULL;
 	const fastd_cipher_context_t *cctx;
@@ -303,7 +298,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 const fastd_method_t fastd_method_generic_gmac = {
 	.provides = method_provides,
 
-	.max_packet_size = method_max_packet_size,
+	.max_overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,
 	.min_encrypt_tail_space = sizeof(fastd_block128_t)-1,

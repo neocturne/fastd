@@ -281,7 +281,7 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 
 
 fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
-	size_t max_len = fastd_max_packet_size(ctx);
+	size_t max_len = fastd_max_inner_packet(ctx);
 
 	fastd_buffer_t buffer;
 	if (multiaf_tun && ctx->conf->mode == MODE_TUN)
