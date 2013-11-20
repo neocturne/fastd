@@ -180,7 +180,7 @@ static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 }
 
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session) {
-	session_send(ctx, peer, fastd_buffer_alloc(ctx, 0, alignto(session->method->min_encrypt_head_space(ctx), 8), session->method->min_encrypt_tail_space(ctx)), session);
+	session_send(ctx, peer, fastd_buffer_alloc(ctx, 0, alignto(session->method->min_encrypt_head_space, 8), session->method->min_encrypt_tail_space), session);
 }
 
 const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {

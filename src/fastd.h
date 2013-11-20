@@ -82,10 +82,10 @@ struct fastd_method {
 	bool (*provides)(const char *name);
 
 	size_t (*max_packet_size)(fastd_context_t *ctx);
-	size_t (*min_encrypt_head_space)(fastd_context_t *ctx);
-	size_t (*min_decrypt_head_space)(fastd_context_t *ctx);
-	size_t (*min_encrypt_tail_space)(fastd_context_t *ctx);
-	size_t (*min_decrypt_tail_space)(fastd_context_t *ctx);
+	size_t min_encrypt_head_space;
+	size_t min_decrypt_head_space;
+	size_t min_encrypt_tail_space;
+	size_t min_decrypt_tail_space;
 
 	size_t (*key_length)(fastd_context_t *ctx, const char *name);
 	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator);
@@ -102,13 +102,12 @@ struct fastd_method {
 
 struct fastd_cipher {
 	const char *name;
+	size_t key_length;
+	size_t iv_length;
 
 	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
-
-	size_t (*key_length)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx);
 	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
 
-	size_t (*iv_length)(fastd_context_t *ctx, const fastd_cipher_state_t *state);
 	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv);
 
 	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *state);
@@ -117,10 +116,9 @@ struct fastd_cipher {
 
 struct fastd_mac {
 	const char *name;
+	size_t key_length;
 
 	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
-
-	size_t (*key_length)(fastd_context_t *ctx, const fastd_mac_context_t *mctx);
 	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
 
 	bool (*hash)(fastd_context_t *ctx, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);

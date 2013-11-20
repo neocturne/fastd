@@ -45,18 +45,6 @@ static size_t method_max_packet_size(fastd_context_t *ctx) {
 	return (fastd_max_packet_size(ctx) + COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 }
 
-static size_t method_min_encrypt_head_space(fastd_context_t *ctx UNUSED) {
-	return crypto_secretbox_xsalsa20poly1305_ZEROBYTES;
-}
-
-static size_t method_min_decrypt_head_space(fastd_context_t *ctx UNUSED) {
-	return (crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - COMMON_HEADBYTES);
-}
-
-static size_t method_min_tail_space(fastd_context_t *ctx UNUSED) {
-	return 0;
-}
-
 
 static size_t method_key_length(fastd_context_t *ctx UNUSED, const char *name UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
@@ -173,10 +161,10 @@ const fastd_method_t fastd_method_xsalsa20_poly1305 = {
 	.provides = method_provides,
 
 	.max_packet_size = method_max_packet_size,
-	.min_encrypt_head_space = method_min_encrypt_head_space,
-	.min_decrypt_head_space = method_min_decrypt_head_space,
-	.min_encrypt_tail_space = method_min_tail_space,
-	.min_decrypt_tail_space = method_min_tail_space,
+	.min_encrypt_head_space = crypto_secretbox_xsalsa20poly1305_ZEROBYTES,
+	.min_decrypt_head_space = crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - COMMON_HEADBYTES,
+	.min_encrypt_tail_space = 0,
+	.min_decrypt_tail_space = 0,
 
 	.key_length = method_key_length,
 	.session_init = method_session_init,

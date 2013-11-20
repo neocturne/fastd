@@ -179,10 +179,6 @@ static fastd_cipher_context_t* blowfish_ctr_initialize(fastd_context_t *ctx UNUS
 	return NULL;
 }
 
-static size_t blowfish_ctr_key_length(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED) {
-	return 56;
-}
-
 
 static inline void bf_ntohl(uint32_t *v, size_t len) {
 	size_t i;
@@ -243,10 +239,6 @@ static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED
 	return state;
 }
 
-static size_t blowfish_ctr_iv_length(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state UNUSED) {
-	return 8;
-}
-
 static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	register uint32_t ctr[2];
 	register uint32_t block[2];
@@ -283,13 +275,12 @@ static void blowfish_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_
 
 const fastd_cipher_t fastd_cipher_blowfish_ctr_builtin = {
 	.name = "builtin",
+	.key_length = 56,
+	.iv_length = 8,
 
 	.initialize = blowfish_ctr_initialize,
-
-	.key_length = blowfish_ctr_key_length,
 	.init_state = blowfish_ctr_init_state,
 
-	.iv_length = blowfish_ctr_iv_length,
 	.crypt = blowfish_ctr_crypt,
 
 	.free_state = blowfish_ctr_free_state,
