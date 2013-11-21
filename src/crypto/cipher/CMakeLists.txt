@@ -39,6 +39,7 @@ endmacro(fastd_cipher_impl_require)
 add_subdirectory(aes128_ctr)
 add_subdirectory(blowfish_ctr)
 add_subdirectory(null)
+add_subdirectory(salsa20)
 
 
 set(CIPHER_DEFINITIONS "")
