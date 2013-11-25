@@ -94,7 +94,7 @@ static size_t method_key_length(fastd_context_t *ctx, const char *name) {
 	const fastd_cipher_context_t *gmac_cctx;
 
 	if (!cipher_get(ctx, name, &cipher, &cctx, &gmac_cipher, &gmac_cctx))
-		exit_bug(ctx, "generic-gmac: can't get cipher key length");
+		exit_bug(ctx, "composed-gmac: can't get cipher key length");
 
 	return cipher->key_length + gmac_cipher->key_length;
 }
@@ -105,15 +105,15 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	fastd_method_common_init(ctx, &session->common, initiator);
 
 	if (!cipher_get(ctx, name, &session->cipher, &session->cipher_ctx, &session->gmac_cipher, &session->gmac_cipher_ctx))
-		exit_bug(ctx, "generic-gmac: can't instanciate cipher");
+		exit_bug(ctx, "composed-gmac: can't instanciate cipher");
 
 	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);
 	if (session->cipher->iv_length && session->cipher->iv_length <= COMMON_NONCEBYTES)
-		exit_bug(ctx, "generic-gmac: iv_length to small");
+		exit_bug(ctx, "composed-gmac: iv_length to small");
 
 	session->gmac_cipher_state = session->gmac_cipher->init_state(ctx, session->gmac_cipher_ctx, secret + session->cipher->key_length);
 	if (session->gmac_cipher->iv_length <= COMMON_NONCEBYTES)
-		exit_bug(ctx, "generic-gmac: GMAC cipher iv_length to small");
+		exit_bug(ctx, "composed-gmac: GMAC cipher iv_length to small");
 
 	fastd_block128_t H;
 
@@ -124,7 +124,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_ctx);
 	if (!session->ghash)
-		exit_bug(ctx, "generic-gmac: can't instanciate ghash mac");
+		exit_bug(ctx, "composed-gmac: can't instanciate ghash mac");
 
 	session->ghash_state = session->ghash->init_state(ctx, session->ghash_ctx, H.b);
 
@@ -295,7 +295,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	return true;
 }
 
-const fastd_method_t fastd_method_generic_gmac = {
+const fastd_method_t fastd_method_composed_gmac = {
 	.provides = method_provides,
 
 	.max_overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
