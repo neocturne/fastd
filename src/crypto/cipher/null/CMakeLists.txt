@@ -1,2 +1,2 @@
-fastd_cipher(null)
+fastd_cipher(null null.c)
 add_subdirectory(memcpy)

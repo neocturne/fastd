@@ -30,14 +30,20 @@
 
 @CIPHER_DEFINITIONS@
 
-typedef struct cipher_impl_list {
+typedef struct fastd_cipher_impl {
 	const char *name;
-	const fastd_cipher_t *const *impls;
-} cipher_impl_list_t;
+	const fastd_cipher_t *impl;
+} fastd_cipher_impl_t;
+
+typedef struct cipher_entry {
+	const char *name;
+	const fastd_cipher_info_t *info;
+	const fastd_cipher_impl_t *impls;
+} cipher_entry_t;
 
 @CIPHER_IMPLS@
 
-static const cipher_impl_list_t ciphers[] = { @CIPHER_LIST@
+static const cipher_entry_t ciphers[] = { @CIPHER_LIST@
 };
 
 
@@ -46,7 +52,7 @@ const fastd_cipher_t** fastd_cipher_config_alloc(void) {
 
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++)
-		cipher_conf[i] = ciphers[i].impls[0];
+		cipher_conf[i] = ciphers[i].impls[0].impl;
 
 	return cipher_conf;
 }
@@ -60,9 +66,9 @@ bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, c
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (!strcmp(ciphers[i].name, name)) {
 			size_t j;
-			for (j = 0; ciphers[i].impls[j]; j++) {
-				if (!strcmp(ciphers[i].impls[j]->name, impl)) {
-					cipher_conf[i] = ciphers[i].impls[j];
+			for (j = 0; ciphers[i].impls[j].impl; j++) {
+				if (!strcmp(ciphers[i].impls[j].name, impl)) {
+					cipher_conf[i] = ciphers[i].impls[j].impl;
 					return true;
 				}
 			}
@@ -92,20 +98,28 @@ void fastd_cipher_free(fastd_context_t *ctx) {
 	free(ctx->cipher_contexts);
 }
 
-bool fastd_cipher_available(const char *name) {
+const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
-		if (!strcmp(ciphers[i].name, name))
-			return ciphers[i].impls[0];
+		if (strcmp(ciphers[i].name, name))
+			continue;
+
+		if (!ciphers[i].impls[0].impl)
+			continue;
+
+		return ciphers[i].info;
 	}
 
-	return false;
+	return NULL;
 }
 
-const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_context_t **cctx) {
+const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **info, const fastd_cipher_context_t **cctx) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (!strcmp(ciphers[i].name, name)) {
+			if (info)
+				*info = ciphers[i].info;
+
 			if (cctx)
 				*cctx = ctx->cipher_contexts[i];
 

@@ -33,22 +33,27 @@ static const fastd_block128_t ZERO_BLOCK = {};
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
+	const fastd_cipher_info_t *cipher_info;
 	const fastd_cipher_t *cipher;
 	const fastd_cipher_context_t *cipher_ctx;
 	fastd_cipher_state_t *cipher_state;
 
+	const fastd_cipher_info_t *gmac_cipher_info;
 	const fastd_cipher_t *gmac_cipher;
 	const fastd_cipher_context_t *gmac_cipher_ctx;
 	fastd_cipher_state_t *gmac_cipher_state;
 
+	const fastd_mac_info_t *ghash_info;
 	const fastd_mac_t *ghash;
 	const fastd_mac_context_t *ghash_ctx;
 	fastd_mac_state_t *ghash_state;
 };
 
 
-static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx, const fastd_cipher_t **gmac_cipher, const fastd_cipher_context_t **gmac_cctx) {
-	if (!fastd_mac_available("ghash"))
+static bool cipher_get(fastd_context_t *ctx, const char *name,
+		       const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx,
+		       const fastd_cipher_info_t **gmac_cipher_info, const fastd_cipher_t **gmac_cipher, const fastd_cipher_context_t **gmac_cctx) {
+	if (!fastd_mac_info_get_by_name("ghash"))
 		return false;
 
 	size_t len = strlen(name);
@@ -71,32 +76,52 @@ static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_ciphe
 	*gmac_cipher_name = 0;
 	gmac_cipher_name++;
 
+	const fastd_cipher_info_t *info = NULL;
+	const fastd_cipher_info_t *gmac_info = NULL;
+
 	if (ctx) {
-		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, cctx);
-		*gmac_cipher = fastd_cipher_get_by_name(ctx, gmac_cipher_name, gmac_cctx);
-		return *cipher && *gmac_cipher;
+		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &info, cctx);
+		*gmac_cipher = fastd_cipher_get_by_name(ctx, gmac_cipher_name, &gmac_info, gmac_cctx);
+		if (!(*cipher && *gmac_cipher))
+			return false;
 	}
 	else {
-		return fastd_cipher_available(cipher_name) && fastd_cipher_available(gmac_cipher_name);
+		info = fastd_cipher_info_get_by_name(cipher_name);
+		gmac_info = fastd_cipher_info_get_by_name(gmac_cipher_name);
+		if (!(info && gmac_info))
+			return false;
 	}
+
+	if (cipher_info)
+		*cipher_info = info;
+
+	if (gmac_cipher_info)
+		*gmac_cipher_info = gmac_info;
+
+	return true;
 }
 
 
 static bool method_provides(const char *name) {
-	return cipher_get(NULL, name, NULL, NULL, NULL, NULL);
+	const fastd_cipher_info_t *gmac_cipher_info;
+
+	if (!cipher_get(NULL, name, NULL, NULL, NULL, &gmac_cipher_info, NULL, NULL))
+		return false;
+
+	if (gmac_cipher_info->iv_length <= COMMON_NONCEBYTES)
+		return false;
+
+	return true;
 }
 
 static size_t method_key_length(fastd_context_t *ctx, const char *name) {
-	const fastd_cipher_t *cipher = NULL;
-	const fastd_cipher_context_t *cctx;
+	const fastd_cipher_info_t *cipher_info;
+	const fastd_cipher_info_t *gmac_cipher_info;
 
-	const fastd_cipher_t *gmac_cipher = NULL;
-	const fastd_cipher_context_t *gmac_cctx;
-
-	if (!cipher_get(ctx, name, &cipher, &cctx, &gmac_cipher, &gmac_cctx))
+	if (!cipher_get(NULL, name, &cipher_info, NULL, NULL, &gmac_cipher_info, NULL, NULL))
 		exit_bug(ctx, "composed-gmac: can't get cipher key length");
 
-	return cipher->key_length + gmac_cipher->key_length;
+	return cipher_info->key_length + gmac_cipher_info->key_length;
 }
 
 static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator) {
@@ -104,25 +129,27 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 
-	if (!cipher_get(ctx, name, &session->cipher, &session->cipher_ctx, &session->gmac_cipher, &session->gmac_cipher_ctx))
+	if (!cipher_get(ctx, name,
+			&session->cipher_info, &session->cipher, &session->cipher_ctx,
+			&session->gmac_cipher_info, &session->gmac_cipher, &session->gmac_cipher_ctx))
 		exit_bug(ctx, "composed-gmac: can't instanciate cipher");
 
 	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);
-	if (session->cipher->iv_length && session->cipher->iv_length <= COMMON_NONCEBYTES)
+	if (session->cipher_info->iv_length && session->cipher_info->iv_length <= COMMON_NONCEBYTES)
 		exit_bug(ctx, "composed-gmac: iv_length to small");
 
-	session->gmac_cipher_state = session->gmac_cipher->init_state(ctx, session->gmac_cipher_ctx, secret + session->cipher->key_length);
-	if (session->gmac_cipher->iv_length <= COMMON_NONCEBYTES)
+	session->gmac_cipher_state = session->gmac_cipher->init_state(ctx, session->gmac_cipher_ctx, secret + session->cipher_info->key_length);
+	if (session->gmac_cipher_info->iv_length <= COMMON_NONCEBYTES)
 		exit_bug(ctx, "composed-gmac: GMAC cipher iv_length to small");
 
 	fastd_block128_t H;
 
-	uint8_t zeroiv[session->gmac_cipher->iv_length];
-	memset(zeroiv, 0, session->gmac_cipher->iv_length);
+	uint8_t zeroiv[session->gmac_cipher_info->iv_length];
+	memset(zeroiv, 0, session->gmac_cipher_info->iv_length);
 
 	session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, &H, &ZERO_BLOCK, sizeof(fastd_block128_t), zeroiv);
 
-	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_ctx);
+	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_info, &session->ghash_ctx);
 	if (!session->ghash)
 		exit_bug(ctx, "composed-gmac: can't instanciate ghash mac");
 
@@ -179,19 +206,19 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	uint8_t gmac_nonce[session->gmac_cipher->iv_length];
-	memset(gmac_nonce, 0, session->gmac_cipher->iv_length);
+	uint8_t gmac_nonce[session->gmac_cipher_info->iv_length];
+	memset(gmac_nonce, 0, session->gmac_cipher_info->iv_length);
 	memcpy(gmac_nonce, session->common.send_nonce, COMMON_NONCEBYTES);
-	gmac_nonce[session->gmac_cipher->iv_length-1] = 1;
+	gmac_nonce[session->gmac_cipher_info->iv_length-1] = 1;
 
 	bool ok = session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), gmac_nonce);
 
 	if (ok) {
-		uint8_t nonce[session->cipher->iv_length];
-		if (session->cipher->iv_length) {
-			memset(nonce, 0, session->cipher->iv_length);
+		uint8_t nonce[session->cipher_info->iv_length];
+		if (session->cipher_info->iv_length) {
+			memset(nonce, 0, session->cipher_info->iv_length);
 			memcpy(nonce, session->common.send_nonce, COMMON_NONCEBYTES);
-			nonce[session->cipher->iv_length-1] = 1;
+			nonce[session->cipher_info->iv_length-1] = 1;
 		}
 
 		ok = session->cipher->crypt(ctx, session->cipher_state, outblocks+1, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
@@ -241,16 +268,16 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (!fastd_method_is_nonce_valid(ctx, &session->common, common_nonce, &age))
 		return false;
 
-	uint8_t gmac_nonce[session->gmac_cipher->iv_length];
-	memset(gmac_nonce, 0, session->gmac_cipher->iv_length);
+	uint8_t gmac_nonce[session->gmac_cipher_info->iv_length];
+	memset(gmac_nonce, 0, session->gmac_cipher_info->iv_length);
 	memcpy(gmac_nonce, common_nonce, COMMON_NONCEBYTES);
-	gmac_nonce[session->gmac_cipher->iv_length-1] = 1;
+	gmac_nonce[session->gmac_cipher_info->iv_length-1] = 1;
 
-	uint8_t nonce[session->cipher->iv_length];
-	if (session->cipher->iv_length) {
-		memset(nonce, 0, session->cipher->iv_length);
+	uint8_t nonce[session->cipher_info->iv_length];
+	if (session->cipher_info->iv_length) {
+		memset(nonce, 0, session->cipher_info->iv_length);
 		memcpy(nonce, common_nonce, COMMON_NONCEBYTES);
-		nonce[session->cipher->iv_length-1] = 1;
+		nonce[session->cipher_info->iv_length-1] = 1;
 	}
 
 	fastd_buffer_push_head(ctx, &in, COMMON_HEADBYTES);

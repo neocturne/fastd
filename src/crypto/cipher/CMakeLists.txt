@@ -1,26 +1,25 @@
 add_library(ciphers STATIC "${CMAKE_CURRENT_BINARY_DIR}/ciphers.c")
 
-function(fastd_cipher name)
-  string(REPLACE - _ name_ "${name}")
-  string(TOUPPER "${name_}" NAME)
+macro(fastd_cipher name)
+  fastd_module(cipher enabled "cipher" ${name} ${ARGN})
 
-  set(WITH_CIPHER_${NAME} TRUE CACHE BOOL "Include the ${name} cipher")
-
-  if(WITH_CIPHER_${NAME})
+  if(${enabled})
     set_property(GLOBAL APPEND PROPERTY FASTD_CIPHERS ${name})
-  endif(WITH_CIPHER_${NAME})
-endfunction(fastd_cipher)
+  endif(${enabled})
+endmacro(fastd_cipher)
 
 
 macro(fastd_cipher_impl cipher name)
   string(REPLACE - _ cipher_ "${cipher}")
   string(TOUPPER "${cipher_}" CIPHER)
 
-  fastd_module(cipher enabled "cipher implementation" "${cipher} ${name}" ${ARGN})
+  if(WITH_CIPHER_${CIPHER})
+    fastd_module(cipher enabled "cipher implementation" "${cipher} ${name}" ${ARGN})
 
-  if(${enabled})
-    set_property(GLOBAL APPEND PROPERTY FASTD_CIPHER_${CIPHER}_IMPLS ${name})
-  endif(${enabled})
+    if(${enabled})
+      set_property(TARGET "cipher_${cipher_}" APPEND PROPERTY FASTD_CIPHER_IMPLS ${name})
+    endif(${enabled})
+  endif(WITH_CIPHER_${CIPHER})
 endmacro(fastd_cipher_impl)
 
 macro(fastd_cipher_impl_include_directories cipher name)
@@ -52,16 +51,18 @@ foreach(cipher ${CIPHERS})
   string(REPLACE - _ cipher_ "${cipher}")
   string(TOUPPER "${cipher_}" CIPHER)
 
-  set(CIPHER_LIST "${CIPHER_LIST}\n{\"${cipher}\", cipher_${cipher_}_impls},")
-  set(CIPHER_IMPLS "${CIPHER_IMPLS}\nstatic const fastd_cipher_t *const cipher_${cipher_}_impls[] = {")
+  set(CIPHER_DEFINITIONS "${CIPHER_DEFINITIONS}\nextern const fastd_cipher_info_t fastd_cipher_info_${cipher_};")
+  set(CIPHER_LIST "${CIPHER_LIST}\n{\"${cipher}\", &fastd_cipher_info_${cipher_}, cipher_${cipher_}_impls},")
+  set(CIPHER_IMPLS "${CIPHER_IMPLS}\nstatic const fastd_cipher_impl_t cipher_${cipher_}_impls[] = {")
 
-  get_property(IMPLS GLOBAL PROPERTY FASTD_CIPHER_${CIPHER}_IMPLS)
+
+  get_property(IMPLS TARGET "cipher_${cipher_}" PROPERTY FASTD_CIPHER_IMPLS)
   foreach(impl ${IMPLS})
     set(CIPHER_DEFINITIONS "${CIPHER_DEFINITIONS}\nextern const fastd_cipher_t fastd_cipher_${cipher_}_${impl};")
-    set(CIPHER_IMPLS "${CIPHER_IMPLS}&fastd_cipher_${cipher_}_${impl}, ")
+    set(CIPHER_IMPLS "${CIPHER_IMPLS}{\"${impl}\", &fastd_cipher_${cipher_}_${impl}}, ")
   endforeach(impl)
 
-  set(CIPHER_IMPLS "${CIPHER_IMPLS}NULL};")
+  set(CIPHER_IMPLS "${CIPHER_IMPLS}{NULL, NULL}};")
 endforeach(cipher)
 
 get_property(LIBS TARGET ciphers PROPERTY FASTD_LINK_LIBRARIES)

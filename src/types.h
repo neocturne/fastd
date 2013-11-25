@@ -114,7 +114,11 @@ typedef struct fastd_context fastd_context_t;
 
 typedef struct fastd_protocol fastd_protocol_t;
 typedef struct fastd_method fastd_method_t;
+
+typedef struct fastd_cipher_info fastd_cipher_info_t;
 typedef struct fastd_cipher fastd_cipher_t;
+
+typedef struct fastd_mac_info fastd_mac_info_t;
 typedef struct fastd_mac fastd_mac_t;
 
 typedef struct fastd_handshake fastd_handshake_t;

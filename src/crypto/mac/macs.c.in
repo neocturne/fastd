@@ -30,14 +30,20 @@
 
 @MAC_DEFINITIONS@
 
-typedef struct mac_impl_list {
+typedef struct fastd_mac_impl {
 	const char *name;
-	const fastd_mac_t *const *impls;
-} mac_impl_list_t;
+	const fastd_mac_t *impl;
+} fastd_mac_impl_t;
+
+typedef struct mac_entry {
+	const char *name;
+	const fastd_mac_info_t *info;
+	const fastd_mac_impl_t *impls;
+} mac_entry_t;
 
 @MAC_IMPLS@
 
-static const mac_impl_list_t macs[] = { @MAC_LIST@
+static const mac_entry_t macs[] = { @MAC_LIST@
 };
 
 
@@ -46,7 +52,7 @@ const fastd_mac_t** fastd_mac_config_alloc(void) {
 
 	size_t i;
 	for (i = 0; i < array_size(macs); i++)
-		mac_conf[i] = macs[i].impls[0];
+		mac_conf[i] = macs[i].impls[0].impl;
 
 	return mac_conf;
 }
@@ -60,9 +66,9 @@ bool fastd_mac_config(const fastd_mac_t **mac_conf, const char *name, const char
 	for (i = 0; i < array_size(macs); i++) {
 		if (!strcmp(macs[i].name, name)) {
 			size_t j;
-			for (j = 0; macs[i].impls[j]; j++) {
-				if (!strcmp(macs[i].impls[j]->name, impl)) {
-					mac_conf[i] = macs[i].impls[j];
+			for (j = 0; macs[i].impls[j].impl; j++) {
+				if (!strcmp(macs[i].impls[j].name, impl)) {
+					mac_conf[i] = macs[i].impls[j].impl;
 					return true;
 				}
 			}
@@ -92,20 +98,28 @@ void fastd_mac_free(fastd_context_t *ctx) {
 	free(ctx->mac_contexts);
 }
 
-bool fastd_mac_available(const char *name) {
+const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
-		if (!strcmp(macs[i].name, name))
-			return macs[i].impls[0];
+		if (strcmp(macs[i].name, name))
+			continue;
+
+		if (!macs[i].impls[0].impl)
+			continue;
+
+		return macs[i].info;
 	}
 
-	return false;
+	return NULL;
 }
 
-const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_context_t **cctx) {
+const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info, const fastd_mac_context_t **cctx) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
 		if (!strcmp(macs[i].name, name)) {
+			if (info)
+				*info = macs[i].info;
+
 			if (cctx)
 				*cctx = ctx->mac_contexts[i];
 

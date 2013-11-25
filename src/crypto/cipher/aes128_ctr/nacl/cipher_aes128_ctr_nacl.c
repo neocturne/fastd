@@ -67,10 +67,6 @@ static void aes128_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t 
 }
 
 const fastd_cipher_t fastd_cipher_aes128_ctr_nacl = {
-	.name = "nacl",
-	.key_length = 16,
-	.iv_length = 16,
-
 	.initialize = aes128_ctr_initialize,
 	.init_state = aes128_ctr_init_state,
 

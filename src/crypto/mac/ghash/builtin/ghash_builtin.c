@@ -132,9 +132,6 @@ static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_context_t *mctx UN
 }
 
 const fastd_mac_t fastd_mac_ghash_builtin = {
-	.name = "builtin",
-	.key_length = sizeof(fastd_block128_t),
-
 	.initialize = ghash_initialize,
 	.init_state = ghash_init_state,
 

@@ -341,16 +341,6 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 
 const fastd_method_t* fastd_method_get_by_name(const char *name);
 
-void fastd_cipher_init(fastd_context_t *ctx);
-void fastd_cipher_free(fastd_context_t *ctx);
-bool fastd_cipher_available(const char *name);
-const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_context_t **cctx);
-
-void fastd_mac_init(fastd_context_t *ctx);
-void fastd_mac_free(fastd_context_t *ctx);
-bool fastd_mac_available(const char *name);
-const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_context_t **cctx);
-
 void fastd_tuntap_open(fastd_context_t *ctx);
 fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx);
 void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer);

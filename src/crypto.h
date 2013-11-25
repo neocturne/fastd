@@ -30,11 +30,12 @@
 #include "fastd.h"
 
 
-struct fastd_cipher {
-	const char *name;
+struct fastd_cipher_info {
 	size_t key_length;
 	size_t iv_length;
+};
 
+struct fastd_cipher {
 	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
 	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
 
@@ -44,10 +45,12 @@ struct fastd_cipher {
 	void (*free)(fastd_context_t *ctx, fastd_cipher_context_t *cctx);
 };
 
-struct fastd_mac {
-	const char *name;
-	size_t key_length;
 
+struct fastd_mac_info {
+	size_t key_length;
+};
+
+struct fastd_mac {
 	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
 	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
 
@@ -56,5 +59,16 @@ struct fastd_mac {
 	void (*free_state)(fastd_context_t *ctx, fastd_mac_state_t *state);
 	void (*free)(fastd_context_t *ctx, fastd_mac_context_t *mctx);
 };
+
+
+void fastd_cipher_init(fastd_context_t *ctx);
+void fastd_cipher_free(fastd_context_t *ctx);
+const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name);
+const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **info, const fastd_cipher_context_t **cctx);
+
+void fastd_mac_init(fastd_context_t *ctx);
+void fastd_mac_free(fastd_context_t *ctx);
+const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name);
+const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info, const fastd_mac_context_t **cctx);
 
 #endif /* _FASTD_CRYPTO_H_ */

@@ -60,10 +60,6 @@ static void salsa20_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cc
 }
 
 const fastd_cipher_t fastd_cipher_salsa20_nacl = {
-	.name = "nacl",
-	.key_length = crypto_stream_salsa20_KEYBYTES,
-	.iv_length = crypto_stream_salsa20_NONCEBYTES,
-
 	.initialize = salsa20_initialize,
 	.init_state = salsa20_init_state,
 

@@ -31,13 +31,14 @@
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
+	const fastd_cipher_info_t *cipher_info;
 	const fastd_cipher_t *cipher;
 	const fastd_cipher_context_t *cipher_ctx;
 	fastd_cipher_state_t *cipher_state;
 };
 
 
-static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx) {
+static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **info, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx) {
 	size_t len = strlen(name);
 
 	if (len < 12)
@@ -50,27 +51,36 @@ static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_ciphe
 	memcpy(cipher_name, name, len-12);
 	cipher_name[len-12] = 0;
 
+	const fastd_cipher_info_t *cipher_info = NULL;
+
 	if (ctx) {
-		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, cctx);
-		return *cipher;
+		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &cipher_info, cctx);
+		if (!*cipher)
+			return false;
 	}
 	else {
-		return fastd_cipher_available(cipher_name);
+		cipher_info = fastd_cipher_info_get_by_name(cipher_name);
+		if (!cipher_info)
+			return false;
 	}
+
+	if (info)
+		*info = cipher_info;
+
+	return true;
 }
 
 
 static bool method_provides(const char *name) {
-	return cipher_get(NULL, name, NULL, NULL);
+	return cipher_get(NULL, name, NULL, NULL, NULL);
 }
 
 static size_t method_key_length(fastd_context_t *ctx, const char *name) {
-	const fastd_cipher_t *cipher = NULL;
-	const fastd_cipher_context_t *cctx;
-	if (!cipher_get(ctx, name, &cipher, &cctx))
+	const fastd_cipher_info_t *info;
+	if (!cipher_get(NULL, name, &info, NULL, NULL))
 		exit_bug(ctx, "cipher-test: can't get cipher key length");
 
-	return cipher->key_length;
+	return info->key_length;
 }
 
 static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator) {
@@ -78,7 +88,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 
-	if (!cipher_get(ctx, name, &session->cipher, &session->cipher_ctx))
+	if (!cipher_get(ctx, name, &session->cipher_info, &session->cipher, &session->cipher_ctx))
 		exit_bug(ctx, "cipher-test: can't instanciate cipher");
 
 	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);
@@ -118,11 +128,11 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	uint8_t nonce[session->cipher->iv_length];
-	if (session->cipher->iv_length) {
-		memset(nonce, 0, session->cipher->iv_length);
-		memcpy(nonce, session->common.send_nonce, min_size_t(COMMON_NONCEBYTES, session->cipher->iv_length));
-		nonce[session->cipher->iv_length-1] = 1;
+	uint8_t nonce[session->cipher_info->iv_length];
+	if (session->cipher_info->iv_length) {
+		memset(nonce, 0, session->cipher_info->iv_length);
+		memcpy(nonce, session->common.send_nonce, min_size_t(COMMON_NONCEBYTES, session->cipher_info->iv_length));
+		nonce[session->cipher_info->iv_length-1] = 1;
 	}
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
@@ -161,11 +171,11 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (common_nonce[COMMON_NONCEBYTES]) /* flags */
 		return false;
 
-	uint8_t nonce[session->cipher->iv_length];
-	if (session->cipher->iv_length) {
-		memset(nonce, 0, session->cipher->iv_length);
-		memcpy(nonce, common_nonce, min_size_t(COMMON_NONCEBYTES, session->cipher->iv_length));
-		nonce[session->cipher->iv_length-1] = 1;
+	uint8_t nonce[session->cipher_info->iv_length];
+	if (session->cipher_info->iv_length) {
+		memset(nonce, 0, session->cipher_info->iv_length);
+		memcpy(nonce, common_nonce, min_size_t(COMMON_NONCEBYTES, session->cipher_info->iv_length));
+		nonce[session->cipher_info->iv_length-1] = 1;
 	}
 
 	int64_t age;
