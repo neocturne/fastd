@@ -24,7 +24,7 @@
 */
 
 
-#include "../../../../fastd.h"
+#include "../../../../crypto.h"
 
 static const uint32_t Sdefault[4][256] = {
 	{

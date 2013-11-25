@@ -24,7 +24,7 @@
 */
 
 
-#include "../../../../fastd.h"
+#include "../../../../crypto.h"
 #include <crypto_stream_salsa2012.h>
 
 

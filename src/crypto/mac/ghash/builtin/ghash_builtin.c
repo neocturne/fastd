@@ -24,7 +24,7 @@
 */
 
 
-#include "../../../../fastd.h"
+#include "../../../../crypto.h"
 
 
 struct fastd_mac_state {

@@ -24,38 +24,37 @@
 */
 
 
-#include "../../../../crypto.h"
+#ifndef _FASTD_CRYPTO_H_
+#define _FASTD_CRYPTO_H_
+
+#include "fastd.h"
 
 
-static fastd_cipher_context_t* null_initialize(fastd_context_t *ctx UNUSED) {
-	return NULL;
-}
+struct fastd_cipher {
+	const char *name;
+	size_t key_length;
+	size_t iv_length;
 
-static fastd_cipher_state_t* null_init_state(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key UNUSED) {
-	return NULL;
-}
+	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
+	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
 
-static bool null_memcpy(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state UNUSED, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv UNUSED) {
-	memcpy(out, in, len);
-	return true;
-}
+	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv);
 
-static void null_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state UNUSED) {
-}
-
-static void null_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {
-}
-
-const fastd_cipher_t fastd_cipher_null_memcpy = {
-	.name = "memcpy",
-	.key_length = 0,
-	.iv_length = 0,
-
-	.initialize = null_initialize,
-	.init_state = null_init_state,
-
-	.crypt = null_memcpy,
-
-	.free_state = null_free_state,
-	.free = null_free,
+	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *state);
+	void (*free)(fastd_context_t *ctx, fastd_cipher_context_t *cctx);
 };
+
+struct fastd_mac {
+	const char *name;
+	size_t key_length;
+
+	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
+	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
+
+	bool (*hash)(fastd_context_t *ctx, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
+
+	void (*free_state)(fastd_context_t *ctx, fastd_mac_state_t *state);
+	void (*free)(fastd_context_t *ctx, fastd_mac_context_t *mctx);
+};
+
+#endif /* _FASTD_CRYPTO_H_ */

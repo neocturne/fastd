@@ -24,7 +24,7 @@
 */
 
 
-#include "../../fastd.h"
+#include "../../crypto.h"
 #include "../common.h"
 
 #include <crypto_onetimeauth_poly1305.h>

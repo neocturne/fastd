@@ -24,8 +24,8 @@
 */
 
 
-#include <src/fastd.h>
 #include <src/config.h>
+#include <src/crypto.h>
 
 
 @MAC_DEFINITIONS@

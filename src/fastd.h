@@ -100,33 +100,6 @@ struct fastd_method {
 	bool (*decrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
 };
 
-struct fastd_cipher {
-	const char *name;
-	size_t key_length;
-	size_t iv_length;
-
-	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
-	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
-
-	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv);
-
-	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *state);
-	void (*free)(fastd_context_t *ctx, fastd_cipher_context_t *cctx);
-};
-
-struct fastd_mac {
-	const char *name;
-	size_t key_length;
-
-	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
-	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
-
-	bool (*hash)(fastd_context_t *ctx, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
-
-	void (*free_state)(fastd_context_t *ctx, fastd_mac_state_t *state);
-	void (*free)(fastd_context_t *ctx, fastd_mac_context_t *mctx);
-};
-
 union fastd_peer_address {
 	struct sockaddr sa;
 	struct sockaddr_in in;
