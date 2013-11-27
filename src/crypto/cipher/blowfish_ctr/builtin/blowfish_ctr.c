@@ -274,6 +274,8 @@ static void blowfish_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_
 }
 
 const fastd_cipher_t fastd_cipher_blowfish_ctr_builtin = {
+	.available = fastd_true,
+
 	.initialize = blowfish_ctr_initialize,
 	.init_state = blowfish_ctr_init_state,
 

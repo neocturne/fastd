@@ -50,9 +50,15 @@ static const mac_entry_t macs[] = { @MAC_LIST@
 const fastd_mac_t** fastd_mac_config_alloc(void) {
 	const fastd_mac_t **mac_conf = calloc(array_size(macs), sizeof(const fastd_mac_t*));
 
-	size_t i;
-	for (i = 0; i < array_size(macs); i++)
-		mac_conf[i] = macs[i].impls[0].impl;
+	size_t i, j;
+	for (i = 0; i < array_size(macs); i++) {
+		for (j = 0; macs[i].impls[j].impl; j++) {
+			if (macs[i].impls[j].impl->available())
+				break;
+		}
+
+		mac_conf[i] = macs[i].impls[j].impl;
+	}
 
 	return mac_conf;
 }
@@ -68,6 +74,9 @@ bool fastd_mac_config(const fastd_mac_t **mac_conf, const char *name, const char
 			size_t j;
 			for (j = 0; macs[i].impls[j].impl; j++) {
 				if (!strcmp(macs[i].impls[j].name, impl)) {
+					if (!macs[i].impls[j].impl->available())
+						return false;
+
 					mac_conf[i] = macs[i].impls[j].impl;
 					return true;
 				}
@@ -99,15 +108,17 @@ void fastd_mac_free(fastd_context_t *ctx) {
 }
 
 const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
-	size_t i;
+	size_t i, j;
 	for (i = 0; i < array_size(macs); i++) {
 		if (strcmp(macs[i].name, name))
 			continue;
 
-		if (!macs[i].impls[0].impl)
-			continue;
+		for (j = 0; macs[i].impls[j].impl; j++) {
+			if (macs[i].impls[j].impl->available())
+				return macs[i].info;
+		}
 
-		return macs[i].info;
+		break;
 	}
 
 	return NULL;

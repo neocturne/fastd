@@ -36,6 +36,8 @@ struct fastd_cipher_info {
 };
 
 struct fastd_cipher {
+	bool (*available)(void);
+
 	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
 	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
 
@@ -51,6 +53,8 @@ struct fastd_mac_info {
 };
 
 struct fastd_mac {
+	bool (*available)(void);
+
 	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
 	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
 

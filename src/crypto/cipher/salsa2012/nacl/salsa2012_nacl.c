@@ -60,6 +60,8 @@ static void salsa2012_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *
 }
 
 const fastd_cipher_t fastd_cipher_salsa2012_nacl = {
+	.available = fastd_true,
+
 	.initialize = salsa2012_initialize,
 	.init_state = salsa2012_init_state,
 

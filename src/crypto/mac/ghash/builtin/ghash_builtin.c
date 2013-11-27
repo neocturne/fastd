@@ -132,6 +132,8 @@ static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_context_t *mctx UN
 }
 
 const fastd_mac_t fastd_mac_ghash_builtin = {
+	.available = fastd_true,
+
 	.initialize = ghash_initialize,
 	.init_state = ghash_init_state,
 

@@ -47,6 +47,8 @@ static void null_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx 
 }
 
 const fastd_cipher_t fastd_cipher_null_memcpy = {
+	.available = fastd_true,
+
 	.initialize = null_initialize,
 	.init_state = null_init_state,
 
