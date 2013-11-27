@@ -46,6 +46,7 @@
 
 
 #cmakedefine HAVE_LIBSODIUM
+#cmakedefine USE_OPENSSL
 
 #define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
 

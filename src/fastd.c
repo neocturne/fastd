@@ -44,6 +44,12 @@
 #include <sodium/core.h>
 #endif
 
+#ifdef USE_OPENSSL
+#include <openssl/conf.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+#endif
+
 
 static volatile bool sighup = false;
 static volatile bool terminate = false;
@@ -744,6 +750,12 @@ int main(int argc, char *argv[]) {
 	sodium_init();
 #endif
 
+#ifdef USE_OPENSSL
+	ERR_load_crypto_strings();
+	OpenSSL_add_all_algorithms();
+	OPENSSL_config(NULL);
+#endif
+
 	fastd_context_t ctx = {};
 
 	close_fds(&ctx);
@@ -877,6 +889,12 @@ int main(int argc, char *argv[]) {
 
 	close_log(&ctx);
 	fastd_config_release(&ctx, &conf);
+
+#ifdef USE_OPENSSL
+	CONF_modules_free();
+	EVP_cleanup();
+	ERR_free_strings();
+#endif
 
 	return 0;
 }
