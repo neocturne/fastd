@@ -25,85 +25,118 @@
 
 
 #include "ghash_pclmulqdq.h"
+#include <wmmintrin.h>
+#include <emmintrin.h>
+#include <tmmintrin.h>
 
 
-static inline v2di shl(v2di v, int a) {
-	v2di tmph, tmpl;
-	tmph.v = v.v << ((v2di){{a, a}}).v;
-	tmpl.v = v.v >> ((v2di){{64-a, 64-a}}).v;
+typedef union _vecblock {
+	__m128i v;
+	fastd_block128_t b;
+} vecblock;
 
-	return (v2di){{tmph.e[0], tmph.e[1]|tmpl.e[0]}};
+static inline __m128i shl(__m128i v, int a) {
+	__m128i tmpl = _mm_slli_epi64(v, a);
+	__m128i tmpr = _mm_srli_epi64(v, 64-a);
+	tmpr = _mm_slli_si128(tmpr, 8);
+
+	return _mm_xor_si128(tmpl, tmpr);
 }
 
-static inline v2di shr(v2di v, int a) {
-	v2di tmph, tmpl;
-	tmph.v = v.v >> ((v2di){{a, a}}).v;
-	tmpl.v = v.v << ((v2di){{64-a, 64-a}}).v;
+static inline __m128i shr(__m128i v, int a) {
+	__m128i tmpr = _mm_srli_epi64(v, a);
+	__m128i tmpl = _mm_slli_epi64(v, 64-a);
+	tmpl = _mm_srli_si128(tmpl, 8);
 
-	return (v2di){{tmph.e[0]|tmpl.e[1], tmph.e[1]}};
+	return _mm_xor_si128(tmpr, tmpl);
 }
 
-static const v2di BYTESWAP_SHUFFLE = { .v16 = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}};
+static const __v16qi BYTESWAP_SHUFFLE = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
 
-#define BYTESWAP(v) ({ (v).v16 = __builtin_ia32_pshufb128((v).v16, BYTESWAP_SHUFFLE.v16); })
+static inline __m128i byteswap(__m128i v) {
+	return _mm_shuffle_epi8(v, (__m128i)BYTESWAP_SHUFFLE);
+}
+
 
 fastd_mac_state_t* fastd_ghash_pclmulqdq_init_state(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *mctx UNUSED, const uint8_t *key) {
 	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
 
-	memcpy(&state->H, key, sizeof(v2di));
-	BYTESWAP(state->H);
+	vecblock h;
+	memcpy(&h, key, sizeof(__m128i));
+
+	h.v = byteswap(h.v);
+	state->H = h.b;
 
 	return state;
 }
 
-static inline v2di gmul(v2di v, v2di h) {
+static __m128i gmul(__m128i v, __m128i h) {
 	/* multiply */
-	v2di z0, z1, z2;
-	z0.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x11);
-	z2.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x00);
+	__m128i z0, z1, z2, tmp;
+	z0 = _mm_clmulepi64_si128(v, h, 0x11);
+	z2 = _mm_clmulepi64_si128(v, h, 0x00);
 
-	v2di tmp = {{v.e[0] ^ v.e[1], h.e[0] ^ h.e[1]}};
-	z1.vll = __builtin_ia32_pclmulqdq128(tmp.vll, tmp.vll, 0x01);
-	z1.v ^= z0.v ^ z2.v;
+	__m128i tmpv = _mm_srli_si128(v, 8);
+	tmpv = _mm_xor_si128(tmpv, v);
 
-	v2di pl = {{z0.e[0] ^ z1.e[1], z0.e[1]}};
-	v2di ph = {{z2.e[0], z2.e[1] ^ z1.e[0]}};
+	__m128i tmph = _mm_srli_si128(h, 8);
+	tmph = _mm_xor_si128(tmph, h);
+
+	z1 = __builtin_ia32_pclmulqdq128(tmpv, tmph, 0x00);
+	z1 = _mm_xor_si128(z1, z0);
+	z1 = _mm_xor_si128(z1, z2);
+
+	tmp = _mm_srli_si128(z1, 8);
+	__m128i pl = _mm_xor_si128(z0, tmp);
+
+	tmp = _mm_slli_si128(z1, 8);
+	__m128i ph = _mm_xor_si128(z2, tmp);
+
+	tmp = _mm_srli_epi64(ph, 63);
+	tmp = _mm_srli_si128(tmp, 8);
 
 	pl = shl(pl, 1);
-	pl.e[0] |= ph.e[1] >> 63;
+	pl = _mm_xor_si128(pl, tmp);
 
 	ph = shl(ph, 1);
 
 	/* reduce */
-	uint64_t b = ph.e[0] << 62;
-	uint64_t c = ph.e[0] << 57;
+	__m128i b, c;
+	b = c = _mm_slli_si128(ph, 8);
 
-	v2di d = {{ph.e[0], ph.e[1] ^ b ^ c}};
+	b = _mm_slli_epi64(b, 62);
+	c = _mm_slli_epi64(c, 57);
 
-	v2di e = shr(d, 1);
-	v2di f = shr(d, 2);
-	v2di g = shr(d, 7);
+	tmp = _mm_xor_si128(b, c);
+	__m128i d = _mm_xor_si128(ph, tmp);
 
-	pl.v ^= d.v ^ e.v ^ f.v ^ g.v;
+	__m128i e = shr(d, 1);
+	__m128i f = shr(d, 2);
+	__m128i g = shr(d, 7);
+
+	pl = _mm_xor_si128(pl, d);
+	pl = _mm_xor_si128(pl, e);
+	pl = _mm_xor_si128(pl, f);
+	pl = _mm_xor_si128(pl, g);
 
 	return pl;
 }
 
 
 bool fastd_ghash_pclmulqdq_hash(fastd_context_t *ctx UNUSED, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
-	const v2di *inv = (const v2di*)in;
-	v2di v = {{0, 0}};
+	const __m128i *inv = (const __m128i*)in;
+
+	__m128i h = ((vecblock*)&state->H)->v;
+	__m128i v = _mm_setzero_si128();
 
 	size_t i;
 	for (i = 0; i < n_blocks; i++) {
-		v2di b = inv[i];
-		BYTESWAP(b);
-		v.v ^= b.v;
-		v = gmul(v, state->H);
+		__m128i b = inv[i];
+		v = _mm_xor_si128(v, byteswap(b));
+		v = gmul(v, h);
 	}
 
-	BYTESWAP(v);
-	*out = v.block;
+	((vecblock*)out)->v = byteswap(v);
 
 	return true;
 }

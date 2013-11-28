@@ -27,17 +27,8 @@
 #include "../../../../crypto.h"
 
 
-typedef union _v2di {
-	uint64_t v __attribute__((vector_size(16)));
-	char v16 __attribute__((vector_size(16)));
-	long long int vll __attribute__((vector_size(16)));
-	uint64_t e[2];
-	fastd_block128_t block;
-} v2di;
-
-
 struct fastd_mac_state {
-	v2di H;
+	fastd_block128_t H;
 };
 
 
