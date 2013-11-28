@@ -49,3 +49,11 @@ function(fastd_module_require type name)
     endforeach(req)
   endif(WITH_${TYPE}_${NAME})
 endfunction(fastd_module_require)
+
+function(fastd_module_compile_flags type name source)
+  _fastd_module_handle_name()
+
+  if(WITH_${TYPE}_${NAME})
+    set_property(SOURCE ${source} APPEND PROPERTY COMPILE_FLAGS ${ARGN})
+  endif(WITH_${TYPE}_${NAME})
+endfunction(fastd_module_compile_flags)

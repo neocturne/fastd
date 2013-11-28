@@ -34,6 +34,10 @@ macro(fastd_mac_impl_require mac name)
   fastd_module_require(mac "${mac} ${name}" ${ARGN})
 endmacro(fastd_mac_impl_require)
 
+macro(fastd_mac_impl_compile_flags mac name source)
+  fastd_module_compile_flags(mac "${mac} ${name}" ${source} ${ARGN})
+endmacro(fastd_mac_impl_compile_flags)
+
 
 add_subdirectory(ghash)
 

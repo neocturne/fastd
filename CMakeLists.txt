@@ -4,6 +4,7 @@ project(FASTD C)
 set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR}/cmake)
 set(FASTD_VERSION "v10+")
 
+include(arch)
 include(config)
 include(deps)
 include(checks)
