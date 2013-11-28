@@ -43,17 +43,15 @@ static inline v2di shr(v2di v, int a) {
 	return (v2di){{tmph.e[0]|tmpl.e[1], tmph.e[1]}};
 }
 
-static inline v2di byteswap(v2di v) {
-	const v2di shuffle = { .v16 = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}};
-	v.v16 = __builtin_ia32_pshufb128(v.v16, shuffle.v16);
-	return v;
-}
+static const v2di BYTESWAP_SHUFFLE = { .v16 = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}};
+
+#define BYTESWAP(v) ({ (v).v16 = __builtin_ia32_pshufb128((v).v16, BYTESWAP_SHUFFLE.v16); })
 
 fastd_mac_state_t* fastd_ghash_pclmulqdq_init_state(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *mctx UNUSED, const uint8_t *key) {
 	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
 
 	memcpy(&state->H, key, sizeof(v2di));
-	state->H = byteswap(state->H);
+	BYTESWAP(state->H);
 
 	return state;
 }
@@ -98,11 +96,14 @@ bool fastd_ghash_pclmulqdq_hash(fastd_context_t *ctx UNUSED, const fastd_mac_sta
 
 	size_t i;
 	for (i = 0; i < n_blocks; i++) {
-		v.v ^= byteswap(inv[i]).v;
+		v2di b = inv[i];
+		BYTESWAP(b);
+		v.v ^= b.v;
 		v = gmul(v, state->H);
 	}
 
-	*out = byteswap(v).block;
+	BYTESWAP(v);
+	*out = v.block;
 
 	return true;
 }
