@@ -60,14 +60,16 @@ fastd_mac_state_t* fastd_ghash_pclmulqdq_init_state(fastd_context_t *ctx UNUSED,
 
 static inline v2di gmul(v2di v, v2di h) {
 	/* multiply */
-	v2di tmp00, tmp10, tmp01, tmp11;
-	tmp00.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x00);
-	tmp01.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x01);
-	tmp10.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x10);
-	tmp11.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x11);
+	v2di z0, z1, z2;
+	z0.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x11);
+	z2.vll = __builtin_ia32_pclmulqdq128(v.vll, h.vll, 0x00);
 
-	v2di pl = {{tmp11.e[0] ^ tmp01.e[1] ^ tmp10.e[1], tmp11.e[1]}};
-	v2di ph = {{tmp00.e[0], tmp00.e[1] ^ tmp01.e[0] ^ tmp10.e[0]}};
+	v2di tmp = {{v.e[0] ^ v.e[1], h.e[0] ^ h.e[1]}};
+	z1.vll = __builtin_ia32_pclmulqdq128(tmp.vll, tmp.vll, 0x01);
+	z1.v ^= z0.v ^ z2.v;
+
+	v2di pl = {{z0.e[0] ^ z1.e[1], z0.e[1]}};
+	v2di ph = {{z2.e[0], z2.e[1] ^ z1.e[0]}};
 
 	pl = shl(pl, 1);
 	pl.e[0] |= ph.e[1] >> 63;
