@@ -82,7 +82,7 @@ static __m128i gmul(__m128i v, __m128i h) {
 	__m128i tmph = _mm_srli_si128(h, 8);
 	tmph = _mm_xor_si128(tmph, h);
 
-	z1 = __builtin_ia32_pclmulqdq128(tmpv, tmph, 0x00);
+	z1 = _mm_clmulepi64_si128(tmpv, tmph, 0x00);
 	z1 = _mm_xor_si128(z1, z0);
 	z1 = _mm_xor_si128(z1, z2);
 
