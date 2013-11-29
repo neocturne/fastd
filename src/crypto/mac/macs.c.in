@@ -89,24 +89,6 @@ bool fastd_mac_config(const fastd_mac_t **mac_conf, const char *name, const char
 	return false;
 }
 
-void fastd_mac_init(fastd_context_t *ctx) {
-	ctx->mac_contexts = calloc(array_size(macs), sizeof(fastd_mac_context_t*));
-
-	size_t i;
-	for (i = 0; i < array_size(macs); i++) {
-		if (ctx->conf->macs[i])
-			ctx->mac_contexts[i] = ctx->conf->macs[i]->initialize(ctx);
-	}
-}
-
-void fastd_mac_free(fastd_context_t *ctx) {
-	size_t i;
-	for (i = 0; i < array_size(macs); i++)
-		ctx->conf->macs[i]->free(ctx, ctx->mac_contexts[i]);
-
-	free(ctx->mac_contexts);
-}
-
 const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
 	size_t i, j;
 	for (i = 0; i < array_size(macs); i++) {
@@ -124,15 +106,12 @@ const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
 	return NULL;
 }
 
-const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info, const fastd_mac_context_t **cctx) {
+const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
 		if (!strcmp(macs[i].name, name)) {
 			if (info)
 				*info = macs[i].info;
-
-			if (cctx)
-				*cctx = ctx->mac_contexts[i];
 
 			return ctx->conf->macs[i];
 		}

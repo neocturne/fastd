@@ -58,7 +58,7 @@ static inline __m128i byteswap(__m128i v) {
 }
 
 
-fastd_mac_state_t* fastd_ghash_pclmulqdq_init_state(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *mctx UNUSED, const uint8_t *key) {
+fastd_mac_state_t* fastd_ghash_pclmulqdq_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
 	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
 
 	vecblock_t h;

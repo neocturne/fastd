@@ -35,24 +35,21 @@ struct fastd_method_session_state {
 
 	const fastd_cipher_info_t *cipher_info;
 	const fastd_cipher_t *cipher;
-	const fastd_cipher_context_t *cipher_ctx;
 	fastd_cipher_state_t *cipher_state;
 
 	const fastd_cipher_info_t *gmac_cipher_info;
 	const fastd_cipher_t *gmac_cipher;
-	const fastd_cipher_context_t *gmac_cipher_ctx;
 	fastd_cipher_state_t *gmac_cipher_state;
 
 	const fastd_mac_info_t *ghash_info;
 	const fastd_mac_t *ghash;
-	const fastd_mac_context_t *ghash_ctx;
 	fastd_mac_state_t *ghash_state;
 };
 
 
 static bool cipher_get(fastd_context_t *ctx, const char *name,
-		       const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx,
-		       const fastd_cipher_info_t **gmac_cipher_info, const fastd_cipher_t **gmac_cipher, const fastd_cipher_context_t **gmac_cctx) {
+		       const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher,
+		       const fastd_cipher_info_t **gmac_cipher_info, const fastd_cipher_t **gmac_cipher) {
 	if (!fastd_mac_info_get_by_name("ghash"))
 		return false;
 
@@ -80,8 +77,8 @@ static bool cipher_get(fastd_context_t *ctx, const char *name,
 	const fastd_cipher_info_t *gmac_info = NULL;
 
 	if (ctx) {
-		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &info, cctx);
-		*gmac_cipher = fastd_cipher_get_by_name(ctx, gmac_cipher_name, &gmac_info, gmac_cctx);
+		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &info);
+		*gmac_cipher = fastd_cipher_get_by_name(ctx, gmac_cipher_name, &gmac_info);
 		if (!(*cipher && *gmac_cipher))
 			return false;
 	}
@@ -105,7 +102,7 @@ static bool cipher_get(fastd_context_t *ctx, const char *name,
 static bool method_provides(const char *name) {
 	const fastd_cipher_info_t *gmac_cipher_info;
 
-	if (!cipher_get(NULL, name, NULL, NULL, NULL, &gmac_cipher_info, NULL, NULL))
+	if (!cipher_get(NULL, name, NULL, NULL, &gmac_cipher_info, NULL))
 		return false;
 
 	if (gmac_cipher_info->iv_length <= COMMON_NONCEBYTES)
@@ -118,7 +115,7 @@ static size_t method_key_length(fastd_context_t *ctx, const char *name) {
 	const fastd_cipher_info_t *cipher_info;
 	const fastd_cipher_info_t *gmac_cipher_info;
 
-	if (!cipher_get(NULL, name, &cipher_info, NULL, NULL, &gmac_cipher_info, NULL, NULL))
+	if (!cipher_get(NULL, name, &cipher_info, NULL, &gmac_cipher_info, NULL))
 		exit_bug(ctx, "composed-gmac: can't get cipher key length");
 
 	return cipher_info->key_length + gmac_cipher_info->key_length;
@@ -130,15 +127,15 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	fastd_method_common_init(ctx, &session->common, initiator);
 
 	if (!cipher_get(ctx, name,
-			&session->cipher_info, &session->cipher, &session->cipher_ctx,
-			&session->gmac_cipher_info, &session->gmac_cipher, &session->gmac_cipher_ctx))
+			&session->cipher_info, &session->cipher,
+			&session->gmac_cipher_info, &session->gmac_cipher))
 		exit_bug(ctx, "composed-gmac: can't instanciate cipher");
 
-	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);
+	session->cipher_state = session->cipher->init(ctx, secret);
 	if (session->cipher_info->iv_length && session->cipher_info->iv_length <= COMMON_NONCEBYTES)
 		exit_bug(ctx, "composed-gmac: iv_length to small");
 
-	session->gmac_cipher_state = session->gmac_cipher->init_state(ctx, session->gmac_cipher_ctx, secret + session->cipher_info->key_length);
+	session->gmac_cipher_state = session->gmac_cipher->init(ctx, secret + session->cipher_info->key_length);
 	if (session->gmac_cipher_info->iv_length <= COMMON_NONCEBYTES)
 		exit_bug(ctx, "composed-gmac: GMAC cipher iv_length to small");
 
@@ -148,18 +145,18 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	memset(zeroiv, 0, session->gmac_cipher_info->iv_length);
 
 	if (!session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, &H, &ZERO_BLOCK, sizeof(fastd_block128_t), zeroiv)) {
-		session->cipher->free_state(ctx, session->cipher_state);
-		session->gmac_cipher->free_state(ctx, session->gmac_cipher_state);
+		session->cipher->free(ctx, session->cipher_state);
+		session->gmac_cipher->free(ctx, session->gmac_cipher_state);
 		free(session);
 
 		return NULL;
 	}
 
-	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_info, &session->ghash_ctx);
+	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_info);
 	if (!session->ghash)
 		exit_bug(ctx, "composed-gmac: can't instanciate ghash mac");
 
-	session->ghash_state = session->ghash->init_state(ctx, session->ghash_ctx, H.b);
+	session->ghash_state = session->ghash->init(ctx, H.b);
 
 	return session;
 }
@@ -182,9 +179,9 @@ static void method_session_superseded(fastd_context_t *ctx, fastd_method_session
 
 static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	if (session) {
-		session->cipher->free_state(ctx, session->cipher_state);
-		session->gmac_cipher->free_state(ctx, session->gmac_cipher_state);
-		session->ghash->free_state(ctx, session->ghash_state);
+		session->cipher->free(ctx, session->cipher_state);
+		session->gmac_cipher->free(ctx, session->gmac_cipher_state);
+		session->ghash->free(ctx, session->ghash_state);
 
 		free(session);
 	}

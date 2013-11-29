@@ -300,9 +300,6 @@ struct fastd_context {
 	fastd_stats_t tx_dropped;
 	fastd_stats_t tx_error;
 
-	fastd_cipher_context_t **cipher_contexts;
-	fastd_mac_context_t **mac_contexts;
-
 	size_t eth_addr_size;
 	size_t n_eth_addr;
 	fastd_peer_eth_addr_t *eth_addr;

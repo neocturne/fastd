@@ -34,28 +34,17 @@ static bool ghash_available(void) {
 	return ((fastd_cpuid()&REQ) == REQ);
 }
 
-static fastd_mac_context_t* ghash_initialize(fastd_context_t *ctx UNUSED) {
-	return NULL;
-}
-
-static void ghash_free_state(fastd_context_t *ctx UNUSED, fastd_mac_state_t *state) {
+static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
 		free(state);
 	}
 }
 
-static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_context_t *mctx UNUSED) {
-}
-
 const fastd_mac_t fastd_mac_ghash_pclmulqdq = {
 	.available = ghash_available,
 
-	.initialize = ghash_initialize,
-	.init_state = fastd_ghash_pclmulqdq_init_state,
-
+	.init = fastd_ghash_pclmulqdq_init,
 	.hash = fastd_ghash_pclmulqdq_hash,
-
-	.free_state = ghash_free_state,
 	.free = ghash_free,
 };

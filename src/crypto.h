@@ -38,13 +38,9 @@ struct fastd_cipher_info {
 struct fastd_cipher {
 	bool (*available)(void);
 
-	fastd_cipher_context_t* (*initialize)(fastd_context_t *ctx);
-	fastd_cipher_state_t* (*init_state)(fastd_context_t *ctx, const fastd_cipher_context_t *cctx, const uint8_t *key);
-
+	fastd_cipher_state_t* (*init)(fastd_context_t *ctx, const uint8_t *key);
 	bool (*crypt)(fastd_context_t *ctx, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv);
-
-	void (*free_state)(fastd_context_t *ctx, fastd_cipher_state_t *state);
-	void (*free)(fastd_context_t *ctx, fastd_cipher_context_t *cctx);
+	void (*free)(fastd_context_t *ctx, fastd_cipher_state_t *state);
 };
 
 
@@ -55,24 +51,16 @@ struct fastd_mac_info {
 struct fastd_mac {
 	bool (*available)(void);
 
-	fastd_mac_context_t* (*initialize)(fastd_context_t *ctx);
-	fastd_mac_state_t* (*init_state)(fastd_context_t *ctx, const fastd_mac_context_t *mctx, const uint8_t *key);
-
+	fastd_mac_state_t* (*init)(fastd_context_t *ctx, const uint8_t *key);
 	bool (*hash)(fastd_context_t *ctx, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
-
-	void (*free_state)(fastd_context_t *ctx, fastd_mac_state_t *state);
-	void (*free)(fastd_context_t *ctx, fastd_mac_context_t *mctx);
+	void (*free)(fastd_context_t *ctx, fastd_mac_state_t *state);
 };
 
 
-void fastd_cipher_init(fastd_context_t *ctx);
-void fastd_cipher_free(fastd_context_t *ctx);
 const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name);
-const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **info, const fastd_cipher_context_t **cctx);
+const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **info);
 
-void fastd_mac_init(fastd_context_t *ctx);
-void fastd_mac_free(fastd_context_t *ctx);
 const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name);
-const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info, const fastd_mac_context_t **cctx);
+const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info);
 
 #endif /* _FASTD_CRYPTO_H_ */

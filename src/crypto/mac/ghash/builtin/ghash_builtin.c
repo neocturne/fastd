@@ -61,11 +61,7 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 }
 
 
-static fastd_mac_context_t* ghash_initialize(fastd_context_t *ctx UNUSED) {
-	return NULL;
-}
-
-static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fastd_mac_context_t *mctx UNUSED, const uint8_t *key) {
+static fastd_mac_state_t* ghash_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
 	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
 
 	fastd_block128_t Hbase[4];
@@ -121,24 +117,17 @@ static bool ghash_hash(fastd_context_t *ctx UNUSED, const fastd_mac_state_t *sta
 	return true;
 }
 
-static void ghash_free_state(fastd_context_t *ctx UNUSED, fastd_mac_state_t *state) {
+static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
 		free(state);
 	}
 }
 
-static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_context_t *mctx UNUSED) {
-}
-
 const fastd_mac_t fastd_mac_ghash_builtin = {
 	.available = fastd_true,
 
-	.initialize = ghash_initialize,
-	.init_state = ghash_init_state,
-
+	.init = ghash_init,
 	.hash = ghash_hash,
-
-	.free_state = ghash_free_state,
 	.free = ghash_free,
 };

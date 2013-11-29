@@ -27,11 +27,7 @@
 #include "../../../../crypto.h"
 
 
-static fastd_cipher_context_t* null_initialize(fastd_context_t *ctx UNUSED) {
-	return NULL;
-}
-
-static fastd_cipher_state_t* null_init_state(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key UNUSED) {
+static fastd_cipher_state_t* null_init(fastd_context_t *ctx UNUSED, const uint8_t *key UNUSED) {
 	return NULL;
 }
 
@@ -40,20 +36,13 @@ static bool null_memcpy(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t 
 	return true;
 }
 
-static void null_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state UNUSED) {
-}
-
-static void null_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {
+static void null_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state UNUSED) {
 }
 
 const fastd_cipher_t fastd_cipher_null_memcpy = {
 	.available = fastd_true,
 
-	.initialize = null_initialize,
-	.init_state = null_init_state,
-
+	.init = null_init,
 	.crypt = null_memcpy,
-
-	.free_state = null_free_state,
 	.free = null_free,
 };

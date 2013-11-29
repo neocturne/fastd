@@ -33,11 +33,7 @@ struct __attribute__((aligned(16))) fastd_cipher_state {
 };
 
 
-static fastd_cipher_context_t* salsa2012_initialize(fastd_context_t *ctx UNUSED) {
-	return NULL;
-}
-
-static fastd_cipher_state_t* salsa2012_init_state(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key) {
+static fastd_cipher_state_t* salsa2012_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 	memcpy(state->key, key, crypto_stream_salsa2012_KEYBYTES);
 
@@ -49,24 +45,17 @@ static bool salsa2012_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_stat
 	return true;
 }
 
-static void salsa2012_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
+static void salsa2012_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
 		free(state);
 	}
 }
 
-static void salsa2012_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {
-}
-
 const fastd_cipher_t fastd_cipher_salsa2012_nacl = {
 	.available = fastd_true,
 
-	.initialize = salsa2012_initialize,
-	.init_state = salsa2012_init_state,
-
+	.init = salsa2012_init,
 	.crypt = salsa2012_crypt,
-
-	.free_state = salsa2012_free_state,
 	.free = salsa2012_free,
 };

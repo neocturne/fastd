@@ -152,16 +152,6 @@ static void close_log(fastd_context_t *ctx) {
 	closelog();
 }
 
-static void crypto_init(fastd_context_t *ctx) {
-	fastd_cipher_init(ctx);
-	fastd_mac_init(ctx);
-}
-
-static void crypto_free(fastd_context_t *ctx UNUSED) {
-	fastd_mac_free(ctx);
-	fastd_cipher_free(ctx);
-}
-
 
 static void init_sockets(fastd_context_t *ctx) {
 	ctx->socks = malloc(ctx->conf->n_bind_addrs * sizeof(fastd_socket_t));
@@ -798,8 +788,6 @@ int main(int argc, char *argv[]) {
 	/* change groups early as the can be relevant for file access (for PID file & log files) */
 	set_groups(&ctx);
 
-	crypto_init(&ctx);
-
 	init_sockets(&ctx);
 
 	if (!fastd_socket_handle_binds(&ctx))
@@ -884,8 +872,6 @@ int main(int argc, char *argv[]) {
 	free(ctx.protocol_state);
 	free(ctx.eth_addr);
 	free(ctx.ifname);
-
-	crypto_free(&ctx);
 
 	close_log(&ctx);
 	fastd_config_release(&ctx, &conf);

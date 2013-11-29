@@ -143,10 +143,7 @@ typedef struct fastd_protocol_peer_state fastd_protocol_peer_state_t;
 
 typedef struct fastd_method_session_state fastd_method_session_state_t;
 
-typedef struct fastd_cipher_context fastd_cipher_context_t;
 typedef struct fastd_cipher_state fastd_cipher_state_t;
-
-typedef struct fastd_mac_context fastd_mac_context_t;
 typedef struct fastd_mac_state fastd_mac_state_t;
 
 #endif /* _FASTD_TYPES_H_ */

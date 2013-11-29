@@ -182,11 +182,6 @@ struct fastd_cipher_state {
 };
 
 
-static fastd_cipher_context_t* blowfish_ctr_initialize(fastd_context_t *ctx UNUSED) {
-	return NULL;
-}
-
-
 static inline void bf_ntohl(uint32_t *v, size_t len) {
 	size_t i;
 	for (i = 0; i < len; i++)
@@ -214,7 +209,7 @@ static inline uint32_t bf_f(const fastd_cipher_state_t *state, uint32_t x) {
 			BF_SWAP(L, R);				\
 		})
 
-static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key) {
+static fastd_cipher_state_t* blowfish_ctr_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
 	uint32_t key32[14];
 	memcpy(key32, key, 56);
 	bf_ntohl(key32, 14);
@@ -276,24 +271,17 @@ static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_s
 	return true;
 }
 
-static void blowfish_ctr_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
+static void blowfish_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
 		free(state);
 	}
 }
 
-static void blowfish_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {
-}
-
 const fastd_cipher_t fastd_cipher_blowfish_ctr_builtin = {
 	.available = fastd_true,
 
-	.initialize = blowfish_ctr_initialize,
-	.init_state = blowfish_ctr_init_state,
-
+	.init = blowfish_ctr_init,
 	.crypt = blowfish_ctr_crypt,
-
-	.free_state = blowfish_ctr_free_state,
 	.free = blowfish_ctr_free,
 };

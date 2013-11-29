@@ -28,16 +28,12 @@
 #include <openssl/evp.h>
 
 
-struct __attribute__((aligned(16))) fastd_cipher_state {
+struct fastd_cipher_state {
 	EVP_CIPHER_CTX *aes;
 };
 
 
-static fastd_cipher_context_t* aes128_ctr_initialize(fastd_context_t *ctx UNUSED) {
-	return NULL;
-}
-
-static fastd_cipher_state_t* aes128_ctr_init_state(fastd_context_t *ctx UNUSED, const fastd_cipher_context_t *cctx UNUSED, const uint8_t *key) {
+static fastd_cipher_state_t* aes128_ctr_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 
 	state->aes = EVP_CIPHER_CTX_new();
@@ -64,24 +60,17 @@ static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_sta
 	return true;
 }
 
-static void aes128_ctr_free_state(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
+static void aes128_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
 	if (state) {
 		EVP_CIPHER_CTX_free(state->aes);
 		free(state);
 	}
 }
 
-static void aes128_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_context_t *cctx UNUSED) {
-}
-
 const fastd_cipher_t fastd_cipher_aes128_ctr_openssl = {
 	.available = fastd_true,
 
-	.initialize = aes128_ctr_initialize,
-	.init_state = aes128_ctr_init_state,
-
+	.init = aes128_ctr_init,
 	.crypt = aes128_ctr_crypt,
-
-	.free_state = aes128_ctr_free_state,
 	.free = aes128_ctr_free,
 };
