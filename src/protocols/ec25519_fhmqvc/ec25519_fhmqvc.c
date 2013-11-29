@@ -60,7 +60,7 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 
 	ecc_25519_work_t work;
 	ecc_25519_scalarmult_base(&work, &protocol_config->key.secret);
-	ecc_25519_store_packed(&protocol_config->key.public, &work);
+	ecc_25519_store_packed(&protocol_config->key.public.int256, &work);
 
 	return protocol_config;
 }
@@ -75,7 +75,7 @@ static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *p
 	}
 
 	aligned_int256_t key;
-	if (!read_key(key.p, peer_conf->key)) {
+	if (!read_key(key.u8, peer_conf->key)) {
 		pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
 		return;
 	}
@@ -83,7 +83,7 @@ static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *p
 	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
 	peer_conf->protocol_config->public_key = key;
 
-	if (memcmp(peer_conf->protocol_config->public_key.p, ctx->conf->protocol_config->key.public.p, 32) == 0)
+	if (memcmp(&peer_conf->protocol_config->public_key, &ctx->conf->protocol_config->key.public, 32) == 0)
 		pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
 }
 

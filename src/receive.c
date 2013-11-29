@@ -32,21 +32,24 @@
 static inline void handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
 	memset(local_addr, 0, sizeof(fastd_peer_address_t));
 
-	const char *end = (char*)message->msg_control + message->msg_controllen;
+	const uint8_t *end = (const uint8_t*)message->msg_control + message->msg_controllen;
 
 	struct cmsghdr *cmsg;
 	for (cmsg = CMSG_FIRSTHDR(message); cmsg; cmsg = CMSG_NXTHDR(message, cmsg)) {
-		if ((char*)cmsg + sizeof(*cmsg) > end)
+		if ((const uint8_t*)cmsg + sizeof(*cmsg) > end)
 			return;
 
 #ifdef USE_PKTINFO
 		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
-			struct in_pktinfo *pktinfo = (struct in_pktinfo*)CMSG_DATA(cmsg);
-			if ((char*)pktinfo + sizeof(*pktinfo) > end)
+			struct in_pktinfo pktinfo;
+
+			if ((const uint8_t*)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
 				return;
 
+			memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
+
 			local_addr->in.sin_family = AF_INET;
-			local_addr->in.sin_addr = pktinfo->ipi_addr;
+			local_addr->in.sin_addr = pktinfo.ipi_addr;
 			local_addr->in.sin_port = fastd_peer_address_get_port(sock->bound_addr);
 
 			return;
@@ -54,16 +57,19 @@ static inline void handle_socket_control(struct msghdr *message, const fastd_soc
 #endif
 
 		if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
-			struct in6_pktinfo *pktinfo = (struct in6_pktinfo*)CMSG_DATA(cmsg);
-			if ((char*)pktinfo + sizeof(*pktinfo) > end)
+			struct in6_pktinfo pktinfo;
+
+			if ((uint8_t*)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
 				return;
 
+			memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
+
 			local_addr->in6.sin6_family = AF_INET6;
-			local_addr->in6.sin6_addr = pktinfo->ipi6_addr;
+			local_addr->in6.sin6_addr = pktinfo.ipi6_addr;
 			local_addr->in6.sin6_port = fastd_peer_address_get_port(sock->bound_addr);
 
 			if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
-				local_addr->in6.sin6_scope_id = pktinfo->ipi6_ifindex;
+				local_addr->in6.sin6_scope_id = pktinfo.ipi6_ifindex;
 
 			return;
 		}

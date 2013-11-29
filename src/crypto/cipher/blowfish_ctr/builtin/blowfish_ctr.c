@@ -26,6 +26,13 @@
 
 #include "../../../../crypto.h"
 
+
+typedef union bf_block {
+	fastd_block128_t b;
+	uint32_t u32[4];
+} bf_block_t;
+
+
 static const uint32_t Sdefault[4][256] = {
 	{
 		0xd1310ba6, 0x98dfb5ac, 0x2ffd72db, 0xd01adfb7, 0xb8e1afed, 0x6a267e96, 0xba7c9045, 0xf12c7f99,
@@ -240,24 +247,30 @@ static fastd_cipher_state_t* blowfish_ctr_init_state(fastd_context_t *ctx UNUSED
 }
 
 static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+	register bf_block_t block;
 	register uint32_t ctr[2];
-	register uint32_t block[2];
-
-	uint32_t *out4 = (uint32_t*)out;
-	uint32_t *in4 = (uint32_t*)in;
 
 	ctr[0] = (iv[0] << 24)|(iv[1] << 16)|(iv[2] << 8)|(iv[3]);
 	ctr[1] = (iv[4] << 24)|(iv[5] << 16)|(iv[6] << 8)|(iv[7]);
 
 	size_t i;
-	for(i = 0; i < len; i += 8) {
-		block[0] = ctr[0];
-		block[1] = ctr[1];
-		BF_ENCRYPT(state, block[0], block[1]);
-
-		*(out4++) = *(in4++) ^ htonl(block[0]);
-		*(out4++) = *(in4++) ^ htonl(block[1]);
+	for(i = 0; i < len; i += 16) {
+		block.u32[0] = ctr[0];
+		block.u32[1] = ctr[1];
+		BF_ENCRYPT(state, block.u32[0], block.u32[1]);
 		ctr[1]++;
+
+		block.u32[2] = ctr[0];
+		block.u32[3] = ctr[1];
+		BF_ENCRYPT(state, block.u32[2], block.u32[3]);
+		ctr[1]++;
+
+		block.u32[0] = htonl(block.u32[0]);
+		block.u32[1] = htonl(block.u32[1]);
+		block.u32[2] = htonl(block.u32[2]);
+		block.u32[3] = htonl(block.u32[3]);
+
+		xor(out++, *(in++), block.b);
 	}
 
 	return true;

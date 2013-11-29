@@ -152,8 +152,8 @@ static inline bool fastd_peer_handshake_scheduled(fastd_context_t *ctx UNUSED, f
 	return fastd_dlist_linked(&peer->handshake_entry);
 }
 
-const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
-const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
+fastd_eth_addr_t fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
+fastd_eth_addr_t fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
 
 static inline bool fastd_peer_allow_unknown(fastd_context_t *ctx) {
 	return ctx->conf->on_verify;
@@ -204,12 +204,12 @@ static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {
 	return (!peer->sock || !peer->sock->addr);
 }
 
-static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr_t *addr) {
-	return ((addr->data[0] & 1) == 0);
+static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
+	return ((addr.data[0] & 1) == 0);
 }
 
-void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_eth_addr_t *addr);
+void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth_addr_t addr);
 void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx);
-fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, const fastd_eth_addr_t *addr);
+fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, fastd_eth_addr_t addr);
 
 #endif /* _FASTD_PEER_H_ */

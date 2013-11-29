@@ -42,7 +42,7 @@ static void new_handshake_key(fastd_context_t *ctx, keypair_t *key) {
 
 		ecc_25519_work_t work;
 		ecc_25519_scalarmult_base(&work, &key->secret);
-		ecc_25519_store_packed(&key->public, &work);
+		ecc_25519_store_packed(&key->public.int256, &work);
 }
 
 void fastd_protocol_ec25519_fhmqvc_maintenance(fastd_context_t *ctx) {

@@ -59,19 +59,19 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(fastd_context_t *ctx) {
 
 void fastd_protocol_ec25519_fhmqvc_show_key(fastd_context_t *ctx) {
 	if (ctx->conf->machine_readable)
-		print_hexdump("", ctx->conf->protocol_config->key.public.p);
+		print_hexdump("", ctx->conf->protocol_config->key.public.u8);
 	else
-		print_hexdump("Public: ", ctx->conf->protocol_config->key.public.p);
+		print_hexdump("Public: ", ctx->conf->protocol_config->key.public.u8);
 }
 
 void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	char buf[65];
 
-	hexdump(buf, ctx->conf->protocol_config->key.public.p);
+	hexdump(buf, ctx->conf->protocol_config->key.public.u8);
 	setenv("LOCAL_KEY", buf, 1);
 
 	if (peer && peer->protocol_config) {
-		hexdump(buf, peer->protocol_config->public_key.p);
+		hexdump(buf, peer->protocol_config->public_key.u8);
 		setenv("PEER_KEY", buf, 1);
 	}
 	else {
@@ -83,7 +83,7 @@ bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_context_t *ctx UNUS
 	if (peer && peer->protocol_config) {
 		char dumpbuf[65];
 
-		hexdump(dumpbuf, peer->protocol_config->public_key.p);
+		hexdump(dumpbuf, peer->protocol_config->public_key.u8);
 		snprintf(buf, len, "%.16s", dumpbuf);
 		return true;
 	}

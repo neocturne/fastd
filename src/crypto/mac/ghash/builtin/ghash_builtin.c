@@ -35,13 +35,13 @@ struct fastd_mac_state {
 static const fastd_block128_t r = { .b = {0xe1} };
 
 
-static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int n) {
+static inline uint8_t shr(fastd_block128_t *out, fastd_block128_t in, int n) {
 	size_t i;
 	uint8_t c = 0;
 
 	for (i = 0; i < sizeof(fastd_block128_t); i++) {
-		uint8_t c2 = in->b[i] << (8-n);
-		out->b[i] = (in->b[i] >> n) | c;
+		uint8_t c2 = in.b[i] << (8-n);
+		out->b[i] = (in.b[i] >> n) | c;
 		c = c2;
 	}
 
@@ -53,8 +53,8 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 
 	int i;
 	for (i = 0; i < 16; i++) {
-		xor_a(&out, &cstate->H[2*i][x->b[i]>>4]);
-		xor_a(&out, &cstate->H[2*i+1][x->b[i]&0xf]);
+		xor_a(&out, cstate->H[2*i][x->b[i]>>4]);
+		xor_a(&out, cstate->H[2*i+1][x->b[i]&0xf]);
 	}
 
 	*x = out;
@@ -76,11 +76,11 @@ static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fa
 
 	int i;
 	for (i = 1; i < 4; i++) {
-		uint8_t carry = shr(&Hbase[i], &Hbase[i-1], 1);
+		uint8_t carry = shr(&Hbase[i], Hbase[i-1], 1);
 		if (carry)
-			xor_a(&Hbase[i], &r);
+			xor_a(&Hbase[i], r);
 
-		shr(&Rbase[i], &Rbase[i-1], 1);
+		shr(&Rbase[i], Rbase[i-1], 1);
 	}
 
 	fastd_block128_t R[16];
@@ -91,8 +91,8 @@ static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fa
 		int j;
 		for (j = 0; j < 4; j++) {
 			if (i & (8 >> j)) {
-				xor_a(&state->H[0][i], &Hbase[j]);
-				xor_a(&R[i], &Rbase[j]);
+				xor_a(&state->H[0][i], Hbase[j]);
+				xor_a(&R[i], Rbase[j]);
 			}
 		}
 	}
@@ -101,8 +101,8 @@ static fastd_mac_state_t* ghash_init_state(fastd_context_t *ctx UNUSED, const fa
 		int j;
 
 		for (j = 0; j < 16; j++) {
-			uint8_t carry = shr(&state->H[i][j], &state->H[i-1][j], 4);
-			xor_a(&state->H[i][j], &R[carry]);
+			uint8_t carry = shr(&state->H[i][j], state->H[i-1][j], 4);
+			xor_a(&state->H[i][j], R[carry]);
 		}
 	}
 
@@ -114,7 +114,7 @@ static bool ghash_hash(fastd_context_t *ctx UNUSED, const fastd_mac_state_t *sta
 
 	size_t i;
 	for (i = 0; i < n_blocks; i++) {
-		xor_a(out, &in[i]);
+		xor_a(out, in[i]);
 		mulH_a(out, state);
 	}
 

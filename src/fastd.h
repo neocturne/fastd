@@ -380,9 +380,10 @@ static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 #define exit_errno(ctx, message) exit_error(ctx, "%s: %s", message, strerror(errno))
 
 
-#define container_of(ptr, type, member) ({                      \
-			const typeof( ((type *)0)->member ) *__mptr = (ptr); \
-			(type *)( (char *)__mptr - offsetof(type,member) );})
+#define container_of(ptr, type, member) ({				\
+			const __typeof__(((type *)0)->member) *_mptr = (ptr); \
+			(type*)((char*)_mptr - offsetof(type, member)); \
+		})
 
 #define array_size(array) (sizeof(array)/sizeof((array)[0]))
 
@@ -506,16 +507,16 @@ static inline size_t min_size_t(size_t a, size_t b) {
 
 static inline void secure_memzero(void *s, size_t n) {
 	memset(s, 0, n);
-	asm volatile("" : : "m"(s));
+	__asm__ volatile("" : : "m"(s));
 }
 
-static inline void xor(fastd_block128_t *x, const fastd_block128_t *a, const fastd_block128_t *b) {
-	x->qw[0] = a->qw[0] ^ b->qw[0];
-	x->qw[1] = a->qw[1] ^ b->qw[1];
+static inline void xor(fastd_block128_t *x, fastd_block128_t a, fastd_block128_t b) {
+	x->qw[0] = a.qw[0] ^ b.qw[0];
+	x->qw[1] = a.qw[1] ^ b.qw[1];
 }
 
-static inline void xor_a(fastd_block128_t *x, const fastd_block128_t *a) {
-	xor(x, x, a);
+static inline void xor_a(fastd_block128_t *x, fastd_block128_t a) {
+	xor(x, *x, a);
 }
 
 static inline bool fastd_true(void) {

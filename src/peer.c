@@ -598,19 +598,24 @@ void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer) {
 	pr_info(ctx, "connection with %P established.", peer);
 }
 
-const fastd_eth_addr_t* fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
+fastd_eth_addr_t fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
+
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
-		return (fastd_eth_addr_t*)&((struct ethhdr*)buffer.data)->h_source;
+		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
+		return ret;
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
 }
 
-const fastd_eth_addr_t* fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
+fastd_eth_addr_t fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
 	switch (ctx->conf->mode) {
 	case MODE_TAP:
-		return (fastd_eth_addr_t*)&((struct ethhdr*)buffer.data)->h_dest;
+		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
+		return ret;
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
@@ -640,21 +645,22 @@ static inline int fastd_eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_
 	return memcmp(addr1->data, addr2->data, ETH_ALEN);
 }
 
-static inline int fastd_peer_eth_addr_cmp(const fastd_peer_eth_addr_t *addr1, const fastd_peer_eth_addr_t *addr2) {
-	return fastd_eth_addr_cmp(&addr1->addr, &addr2->addr);
+static inline fastd_peer_eth_addr_t* peer_get_by_addr(fastd_context_t *ctx, fastd_eth_addr_t addr) {
+	fastd_eth_addr_t *ret = bsearch(&addr, &ctx->eth_addr[0].addr, ctx->n_eth_addr, sizeof(fastd_peer_eth_addr_t),
+					(int (*)(const void *, const void *))fastd_eth_addr_cmp);
+
+	if (ret)
+		return container_of(ret, fastd_peer_eth_addr_t, addr);
+	else
+		return NULL;
 }
 
-static inline fastd_peer_eth_addr_t* peer_get_by_addr(fastd_context_t *ctx, const fastd_eth_addr_t *addr) {
-	return bsearch(container_of(addr, fastd_peer_eth_addr_t, addr), ctx->eth_addr, ctx->n_eth_addr, sizeof(fastd_peer_eth_addr_t),
-		       (int (*)(const void *, const void *))fastd_peer_eth_addr_cmp);
-}
-
-void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_eth_addr_t *addr) {
+void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth_addr_t addr) {
 	int min = 0, max = ctx->n_eth_addr;
 
 	while (max > min) {
 		int cur = (min+max)/2;
-		int cmp = fastd_eth_addr_cmp(addr, &ctx->eth_addr[cur].addr);
+		int cmp = fastd_eth_addr_cmp(&addr, &ctx->eth_addr[cur].addr);
 
 		if (cmp == 0) {
 			ctx->eth_addr[cur].peer = peer;
@@ -683,9 +689,9 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, const fas
 	for (i = ctx->n_eth_addr-1; i > min; i--)
 		ctx->eth_addr[i] = ctx->eth_addr[i-1];
 
-	ctx->eth_addr[min] = (fastd_peer_eth_addr_t){ *addr, peer, ctx->now };
+	ctx->eth_addr[min] = (fastd_peer_eth_addr_t){ addr, peer, ctx->now };
 
-	pr_debug(ctx, "learned new MAC address %E on peer %P", addr, peer);
+	pr_debug(ctx, "learned new MAC address %E on peer %P", &addr, peer);
 }
 
 void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx) {
@@ -705,7 +711,7 @@ void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx) {
 	ctx->n_eth_addr -= deleted;
 }
 
-fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, const fastd_eth_addr_t *addr) {
+fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, const fastd_eth_addr_t addr) {
 	fastd_peer_eth_addr_t *peer_eth_addr = peer_get_by_addr(ctx, addr);
 
 	if (peer_eth_addr)

@@ -108,7 +108,7 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 			bind_address.in.sin_port = addr->addr.in.sin_port;
 	}
 
-	if (bind(fd, (struct sockaddr*)&bind_address, bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
+	if (bind(fd, &bind_address.sa, bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
 		if (warn)
 			pr_warn_errno(ctx, "bind");
 		goto error;

@@ -34,20 +34,19 @@ void fastd_hkdf_sha256_expand(fastd_sha256_t *out, size_t blocks, fastd_sha256_t
 		return;
 
 	size_t len = sizeof(fastd_sha256_t) + infolen + 1;
+	uint32_t buf[(len+3)/4];
 
-	uint8_t buf[len] __attribute__((aligned(4)));
+	memset(buf, 0, FASTD_SHA256_HASH_BYTES);
+	memcpy(buf+FASTD_SHA256_HASH_WORDS, info, infolen);
+	((uint8_t*)buf)[len-1] = 0x01;
 
-	memset(buf, 0, sizeof(fastd_sha256_t));
-	memcpy(buf+sizeof(fastd_sha256_t), info, infolen);
-	buf[len-1] = 0x01;
-
-	fastd_hmacsha256(out, prk->w, (uint32_t*)(buf+sizeof(fastd_sha256_t)), infolen + 1);
+	fastd_hmacsha256(out, prk->w, buf+FASTD_SHA256_HASH_WORDS, infolen + 1);
 
 	while (--blocks) {
-		memcpy(buf, out, sizeof(fastd_sha256_t));
+		memcpy(buf, out, FASTD_SHA256_HASH_BYTES);
 		out++;
-		buf[len-1]++;
+		((uint8_t*)buf)[len-1]++;
 
-		fastd_hmacsha256(out, prk->w, (uint32_t*)buf, len);
+		fastd_hmacsha256(out, prk->w, buf, len);
 	}
 }

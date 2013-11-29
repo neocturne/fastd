@@ -41,7 +41,7 @@ static fastd_cipher_state_t* aes128_ctr_init_state(fastd_context_t *ctx UNUSED, 
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 
 	state->aes = EVP_CIPHER_CTX_new();
-	EVP_EncryptInit(state->aes, EVP_aes_128_ctr(), (const void*)key, NULL);
+	EVP_EncryptInit(state->aes, EVP_aes_128_ctr(), (const unsigned char*)key, NULL);
 
 	return state;
 }
@@ -52,10 +52,10 @@ static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_sta
 	if (!EVP_EncryptInit(state->aes, NULL, NULL, iv))
 		return false;
 
-	if (!EVP_EncryptUpdate(state->aes, (void*)out, &clen, (const void*)in, len))
+	if (!EVP_EncryptUpdate(state->aes, (unsigned char*)out, &clen, (const unsigned char*)in, len))
 		return false;
 
-	if (!EVP_EncryptFinal(state->aes, ((void*)out) + clen, &clen2))
+	if (!EVP_EncryptFinal(state->aes, ((unsigned char*)out) + clen, &clen2))
 		return false;
 
 	if ((size_t)(clen+clen2) != len)

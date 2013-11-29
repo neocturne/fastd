@@ -238,7 +238,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 		return false;
 	}
 
-	xor_a(&outblocks[0], &sig);
+	xor_a(&outblocks[0], sig);
 
 	fastd_buffer_free(in);
 

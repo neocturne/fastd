@@ -41,7 +41,7 @@
 
 static inline uint64_t fastd_cpuid(void) {
 	uint32_t edx, ecx;
-	asm("cpuid" : "=d"(edx), "=c"(ecx) : "a"((uint32_t)1));
+	__asm__("cpuid" : "=d"(edx), "=c"(ecx) : "a"((uint32_t)1));
 	return ((uint64_t)ecx) << 32 | edx;
 }
 

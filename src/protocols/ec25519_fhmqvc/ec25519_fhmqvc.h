@@ -34,7 +34,11 @@
 #include <libuecc/ecc.h>
 
 
-typedef ecc_int256_t __attribute__((aligned(4))) aligned_int256_t;
+typedef union aligned_int256 {
+	ecc_int256_t int256;
+	uint32_t u32[8];
+	uint8_t u8[32];
+} aligned_int256_t;
 
 typedef struct keypair {
 	ecc_int256_t secret;

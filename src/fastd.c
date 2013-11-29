@@ -211,7 +211,7 @@ static void close_sockets(fastd_context_t *ctx) {
 }
 
 static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
-	const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, buffer);
+	fastd_eth_addr_t dest_addr = fastd_get_dest_address(ctx, buffer);
 
 	if (fastd_eth_addr_is_unicast(dest_addr)) {
 		fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
@@ -236,7 +236,7 @@ void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 			return;
 		}
 
-		const fastd_eth_addr_t *src_addr = fastd_get_source_address(ctx, buffer);
+		fastd_eth_addr_t src_addr = fastd_get_source_address(ctx, buffer);
 
 		if (fastd_eth_addr_is_unicast(src_addr))
 			fastd_peer_eth_addr_add(ctx, peer, src_addr);
@@ -462,7 +462,7 @@ static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
 		return true;
 	}
 
-	const fastd_eth_addr_t *dest_addr = fastd_get_dest_address(ctx, buffer);
+	fastd_eth_addr_t dest_addr = fastd_get_dest_address(ctx, buffer);
 	if (!fastd_eth_addr_is_unicast(dest_addr))
 		return false;
 

@@ -310,15 +310,15 @@ fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
 void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
 	if (multiaf_tun && ctx->conf->mode == MODE_TUN) {
 		uint8_t version = *((uint8_t*)buffer.data) >> 4;
-		int af;
+		uint32_t af;
 
 		switch (version) {
 		case 4:
-			af = AF_INET;
+			af = htonl(AF_INET);
 			break;
 
 		case 6:
-			af = AF_INET6;
+			af = htonl(AF_INET6);
 			break;
 
 		default:
@@ -327,7 +327,7 @@ void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
 		}
 
 		fastd_buffer_pull_head(ctx, &buffer, 4);
-		*((uint32_t*)buffer.data) = htonl(af);
+		memcpy(buffer.data, &af, 4);
 	}
 
 	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
