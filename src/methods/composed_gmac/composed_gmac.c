@@ -147,7 +147,13 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	uint8_t zeroiv[session->gmac_cipher_info->iv_length];
 	memset(zeroiv, 0, session->gmac_cipher_info->iv_length);
 
-	session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, &H, &ZERO_BLOCK, sizeof(fastd_block128_t), zeroiv);
+	if (!session->gmac_cipher->crypt(ctx, session->gmac_cipher_state, &H, &ZERO_BLOCK, sizeof(fastd_block128_t), zeroiv)) {
+		session->cipher->free_state(ctx, session->cipher_state);
+		session->gmac_cipher->free_state(ctx, session->gmac_cipher_state);
+		free(session);
+
+		return NULL;
+	}
 
 	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_info, &session->ghash_ctx);
 	if (!session->ghash)

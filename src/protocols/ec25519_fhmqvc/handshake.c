@@ -91,7 +91,7 @@ static inline void supersede_session(fastd_context_t *ctx, fastd_peer_t *peer, c
 	}
 }
 
-static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, const fastd_method_t *method, bool initiator,
+static inline bool new_session(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, const fastd_method_t *method, bool initiator,
 			       const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
 			       const aligned_int256_t *sigma, const uint32_t *salt, uint64_t serial) {
 
@@ -110,11 +110,16 @@ static inline void new_session(fastd_context_t *ctx, fastd_peer_t *peer, const c
 		peer->protocol_state->session.method_state = method->session_init_compat(ctx, method_name, hash.b, HASHBYTES, initiator);
 	}
 
+	if (!peer->protocol_state->session.method_state)
+		return false;
+
 	peer->protocol_state->session.established = ctx->now;
 	peer->protocol_state->session.handshakes_cleaned = false;
 	peer->protocol_state->session.refreshing = false;
 	peer->protocol_state->session.method = method;
 	peer->protocol_state->last_serial = serial;
+
+	return true;
 }
 
 static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, fastd_socket_t *sock,
@@ -128,7 +133,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 
 	const fastd_method_t *method = fastd_method_get_by_name(method_name);
 	if (!salt && !method->session_init_compat) {
-		pr_warn(ctx, "can't establish session with %P[%I] (method without compat support)");
+		pr_warn(ctx, "can't establish session with %P[%I] (method without compat support)", peer, remote_addr);
 		return false;
 	}
 
@@ -140,7 +145,11 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 		return false;
 	}
 
-	new_session(ctx, peer, method_name, method, initiator, A, B, X, Y, sigma, salt, serial);
+	if (!new_session(ctx, peer, method_name, method, initiator, A, B, X, Y, sigma, salt, serial)) {
+		pr_error(ctx, "failed to initialize method session for %P (method `%s'%s)", peer, method_name, salt ? "" : " (compat mode)");
+		fastd_peer_reset(ctx, peer);
+		return false;
+	}
 
 	fastd_peer_seen(ctx, peer);
 	fastd_peer_set_established(ctx, peer);
