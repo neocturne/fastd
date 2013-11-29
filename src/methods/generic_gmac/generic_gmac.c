@@ -94,7 +94,7 @@ static size_t method_key_length(fastd_context_t *ctx, const char *name) {
 	if (!cipher_get(NULL, name, &cipher_info, NULL, NULL))
 		exit_bug(ctx, "generic-gmac: can't get cipher key length");
 
-	return cipher_info->key_length;
+	return cipher_info->key_length + sizeof(fastd_block128_t);
 }
 
 static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator) {
@@ -107,22 +107,14 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);
 
-	static const fastd_block128_t zeroblock = {};
-	fastd_block128_t H;
-
 	if (session->cipher_info->iv_length <= COMMON_NONCEBYTES)
 		exit_bug(ctx, "generic-gmac: iv_length to small");
-
-	uint8_t zeroiv[session->cipher_info->iv_length];
-	memset(zeroiv, 0, session->cipher_info->iv_length);
-
-	session->cipher->crypt(ctx, session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), zeroiv);
 
 	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_info, &session->ghash_ctx);
 	if (!session->ghash)
 		exit_bug(ctx, "generic-gmac: can't instanciate ghash mac");
 
-	session->ghash_state = session->ghash->init_state(ctx, session->ghash_ctx, H.b);
+	session->ghash_state = session->ghash->init_state(ctx, session->ghash_ctx, secret + session->cipher_info->key_length);
 
 	return session;
 }
