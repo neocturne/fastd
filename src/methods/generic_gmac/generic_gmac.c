@@ -43,8 +43,8 @@ struct fastd_method_session_state {
 };
 
 
-static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx, bool check) {
-	if (check && !fastd_mac_is_available("ghash"))
+static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx) {
+	if (!fastd_mac_info_get_by_name("ghash"))
 		return false;
 
 	size_t len = strlen(name);
@@ -62,32 +62,36 @@ static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_ciphe
 	memcpy(cipher_name, name, len-5);
 	cipher_name[len-5] = 0;
 
-	if (check && !fastd_cipher_is_available(cipher_name))
+	const fastd_cipher_info_t *info = NULL;
+
+	if (ctx) {
+		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &info, cctx);
+		if (!*cipher)
+			return false;
+	}
+	else {
+		info = fastd_cipher_info_get_by_name(cipher_name);
+		if (!info)
+			return false;
+	}
+
+	if (info->iv_length <= COMMON_NONCEBYTES)
 		return false;
 
-	if (ctx)
-		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, cipher_info, cctx);
-	else if (cipher_info)
-		*cipher_info = fastd_cipher_info_get_by_name(cipher_name);
+	if (cipher_info)
+		*cipher_info = info;
 
 	return true;
 }
 
+
 static bool method_provides(const char *name) {
-	const fastd_cipher_info_t *cipher_info;
-
-	if (!cipher_get(NULL, name, &cipher_info, NULL, NULL, true))
-		return false;
-
-	if (cipher_info->iv_length <= COMMON_NONCEBYTES)
-		return false;
-
-	return true;
+	return cipher_get(NULL, name, NULL, NULL, NULL);
 }
 
 static size_t method_key_length(fastd_context_t *ctx, const char *name) {
 	const fastd_cipher_info_t *cipher_info;
-	if (!cipher_get(NULL, name, &cipher_info, NULL, NULL, false))
+	if (!cipher_get(NULL, name, &cipher_info, NULL, NULL))
 		exit_bug(ctx, "generic-gmac: can't get cipher key length");
 
 	return cipher_info->key_length + sizeof(fastd_block128_t);
@@ -98,7 +102,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 
-	if (!cipher_get(ctx, name, &session->cipher_info, &session->cipher, &session->cipher_ctx, false))
+	if (!cipher_get(ctx, name, &session->cipher_info, &session->cipher, &session->cipher_ctx))
 		exit_bug(ctx, "generic-gmac: can't instanciate cipher");
 
 	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);
