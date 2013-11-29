@@ -155,6 +155,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 	fastd_buffer_t send_buffer;
 	if (!session->method->encrypt(ctx, peer, session->method_state, &send_buffer, buffer)) {
 		fastd_buffer_free(buffer);
+		pr_error(ctx, "failed to encrypt packet for %P", peer);
 		return;
 	}
 
