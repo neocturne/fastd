@@ -54,7 +54,6 @@ static void default_config(fastd_config_t *conf) {
 	conf->peer_stale_time = 90;
 	conf->eth_addr_stale_time = 300;
 
-	conf->reorder_count = 64;
 	conf->reorder_time = 10;
 
 	conf->min_handshake_interval = 15;

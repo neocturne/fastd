@@ -63,7 +63,7 @@ bool fastd_method_is_nonce_valid(fastd_context_t *ctx, const fastd_method_common
 		if (timespec_diff(&ctx->now, &session->receive_last) > (int)ctx->conf->reorder_time*1000)
 			return false;
 
-		if (*age > ctx->conf->reorder_count)
+		if (*age > 64)
 			return false;
 	}
 
@@ -72,8 +72,15 @@ bool fastd_method_is_nonce_valid(fastd_context_t *ctx, const fastd_method_common
 
 bool fastd_method_reorder_check(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age) {
 	if (age < 0) {
-		session->receive_reorder_seen >>= age;
-		session->receive_reorder_seen |= (1 >> (age+1));
+		size_t shift = age < (-64) ? 64 : ((size_t)-age);
+
+		if (shift > 63)
+			session->receive_reorder_seen = 0;
+		else
+			session->receive_reorder_seen <<= shift;
+
+		session->receive_reorder_seen |= (1 << (shift-1));
+
 		memcpy(session->receive_nonce, nonce, COMMON_NONCEBYTES);
 		session->receive_last = ctx->now;
 		return true;

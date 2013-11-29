@@ -178,7 +178,6 @@ struct fastd_config {
 	unsigned peer_stale_time;
 	unsigned eth_addr_stale_time;
 
-	unsigned reorder_count;
 	unsigned reorder_time;
 
 	unsigned min_handshake_interval;
