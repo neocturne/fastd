@@ -27,10 +27,7 @@
 #ifndef _FASTD_CPUID_H_
 #define _FASTD_CPUID_H_
 
-#if !(defined(__i386__) || defined(__x86_64__))
-#error Tried to include cpuid.h on a non-x86 system
-#endif
-
+#include <cpuid.h>
 #include <stdint.h>
 
 
@@ -40,8 +37,11 @@
 
 
 static inline uint64_t fastd_cpuid(void) {
-	uint32_t edx, ecx;
-	__asm__("cpuid" : "=d"(edx), "=c"(ecx) : "a"((uint32_t)1));
+	unsigned eax, ebc, ecx, edx;
+
+	if (!__get_cpuid(1, &eax, &ebc, &ecx, &edx))
+		return 0;
+
 	return ((uint64_t)ecx) << 32 | edx;
 }
 
