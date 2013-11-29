@@ -67,11 +67,15 @@ struct fastd_mac {
 
 void fastd_cipher_init(fastd_context_t *ctx);
 void fastd_cipher_free(fastd_context_t *ctx);
+
+bool fastd_cipher_is_available(const char *name);
 const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name);
 const fastd_cipher_t* fastd_cipher_get_by_name(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **info, const fastd_cipher_context_t **cctx);
 
 void fastd_mac_init(fastd_context_t *ctx);
 void fastd_mac_free(fastd_context_t *ctx);
+
+bool fastd_mac_is_available(const char *name);
 const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name);
 const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info, const fastd_mac_context_t **cctx);
 

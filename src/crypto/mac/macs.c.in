@@ -107,7 +107,7 @@ void fastd_mac_free(fastd_context_t *ctx) {
 	free(ctx->mac_contexts);
 }
 
-const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
+bool fastd_mac_is_available(const char *name) {
 	size_t i, j;
 	for (i = 0; i < array_size(macs); i++) {
 		if (strcmp(macs[i].name, name))
@@ -115,10 +115,20 @@ const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
 
 		for (j = 0; macs[i].impls[j].impl; j++) {
 			if (macs[i].impls[j].impl->available())
-				return macs[i].info;
+				return true;
 		}
 
 		break;
+	}
+
+	return false;
+}
+
+const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
+	size_t i, j;
+	for (i = 0; i < array_size(macs); i++) {
+		if (!strcmp(macs[i].name, name))
+			return macs[i].info;
 	}
 
 	return NULL;

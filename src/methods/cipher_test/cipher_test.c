@@ -38,7 +38,7 @@ struct fastd_method_session_state {
 };
 
 
-static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **info, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx) {
+static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher, const fastd_cipher_context_t **cctx, bool check) {
 	size_t len = strlen(name);
 
 	if (len < 12)
@@ -51,33 +51,25 @@ static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_ciphe
 	memcpy(cipher_name, name, len-12);
 	cipher_name[len-12] = 0;
 
-	const fastd_cipher_info_t *cipher_info = NULL;
+	if (check && !fastd_cipher_is_available(cipher_name))
+		return false;
 
-	if (ctx) {
-		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &cipher_info, cctx);
-		if (!*cipher)
-			return false;
-	}
-	else {
-		cipher_info = fastd_cipher_info_get_by_name(cipher_name);
-		if (!cipher_info)
-			return false;
-	}
-
-	if (info)
-		*info = cipher_info;
+	if (ctx)
+		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, cipher_info, cctx);
+	else if (cipher_info)
+		*cipher_info = fastd_cipher_info_get_by_name(cipher_name);
 
 	return true;
 }
 
 
 static bool method_provides(const char *name) {
-	return cipher_get(NULL, name, NULL, NULL, NULL);
+	return cipher_get(NULL, name, NULL, NULL, NULL, true);
 }
 
 static size_t method_key_length(fastd_context_t *ctx, const char *name) {
 	const fastd_cipher_info_t *info;
-	if (!cipher_get(NULL, name, &info, NULL, NULL))
+	if (!cipher_get(NULL, name, &info, NULL, NULL, false))
 		exit_bug(ctx, "cipher-test: can't get cipher key length");
 
 	return info->key_length;
@@ -88,7 +80,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 
-	if (!cipher_get(ctx, name, &session->cipher_info, &session->cipher, &session->cipher_ctx))
+	if (!cipher_get(ctx, name, &session->cipher_info, &session->cipher, &session->cipher_ctx, false))
 		exit_bug(ctx, "cipher-test: can't instanciate cipher");
 
 	session->cipher_state = session->cipher->init_state(ctx, session->cipher_ctx, secret);

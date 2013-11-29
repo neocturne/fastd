@@ -107,7 +107,7 @@ void fastd_cipher_free(fastd_context_t *ctx) {
 	free(ctx->cipher_contexts);
 }
 
-const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
+bool fastd_cipher_is_available(const char *name) {
 	size_t i, j;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (strcmp(ciphers[i].name, name))
@@ -115,10 +115,20 @@ const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
 
 		for (j = 0; ciphers[i].impls[j].impl; j++) {
 			if (ciphers[i].impls[j].impl->available())
-				return ciphers[i].info;
+				return true;
 		}
 
 		break;
+	}
+
+	return false;
+}
+
+const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
+	size_t i, j;
+	for (i = 0; i < array_size(ciphers); i++) {
+		if (!strcmp(ciphers[i].name, name))
+			return ciphers[i].info;
 	}
 
 	return NULL;
