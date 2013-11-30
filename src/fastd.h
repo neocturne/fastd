@@ -30,6 +30,7 @@
 #include "compat.h"
 #include "types.h"
 #include "dlist.h"
+#include "buffer.h"
 #include "log.h"
 
 #include <errno.h>
@@ -42,14 +43,6 @@
 
 #include <sys/uio.h>
 
-
-struct fastd_buffer {
-	void *base;
-	size_t base_len;
-
-	void *data;
-	size_t len;
-};
 
 struct __attribute__((__packed__)) fastd_eth_addr {
 	uint8_t data[ETH_ALEN];
@@ -345,42 +338,6 @@ static inline size_t alignto(size_t l, size_t a) {
 	return block_count(l, a)*a;
 }
 
-
-static inline fastd_buffer_t fastd_buffer_alloc(const fastd_context_t *ctx, size_t len, size_t head_space, size_t tail_space) {
-	size_t base_len = head_space+len+tail_space;
-	void *ptr;
-	int err = posix_memalign(&ptr, 16, base_len);
-	if (err)
-		exit_error(ctx, "posix_memalign: %s", strerror(err));
-
-	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
-}
-
-static inline fastd_buffer_t fastd_buffer_dup(const fastd_context_t *ctx, fastd_buffer_t buffer, size_t head_space, size_t tail_space) {
-	fastd_buffer_t new_buffer = fastd_buffer_alloc(ctx, buffer.len, head_space, tail_space);
-	memcpy(new_buffer.data, buffer.data, buffer.len);
-	return new_buffer;
-}
-
-static inline void fastd_buffer_free(fastd_buffer_t buffer) {
-	free(buffer.base);
-}
-
-static inline void fastd_buffer_pull_head(const fastd_context_t *ctx, fastd_buffer_t *buffer, size_t len) {
-	buffer->data -= len;
-	buffer->len += len;
-
-	if (buffer->data < buffer->base)
-		exit_bug(ctx, "tried to pull buffer across head");
-}
-
-static inline void fastd_buffer_push_head(const fastd_context_t *ctx, fastd_buffer_t *buffer, size_t len) {
-	if (buffer->len < len)
-		exit_bug(ctx, "tried to push buffer across tail");
-
-	buffer->data += len;
-	buffer->len -= len;
-}
 
 static inline size_t fastd_max_inner_packet(const fastd_context_t *ctx) {
 	switch (ctx->conf->mode) {
