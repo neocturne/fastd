@@ -27,6 +27,7 @@
 #include "fastd.h"
 #include "config.h"
 #include "lex.h"
+#include "method.h"
 #include "peer.h"
 #include <config.yy.h>
 
@@ -87,22 +88,17 @@ bool fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, co
 	return true;
 }
 
-bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
-	if (!fastd_method_get_by_name(name))
-		return false;
-
+void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
 	fastd_string_stack_t **method;
 
-	for (method = &conf->methods; *method; method = &(*method)->next) {
+	for (method = &conf->method_list; *method; method = &(*method)->next) {
 		if (!strcmp((*method)->str, name)) {
 			pr_debug(ctx, "duplicate method name `%s', ignoring", name);
-			return true;
+			return;
 		}
 	}
 
 	*method = fastd_string_stack_dup(name);
-
-	return true;
 }
 
 bool fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
@@ -482,9 +478,9 @@ static void configure_method_parameters(fastd_config_t *conf) {
 	conf->min_encrypt_tail_space = 0;
 	conf->min_decrypt_tail_space = 0;
 
-	fastd_string_stack_t *method_name;
-	for (method_name = conf->methods; method_name; method_name = method_name->next) {
-		const fastd_method_t *method = fastd_method_get_by_name(method_name->str);
+	size_t i;
+	for (i = 0; conf->methods[i].name; i++) {
+		const fastd_method_t *method = conf->methods[i].method;
 
 		conf->max_overhead = max_size_t(conf->max_overhead, method->max_overhead);
 		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, method->min_encrypt_head_space);
@@ -497,6 +493,32 @@ static void configure_method_parameters(fastd_config_t *conf) {
 
 	/* ugly hack to get alignment right for aes128-gcm, which needs data aligned to 16 and has a 24 byte header */
 	conf->min_decrypt_head_space = alignto(conf->min_decrypt_head_space, 16) + 8;
+}
+
+static void configure_methods(fastd_context_t *ctx, fastd_config_t *conf) {
+	size_t n_methods = 0, i;
+	fastd_string_stack_t *method_name;
+	for (method_name = conf->method_list; method_name; method_name = method_name->next)
+		n_methods++;
+
+	conf->methods = calloc(n_methods+1, sizeof(fastd_method_info_t));
+
+	for (i = 0, method_name = conf->method_list; method_name; i++, method_name = method_name->next) {
+		conf->methods[i].name = method_name->str;
+		if (!fastd_method_create_by_name(method_name->str, &conf->methods[i].method, &conf->methods[i].ctx))
+			exit_error(ctx, "method `%s' not supported", method_name->str);
+	}
+
+	configure_method_parameters(conf);
+}
+
+static void destroy_methods(fastd_config_t *conf) {
+	size_t i;
+	for (i = 0; conf->methods[i].name; i++) {
+		conf->methods[i].method->destroy(conf->methods[i].ctx);
+	}
+
+	free(conf->methods);
 }
 
 void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]) {
@@ -534,17 +556,16 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 		exit_error(ctx, "config error: setting pmtu is not supported on this system");
 #endif
 
-	if (!conf->methods) {
+	if (!conf->method_list) {
 		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
-		if (!fastd_config_method(ctx, conf, "null"))
-			exit_error(ctx, "method `null' not supported");
+		fastd_config_method(ctx, conf, "null");
 	}
 
 	if (!conf->secure_handshakes_set)
 		pr_warn(ctx, "`secure handshakes' not set, please read the documentation about this option; defaulting to no");
 
 	configure_user(ctx, conf);
-	configure_method_parameters(conf);
+	configure_methods(ctx, conf);
 }
 
 static void peer_dirs_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {
@@ -645,7 +666,8 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 
 	free_peer_group(conf->peer_group);
 
-	fastd_string_stack_free(conf->methods);
+	destroy_methods(conf);
+	fastd_string_stack_free(conf->method_list);
 
 	fastd_mac_config_free(conf->macs);
 	fastd_cipher_config_free(conf->ciphers);

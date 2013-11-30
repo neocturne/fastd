@@ -25,28 +25,37 @@
 
 
 #include "../../crypto.h"
+#include "../../method.h"
 #include "../common.h"
+
+
+struct fastd_method_context {
+	const fastd_cipher_info_t *cipher_info;
+	const fastd_mac_info_t *ghash_info;
+};
 
 
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
-	const fastd_cipher_info_t *cipher_info;
+	const fastd_method_context_t *ctx;
+
 	const fastd_cipher_t *cipher;
 	fastd_cipher_state_t *cipher_state;
 
-	const fastd_mac_info_t *ghash_info;
 	const fastd_mac_t *ghash;
 	fastd_mac_state_t *ghash_state;
 };
 
 
-static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher) {
-	if (!fastd_mac_info_get_by_name("ghash"))
+static bool method_create_by_name(const char *name, fastd_method_context_t **method_ctx) {
+	fastd_method_context_t ctx;
+
+	ctx.ghash_info = fastd_mac_info_get_by_name("ghash");
+	if (!ctx.ghash_info)
 		return false;
 
 	size_t len = strlen(name);
-
 	if (len < 5)
 		return false;
 
@@ -60,68 +69,40 @@ static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_ciphe
 	memcpy(cipher_name, name, len-5);
 	cipher_name[len-5] = 0;
 
-	const fastd_cipher_info_t *info = NULL;
-
-	if (ctx) {
-		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &info);
-		if (!*cipher)
-			return false;
-	}
-	else {
-		info = fastd_cipher_info_get_by_name(cipher_name);
-		if (!info)
-			return false;
-	}
-
-	if (info->iv_length <= COMMON_NONCEBYTES)
+	ctx.cipher_info = fastd_cipher_info_get_by_name(cipher_name);
+	if (!ctx.cipher_info)
 		return false;
 
-	if (cipher_info)
-		*cipher_info = info;
+	if (ctx.cipher_info->iv_length <= COMMON_NONCEBYTES)
+		return false;
+
+	*method_ctx = malloc(sizeof(fastd_method_context_t));
+	**method_ctx = ctx;
 
 	return true;
 }
 
-
-static bool method_provides(const char *name) {
-	return cipher_get(NULL, name, NULL, NULL);
+static void method_destroy(fastd_method_context_t *method_ctx) {
+	free(method_ctx);
 }
 
-static size_t method_key_length(fastd_context_t *ctx, const char *name) {
-	const fastd_cipher_info_t *cipher_info;
-	if (!cipher_get(NULL, name, &cipher_info, NULL))
-		exit_bug(ctx, "generic-gmac: can't get cipher key length");
-
-	return cipher_info->key_length + sizeof(fastd_block128_t);
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx) {
+	return method_ctx->cipher_info->key_length + method_ctx->ghash_info->key_length;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
+	session->ctx = method_ctx;
 
-	if (!cipher_get(ctx, name, &session->cipher_info, &session->cipher))
-		exit_bug(ctx, "generic-gmac: can't instanciate cipher");
-
+	session->cipher = fastd_cipher_get(ctx, session->ctx->cipher_info);
 	session->cipher_state = session->cipher->init(ctx, secret);
 
-	if (session->cipher_info->iv_length <= COMMON_NONCEBYTES)
-		exit_bug(ctx, "generic-gmac: iv_length to small");
-
-	session->ghash = fastd_mac_get_by_name(ctx, "ghash", &session->ghash_info);
-	if (!session->ghash)
-		exit_bug(ctx, "generic-gmac: can't instanciate ghash mac");
-
-	session->ghash_state = session->ghash->init(ctx, secret + session->cipher_info->key_length);
+	session->ghash = fastd_mac_get(ctx, session->ctx->ghash_info);
+	session->ghash_state = session->ghash->init(ctx, secret + session->ctx->cipher_info->key_length);
 
 	return session;
-}
-
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length, bool initiator) {
-	if (length < sizeof(fastd_block128_t))
-		exit_bug(ctx, "generic-gmac: tried to init with short secret");
-
-	return method_session_init(ctx, name, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
@@ -168,10 +149,11 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	uint8_t nonce[session->cipher_info->iv_length];
-	memset(nonce, 0, session->cipher_info->iv_length);
+	size_t iv_length = session->ctx->cipher_info->iv_length;
+	uint8_t nonce[iv_length];
+	memset(nonce, 0, iv_length);
 	memcpy(nonce, session->common.send_nonce, COMMON_NONCEBYTES);
-	nonce[session->cipher_info->iv_length-1] = 1;
+	nonce[iv_length-1] = 1;
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -221,10 +203,12 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (((const uint8_t*)in.data)[COMMON_NONCEBYTES]) /* flags */
 		return false;
 
-	uint8_t nonce[session->cipher_info->iv_length];
-	memset(nonce, 0, session->cipher_info->iv_length);
+
+	size_t iv_length = session->ctx->cipher_info->iv_length;
+	uint8_t nonce[iv_length];
+	memset(nonce, 0, iv_length);
 	memcpy(nonce, in.data, COMMON_NONCEBYTES);
-	nonce[session->cipher_info->iv_length-1] = 1;
+	nonce[iv_length-1] = 1;
 
 	int64_t age;
 	if (!fastd_method_is_nonce_valid(ctx, &session->common, nonce, &age))
@@ -270,17 +254,18 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 }
 
 const fastd_method_t fastd_method_generic_gmac = {
-	.provides = method_provides,
-
 	.max_overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
 	.min_encrypt_head_space = sizeof(fastd_block128_t),
 	.min_decrypt_head_space = 0,
 	.min_encrypt_tail_space = sizeof(fastd_block128_t)-1,
 	.min_decrypt_tail_space = 2*sizeof(fastd_block128_t)-1,
 
+	.create_by_name = method_create_by_name,
+	.destroy = method_destroy,
+
 	.key_length = method_key_length,
+
 	.session_init = method_session_init,
-	.session_init_compat = method_session_init_compat,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,

@@ -106,15 +106,11 @@ const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
 	return NULL;
 }
 
-const fastd_mac_t* fastd_mac_get_by_name(fastd_context_t *ctx, const char *name, const fastd_mac_info_t **info) {
+const fastd_mac_t* fastd_mac_get(fastd_context_t *ctx, const fastd_mac_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
-		if (!strcmp(macs[i].name, name)) {
-			if (info)
-				*info = macs[i].info;
-
+		if (macs[i].info == info)
 			return ctx->conf->macs[i];
-		}
 	}
 
 	return NULL;

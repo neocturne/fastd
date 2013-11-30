@@ -77,7 +77,7 @@ void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_context_t *ctx, fastd_p
 
 static void reset_session(fastd_context_t *ctx, protocol_session_t *session) {
 	if (session->method)
-		session->method->session_free(ctx, session->method_state);
+		session->method->method->session_free(ctx, session->method_state);
 	secure_memzero(session, sizeof(protocol_session_t));
 }
 

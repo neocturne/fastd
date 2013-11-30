@@ -113,6 +113,7 @@ typedef struct fastd_config fastd_config_t;
 typedef struct fastd_context fastd_context_t;
 
 typedef struct fastd_protocol fastd_protocol_t;
+typedef struct fastd_method_info fastd_method_info_t;
 typedef struct fastd_method fastd_method_t;
 
 typedef struct fastd_cipher_info fastd_cipher_info_t;
@@ -141,6 +142,7 @@ typedef struct fastd_protocol_state fastd_protocol_state_t;
 typedef struct fastd_protocol_peer_config fastd_protocol_peer_config_t;
 typedef struct fastd_protocol_peer_state fastd_protocol_peer_state_t;
 
+typedef struct fastd_method_context fastd_method_context_t;
 typedef struct fastd_method_session_state fastd_method_session_state_t;
 
 typedef struct fastd_cipher_state fastd_cipher_state_t;

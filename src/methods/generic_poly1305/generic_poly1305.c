@@ -25,6 +25,7 @@
 
 
 #include "../../crypto.h"
+#include "../../method.h"
 #include "../common.h"
 
 #include <crypto_onetimeauth_poly1305.h>
@@ -33,18 +34,23 @@
 #define AUTHBLOCKS 2
 
 
+struct fastd_method_context {
+	const fastd_cipher_info_t *cipher_info;
+};
+
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
-	const fastd_cipher_info_t *cipher_info;
+	const fastd_method_context_t *ctx;
 	const fastd_cipher_t *cipher;
 	fastd_cipher_state_t *cipher_state;
 };
 
 
-static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_cipher_info_t **cipher_info, const fastd_cipher_t **cipher) {
-	size_t len = strlen(name);
+static bool method_create_by_name(const char *name, fastd_method_context_t **method_ctx) {
+	fastd_method_context_t ctx;
 
+	size_t len = strlen(name);
 	if (len < 9)
 		return false;
 
@@ -55,53 +61,34 @@ static bool cipher_get(fastd_context_t *ctx, const char *name, const fastd_ciphe
 	memcpy(cipher_name, name, len-9);
 	cipher_name[len-9] = 0;
 
-	const fastd_cipher_info_t *info = NULL;
-
-	if (ctx) {
-		*cipher = fastd_cipher_get_by_name(ctx, cipher_name, &info);
-		if (!*cipher)
-			return false;
-	}
-	else {
-		info = fastd_cipher_info_get_by_name(cipher_name);
-		if (!info)
-			return false;
-	}
-
-	if (info->iv_length <= COMMON_NONCEBYTES)
+	ctx.cipher_info = fastd_cipher_info_get_by_name(cipher_name);
+	if (!ctx.cipher_info)
 		return false;
 
-	if (cipher_info)
-		*cipher_info = info;
+	if (ctx.cipher_info->iv_length <= COMMON_NONCEBYTES)
+		return false;
+
+	*method_ctx = malloc(sizeof(fastd_method_context_t));
+	**method_ctx = ctx;
 
 	return true;
 }
 
-
-static bool method_provides(const char *name) {
-	return cipher_get(NULL, name, NULL, NULL);
+static void method_destroy(fastd_method_context_t *method_ctx) {
+	free(method_ctx);
 }
 
-static size_t method_key_length(fastd_context_t *ctx, const char *name) {
-	const fastd_cipher_info_t *cipher_info;
-	if (!cipher_get(NULL, name, &cipher_info, NULL))
-		exit_bug(ctx, "generic-poly1305: can't get cipher key length");
-
-	return cipher_info->key_length;
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx) {
+	return method_ctx->cipher_info->key_length;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
-
-	if (!cipher_get(ctx, name, &session->cipher_info, &session->cipher))
-		exit_bug(ctx, "generic-poly1305: can't instanciate cipher");
-
+	session->ctx = method_ctx;
+	session->cipher = fastd_cipher_get(ctx, session->ctx->cipher_info);
 	session->cipher_state = session->cipher->init(ctx, secret);
-
-	if (session->cipher_info->iv_length <= COMMON_NONCEBYTES)
-		exit_bug(ctx, "generic-poly1305: iv_length to small");
 
 	return session;
 }
@@ -139,10 +126,11 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	uint8_t nonce[session->cipher_info->iv_length];
-	memset(nonce, 0, session->cipher_info->iv_length);
+	size_t iv_length = session->ctx->cipher_info->iv_length;
+	uint8_t nonce[iv_length];
+	memset(nonce, 0, iv_length);
 	memcpy(nonce, session->common.send_nonce, COMMON_NONCEBYTES);
-	nonce[session->cipher_info->iv_length-1] = 1;
+	nonce[iv_length-1] = 1;
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -186,10 +174,11 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (((const uint8_t*)in.data)[COMMON_NONCEBYTES]) /* flags */
 		return false;
 
-	uint8_t nonce[session->cipher_info->iv_length];
-	memset(nonce, 0, session->cipher_info->iv_length);
+	size_t iv_length = session->ctx->cipher_info->iv_length;
+	uint8_t nonce[iv_length];
+	memset(nonce, 0, iv_length);
 	memcpy(nonce, in.data, COMMON_NONCEBYTES);
-	nonce[session->cipher_info->iv_length-1] = 1;
+	nonce[iv_length-1] = 1;
 
 	int64_t age;
 	if (!fastd_method_is_nonce_valid(ctx, &session->common, nonce, &age))
@@ -245,15 +234,17 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 }
 
 const fastd_method_t fastd_method_generic_poly1305 = {
-	.provides = method_provides,
-
 	.max_overhead = COMMON_HEADBYTES + crypto_onetimeauth_poly1305_BYTES,
 	.min_encrypt_head_space = AUTHBLOCKS*sizeof(fastd_block128_t),
 	.min_decrypt_head_space = AUTHBLOCKS*sizeof(fastd_block128_t) - crypto_onetimeauth_poly1305_BYTES,
 	.min_encrypt_tail_space = sizeof(fastd_block128_t)-1,
 	.min_decrypt_tail_space = sizeof(fastd_block128_t)-1,
 
+	.create_by_name = method_create_by_name,
+	.destroy = method_destroy,
+
 	.key_length = method_key_length,
+
 	.session_init = method_session_init,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,

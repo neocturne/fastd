@@ -24,7 +24,7 @@
 */
 
 
-#include "../../fastd.h"
+#include "../../method.h"
 
 
 struct fastd_method_session_state {
@@ -33,15 +33,18 @@ struct fastd_method_session_state {
 };
 
 
-static bool method_provides(const char *name) {
+static bool method_create_by_name(const char *name, fastd_method_context_t **method_ctx UNUSED) {
 	return !strcmp(name, "null");
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED, const char *name UNUSED) {
+static void method_destroy(fastd_method_context_t *method_ctx UNUSED) {
+}
+
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, const char *name UNUSED, const uint8_t *secret UNUSED, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx UNUSED, const uint8_t *secret UNUSED, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	session->valid = true;
@@ -50,8 +53,8 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UN
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length UNUSED, bool initiator) {
-	return method_session_init(ctx, name, secret, initiator);
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, size_t length UNUSED, bool initiator) {
+	return method_session_init(ctx, method_ctx, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
@@ -80,15 +83,17 @@ static bool method_passthrough(fastd_context_t *ctx UNUSED, fastd_peer_t *peer U
 }
 
 const fastd_method_t fastd_method_null = {
-	.provides = method_provides,
-
 	.max_overhead = 0,
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,
 	.min_encrypt_tail_space = 0,
 	.min_decrypt_tail_space = 0,
 
+	.create_by_name = method_create_by_name,
+	.destroy = method_destroy,
+
 	.key_length = method_key_length,
+
 	.session_init = method_session_init,
 	.session_init_compat = method_session_init_compat,
 	.session_is_valid = method_session_is_valid,

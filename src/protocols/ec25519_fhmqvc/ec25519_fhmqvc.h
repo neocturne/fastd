@@ -28,6 +28,7 @@
 #define _FASTD_PROTOCOL_EC25519_FHMQVC_H_
 
 #include "../../fastd.h"
+#include "../../method.h"
 #include "../../peer.h"
 #include "../../sha256.h"
 
@@ -59,7 +60,7 @@ typedef struct protocol_session {
 	bool handshakes_cleaned;
 	bool refreshing;
 
-	const fastd_method_t *method;
+	const fastd_method_info_t *method;
 	fastd_method_session_state_t *method_state;
 } protocol_session_t;
 
@@ -87,7 +88,7 @@ void fastd_protocol_ec25519_fhmqvc_reset_peer_state(fastd_context_t *ctx, fastd_
 void fastd_protocol_ec25519_fhmqvc_free_peer_state(fastd_context_t *ctx, fastd_peer_t *peer);
 
 void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
-void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const char *method);
+void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
 
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session);
 
@@ -105,7 +106,7 @@ static inline void hexdump(char out[65], const unsigned char d[32]) {
 
 
 static inline bool is_session_valid(fastd_context_t *ctx, const protocol_session_t *session) {
-	return (session->method && session->method->session_is_valid(ctx, session->method_state));
+	return (session->method && session->method->method->session_is_valid(ctx, session->method_state));
 }
 
 #endif /* _FASTD_PROTOCOL_EC25519_FHMQVC_H_ */

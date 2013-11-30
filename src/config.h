@@ -31,7 +31,7 @@
 
 
 bool fastd_config_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
-bool fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
+void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name);
 bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level);
 bool fastd_config_bind_address(fastd_context_t *ctx, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);
 void fastd_config_peer_group_push(fastd_context_t *ctx, fastd_config_t *conf, const char *name);

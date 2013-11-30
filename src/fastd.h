@@ -63,7 +63,7 @@ struct fastd_protocol {
 	bool (*peer_check_temporary)(fastd_context_t *ctx, fastd_peer_t *peer);
 
 	void (*handshake_init)(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
-	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const char *method);
+	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
 
 	void (*handle_recv)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 	void (*send)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
@@ -76,28 +76,6 @@ struct fastd_protocol {
 	void (*show_key)(fastd_context_t *ctx);
 	void (*set_shell_env)(fastd_context_t *ctx, const fastd_peer_t *peer);
 	bool (*describe_peer)(const fastd_context_t *ctx, const fastd_peer_t *peer, char *buf, size_t len);
-};
-
-struct fastd_method {
-	bool (*provides)(const char *name);
-
-	size_t max_overhead;
-	size_t min_encrypt_head_space;
-	size_t min_decrypt_head_space;
-	size_t min_encrypt_tail_space;
-	size_t min_decrypt_tail_space;
-
-	size_t (*key_length)(fastd_context_t *ctx, const char *name);
-	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, const char *name, const uint8_t *secret, bool initiator);
-	fastd_method_session_state_t* (*session_init_compat)(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length, bool initiator);
-	bool (*session_is_valid)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	bool (*session_is_initiator)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	bool (*session_want_refresh)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	void (*session_superseded)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	void (*session_free)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-
-	bool (*encrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
-	bool (*decrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
 };
 
 union fastd_peer_address {
@@ -210,7 +188,8 @@ struct fastd_config {
 	gid_t *groups;
 
 	const fastd_protocol_t *protocol;
-	fastd_string_stack_t *methods;
+	fastd_string_stack_t *method_list;
+	fastd_method_info_t *methods;
 
 	size_t max_overhead;
 	size_t min_encrypt_head_space;
@@ -334,8 +313,6 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 
 int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
 void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *format, ...);
-
-const fastd_method_t* fastd_method_get_by_name(const char *name);
 
 void fastd_tuntap_open(fastd_context_t *ctx);
 fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx);

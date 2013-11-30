@@ -25,6 +25,7 @@
 
 
 #include "handshake.h"
+#include "method.h"
 #include "peer.h"
 #include <fastd_version.h>
 
@@ -59,17 +60,19 @@ static const char *const REPLY_TYPES[REPLY_MAX] = {
 
 
 static uint8_t* create_method_list(fastd_context_t *ctx, size_t *len) {
-	*len = strlen(ctx->conf->methods->str);
+	*len = 0;
 
-	fastd_string_stack_t *method;
-	for (method = ctx->conf->methods->next; method; method = method->next)
-		*len += strlen(method->str) + 1;
+	size_t i;
+	for (i = 0; ctx->conf->methods[i].name; i++)
+		*len += strlen(ctx->conf->methods[i].name) + 1;
 
-	uint8_t *ret = malloc(*len+1);
+	uint8_t *ret = malloc(*len);
+	(*len)--;
+
 	char *ptr = (char*)ret;
 
-	for (method = ctx->conf->methods; method; method = method->next)
-		ptr = stpcpy(ptr, method->str) + 1;
+	for (i = 0; ctx->conf->methods[i].name; i++)
+		ptr = stpcpy(ptr, ctx->conf->methods[i].name) + 1;
 
 	return ret;
 }
@@ -83,16 +86,6 @@ static inline bool string_equal(const char *str, const char *buf, size_t maxlen)
 
 static inline bool record_equal(const char *str, const fastd_handshake_record_t *record) {
 	return string_equal(str, (const char*)record->data, record->length);
-}
-
-static const char* method_from_name(fastd_context_t *ctx, const char *name, size_t n) {
-	fastd_string_stack_t *method;
-	for (method = ctx->conf->methods; method; method = method->next) {
-		if (string_equal(method->str, name, n))
-			return method->str;
-	}
-
-	return NULL;
 }
 
 static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) {
@@ -109,10 +102,10 @@ static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) 
 	return ret;
 }
 
-static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const char *method, bool with_method_list, size_t tail_space) {
+static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
 	size_t version_len = strlen(FASTD_VERSION);
 	size_t protocol_len = strlen(ctx->conf->protocol->name);
-	size_t method_len = method ? strlen(method) : 0;
+	size_t method_len = method ? strlen(method->name) : 0;
 
 	size_t method_list_len = 0;
 	uint8_t *method_list = NULL;
@@ -141,7 +134,7 @@ static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const ch
 	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, ctx->conf->protocol->name);
 
 	if (method && (!with_method_list || !ctx->conf->secure_handshakes))
-		fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, method);
+		fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, method->name);
 
 	if (with_method_list) {
 		fastd_handshake_add(ctx, &buffer, RECORD_METHOD_LIST, method_list_len, method_list);
@@ -155,7 +148,7 @@ fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space)
 	return new_handshake(ctx, 1, NULL, !ctx->conf->secure_handshakes, tail_space);
 }
 
-fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_handshake_t *handshake, const char *method, bool with_method_list, size_t tail_space) {
+fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_handshake_t *handshake, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
 	fastd_buffer_t buffer = new_handshake(ctx, handshake->type+1, method, with_method_list, tail_space);
 	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
 	return buffer;
@@ -293,15 +286,23 @@ static inline bool check_records(fastd_context_t *ctx, fastd_socket_t *sock, con
 	return true;
 }
 
-static inline const char* get_method(fastd_context_t *ctx, const fastd_handshake_t *handshake) {
+static inline const fastd_method_info_t* get_method_by_name(fastd_context_t *ctx, const char *name, size_t n) {
+	char name0[n+1];
+	memcpy(name0, name, n);
+	name0[n] = 0;
+
+	return fastd_method_get_by_name(ctx, name0);
+}
+
+static inline const fastd_method_info_t* get_method(fastd_context_t *ctx, const fastd_handshake_t *handshake) {
 	if (handshake->records[RECORD_METHOD_LIST].data && handshake->records[RECORD_METHOD_LIST].length) {
 		fastd_string_stack_t *method_list = parse_string_list(handshake->records[RECORD_METHOD_LIST].data, handshake->records[RECORD_METHOD_LIST].length);
 
-		const char *method = NULL;
+		const fastd_method_info_t *method = NULL;
 
 		fastd_string_stack_t *method_name;
 		for (method_name = method_list; method_name; method_name = method_name->next) {
-			const char *cur_method = method_from_name(ctx, method_name->str, SIZE_MAX);
+			const fastd_method_info_t *cur_method = fastd_method_get_by_name(ctx, method_name->str);
 
 			if (cur_method)
 				method = cur_method;
@@ -315,12 +316,12 @@ static inline const char* get_method(fastd_context_t *ctx, const fastd_handshake
 	if (!handshake->records[RECORD_METHOD_NAME].data)
 		return NULL;
 
-	return method_from_name(ctx, (const char*)handshake->records[RECORD_METHOD_NAME].data, handshake->records[RECORD_METHOD_NAME].length);
+	return get_method_by_name(ctx, (const char*)handshake->records[RECORD_METHOD_NAME].data, handshake->records[RECORD_METHOD_NAME].length);
 }
 
 void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	char *peer_version = NULL;
-	const char *method = NULL;
+	const fastd_method_info_t *method = NULL;
 
 	fastd_handshake_t handshake = parse_tlvs(&buffer);
 

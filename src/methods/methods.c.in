@@ -24,7 +24,7 @@
 */
 
 
-#include <src/fastd.h>
+#include <src/method.h>
 
 
 @METHOD_DEFINITIONS@
@@ -33,12 +33,14 @@ static const fastd_method_t *const methods[] = { @METHOD_LIST@
 };
 
 
-const fastd_method_t* fastd_method_get_by_name(const char *name) {
+bool fastd_method_create_by_name(const char *name, const fastd_method_t **method, fastd_method_context_t **method_ctx) {
 	size_t i;
 	for (i = 0; i < array_size(methods); i++) {
-		if (methods[i]->provides(name))
-			return methods[i];
+		if (methods[i]->create_by_name(name, method_ctx)) {
+			*method = methods[i];
+			return true;
+		}
 	}
 
-	return NULL;
+	return false;
 }

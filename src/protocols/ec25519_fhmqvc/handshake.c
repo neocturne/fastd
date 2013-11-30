@@ -68,46 +68,46 @@ static void derive_key(fastd_sha256_t *out, size_t blocks, const uint32_t *salt,
 	fastd_hkdf_sha256_expand(out, blocks, &prk, info, sizeof(info));
 }
 
-static inline void supersede_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_t *method) {
+static inline void supersede_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_info_t *method) {
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		if (peer->protocol_state->old_session.method)
-			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session.method->method->session_free(ctx, peer->protocol_state->old_session.method_state);
 		peer->protocol_state->old_session = peer->protocol_state->session;
 	}
 	else {
 		if (peer->protocol_state->session.method)
-			peer->protocol_state->session.method->session_free(ctx, peer->protocol_state->session.method_state);
+			peer->protocol_state->session.method->method->session_free(ctx, peer->protocol_state->session.method_state);
 	}
 
 	if (peer->protocol_state->old_session.method) {
 		if (peer->protocol_state->old_session.method != method) {
 			pr_debug(ctx, "method of %P has changed, terminating old session", peer);
-			peer->protocol_state->old_session.method->session_free(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session.method->method->session_free(ctx, peer->protocol_state->old_session.method_state);
 			peer->protocol_state->old_session = (protocol_session_t){};
 		}
 		else {
-			peer->protocol_state->old_session.method->session_superseded(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session.method->method->session_superseded(ctx, peer->protocol_state->old_session.method_state);
 		}
 	}
 }
 
-static inline bool new_session(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, const fastd_method_t *method, bool initiator,
+static inline bool new_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_info_t *method, bool initiator,
 			       const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
 			       const aligned_int256_t *sigma, const uint32_t *salt, uint64_t serial) {
 
 	supersede_session(ctx, peer, method);
 
 	if (salt) {
-		size_t blocks = block_count(method->key_length(ctx, method_name), sizeof(fastd_sha256_t));
+		size_t blocks = block_count(method->method->key_length(ctx, method->ctx), sizeof(fastd_sha256_t));
 		fastd_sha256_t secret[blocks];
-		derive_key(secret, blocks, salt, method_name, A, B, X, Y, sigma);
+		derive_key(secret, blocks, salt, method->name, A, B, X, Y, sigma);
 
-		peer->protocol_state->session.method_state = method->session_init(ctx, method_name, (const uint8_t*)secret, initiator);
+		peer->protocol_state->session.method_state = method->method->session_init(ctx, method->ctx, (const uint8_t*)secret, initiator);
 	}
 	else {
 		fastd_sha256_t hash;
 		fastd_sha256_blocks(&hash, X->u32, Y->u32, A->u32, B->u32, sigma->u32, NULL);
-		peer->protocol_state->session.method_state = method->session_init_compat(ctx, method_name, hash.b, HASHBYTES, initiator);
+		peer->protocol_state->session.method_state = method->method->session_init_compat(ctx, method->ctx, hash.b, HASHBYTES, initiator);
 	}
 
 	if (!peer->protocol_state->session.method_state)
@@ -122,7 +122,7 @@ static inline bool new_session(fastd_context_t *ctx, fastd_peer_t *peer, const c
 	return true;
 }
 
-static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *method_name, fastd_socket_t *sock,
+static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_info_t *method, fastd_socket_t *sock,
 		      const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
 		      const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
 		      const aligned_int256_t *sigma, const uint32_t *salt, uint64_t serial) {
@@ -131,9 +131,8 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 		return false;
 	}
 
-	const fastd_method_t *method = fastd_method_get_by_name(method_name);
-	if (!salt && !method->session_init_compat) {
-		pr_warn(ctx, "can't establish session with %P[%I] (method without compat support)", peer, remote_addr);
+	if (!salt && !method->method->session_init_compat) {
+		pr_warn(ctx, "can't establish compat session with %P[%I] (method without compat support)", peer, remote_addr);
 		return false;
 	}
 
@@ -145,8 +144,8 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 		return false;
 	}
 
-	if (!new_session(ctx, peer, method_name, method, initiator, A, B, X, Y, sigma, salt, serial)) {
-		pr_error(ctx, "failed to initialize method session for %P (method `%s'%s)", peer, method_name, salt ? "" : " (compat mode)");
+	if (!new_session(ctx, peer, method, initiator, A, B, X, Y, sigma, salt, serial)) {
+		pr_error(ctx, "failed to initialize method session for %P (method `%s'%s)", peer, method->name, salt ? "" : " (compat mode)");
 		fastd_peer_reset(ctx, peer);
 		return false;
 	}
@@ -154,7 +153,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const char *meth
 	fastd_peer_seen(ctx, peer);
 	fastd_peer_set_established(ctx, peer);
 
-	pr_verbose(ctx, "new session with %P established using method `%s'%s.", peer, method_name, salt ? "" : " (compat mode)");
+	pr_verbose(ctx, "new session with %P established using method `%s'%s.", peer, method->name, salt ? "" : " (compat mode)");
 
 	if (initiator)
 		fastd_peer_schedule_handshake_default(ctx, peer);
@@ -271,7 +270,7 @@ static void clear_shared_handshake_key(fastd_context_t *ctx UNUSED, const fastd_
 }
 
 static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer,
-			      const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const char *method) {
+			      const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	pr_debug(ctx, "responding handshake with %P[%I]...", peer, remote_addr);
 
 	if (!update_shared_handshake_key(ctx, peer, handshake_key, peer_handshake_key))
@@ -299,7 +298,7 @@ static void respond_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, 
 }
 
 static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key,
-			     const fastd_handshake_t *handshake, const char *method) {
+			     const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	pr_debug(ctx, "finishing handshake with %P[%I]...", peer, remote_addr);
 
 	bool compat = !secure_handshake(handshake);
@@ -361,7 +360,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 
 static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 				    fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key,
-				    const fastd_handshake_t *handshake, const char *method) {
+				    const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	pr_debug(ctx, "handling handshake finish with %P[%I]...", peer, remote_addr);
 
 	bool compat = !secure_handshake(handshake);
@@ -538,7 +537,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fa
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
 
-void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const char *method) {
+void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	bool temporary_added = false;
 
 	fastd_protocol_ec25519_fhmqvc_maintenance(ctx);

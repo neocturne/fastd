@@ -251,8 +251,7 @@ static void option_protocol(fastd_context_t *ctx, fastd_config_t *conf, const ch
 }
 
 static void option_method(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	if (!fastd_config_method(ctx, conf, arg))
-		exit_error(ctx, "unsupported method `%s'", arg);
+	fastd_config_method(ctx, conf, arg);
 }
 
 static void option_forward(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {

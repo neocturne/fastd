@@ -350,10 +350,7 @@ protocol:	TOK_STRING {
 	;
 
 method:		TOK_STRING {
-			if (!fastd_config_method(ctx, conf, $1->str)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "unsupported method");
-				YYERROR;
-			}
+			fastd_config_method(ctx, conf, $1->str);
 		}
 	;
 

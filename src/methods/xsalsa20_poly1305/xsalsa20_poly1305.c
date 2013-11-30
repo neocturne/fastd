@@ -24,7 +24,7 @@
 */
 
 
-#include "../../fastd.h"
+#include "../../method.h"
 #include "../common.h"
 
 #include <crypto_secretbox_xsalsa20poly1305.h>
@@ -37,15 +37,18 @@ struct fastd_method_session_state {
 };
 
 
-static bool method_provides(const char *name) {
+static bool method_create_by_name(const char *name, fastd_method_context_t **method_ctx UNUSED) {
 	return !strcmp(name, "xsalsa20-poly1305");
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED, const char *name UNUSED) {
+static void method_destroy(fastd_method_context_t *method_ctx UNUSED) {
+}
+
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const char *name UNUSED, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_context_t *method_ctx UNUSED, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
@@ -55,11 +58,11 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const char *name, const uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
 
-	return method_session_init(ctx, name, secret, initiator);
+	return method_session_init(ctx, method_ctx, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
@@ -153,7 +156,6 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 }
 
 const fastd_method_t fastd_method_xsalsa20_poly1305 = {
-	.provides = method_provides,
 
 	.max_overhead = COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES,
 	.min_encrypt_head_space = crypto_secretbox_xsalsa20poly1305_ZEROBYTES,
@@ -161,7 +163,11 @@ const fastd_method_t fastd_method_xsalsa20_poly1305 = {
 	.min_encrypt_tail_space = 0,
 	.min_decrypt_tail_space = 0,
 
+	.create_by_name = method_create_by_name,
+	.destroy = method_destroy,
+
 	.key_length = method_key_length,
+
 	.session_init = method_session_init,
 	.session_init_compat = method_session_init_compat,
 	.session_is_valid = method_session_is_valid,
