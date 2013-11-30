@@ -31,7 +31,8 @@
 #include <crypto_onetimeauth_poly1305.h>
 
 
-#define AUTHBLOCKS 2
+#define KEYBYTES crypto_onetimeauth_poly1305_KEYBYTES
+#define TAGBYTES crypto_onetimeauth_poly1305_BYTES
 
 
 struct fastd_method {
@@ -117,8 +118,8 @@ static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_sessio
 }
 
 static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head(ctx, &in, AUTHBLOCKS*sizeof(fastd_block128_t));
-	memset(in.data, 0, AUTHBLOCKS*sizeof(fastd_block128_t));
+	fastd_buffer_pull_head(ctx, &in, KEYBYTES);
+	memset(in.data, 0, KEYBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
@@ -141,16 +142,14 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
 	if (!ok) {
-		/* restore original buffer */
-		fastd_buffer_push_head(ctx, &in, AUTHBLOCKS*sizeof(fastd_block128_t));
 		fastd_buffer_free(*out);
 		return false;
 	}
 
-	crypto_onetimeauth_poly1305(tag, (const uint8_t*)(outblocks+AUTHBLOCKS), in.len - AUTHBLOCKS*sizeof(fastd_block128_t), (const uint8_t*)outblocks);
+	crypto_onetimeauth_poly1305(tag, outblocks->b+KEYBYTES, in.len - KEYBYTES, outblocks->b);
 
-	fastd_buffer_push_head(ctx, out, AUTHBLOCKS*sizeof(fastd_block128_t) - crypto_onetimeauth_poly1305_BYTES);
-	memcpy(out->data, tag, crypto_onetimeauth_poly1305_BYTES);
+	fastd_buffer_push_head(ctx, out, KEYBYTES - TAGBYTES);
+	memcpy(out->data, tag, TAGBYTES);
 
 	fastd_buffer_free(in);
 
@@ -165,7 +164,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 }
 
 static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	if (in.len < COMMON_HEADBYTES+crypto_onetimeauth_poly1305_BYTES)
+	if (in.len < COMMON_HEADBYTES+TAGBYTES)
 		return false;
 
 	if (!method_session_is_valid(ctx, session))
@@ -187,10 +186,10 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_buffer_push_head(ctx, &in, COMMON_HEADBYTES);
 
 	uint8_t tag[crypto_onetimeauth_poly1305_BYTES];
-	memcpy(tag, in.data, crypto_onetimeauth_poly1305_BYTES);
+	memcpy(tag, in.data, TAGBYTES);
 
-	fastd_buffer_pull_head(ctx, &in, AUTHBLOCKS*sizeof(fastd_block128_t) - crypto_onetimeauth_poly1305_BYTES);
-	memset(in.data, 0, AUTHBLOCKS*sizeof(fastd_block128_t));
+	fastd_buffer_pull_head(ctx, &in, KEYBYTES - TAGBYTES);
+	memset(in.data, 0, KEYBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
@@ -205,15 +204,15 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		if (tail_len)
 			memset(in.data+in.len, 0, tail_len);
 
-		ok = (crypto_onetimeauth_poly1305_verify(tag, in.data+AUTHBLOCKS*sizeof(fastd_block128_t), in.len - AUTHBLOCKS*sizeof(fastd_block128_t), out->data) == 0);
+		ok = (crypto_onetimeauth_poly1305_verify(tag, in.data + KEYBYTES, in.len - KEYBYTES, out->data) == 0);
 	}
 
 	if (!ok) {
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_push_head(ctx, &in, AUTHBLOCKS*sizeof(fastd_block128_t) - crypto_onetimeauth_poly1305_BYTES);
-		memcpy(in.data, tag, crypto_onetimeauth_poly1305_BYTES);
+		fastd_buffer_push_head(ctx, &in, KEYBYTES - TAGBYTES);
+		memcpy(in.data, tag, TAGBYTES);
 		fastd_buffer_pull_head(ctx, &in, COMMON_HEADBYTES);
 		memcpy(in.data, nonce, COMMON_NONCEBYTES);
 		((uint8_t*)in.data)[COMMON_NONCEBYTES] = 0;
@@ -223,7 +222,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(ctx, out, AUTHBLOCKS*sizeof(fastd_block128_t));
+	fastd_buffer_push_head(ctx, out, KEYBYTES);
 
 	if (!fastd_method_reorder_check(ctx, peer, &session->common, nonce, age)) {
 		fastd_buffer_free(*out);
@@ -234,9 +233,9 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 }
 
 const fastd_method_provider_t fastd_method_generic_poly1305 = {
-	.max_overhead = COMMON_HEADBYTES + crypto_onetimeauth_poly1305_BYTES,
-	.min_encrypt_head_space = AUTHBLOCKS*sizeof(fastd_block128_t),
-	.min_decrypt_head_space = AUTHBLOCKS*sizeof(fastd_block128_t) - crypto_onetimeauth_poly1305_BYTES,
+	.max_overhead = COMMON_HEADBYTES + TAGBYTES,
+	.min_encrypt_head_space = KEYBYTES,
+	.min_decrypt_head_space = KEYBYTES - TAGBYTES,
 	.min_encrypt_tail_space = sizeof(fastd_block128_t)-1,
 	.min_decrypt_tail_space = sizeof(fastd_block128_t)-1,
 
