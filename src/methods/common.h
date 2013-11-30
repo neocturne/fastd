@@ -94,4 +94,29 @@ static inline void fastd_method_increment_nonce(fastd_method_common_t *session) 
 	}
 }
 
+static inline void fastd_method_put_common_header(fastd_context_t *ctx, fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
+	fastd_buffer_pull_head_from(ctx, buffer, &flags, 1);
+	fastd_buffer_pull_head_from(ctx, buffer, nonce, COMMON_NONCEBYTES);
+}
+
+static inline void fastd_method_take_common_header(fastd_context_t *ctx, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
+	fastd_buffer_push_head_to(ctx, buffer, nonce, COMMON_NONCEBYTES);
+	fastd_buffer_push_head_to(ctx, buffer, flags, 1);
+}
+
+static inline bool fastd_method_handle_common_header(fastd_context_t *ctx, const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
+	fastd_method_take_common_header(ctx, buffer, nonce, flags);
+	return fastd_method_is_nonce_valid(ctx, session, nonce, age);
+}
+
+
+static inline void fastd_method_expand_nonce(uint8_t *buf, const uint8_t nonce[COMMON_NONCEBYTES], size_t len) {
+	if (!len)
+		return;
+
+	memset(buf, 0, len);
+	memcpy(buf, nonce, min_size_t(len, COMMON_NONCEBYTES));
+	buf[len-1] = 1;
+}
+
 #endif /* _FASTD_METHODS_COMMON_H_ */

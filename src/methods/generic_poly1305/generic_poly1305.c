@@ -126,11 +126,8 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	size_t iv_length = session->method->cipher_info->iv_length;
-	uint8_t nonce[iv_length];
-	memset(nonce, 0, iv_length);
-	memcpy(nonce, session->common.send_nonce, COMMON_NONCEBYTES);
-	nonce[iv_length-1] = 1;
+	uint8_t nonce[session->method->cipher_info->iv_length];
+	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -152,12 +149,8 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_pull_head(ctx, out, COMMON_HEADBYTES);
-
-	memcpy(out->data, session->common.send_nonce, COMMON_NONCEBYTES);
+	fastd_method_put_common_header(ctx, out, session->common.send_nonce, 0);
 	fastd_method_increment_nonce(&session->common);
-
-	((uint8_t*)out->data)[COMMON_NONCEBYTES] = 0; /* flags */
 
 	return true;
 }
@@ -169,20 +162,17 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (!method_session_is_valid(ctx, session))
 		return false;
 
-	if (((const uint8_t*)in.data)[COMMON_NONCEBYTES]) /* flags */
-		return false;
-
-	size_t iv_length = session->method->cipher_info->iv_length;
-	uint8_t nonce[iv_length];
-	memset(nonce, 0, iv_length);
-	memcpy(nonce, in.data, COMMON_NONCEBYTES);
-	nonce[iv_length-1] = 1;
-
+	uint8_t in_nonce[COMMON_NONCEBYTES];
+	uint8_t flags;
 	int64_t age;
-	if (!fastd_method_is_nonce_valid(ctx, &session->common, nonce, &age))
+	if (!fastd_method_handle_common_header(ctx, &session->common, &in, in_nonce, &flags, &age))
 		return false;
 
-	fastd_buffer_push_head(ctx, &in, COMMON_HEADBYTES);
+	if (flags)
+		return false;
+
+	uint8_t nonce[session->method->cipher_info->iv_length];
+	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
 	uint8_t tag[TAGBYTES];
 	fastd_buffer_push_head_to(ctx, &in, tag, TAGBYTES);
@@ -210,10 +200,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		/* restore input buffer */
 		fastd_buffer_push_head(ctx, &in, KEYBYTES);
 		fastd_buffer_pull_head_from(ctx, &in, tag, TAGBYTES);
-
-		fastd_buffer_pull_head(ctx, &in, COMMON_HEADBYTES);
-		memcpy(in.data, nonce, COMMON_NONCEBYTES);
-		((uint8_t*)in.data)[COMMON_NONCEBYTES] = 0;
+		fastd_method_put_common_header(ctx, &in, in_nonce, 0);
 
 		return false;
 	}
@@ -222,7 +209,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_buffer_push_head(ctx, out, KEYBYTES);
 
-	if (!fastd_method_reorder_check(ctx, peer, &session->common, nonce, age)) {
+	if (!fastd_method_reorder_check(ctx, peer, &session->common, in_nonce, age)) {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(ctx, 0, 0, 0);
 	}
