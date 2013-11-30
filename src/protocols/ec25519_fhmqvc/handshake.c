@@ -71,22 +71,22 @@ static void derive_key(fastd_sha256_t *out, size_t blocks, const uint32_t *salt,
 static inline void supersede_session(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_method_info_t *method) {
 	if (is_session_valid(ctx, &peer->protocol_state->session) && !is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		if (peer->protocol_state->old_session.method)
-			peer->protocol_state->old_session.method->method->session_free(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session.method->provider->session_free(ctx, peer->protocol_state->old_session.method_state);
 		peer->protocol_state->old_session = peer->protocol_state->session;
 	}
 	else {
 		if (peer->protocol_state->session.method)
-			peer->protocol_state->session.method->method->session_free(ctx, peer->protocol_state->session.method_state);
+			peer->protocol_state->session.method->provider->session_free(ctx, peer->protocol_state->session.method_state);
 	}
 
 	if (peer->protocol_state->old_session.method) {
 		if (peer->protocol_state->old_session.method != method) {
 			pr_debug(ctx, "method of %P has changed, terminating old session", peer);
-			peer->protocol_state->old_session.method->method->session_free(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session.method->provider->session_free(ctx, peer->protocol_state->old_session.method_state);
 			peer->protocol_state->old_session = (protocol_session_t){};
 		}
 		else {
-			peer->protocol_state->old_session.method->method->session_superseded(ctx, peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session.method->provider->session_superseded(ctx, peer->protocol_state->old_session.method_state);
 		}
 	}
 }
@@ -98,16 +98,16 @@ static inline bool new_session(fastd_context_t *ctx, fastd_peer_t *peer, const f
 	supersede_session(ctx, peer, method);
 
 	if (salt) {
-		size_t blocks = block_count(method->method->key_length(ctx, method->ctx), sizeof(fastd_sha256_t));
+		size_t blocks = block_count(method->provider->key_length(ctx, method->method), sizeof(fastd_sha256_t));
 		fastd_sha256_t secret[blocks];
 		derive_key(secret, blocks, salt, method->name, A, B, X, Y, sigma);
 
-		peer->protocol_state->session.method_state = method->method->session_init(ctx, method->ctx, (const uint8_t*)secret, initiator);
+		peer->protocol_state->session.method_state = method->provider->session_init(ctx, method->method, (const uint8_t*)secret, initiator);
 	}
 	else {
 		fastd_sha256_t hash;
 		fastd_sha256_blocks(&hash, X->u32, Y->u32, A->u32, B->u32, sigma->u32, NULL);
-		peer->protocol_state->session.method_state = method->method->session_init_compat(ctx, method->ctx, hash.b, HASHBYTES, initiator);
+		peer->protocol_state->session.method_state = method->provider->session_init_compat(ctx, method->method, hash.b, HASHBYTES, initiator);
 	}
 
 	if (!peer->protocol_state->session.method_state)
@@ -131,7 +131,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 		return false;
 	}
 
-	if (!salt && !method->method->session_init_compat) {
+	if (!salt && !method->provider->session_init_compat) {
 		pr_warn(ctx, "can't establish compat session with %P[%I] (method without compat support)", peer, remote_addr);
 		return false;
 	}

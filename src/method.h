@@ -32,24 +32,24 @@
 
 struct fastd_method_info {
 	const char *name;
-	const fastd_method_t *method;
-	fastd_method_context_t *ctx;
+	const fastd_method_provider_t *provider;
+	fastd_method_t *method;
 };
 
-struct fastd_method {
+struct fastd_method_provider {
 	size_t max_overhead;
 	size_t min_encrypt_head_space;
 	size_t min_decrypt_head_space;
 	size_t min_encrypt_tail_space;
 	size_t min_decrypt_tail_space;
 
-	bool (*create_by_name)(const char *name, fastd_method_context_t **method_ctx);
-	void (*destroy)(fastd_method_context_t *method_ctx);
+	bool (*create_by_name)(const char *name, fastd_method_t **method);
+	void (*destroy)(fastd_method_t *method);
 
-	size_t (*key_length)(fastd_context_t *ctx, const fastd_method_context_t *method_ctx);
+	size_t (*key_length)(fastd_context_t *ctx, const fastd_method_t *method);
 
-	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, bool initiator);
-	fastd_method_session_state_t* (*session_init_compat)(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, size_t length, bool initiator);
+	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, bool initiator);
+	fastd_method_session_state_t* (*session_init_compat)(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
 	bool (*session_is_valid)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 	bool (*session_is_initiator)(fastd_context_t *ctx, fastd_method_session_state_t *session);
 	bool (*session_want_refresh)(fastd_context_t *ctx, fastd_method_session_state_t *session);
@@ -61,7 +61,7 @@ struct fastd_method {
 };
 
 
-bool fastd_method_create_by_name(const char *name, const fastd_method_t **method, fastd_method_context_t **method_ctx);
+bool fastd_method_create_by_name(const char *name, const fastd_method_provider_t **provider, fastd_method_t **method);
 
 
 static inline const fastd_method_info_t* fastd_method_get_by_name(fastd_context_t *ctx, const char *name) {

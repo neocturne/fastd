@@ -33,18 +33,18 @@ struct fastd_method_session_state {
 };
 
 
-static bool method_create_by_name(const char *name, fastd_method_context_t **method_ctx UNUSED) {
+static bool method_create_by_name(const char *name, fastd_method_t **method UNUSED) {
 	return !strcmp(name, "null");
 }
 
-static void method_destroy(fastd_method_context_t *method_ctx UNUSED) {
+static void method_destroy(fastd_method_t *method UNUSED) {
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx UNUSED) {
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_t *method UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx UNUSED, const uint8_t *secret UNUSED, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, const fastd_method_t *method UNUSED, const uint8_t *secret UNUSED, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	session->valid = true;
@@ -53,8 +53,8 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UN
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, size_t length UNUSED, bool initiator) {
-	return method_session_init(ctx, method_ctx, secret, initiator);
+static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, size_t length UNUSED, bool initiator) {
+	return method_session_init(ctx, method, secret, initiator);
 }
 
 static bool method_session_is_valid(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
@@ -82,7 +82,7 @@ static bool method_passthrough(fastd_context_t *ctx UNUSED, fastd_peer_t *peer U
 	return true;
 }
 
-const fastd_method_t fastd_method_null = {
+const fastd_method_provider_t fastd_method_null = {
 	.max_overhead = 0,
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,

@@ -106,7 +106,7 @@ static inline void hexdump(char out[65], const unsigned char d[32]) {
 
 
 static inline bool is_session_valid(fastd_context_t *ctx, const protocol_session_t *session) {
-	return (session->method && session->method->method->session_is_valid(ctx, session->method_state));
+	return (session->method && session->method->provider->session_is_valid(ctx, session->method_state));
 }
 
 #endif /* _FASTD_PROTOCOL_EC25519_FHMQVC_H_ */

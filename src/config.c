@@ -480,13 +480,13 @@ static void configure_method_parameters(fastd_config_t *conf) {
 
 	size_t i;
 	for (i = 0; conf->methods[i].name; i++) {
-		const fastd_method_t *method = conf->methods[i].method;
+		const fastd_method_provider_t *provider = conf->methods[i].provider;
 
-		conf->max_overhead = max_size_t(conf->max_overhead, method->max_overhead);
-		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, method->min_encrypt_head_space);
-		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, method->min_decrypt_head_space);
-		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, method->min_encrypt_tail_space);
-		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, method->min_decrypt_tail_space);
+		conf->max_overhead = max_size_t(conf->max_overhead, provider->max_overhead);
+		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, provider->min_encrypt_head_space);
+		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, provider->min_decrypt_head_space);
+		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, provider->min_encrypt_tail_space);
+		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, provider->min_decrypt_tail_space);
 	}
 
 	conf->min_encrypt_head_space = alignto(conf->min_encrypt_head_space, 16);
@@ -505,7 +505,7 @@ static void configure_methods(fastd_context_t *ctx, fastd_config_t *conf) {
 
 	for (i = 0, method_name = conf->method_list; method_name; i++, method_name = method_name->next) {
 		conf->methods[i].name = method_name->str;
-		if (!fastd_method_create_by_name(method_name->str, &conf->methods[i].method, &conf->methods[i].ctx))
+		if (!fastd_method_create_by_name(method_name->str, &conf->methods[i].provider, &conf->methods[i].method))
 			exit_error(ctx, "method `%s' not supported", method_name->str);
 	}
 
@@ -515,7 +515,7 @@ static void configure_methods(fastd_context_t *ctx, fastd_config_t *conf) {
 static void destroy_methods(fastd_config_t *conf) {
 	size_t i;
 	for (i = 0; conf->methods[i].name; i++) {
-		conf->methods[i].method->destroy(conf->methods[i].ctx);
+		conf->methods[i].provider->destroy(conf->methods[i].method);
 	}
 
 	free(conf->methods);

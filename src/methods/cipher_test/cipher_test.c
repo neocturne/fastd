@@ -29,21 +29,21 @@
 #include "../common.h"
 
 
-struct fastd_method_context {
+struct fastd_method {
 	const fastd_cipher_info_t *cipher_info;
 };
 
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
-	const fastd_method_context_t *ctx;
+	const fastd_method_t *method;
 	const fastd_cipher_t *cipher;
 	fastd_cipher_state_t *cipher_state;
 };
 
 
-static bool method_create_by_name(const char *name, fastd_method_context_t **method_ctx) {
-	fastd_method_context_t ctx;
+static bool method_create_by_name(const char *name, fastd_method_t **method) {
+	fastd_method_t m;
 
 	size_t len = strlen(name);
 	if (len < 12)
@@ -56,30 +56,30 @@ static bool method_create_by_name(const char *name, fastd_method_context_t **met
 	memcpy(cipher_name, name, len-12);
 	cipher_name[len-12] = 0;
 
-	ctx.cipher_info = fastd_cipher_info_get_by_name(cipher_name);
-	if (!ctx.cipher_info)
+	m.cipher_info = fastd_cipher_info_get_by_name(cipher_name);
+	if (!m.cipher_info)
 		return false;
 
-	*method_ctx = malloc(sizeof(fastd_method_context_t));
-	**method_ctx = ctx;
+	*method = malloc(sizeof(fastd_method_t));
+	**method = m;
 
 	return true;
 }
 
-static void method_destroy(fastd_method_context_t *method_ctx) {
-	free(method_ctx);
+static void method_destroy(fastd_method_t *method) {
+	free(method);
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_context_t *method_ctx) {
-	return method_ctx->cipher_info->key_length;
+static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_t *method) {
+	return method->cipher_info->key_length;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_context_t *method_ctx, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	fastd_method_common_init(ctx, &session->common, initiator);
-	session->ctx = method_ctx;
-	session->cipher = fastd_cipher_get(ctx, session->ctx->cipher_info);
+	session->method = method;
+	session->cipher = fastd_cipher_get(ctx, method->cipher_info);
 	session->cipher_state = session->cipher->init(ctx, secret);
 
 	pr_warn(ctx, "using cipher-test method; this method must be used for testing and benchmarks only");
@@ -117,7 +117,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	size_t iv_length = session->ctx->cipher_info->iv_length;
+	size_t iv_length = session->method->cipher_info->iv_length;
 	uint8_t nonce[iv_length];
 	if (iv_length) {
 		memset(nonce, 0, iv_length);
@@ -161,7 +161,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (common_nonce[COMMON_NONCEBYTES]) /* flags */
 		return false;
 
-	size_t iv_length = session->ctx->cipher_info->iv_length;
+	size_t iv_length = session->method->cipher_info->iv_length;
 	uint8_t nonce[iv_length];
 	if (iv_length) {
 		memset(nonce, 0, iv_length);
@@ -200,7 +200,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	return true;
 }
 
-const fastd_method_t fastd_method_cipher_test = {
+const fastd_method_provider_t fastd_method_cipher_test = {
 	.max_overhead = COMMON_HEADBYTES,
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,

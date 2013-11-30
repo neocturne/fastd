@@ -38,7 +38,7 @@ get_property(METHODS GLOBAL PROPERTY FASTD_METHODS)
 foreach(method ${METHODS})
   string(REPLACE - _ method_ "${method}")
 
-  set(METHOD_DEFINITIONS "${METHOD_DEFINITIONS}\nextern const fastd_method_t fastd_method_${method_};")
+  set(METHOD_DEFINITIONS "${METHOD_DEFINITIONS}\nextern const fastd_method_provider_t fastd_method_${method_};")
   set(METHOD_LIST "${METHOD_LIST}\n&fastd_method_${method_},")
 endforeach(method)
 

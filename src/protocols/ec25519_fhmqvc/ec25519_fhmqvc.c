@@ -41,7 +41,7 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 static inline void check_session_refresh(fastd_context_t *ctx, fastd_peer_t *peer) {
 	protocol_session_t *session = &peer->protocol_state->session;
 
-	if (!session->refreshing && session->method->method->session_want_refresh(ctx, session->method_state)) {
+	if (!session->refreshing && session->method->provider->session_want_refresh(ctx, session->method_state)) {
 		pr_verbose(ctx, "refreshing session with %P", peer);
 		session->handshakes_cleaned = true;
 		session->refreshing = true;
@@ -104,17 +104,17 @@ static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd
 	bool ok = false;
 
 	if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
-		if (peer->protocol_state->old_session.method->method->decrypt(ctx, peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
+		if (peer->protocol_state->old_session.method->provider->decrypt(ctx, peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
 			ok = true;
 	}
 
 	if (!ok) {
-		if (peer->protocol_state->session.method->method->decrypt(ctx, peer, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
+		if (peer->protocol_state->session.method->provider->decrypt(ctx, peer, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
 			ok = true;
 
 			if (peer->protocol_state->old_session.method) {
 				pr_debug(ctx, "invalidating old session with %P", peer);
-				peer->protocol_state->old_session.method->method->session_free(ctx, peer->protocol_state->old_session.method_state);
+				peer->protocol_state->old_session.method->provider->session_free(ctx, peer->protocol_state->old_session.method_state);
 				peer->protocol_state->old_session = (protocol_session_t){};
 			}
 
@@ -123,7 +123,7 @@ static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd
 				fastd_peer_unschedule_handshake(ctx, peer);
 				peer->protocol_state->session.handshakes_cleaned = true;
 
-				if (peer->protocol_state->session.method->method->session_is_initiator(ctx, peer->protocol_state->session.method_state))
+				if (peer->protocol_state->session.method->provider->session_is_initiator(ctx, peer->protocol_state->session.method_state))
 					fastd_protocol_ec25519_fhmqvc_send_empty(ctx, peer, &peer->protocol_state->session);
 			}
 
@@ -153,7 +153,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 	size_t stat_size = buffer.len;
 
 	fastd_buffer_t send_buffer;
-	if (!session->method->method->encrypt(ctx, peer, session->method_state, &send_buffer, buffer)) {
+	if (!session->method->provider->encrypt(ctx, peer, session->method_state, &send_buffer, buffer)) {
 		fastd_buffer_free(buffer);
 		pr_error(ctx, "failed to encrypt packet for %P", peer);
 		return;
@@ -171,7 +171,7 @@ static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 
 	check_session_refresh(ctx, peer);
 
-	if (peer->protocol_state->session.method->method->session_is_initiator(ctx, peer->protocol_state->session.method_state) && is_session_valid(ctx, &peer->protocol_state->old_session)) {
+	if (peer->protocol_state->session.method->provider->session_is_initiator(ctx, peer->protocol_state->session.method_state) && is_session_valid(ctx, &peer->protocol_state->old_session)) {
 		pr_debug2(ctx, "sending packet for old session to %P", peer);
 		session_send(ctx, peer, buffer, &peer->protocol_state->old_session);
 	}
@@ -181,7 +181,7 @@ static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 }
 
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session) {
-	session_send(ctx, peer, fastd_buffer_alloc(ctx, 0, alignto(session->method->method->min_encrypt_head_space, 8), session->method->method->min_encrypt_tail_space), session);
+	session_send(ctx, peer, fastd_buffer_alloc(ctx, 0, alignto(session->method->provider->min_encrypt_head_space, 8), session->method->provider->min_encrypt_tail_space), session);
 }
 
 const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
