@@ -114,13 +114,6 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
-	if (length < sizeof(fastd_block128_t))
-		exit_bug(ctx, "generic-gcm: tried to init with short secret");
-
-	return method_session_init(ctx, method, secret, initiator);
-}
-
 static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
 	return (session && fastd_method_session_common_is_valid(ctx, &session->common));
 }
@@ -268,7 +261,6 @@ const fastd_method_provider_t fastd_method_generic_gcm = {
 	.key_length = method_key_length,
 
 	.session_init = method_session_init,
-	.session_init_compat = method_session_init_compat,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,
