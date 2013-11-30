@@ -95,7 +95,7 @@ static size_t snprint_peer_str(const fastd_context_t *ctx, char *buffer, size_t 
 	}
 }
 
-int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap) {
+static int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap) {
 	char *buffer_start = buffer;
 	char *buffer_end = buffer+size;
 

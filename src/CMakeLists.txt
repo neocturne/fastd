@@ -24,9 +24,9 @@ add_executable(fastd
   handshake.c
   hkdf_sha256.c
   lex.c
+  log.c
   options.c
   peer.c
-  printf.c
   random.c
   receive.c
   resolve.c

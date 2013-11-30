@@ -30,6 +30,7 @@
 #include "compat.h"
 #include "types.h"
 #include "dlist.h"
+#include "log.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -307,12 +308,9 @@ void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock);
 void fastd_socket_error(fastd_context_t *ctx, fastd_socket_t *sock);
 
 void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset);
-void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset)
-;
-void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote);
+void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset);
 
-int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap);
-void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *format, ...);
+void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote);
 
 void fastd_tuntap_open(fastd_context_t *ctx);
 fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx);
@@ -331,27 +329,6 @@ static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
 	return (r%(max-min) + min);
 }
 
-#define FASTD_DEFAULT_LOG_LEVEL	LL_VERBOSE
-
-
-#define pr_fatal(ctx, args...) fastd_logf(ctx, LL_FATAL, args)
-#define pr_error(ctx, args...) fastd_logf(ctx, LL_ERROR, args)
-#define pr_warn(ctx, args...) fastd_logf(ctx, LL_WARN, args)
-#define pr_info(ctx, args...) fastd_logf(ctx, LL_INFO, args)
-#define pr_verbose(ctx, args...) fastd_logf(ctx, LL_VERBOSE, args)
-#define pr_debug(ctx, args...) fastd_logf(ctx, LL_DEBUG, args)
-#define pr_debug2(ctx, args...) fastd_logf(ctx, LL_DEBUG2, args)
-
-#define pr_error_errno(ctx, message) pr_error(ctx, "%s: %s", message, strerror(errno))
-#define pr_warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
-#define pr_debug_errno(ctx, message) pr_debug(ctx, "%s: %s", message, strerror(errno))
-#define pr_debug2_errno(ctx, message) pr_debug2(ctx, "%s: %s", message, strerror(errno))
-
-#define exit_fatal(ctx, args...) do { pr_fatal(ctx, args); abort(); } while(0)
-#define exit_bug(ctx, message) exit_fatal(ctx, "BUG: %s", message)
-#define exit_error(ctx, args...) do { pr_error(ctx, args); exit(1); } while(0)
-#define exit_errno(ctx, message) exit_error(ctx, "%s: %s", message, strerror(errno))
-
 
 #define container_of(ptr, type, member) ({				\
 			const __typeof__(((type *)0)->member) *_mptr = (ptr); \
@@ -367,6 +344,7 @@ static inline size_t block_count(size_t l, size_t a) {
 static inline size_t alignto(size_t l, size_t a) {
 	return block_count(l, a)*a;
 }
+
 
 static inline fastd_buffer_t fastd_buffer_alloc(const fastd_context_t *ctx, size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
