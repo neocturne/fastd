@@ -25,6 +25,7 @@
 
 
 #include "handshake.h"
+#include "../../crypto.h"
 
 
 static void init_protocol_state(fastd_context_t *ctx) {

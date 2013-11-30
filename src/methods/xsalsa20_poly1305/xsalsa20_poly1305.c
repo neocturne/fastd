@@ -24,6 +24,7 @@
 */
 
 
+#include "../../crypto.h"
 #include "../../method.h"
 #include "../common.h"
 

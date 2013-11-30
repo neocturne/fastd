@@ -80,7 +80,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	fastd_method_common_init(ctx, &session->common, initiator);
 	session->method = method;
 	session->cipher = fastd_cipher_get(ctx, method->cipher_info);
-	session->cipher_state = session->cipher->init(ctx, secret);
+	session->cipher_state = session->cipher->init(secret);
 
 	pr_warn(ctx, "using cipher-test method; this method must be used for testing and benchmarks only");
 
@@ -103,9 +103,9 @@ static void method_session_superseded(fastd_context_t *ctx, fastd_method_session
 	fastd_method_session_common_superseded(ctx, &session->common);
 }
 
-static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	if (session) {
-		session->cipher->free(ctx, session->cipher_state);
+		session->cipher->free(session->cipher_state);
 		free(session);
 	}
 }
@@ -130,7 +130,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
-	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
+	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
 	if (!ok) {
 		fastd_buffer_free(*out);
@@ -183,7 +183,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
-	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
+	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
 	if (!ok) {
 		fastd_buffer_free(*out);

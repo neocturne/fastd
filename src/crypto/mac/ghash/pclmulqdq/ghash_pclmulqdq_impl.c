@@ -35,6 +35,11 @@ typedef union vecblock {
 	fastd_block128_t b;
 } vecblock_t;
 
+struct fastd_mac_state {
+	vecblock_t H;
+};
+
+
 static inline __m128i shl(__m128i v, int a) {
 	__m128i tmpl = _mm_slli_epi64(v, a);
 	__m128i tmpr = _mm_srli_epi64(v, 64-a);
@@ -58,16 +63,22 @@ static inline __m128i byteswap(__m128i v) {
 }
 
 
-fastd_mac_state_t* fastd_ghash_pclmulqdq_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
-	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
+fastd_mac_state_t* fastd_ghash_pclmulqdq_init(const uint8_t *key) {
+	fastd_mac_state_t *state;
+	if (posix_memalign((void**)&state, 16, sizeof(fastd_mac_state_t)))
+		abort();
 
-	vecblock_t h;
-	memcpy(&h, key, sizeof(__m128i));
-
-	h.v = byteswap(h.v);
-	state->H = h.b;
+	memcpy(&state->H, key, sizeof(__m128i));
+	state->H.v = byteswap(state->H.v);
 
 	return state;
+}
+
+void fastd_ghash_pclmulqdq_free(fastd_mac_state_t *state) {
+	if (state) {
+		secure_memzero(state, sizeof(*state));
+		free(state);
+	}
 }
 
 static __m128i gmul(__m128i v, __m128i h) {
@@ -123,15 +134,14 @@ static __m128i gmul(__m128i v, __m128i h) {
 }
 
 
-bool fastd_ghash_pclmulqdq_hash(fastd_context_t *ctx UNUSED, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
-	vecblock_t h = {.b = state->H};
+bool fastd_ghash_pclmulqdq_hash(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
 	vecblock_t v = {.v = _mm_setzero_si128()};
 
 	size_t i;
 	for (i = 0; i < n_blocks; i++) {
 		__m128i b = ((vecblock_t)in[i]).v;
 		v.v = _mm_xor_si128(v.v, byteswap(b));
-		v.v = gmul(v.v, h.v);
+		v.v = gmul(v.v, state->H.v);
 	}
 
 	v.v = byteswap(v.v);

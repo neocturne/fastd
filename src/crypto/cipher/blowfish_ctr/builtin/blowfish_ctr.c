@@ -26,6 +26,8 @@
 
 #include "../../../../crypto.h"
 
+#include <arpa/inet.h>
+
 
 typedef union bf_block {
 	fastd_block128_t b;
@@ -209,7 +211,7 @@ static inline uint32_t bf_f(const fastd_cipher_state_t *state, uint32_t x) {
 			BF_SWAP(L, R);				\
 		})
 
-static fastd_cipher_state_t* blowfish_ctr_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
+static fastd_cipher_state_t* blowfish_ctr_init(const uint8_t *key) {
 	uint32_t key32[14];
 	memcpy(key32, key, 56);
 	bf_ntohl(key32, 14);
@@ -241,7 +243,7 @@ static fastd_cipher_state_t* blowfish_ctr_init(fastd_context_t *ctx UNUSED, cons
 	return state;
 }
 
-static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+static bool blowfish_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	register bf_block_t block;
 	register uint32_t ctr[2];
 
@@ -271,7 +273,7 @@ static bool blowfish_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_s
 	return true;
 }
 
-static void blowfish_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
+static void blowfish_ctr_free(fastd_cipher_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
 		free(state);

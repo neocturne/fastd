@@ -25,6 +25,7 @@
 
 
 #include "../../../../crypto.h"
+
 #include <crypto_stream_salsa20.h>
 
 
@@ -33,19 +34,19 @@ struct __attribute__((aligned(16))) fastd_cipher_state {
 };
 
 
-static fastd_cipher_state_t* salsa20_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
+static fastd_cipher_state_t* salsa20_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 	memcpy(state->key, key, crypto_stream_salsa20_KEYBYTES);
 
 	return state;
 }
 
-static bool salsa20_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+static bool salsa20_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	crypto_stream_salsa20_xor(out->b, in->b, len, iv, state->key);
 	return true;
 }
 
-static void salsa20_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
+static void salsa20_free(fastd_cipher_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
 		free(state);

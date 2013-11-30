@@ -25,6 +25,7 @@
 
 
 #include <src/crypto.h>
+#include <src/fastd.h>
 
 
 @CIPHER_DEFINITIONS@

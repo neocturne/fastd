@@ -478,22 +478,4 @@ static inline size_t min_size_t(size_t a, size_t b) {
 	return (a < b) ? a : b;
 }
 
-static inline void secure_memzero(void *s, size_t n) {
-	memset(s, 0, n);
-	__asm__ volatile("" : : "m"(s));
-}
-
-static inline void xor(fastd_block128_t *x, fastd_block128_t a, fastd_block128_t b) {
-	x->qw[0] = a.qw[0] ^ b.qw[0];
-	x->qw[1] = a.qw[1] ^ b.qw[1];
-}
-
-static inline void xor_a(fastd_block128_t *x, fastd_block128_t a) {
-	xor(x, *x, a);
-}
-
-static inline bool fastd_true(void) {
-	return true;
-}
-
 #endif /* _FASTD_FASTD_H_ */

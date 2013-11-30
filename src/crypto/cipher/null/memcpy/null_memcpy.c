@@ -27,16 +27,16 @@
 #include "../../../../crypto.h"
 
 
-static fastd_cipher_state_t* null_init(fastd_context_t *ctx UNUSED, const uint8_t *key UNUSED) {
+static fastd_cipher_state_t* null_init(const uint8_t *key UNUSED) {
 	return NULL;
 }
 
-static bool null_memcpy(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state UNUSED, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv UNUSED) {
+static bool null_memcpy(const fastd_cipher_state_t *state UNUSED, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv UNUSED) {
 	memcpy(out, in, len);
 	return true;
 }
 
-static void null_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state UNUSED) {
+static void null_free(fastd_cipher_state_t *state UNUSED) {
 }
 
 const fastd_cipher_t fastd_cipher_null_memcpy = {

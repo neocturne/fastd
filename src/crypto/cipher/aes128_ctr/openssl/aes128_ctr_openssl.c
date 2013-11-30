@@ -25,6 +25,7 @@
 
 
 #include "../../../../crypto.h"
+
 #include <openssl/evp.h>
 
 
@@ -33,7 +34,7 @@ struct fastd_cipher_state {
 };
 
 
-static fastd_cipher_state_t* aes128_ctr_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
+static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 
 	state->aes = EVP_CIPHER_CTX_new();
@@ -42,7 +43,7 @@ static fastd_cipher_state_t* aes128_ctr_init(fastd_context_t *ctx UNUSED, const 
 	return state;
 }
 
-static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+static bool aes128_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	int clen, clen2;
 
 	if (!EVP_EncryptInit(state->aes, NULL, NULL, iv))
@@ -60,7 +61,7 @@ static bool aes128_ctr_crypt(fastd_context_t *ctx UNUSED, const fastd_cipher_sta
 	return true;
 }
 
-static void aes128_ctr_free(fastd_context_t *ctx UNUSED, fastd_cipher_state_t *state) {
+static void aes128_ctr_free(fastd_cipher_state_t *state) {
 	if (state) {
 		EVP_CIPHER_CTX_free(state->aes);
 		free(state);

@@ -61,8 +61,10 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 }
 
 
-static fastd_mac_state_t* ghash_init(fastd_context_t *ctx UNUSED, const uint8_t *key) {
-	fastd_mac_state_t *state = malloc(sizeof(fastd_mac_state_t));
+static fastd_mac_state_t* ghash_init(const uint8_t *key) {
+	fastd_mac_state_t *state;
+	if (posix_memalign((void**)&state, 16, sizeof(fastd_mac_state_t)))
+		abort();
 
 	fastd_block128_t Hbase[4];
 	fastd_block128_t Rbase[4];
@@ -105,7 +107,7 @@ static fastd_mac_state_t* ghash_init(fastd_context_t *ctx UNUSED, const uint8_t 
 	return state;
 }
 
-static bool ghash_hash(fastd_context_t *ctx UNUSED, const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
+static bool ghash_hash(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
 	memset(out, 0, sizeof(fastd_block128_t));
 
 	size_t i;
@@ -117,7 +119,7 @@ static bool ghash_hash(fastd_context_t *ctx UNUSED, const fastd_mac_state_t *sta
 	return true;
 }
 
-static void ghash_free(fastd_context_t *ctx UNUSED, fastd_mac_state_t *state) {
+static void ghash_free(fastd_mac_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
 		free(state);

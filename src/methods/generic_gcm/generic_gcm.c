@@ -93,7 +93,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	session->method = method;
 
 	session->cipher = fastd_cipher_get(ctx, method->cipher_info);
-	session->cipher_state = session->cipher->init(ctx, secret);
+	session->cipher_state = session->cipher->init(secret);
 
 	static const fastd_block128_t zeroblock = {};
 	fastd_block128_t H;
@@ -102,14 +102,14 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	uint8_t zeroiv[iv_length];
 	memset(zeroiv, 0, iv_length);
 
-	if (!session->cipher->crypt(ctx, session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), zeroiv)) {
-		session->cipher->free(ctx, session->cipher_state);
+	if (!session->cipher->crypt(session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), zeroiv)) {
+		session->cipher->free(session->cipher_state);
 		free(session);
 		return NULL;
 	}
 
 	session->ghash = fastd_mac_get(ctx, method->ghash_info);
-	session->ghash_state = session->ghash->init(ctx, H.b);
+	session->ghash_state = session->ghash->init(H.b);
 
 	return session;
 }
@@ -137,10 +137,10 @@ static void method_session_superseded(fastd_context_t *ctx, fastd_method_session
 	fastd_method_session_common_superseded(ctx, &session->common);
 }
 
-static void method_session_free(fastd_context_t *ctx, fastd_method_session_state_t *session) {
+static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
 	if (session) {
-		session->cipher->free(ctx, session->cipher_state);
-		session->ghash->free(ctx, session->ghash_state);
+		session->cipher->free(session->cipher_state);
+		session->ghash->free(session->ghash_state);
 
 		free(session);
 	}
@@ -177,7 +177,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
+	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
 	if (ok) {
 		if (tail_len)
@@ -185,7 +185,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 		put_size(&outblocks[n_blocks], in.len-sizeof(fastd_block128_t));
 
-		ok = session->ghash->hash(ctx, session->ghash_state, &sig, outblocks+1, n_blocks);
+		ok = session->ghash->hash(session->ghash_state, &sig, outblocks+1, n_blocks);
 	}
 
 	if (!ok) {
@@ -240,7 +240,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t sig;
 
-	bool ok = session->cipher->crypt(ctx, session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
+	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
 	if (ok) {
 		if (tail_len)
@@ -248,7 +248,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 		put_size(&inblocks[n_blocks], in.len-sizeof(fastd_block128_t));
 
-		ok = session->ghash->hash(ctx, session->ghash_state, &sig, inblocks+1, n_blocks);
+		ok = session->ghash->hash(session->ghash_state, &sig, inblocks+1, n_blocks);
 	}
 
 	if (!ok || memcmp(&sig, &outblocks[0], sizeof(fastd_block128_t)) != 0) {
