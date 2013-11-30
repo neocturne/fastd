@@ -187,24 +187,16 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
-	fastd_block128_t sig;
+	fastd_block128_t tag;
 
-	size_t gmac_iv_length = session->method->gmac_cipher_info->iv_length;
-	uint8_t gmac_nonce[gmac_iv_length];
-	memset(gmac_nonce, 0, gmac_iv_length);
-	memcpy(gmac_nonce, session->common.send_nonce, COMMON_NONCEBYTES);
-	gmac_nonce[gmac_iv_length-1] = 1;
+	uint8_t gmac_nonce[session->method->gmac_cipher_info->iv_length];
+	fastd_method_expand_nonce(gmac_nonce, session->common.send_nonce, sizeof(gmac_nonce));
 
 	bool ok = session->gmac_cipher->crypt(session->gmac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), gmac_nonce);
 
 	if (ok) {
-		size_t iv_length = session->method->cipher_info->iv_length;
-		uint8_t nonce[iv_length];
-		if (iv_length) {
-			memset(nonce, 0, iv_length);
-			memcpy(nonce, session->common.send_nonce, COMMON_NONCEBYTES);
-			nonce[iv_length-1] = 1;
-		}
+		uint8_t nonce[session->method->cipher_info->iv_length];
+		fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
 		ok = session->cipher->crypt(session->cipher_state, outblocks+1, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 	}
@@ -215,7 +207,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 		put_size(&outblocks[n_blocks+1], in.len);
 
-		ok = session->ghash->hash(session->ghash_state, &sig, outblocks+1, n_blocks+1);
+		ok = session->ghash->hash(session->ghash_state, &tag, outblocks+1, n_blocks+1);
 	}
 
 	if (!ok) {
@@ -223,16 +215,12 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 		return false;
 	}
 
-	xor_a(&outblocks[0], sig);
+	xor_a(&outblocks[0], tag);
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_pull_head(ctx, out, COMMON_HEADBYTES);
-
-	memcpy(out->data, session->common.send_nonce, COMMON_NONCEBYTES);
+	fastd_method_put_common_header(ctx, out, session->common.send_nonce, 0);
 	fastd_method_increment_nonce(&session->common);
-
-	((uint8_t*)out->data)[COMMON_NONCEBYTES] = 0; /* flags */
 
 	return true;
 }
@@ -244,30 +232,20 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (!method_session_is_valid(ctx, session))
 		return false;
 
-	const uint8_t *common_nonce = in.data;
-
-	if (common_nonce[COMMON_NONCEBYTES]) /* flags */
-		return false;
-
+	uint8_t in_nonce[COMMON_NONCEBYTES];
+	uint8_t flags;
 	int64_t age;
-	if (!fastd_method_is_nonce_valid(ctx, &session->common, common_nonce, &age))
+	if (!fastd_method_handle_common_header(ctx, &session->common, &in, in_nonce, &flags, &age))
 		return false;
 
-	size_t gmac_iv_length = session->method->gmac_cipher_info->iv_length;
-	uint8_t gmac_nonce[gmac_iv_length];
-	memset(gmac_nonce, 0, gmac_iv_length);
-	memcpy(gmac_nonce, common_nonce, COMMON_NONCEBYTES);
-	gmac_nonce[gmac_iv_length-1] = 1;
+	if (flags)
+		return false;
 
-	size_t iv_length = session->method->cipher_info->iv_length;
-	uint8_t nonce[iv_length];
-	if (iv_length) {
-		memset(nonce, 0, iv_length);
-		memcpy(nonce, common_nonce, COMMON_NONCEBYTES);
-		nonce[iv_length-1] = 1;
-	}
+	uint8_t nonce[session->method->cipher_info->iv_length];
+	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
-	fastd_buffer_push_head(ctx, &in, COMMON_HEADBYTES);
+	uint8_t gmac_nonce[session->method->gmac_cipher_info->iv_length];
+	fastd_method_expand_nonce(gmac_nonce, in_nonce, sizeof(gmac_nonce));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
@@ -276,7 +254,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
-	fastd_block128_t sig;
+	fastd_block128_t tag;
 
 	bool ok = session->gmac_cipher->crypt(session->gmac_cipher_state, outblocks, inblocks, sizeof(fastd_block128_t), gmac_nonce);
 
@@ -289,17 +267,17 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 		put_size(&inblocks[n_blocks], in.len-sizeof(fastd_block128_t));
 
-		ok = session->ghash->hash(session->ghash_state, &sig, inblocks+1, n_blocks);
+		ok = session->ghash->hash(session->ghash_state, &tag, inblocks+1, n_blocks);
 	}
 
-	if (!ok || memcmp(&sig, &outblocks[0], sizeof(fastd_block128_t)) != 0) {
+	if (!ok || memcmp(&tag, &outblocks[0], sizeof(fastd_block128_t)) != 0) {
 		fastd_buffer_free(*out);
 		return false;
 	}
 
 	fastd_buffer_push_head(ctx, out, sizeof(fastd_block128_t));
 
-	if (!fastd_method_reorder_check(ctx, peer, &session->common, common_nonce, age)) {
+	if (!fastd_method_reorder_check(ctx, peer, &session->common, in_nonce, age)) {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(ctx, 0, 0, 0);
 	}
