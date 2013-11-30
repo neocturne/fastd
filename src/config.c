@@ -26,6 +26,7 @@
 
 #include "fastd.h"
 #include "config.h"
+#include "crypto.h"
 #include "lex.h"
 #include "method.h"
 #include "peer.h"
@@ -83,7 +84,7 @@ void fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, co
 	if (!strcmp(name, "ec25519-fhmqvc"))
 		conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	else
-		exit_error(ctx, "protocol `%s' not supported", name);
+		exit_error(ctx, "config error: protocol `%s' not supported", name);
 }
 
 void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
@@ -99,10 +100,20 @@ void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	*method = fastd_string_stack_dup(name);
 }
 
+void fastd_config_cipher(fastd_context_t *ctx, fastd_config_t *conf, const char *name, const char *impl) {
+	if (!fastd_cipher_config(conf->ciphers, name, impl))
+		exit_error(ctx, "config error: implementation `%s' is not supported for cipher `%s' (or cipher `%s' is not supported)", impl, name, name);
+}
+
+void fastd_config_mac(fastd_context_t *ctx, fastd_config_t *conf, const char *name, const char *impl) {
+	if (!fastd_mac_config(conf->macs, name, impl))
+		exit_error(ctx, "config error: implementation `%s' is not supported for MAC `%s' (or MAC `%s' is not supported)", impl, name, name);
+}
+
 void fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev)
-		exit_error(ctx, "device bind configuration not supported on this system");
+		exit_error(ctx, "config error: device bind configuration not supported on this system");
 #endif
 
 #ifndef USE_MULTIAF_BIND
@@ -421,7 +432,7 @@ static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
 			exit_errno(ctx, "getpwnam_r");
 
 		if (!pwdr)
-			exit_error(ctx, "Unable to find user `%s'.", conf->user);
+			exit_error(ctx, "config error: unable to find user `%s'.", conf->user);
 
 		conf->uid = pwdr->pw_uid;
 		conf->gid = pwdr->pw_gid;
@@ -442,7 +453,7 @@ static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
 			exit_errno(ctx, "getgrnam_r");
 
 		if (!grpr)
-			exit_error(ctx, "Unable to find group `%s'.", conf->group);
+			exit_error(ctx, "config error: unable to find group `%s'.", conf->group);
 
 		conf->gid = grpr->gr_gid;
 	}
@@ -496,7 +507,7 @@ static void configure_methods(fastd_context_t *ctx, fastd_config_t *conf) {
 	for (i = 0, method_name = conf->method_list; method_name; i++, method_name = method_name->next) {
 		conf->methods[i].name = method_name->str;
 		if (!fastd_method_create_by_name(method_name->str, &conf->methods[i].provider, &conf->methods[i].method))
-			exit_error(ctx, "method `%s' not supported", method_name->str);
+			exit_error(ctx, "config error: method `%s' not supported", method_name->str);
 	}
 
 	configure_method_parameters(conf);

@@ -169,6 +169,8 @@ statement:	peer_group_statement
 	|	TOK_GROUP group ';'
 	|	TOK_DROP TOK_CAPABILITIES drop_capabilities ';'
 	|	TOK_SECURE TOK_HANDSHAKES secure_handshakes ';'
+	|	TOK_CIPHER cipher ';'
+	|	TOK_MAC mac ';'
 	|	TOK_LOG log ';'
 	|	TOK_HIDE hide ';'
 	|	TOK_INTERFACE interface ';'
@@ -225,6 +227,14 @@ secure_handshakes:
 			conf->secure_handshakes = $1;
 		}
 	;
+
+cipher:		TOK_STRING TOK_USE TOK_STRING {
+			fastd_config_cipher(ctx, conf, $1->str, $3->str);
+		}
+
+mac:		TOK_STRING TOK_USE TOK_STRING {
+			fastd_config_mac(ctx, conf, $1->str, $3->str);
+		}
 
 log:		TOK_LEVEL log_level {
 			conf->log_stderr_level = $2;

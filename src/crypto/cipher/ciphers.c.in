@@ -24,7 +24,6 @@
 */
 
 
-#include <src/config.h>
 #include <src/crypto.h>
 
 
