@@ -79,13 +79,11 @@ static void default_config(fastd_config_t *conf) {
 	conf->macs = fastd_mac_config_alloc();
 }
 
-bool fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
+void fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
 	if (!strcmp(name, "ec25519-fhmqvc"))
 		conf->protocol = &fastd_protocol_ec25519_fhmqvc;
 	else
-		return false;
-
-	return true;
+		exit_error(ctx, "protocol `%s' not supported", name);
 }
 
 void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
@@ -101,10 +99,10 @@ void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	*method = fastd_string_stack_dup(name);
 }
 
-bool fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+void fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev)
-		return false;
+		exit_error(ctx, "device bind configuration not supported on this system");
 #endif
 
 #ifndef USE_MULTIAF_BIND
@@ -112,13 +110,9 @@ bool fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf
 		fastd_peer_address_t addr4 = { .in = { .sin_family = AF_INET, .sin_port = address->in.sin_port } };
 		fastd_peer_address_t addr6 = { .in6 = { .sin6_family = AF_INET6, .sin6_port = address->in.sin_port } };
 
-		if (!fastd_config_bind_address(ctx, conf, &addr4, bindtodev, default_v4, default_v6))
-			return false;
-
-		if (!fastd_config_bind_address(ctx, conf, &addr6, bindtodev, default_v4, default_v6))
-			return false;
-
-		return true;
+		fastd_config_bind_address(ctx, conf, &addr4, bindtodev, default_v4, default_v6);
+		fastd_config_bind_address(ctx, conf, &addr6, bindtodev, default_v4, default_v6);
+		return;
 	}
 #endif
 
@@ -137,8 +131,6 @@ bool fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf
 
 	if (addr->addr.sa.sa_family != AF_INET && (default_v6 || !conf->bind_addr_default_v6))
 		conf->bind_addr_default_v6 = addr;
-
-	return true;
 }
 
 void fastd_config_peer_group_push(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
@@ -183,7 +175,7 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_config_t *group) {
 	return false;
 }
 
-bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level) {
+void fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level) {
 	char *name2 = strdup(name);
 	char *name3 = strdup(name);
 
@@ -219,8 +211,6 @@ bool fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const
 	free(oldcwd);
 	free(name2);
 	free(name3);
-
-	return true;
 }
 
 static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir) {

@@ -246,8 +246,7 @@ static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *
 }
 
 static void option_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	if (!fastd_config_protocol(ctx, conf, arg))
-		exit_error(ctx, "unsupported protocol `%s'", arg);
+	fastd_config_protocol(ctx, conf, arg);
 }
 
 static void option_method(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {

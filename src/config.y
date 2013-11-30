@@ -242,10 +242,7 @@ log:		TOK_LEVEL log_level {
 			conf->log_syslog_level = $5;
 		}
 	|	TOK_TO TOK_STRING maybe_log_level {
-			if (!fastd_config_add_log_file(ctx, conf, $2->str, $3)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "unable to set log file");
-				YYERROR;
-			}
+			fastd_config_add_log_file(ctx, conf, $2->str, $3);
 		}
 	;
 
@@ -275,10 +272,7 @@ interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
 	;
 
 bind:		bind_address maybe_bind_interface maybe_bind_default {
-			if (!fastd_config_bind_address(ctx, conf, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid bind directive");
-				YYERROR;
-			}
+			fastd_config_bind_address(ctx, conf, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
 		}
 	;
 
@@ -325,7 +319,7 @@ bind_default:
 	;
 
 mtu:		TOK_UINT {
-			if (conf->mtu < 576 || $1 > 65535) {
+			if ($1 < 576 || $1 > 65535) {
 				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid MTU");
 				YYERROR;
 			}
@@ -342,10 +336,7 @@ mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
 	;
 
 protocol:	TOK_STRING {
-			if (!fastd_config_protocol(ctx, conf, $1->str)) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "unsupported protocol");
-				YYERROR;
-			}
+			fastd_config_protocol(ctx, conf, $1->str);
 		}
 	;
 
@@ -470,7 +461,11 @@ peer_remote:	TOK_ADDR4 port {
 			(*remote)->hostname = strdup($2->str);
 			(*remote)->address.sa.sa_family = $1;
 			(*remote)->address.in.sin_port = htons($3);
-			conf->peers->floating = conf->peers->dynamic_float_deprecated = $4;
+
+			if ($4) {
+				conf->peers->floating = true;
+				conf->peers->dynamic_float_deprecated = true;
+			}
 		}
 	;
 
