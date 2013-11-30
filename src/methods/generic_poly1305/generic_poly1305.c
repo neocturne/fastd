@@ -118,8 +118,7 @@ static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_sessio
 }
 
 static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head(ctx, &in, KEYBYTES);
-	memset(in.data, 0, KEYBYTES);
+	fastd_buffer_pull_head_zero(ctx, &in, KEYBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
@@ -137,7 +136,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
-	uint8_t tag[crypto_onetimeauth_poly1305_BYTES];
+	uint8_t tag[TAGBYTES];
 
 	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
@@ -148,8 +147,8 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	crypto_onetimeauth_poly1305(tag, outblocks->b+KEYBYTES, in.len - KEYBYTES, outblocks->b);
 
-	fastd_buffer_push_head(ctx, out, KEYBYTES - TAGBYTES);
-	memcpy(out->data, tag, TAGBYTES);
+	fastd_buffer_push_head(ctx, out, KEYBYTES);
+	fastd_buffer_pull_head_from(ctx, out, tag, TAGBYTES);
 
 	fastd_buffer_free(in);
 
@@ -185,11 +184,9 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_buffer_push_head(ctx, &in, COMMON_HEADBYTES);
 
-	uint8_t tag[crypto_onetimeauth_poly1305_BYTES];
-	memcpy(tag, in.data, TAGBYTES);
-
-	fastd_buffer_pull_head(ctx, &in, KEYBYTES - TAGBYTES);
-	memset(in.data, 0, KEYBYTES);
+	uint8_t tag[TAGBYTES];
+	fastd_buffer_push_head_to(ctx, &in, tag, TAGBYTES);
+	fastd_buffer_pull_head_zero(ctx, &in, KEYBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
@@ -211,8 +208,9 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_push_head(ctx, &in, KEYBYTES - TAGBYTES);
-		memcpy(in.data, tag, TAGBYTES);
+		fastd_buffer_push_head(ctx, &in, KEYBYTES);
+		fastd_buffer_pull_head_from(ctx, &in, tag, TAGBYTES);
+
 		fastd_buffer_pull_head(ctx, &in, COMMON_HEADBYTES);
 		memcpy(in.data, nonce, COMMON_NONCEBYTES);
 		((uint8_t*)in.data)[COMMON_NONCEBYTES] = 0;
