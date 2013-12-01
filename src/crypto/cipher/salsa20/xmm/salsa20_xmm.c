@@ -23,27 +23,62 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+  The assembly implementations were written by D. J. Bernstein and are
+  Public Domain. For more information see http://cr.yp.to/snuffle.html
+*/
 
-#ifndef _FASTD_CPUID_H_
-#define _FASTD_CPUID_H_
-
-#include <cpuid.h>
-#include <stdint.h>
-
-
-#define CPUID_FXSR	((uint64_t)1 << 24)
-#define CPUID_SSE2	((uint64_t)1 << 26)
-#define CPUID_PCLMULQDQ	((uint64_t)1 << 33)
-#define CPUID_SSSE3	((uint64_t)1 << 41)
+#include "../../../../crypto.h"
+#include "../../../../cpuid.h"
 
 
-static inline uint64_t fastd_cpuid(void) {
-	unsigned eax, ebc, ecx, edx;
+#define KEYBYTES 32
 
-	if (!__get_cpuid(1, &eax, &ebc, &ecx, &edx))
-		return 0;
 
-	return ((uint64_t)ecx) << 32 | edx;
+#ifdef __x86_64__
+#define crypto_stream_salsa20_xor crypto_stream_salsa20_amd64_xmm6_xor
+#endif
+
+#ifdef __i386__
+#define crypto_stream_salsa20_xor crypto_stream_salsa20_x86_xmm5_xor
+#endif
+
+
+int crypto_stream_salsa20_xor(unsigned char *c, const unsigned char *m, unsigned long long mlen, const unsigned char *n, const unsigned char *k);
+
+
+struct fastd_cipher_state {
+	uint8_t key[KEYBYTES];
+};
+
+
+static bool salsa20_available(void) {
+	return fastd_cpuid() & CPUID_SSE2;
 }
 
-#endif /* _FASTD_CPUID_H_ */
+static fastd_cipher_state_t* salsa20_init(const uint8_t *key) {
+	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
+	memcpy(state->key, key, KEYBYTES);
+
+	return state;
+}
+
+static bool salsa20_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+	crypto_stream_salsa20_xor(out->b, in->b, len, iv, state->key);
+	return true;
+}
+
+static void salsa20_free(fastd_cipher_state_t *state) {
+	if (state) {
+		secure_memzero(state, sizeof(*state));
+		free(state);
+	}
+}
+
+const fastd_cipher_t fastd_cipher_salsa20_xmm = {
+	.available = salsa20_available,
+
+	.init = salsa20_init,
+	.crypt = salsa20_crypt,
+	.free = salsa20_free,
+};
