@@ -37,11 +37,11 @@ void fastd_method_common_init(fastd_context_t *ctx, fastd_method_common_t *sessi
 	session->refresh_after.tv_sec += ctx->conf->key_refresh - fastd_rand(ctx, 0, ctx->conf->key_refresh_splay);
 
 	if (initiator) {
-		session->send_nonce[0] = 3;
+		session->send_nonce[COMMON_NONCEBYTES-1] = 3;
 	}
 	else {
-		session->send_nonce[0] = 2;
-		session->receive_nonce[0] = 1;
+		session->send_nonce[COMMON_NONCEBYTES-1] = 2;
+		session->receive_nonce[COMMON_NONCEBYTES-1] = 1;
 	}
 }
 
@@ -49,15 +49,15 @@ bool fastd_method_is_nonce_valid(fastd_context_t *ctx, const fastd_method_common
 	if ((nonce[0] & 1) != (session->receive_nonce[0] & 1))
 		return false;
 
-	int i;
+	size_t i;
 	*age = 0;
 
-	for (i = COMMON_NONCEBYTES-1; i >= 0; i--) {
-		*age *= 256;
-		*age += session->receive_nonce[i]-nonce[i];
+	for (i = 0; i < COMMON_NONCEBYTES; i++) {
+		*age <<= 8;
+		*age += session->receive_nonce[i] - nonce[i];
 	}
 
-	*age /= 2;
+	*age >>= 1;
 
 	if (*age >= 0) {
 		if (timespec_diff(&ctx->now, &session->receive_last) > (int)ctx->conf->reorder_time*1000)

@@ -53,18 +53,18 @@ bool fastd_method_reorder_check(fastd_context_t *ctx, fastd_peer_t *peer, fastd_
 
 
 static inline bool fastd_method_session_common_is_valid(fastd_context_t *ctx, const fastd_method_common_t *session) {
-	if (session->send_nonce[COMMON_NONCEBYTES-1] == 0xff && session->send_nonce[COMMON_NONCEBYTES-2] == 0xff)
+	if (session->send_nonce[0] == 0xff && session->send_nonce[1] == 0xff)
 		return false;
 
 	return (timespec_after(&session->valid_till, &ctx->now));
 }
 
 static inline bool fastd_method_session_common_is_initiator(const fastd_method_common_t *session) {
-	return (session->send_nonce[0] & 1);
+	return (session->send_nonce[COMMON_NONCEBYTES-1] & 1);
 }
 
 static inline bool fastd_method_session_common_want_refresh(fastd_context_t *ctx, const fastd_method_common_t *session) {
-	if (session->send_nonce[COMMON_NONCEBYTES-1] == 0xff)
+	if (session->send_nonce[0] == 0xff)
 		return true;
 
 	if (fastd_method_session_common_is_initiator(session) && timespec_after(&ctx->now, &session->refresh_after))
@@ -82,26 +82,25 @@ static inline void fastd_method_session_common_superseded(fastd_context_t *ctx, 
 }
 
 static inline void fastd_method_increment_nonce(fastd_method_common_t *session) {
-	session->send_nonce[0] += 2;
+	session->send_nonce[COMMON_NONCEBYTES-1] += 2;
 
-	if (session->send_nonce[0] == 0 || session->send_nonce[0] == 1) {
+	if (!(session->send_nonce[COMMON_NONCEBYTES-1] & (~1))) {
 		int i;
-		for (i = 1; i < COMMON_NONCEBYTES; i++) {
-			session->send_nonce[i]++;
-			if (session->send_nonce[i] != 0)
+		for (i = COMMON_NONCEBYTES-2; i >= 0; i--) {
+			if (++session->send_nonce[i])
 				break;
 		}
 	}
 }
 
 static inline void fastd_method_put_common_header(fastd_context_t *ctx, fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
-	fastd_buffer_pull_head_from(ctx, buffer, &flags, 1);
 	fastd_buffer_pull_head_from(ctx, buffer, nonce, COMMON_NONCEBYTES);
+	fastd_buffer_pull_head_from(ctx, buffer, &flags, 1);
 }
 
 static inline void fastd_method_take_common_header(fastd_context_t *ctx, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
-	fastd_buffer_push_head_to(ctx, buffer, nonce, COMMON_NONCEBYTES);
 	fastd_buffer_push_head_to(ctx, buffer, flags, 1);
+	fastd_buffer_push_head_to(ctx, buffer, nonce, COMMON_NONCEBYTES);
 }
 
 static inline bool fastd_method_handle_common_header(fastd_context_t *ctx, const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
