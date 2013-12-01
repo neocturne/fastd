@@ -29,7 +29,7 @@
 #include <crypto_stream_salsa2012.h>
 
 
-struct __attribute__((aligned(16))) fastd_cipher_state {
+struct fastd_cipher_state {
 	uint8_t key[crypto_stream_salsa2012_KEYBYTES];
 };
 
