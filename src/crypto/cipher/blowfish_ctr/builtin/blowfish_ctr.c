@@ -267,7 +267,11 @@ static bool blowfish_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128
 		block.u32[2] = htonl(block.u32[2]);
 		block.u32[3] = htonl(block.u32[3]);
 
-		xor(out++, *(in++), block.b);
+		out->qw[0] = in->qw[0] ^ block.b.qw[0];
+		out->qw[1] = in->qw[1] ^ block.b.qw[1];
+
+		in++;
+		out++;
 	}
 
 	return true;
