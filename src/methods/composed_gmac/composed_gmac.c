@@ -62,15 +62,22 @@ static bool method_create_by_name(const char *name, fastd_method_t **method) {
 		return false;
 
 	size_t len = strlen(name);
-	if (len < 5)
-		return false;
-
-	if (strcmp(name+len-5, "-gmac"))
-		return false;
-
 	char cipher_name[len];
-	memcpy(cipher_name, name, len-4);
-	strncpy(cipher_name+len-4, "ctr", 4);
+
+	if (len >= 5 && !strcmp(name+len-5, "-gmac")) {
+		memcpy(cipher_name, name, len-4);
+		strncpy(cipher_name+len-4, "ctr", 4);
+	}
+	else if (len >= 5 && !strcmp(name+len-5, "+gmac")) {
+		if (len >= 9 && !strcmp(name+len-9, "-ctr+gmac"))
+			return false;
+
+		memcpy(cipher_name, name, len-5);
+		cipher_name[len-5] = 0;
+	}
+	else {
+		return false;
+	}
 
 	char *gmac_cipher_name = strchr(cipher_name, '+');
 
