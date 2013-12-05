@@ -55,18 +55,22 @@ static bool method_create_by_name(const char *name, fastd_method_t **method) {
 		return false;
 
 	size_t len = strlen(name);
-	if (len < 5)
-		return false;
+	char cipher_name[len+1];
 
-	if (strcmp(name+len-5, "+gmac"))
-		return false;
+	if (len >= 4 && !strcmp(name+len-4, "-gcm")) {
+		memcpy(cipher_name, name, len-3);
+		strncpy(cipher_name+len-3, "ctr", 4);
+	}
+	else if (len >= 5 && !strcmp(name+len-5, "+gmac")) {
+		if (len >= 9 && !strcmp(name+len-9, "-ctr+gmac"))
+			return false;
 
-	if (len >= 9 && !strcmp(name+len-9, "-ctr+gmac"))
+		memcpy(cipher_name, name, len-5);
+		cipher_name[len-5] = 0;
+	}
+	else {
 		return false;
-
-	char cipher_name[len-4];
-	memcpy(cipher_name, name, len-5);
-	cipher_name[len-5] = 0;
+	}
 
 	m.cipher_info = fastd_cipher_info_get_by_name(cipher_name);
 	if (!m.cipher_info)
@@ -86,7 +90,7 @@ static void method_destroy(fastd_method_t *method) {
 }
 
 static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_t *method) {
-	return method->cipher_info->key_length + method->ghash_info->key_length;
+	return method->cipher_info->key_length;
 }
 
 static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, bool initiator) {
@@ -98,8 +102,21 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	session->cipher = fastd_cipher_get(ctx, method->cipher_info);
 	session->cipher_state = session->cipher->init(secret);
 
+	static const fastd_block128_t zeroblock = {};
+	fastd_block128_t H;
+
+	size_t iv_length = method->cipher_info->iv_length;
+	uint8_t zeroiv[iv_length];
+	memset(zeroiv, 0, iv_length);
+
+	if (!session->cipher->crypt(session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), zeroiv)) {
+		session->cipher->free(session->cipher_state);
+		free(session);
+		return NULL;
+	}
+
 	session->ghash = fastd_mac_get(ctx, method->ghash_info);
-	session->ghash_state = session->ghash->init(secret + method->cipher_info->key_length);
+	session->ghash_state = session->ghash->init(H.b);
 
 	return session;
 }
@@ -131,11 +148,11 @@ static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_sessio
 
 static inline void put_size(fastd_block128_t *out, size_t len) {
 	memset(out, 0, sizeof(fastd_block128_t));
-	out->b[3] = len >> 29;
-	out->b[4] = len >> 21;
-	out->b[5] = len >> 13;
-	out->b[6] = len >> 5;
-	out->b[7] = len << 3;
+	out->b[11] = len >> 29;
+	out->b[12] = len >> 21;
+	out->b[13] = len >> 13;
+	out->b[14] = len >> 5;
+	out->b[15] = len << 3;
 }
 
 static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
