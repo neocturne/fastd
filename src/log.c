@@ -234,7 +234,7 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 
 	buffer[sizeof(buffer)-1] = 0;
 
-	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level || ctx->conf->log_files) {
+	if (!ctx->log_initialized || level <= ctx->conf->log_stderr_level || ctx->conf->log_files) {
 		time_t t;
 		struct tm tm;
 
@@ -245,15 +245,17 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 		}
 	}
 
-	if (ctx->conf == NULL || level <= ctx->conf->log_stderr_level)
+	if (!ctx->log_initialized || level <= ctx->conf->log_stderr_level)
 		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
 
-	if (ctx->conf != NULL && level <= ctx->conf->log_syslog_level)
-		syslog(get_syslog_level(level), "%s", buffer);
+	if (ctx->log_initialized) {
+		if (level <= ctx->conf->log_syslog_level)
+			syslog(get_syslog_level(level), "%s", buffer);
 
-	fastd_log_fd_t *file;
-	for (file = ctx->log_files; file; file = file->next) {
-		if (level <= file->config->level)
-			dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
+		fastd_log_fd_t *file;
+		for (file = ctx->log_files; file; file = file->next) {
+			if (level <= file->config->level)
+				dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
+		}
 	}
 }

@@ -133,6 +133,8 @@ static void init_log(fastd_context_t *ctx) {
 		ctx->log_files = file;
 	}
 
+	ctx->log_initialized = true;
+
 	if (seteuid(uid) < 0)
 		pr_debug_errno(ctx, "seteuid");
 	if (setegid(gid) < 0)
@@ -757,14 +759,10 @@ int main(int argc, char *argv[]) {
 	fastd_config_t conf;
 	fastd_configure(&ctx, &conf, argc, argv);
 
-	init_log(&ctx);
-
 	if (conf.generate_key) {
 		conf.protocol->generate_key(&ctx);
 		exit(0);
 	}
-
-	init_signals(&ctx);
 
 	conf.protocol_config = conf.protocol->init(&ctx);
 
@@ -772,6 +770,9 @@ int main(int argc, char *argv[]) {
 		conf.protocol->show_key(&ctx);
 		exit(0);
 	}
+
+	init_log(&ctx);
+	init_signals(&ctx);
 
 	update_time(&ctx);
 

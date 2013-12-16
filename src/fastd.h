@@ -242,6 +242,7 @@ struct fastd_config {
 struct fastd_context {
 	const fastd_config_t *conf;
 
+	bool log_initialized;
 	fastd_log_fd_t *log_files;
 
 	char *ifname;
