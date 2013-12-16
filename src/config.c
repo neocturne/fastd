@@ -529,12 +529,9 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 
 	if (!conf->log_stderr_level && !conf->log_syslog_level && !conf->log_files)
 		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
+}
 
-	ctx->conf = conf;
-
-	if (conf->generate_key || conf->show_key)
-		return;
-
+void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
 	if (conf->ifname) {
 		if (strchr(conf->ifname, '/'))
 			exit_error(ctx, "config error: invalid interface name");

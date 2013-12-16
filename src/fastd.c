@@ -879,6 +879,7 @@ int main(int argc, char *argv[]) {
 
 	fastd_config_t conf;
 	fastd_configure(&ctx, &conf, argc, argv);
+	ctx.conf = &conf;
 
 	if (conf.generate_key) {
 		conf.protocol->generate_key(&ctx);
@@ -898,6 +899,8 @@ int main(int argc, char *argv[]) {
 		status_fd = daemonize(&ctx);
 
 	init_log(&ctx);
+
+	fastd_config_check(&ctx, &conf);
 
 	update_time(&ctx);
 
