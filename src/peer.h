@@ -89,7 +89,11 @@ struct fastd_remote {
 	unsigned ref;
 
 	fastd_remote_config_t *config;
-	fastd_peer_address_t address;
+
+	size_t n_addresses;
+	size_t current_address;
+	fastd_peer_address_t *addresses;
+
 	struct timespec last_resolve;
 	struct timespec last_resolve_return;
 };
@@ -133,7 +137,7 @@ bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const
 void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer);
 bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, const fastd_peer_address_t *address);
+void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);
 bool fastd_peer_owns_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr);
 bool fastd_peer_matches_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr);
 bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
@@ -188,8 +192,10 @@ static inline void fastd_remote_ref(fastd_remote_t *remote) {
 }
 
 static inline void fastd_remote_unref(fastd_remote_t *remote) {
-	if(!--remote->ref)
+	if(!--remote->ref) {
+		free(remote->addresses);
 		free(remote);
+	}
 }
 
 static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {

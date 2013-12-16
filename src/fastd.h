@@ -80,7 +80,8 @@ union fastd_peer_address {
 
 struct fastd_resolve_return {
 	fastd_remote_t *remote;
-	fastd_peer_address_t addr;
+	size_t n_addr;
+	fastd_peer_address_t addr[];
 };
 
 struct fastd_log_file {

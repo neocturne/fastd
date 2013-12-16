@@ -42,9 +42,9 @@ typedef struct resolv_arg {
 static void* resolve_peer(void *varg) {
 	resolv_arg_t *arg = varg;
 
-	struct addrinfo *res = NULL;
+	struct addrinfo *res = NULL, *res2;
+	size_t n_addr = 0;
 	int gai_ret;
-	bool error = false;
 
 	char portstr[6];
 	snprintf(portstr, 6, "%u", ntohs(arg->constraints.in.sin_port));
@@ -63,24 +63,37 @@ static void* resolve_peer(void *varg) {
 
 	if (gai_ret || !res) {
 		pr_verbose(arg->ctx, "resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
-		error = true;
 	}
-	else if (res->ai_addrlen > sizeof(fastd_peer_address_t) || (res->ai_addr->sa_family != AF_INET && res->ai_addr->sa_family != AF_INET6)) {
-		pr_warn(arg->ctx, "resolving host `%s': unsupported address returned", arg->hostname);
-		error = true;
-	}
-
-	fastd_resolve_return_t ret = {
-		.remote = arg->remote
-	};
-
-	if (!error) {
-		pr_verbose(arg->ctx, "resolved host `%s' successfully", arg->hostname);
-		memcpy(&ret.addr, res->ai_addr, res->ai_addrlen);
-		fastd_peer_address_simplify(&ret.addr);
+	else {
+		for (res2 = res; res2; res2 = res2->ai_next)
+			n_addr++;
 	}
 
-	if (write(arg->ctx->resolvewfd, &ret, sizeof(ret)) < 0)
+	fastd_resolve_return_t *ret = alloca(sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t));
+	ret->remote = arg->remote;
+
+	if (n_addr) {
+		n_addr = 0;
+		for (res2 = res; res2; res2 = res2->ai_next) {
+			if (res2->ai_addrlen > sizeof(fastd_peer_address_t) || (res2->ai_addr->sa_family != AF_INET && res2->ai_addr->sa_family != AF_INET6)) {
+				pr_warn(arg->ctx, "resolving host `%s': unsupported address returned", arg->hostname);
+				continue;
+			}
+
+			memset(&ret->addr[n_addr], 0, sizeof(fastd_peer_address_t));
+			memcpy(&ret->addr[n_addr], res2->ai_addr, res2->ai_addrlen);
+			fastd_peer_address_simplify(&ret->addr[n_addr]);
+
+			n_addr++;
+		}
+
+		if (n_addr)
+			pr_verbose(arg->ctx, "resolved host `%s' successfully", arg->hostname);
+	}
+
+	ret->n_addr = n_addr;
+
+	if (write(arg->ctx->resolvewfd, ret, sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)) < 0)
 		pr_error_errno(arg->ctx, "can't write resolve return");
 
 	freeaddrinfo(res);

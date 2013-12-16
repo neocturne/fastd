@@ -185,9 +185,15 @@ static void init_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	fastd_peer_schedule_handshake(ctx, peer, delay);
 }
 
-void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, const fastd_peer_address_t *address) {
+void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses) {
 	remote->last_resolve_return = ctx->now;
-	remote->address = *address;
+
+	free(remote->addresses);
+	remote->addresses = malloc(n_addresses*sizeof(fastd_peer_address_t));
+	memcpy(remote->addresses, addresses, n_addresses*sizeof(fastd_peer_address_t));
+
+	remote->n_addresses = n_addresses;
+	remote->current_address = 0;
 
 	if (peer->state == STATE_RESOLVING)
 		init_handshake(ctx, peer);
@@ -216,7 +222,7 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
-	if(peer->next_remote) {
+	if (peer->next_remote) {
 		if (fastd_remote_is_dynamic(peer->next_remote)) {
 			peer->state = STATE_RESOLVING;
 			fastd_resolve_peer(ctx, peer, peer->next_remote);
@@ -390,8 +396,11 @@ bool fastd_peer_matches_address(fastd_context_t *ctx UNUSED, const fastd_peer_t 
 
 	fastd_remote_t *remote;
 	for (remote = peer->remotes; remote; remote = remote->next) {
-		if (fastd_peer_address_equal(&remote->address, addr))
-			return true;
+		size_t i;
+		for (i = 0; i < remote->n_addresses; i++) {
+			if (fastd_peer_address_equal(&remote->addresses[i], addr))
+				return true;
+		}
 	}
 
 	return false;
@@ -525,8 +534,11 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 		(*remote)->ref = 1;
 		(*remote)->config = remote_config;
 
-		if (!remote_config->hostname)
-			(*remote)->address = remote_config->address;
+		if (!remote_config->hostname) {
+			(*remote)->n_addresses = 1;
+			(*remote)->addresses = malloc(sizeof(fastd_peer_address_t));
+			(*remote)->addresses[0] = remote_config->address;
+		}
 
 		remote = &(*remote)->next;
 		remote_config = remote_config->next;

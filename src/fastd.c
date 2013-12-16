@@ -412,7 +412,7 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 		if (!peer->next_remote)
 			exit_bug(ctx, "send_handshake: no remote");
 
-		fastd_peer_claim_address(ctx, peer, NULL, NULL, &peer->next_remote->address);
+		fastd_peer_claim_address(ctx, peer, NULL, NULL, &peer->next_remote->addresses[peer->next_remote->current_address]);
 		fastd_peer_reset_socket(ctx, peer);
 	}
 
@@ -456,9 +456,14 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 	if (fastd_peer_is_established(peer))
 		return;
 
+	if (++peer->next_remote->current_address < peer->next_remote->n_addresses)
+		return;
+
 	peer->next_remote = peer->next_remote->next;
 	if (!peer->next_remote)
 		peer->next_remote = peer->remotes;
+
+	peer->next_remote->current_address = 0;
 
 	if (fastd_remote_is_dynamic(peer->next_remote))
 		fastd_resolve_peer(ctx, peer, peer->next_remote);
@@ -503,8 +508,13 @@ static void handle_tun(fastd_context_t *ctx) {
 
 static void handle_resolve_returns(fastd_context_t *ctx) {
 	fastd_resolve_return_t resolve_return;
-
 	while (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
+		if (errno != EINTR)
+			exit_errno(ctx, "handle_resolve_return: read");
+	}
+
+	fastd_peer_address_t addresses[resolve_return.n_addr];
+	while (read(ctx->resolverfd, &addresses, sizeof(addresses)) < 0) {
 		if (errno != EINTR)
 			exit_errno(ctx, "handle_resolve_return: read");
 	}
@@ -523,7 +533,7 @@ static void handle_resolve_returns(fastd_context_t *ctx) {
 		if (!remote)
 			continue;
 
-		fastd_peer_handle_resolve(ctx, peer, remote, &resolve_return.addr);
+		fastd_peer_handle_resolve(ctx, peer, remote, resolve_return.n_addr, addresses);
 
 		break;
 	}
