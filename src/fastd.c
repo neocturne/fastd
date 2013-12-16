@@ -516,7 +516,7 @@ static void handle_resolve_returns(fastd_context_t *ctx) {
 
 		fastd_remote_t *remote;
 		for (remote = peer->remotes; remote; remote = remote->next) {
-			if (remote == resolve_return.remote && timespec_equal(&remote->last_resolve, &resolve_return.resolve_time))
+			if (remote == resolve_return.remote)
 				break;
 		}
 

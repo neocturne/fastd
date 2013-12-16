@@ -80,7 +80,6 @@ union fastd_peer_address {
 
 struct fastd_resolve_return {
 	fastd_remote_t *remote;
-	struct timespec resolve_time;
 	fastd_peer_address_t addr;
 };
 
@@ -393,10 +392,6 @@ static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 static inline bool timespec_after(const struct timespec *tp1, const struct timespec *tp2) {
 	return (tp1->tv_sec > tp2->tv_sec ||
 		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
-}
-
-static inline bool timespec_equal(const struct timespec *tp1, const struct timespec *tp2) {
-	return (tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec == tp2->tv_nsec);
 }
 
 /* returns (tp1 - tp2) in milliseconds  */

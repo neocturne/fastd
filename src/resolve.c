@@ -34,7 +34,6 @@
 typedef struct resolv_arg {
 	fastd_context_t *ctx;
 	fastd_remote_t *remote;
-	struct timespec resolve_time;
 	char *hostname;
 	fastd_peer_address_t constraints;
 } resolv_arg_t;
@@ -72,8 +71,7 @@ static void* resolve_peer(void *varg) {
 	}
 
 	fastd_resolve_return_t ret = {
-		.remote = arg->remote,
-		.resolve_time = arg->resolve_time,
+		.remote = arg->remote
 	};
 
 	if (!error) {
@@ -115,7 +113,6 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 
 	arg->ctx = ctx;
 	arg->remote = remote;
-	arg->resolve_time = ctx->now;
 	arg->hostname = strdup(remote->config->hostname);
 	arg->constraints = remote->config->address;
 
