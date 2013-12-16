@@ -39,6 +39,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <sys/resource.h>
+#include <sys/wait.h>
 
 #ifdef HAVE_LIBSODIUM
 #include <sodium/core.h>
@@ -68,34 +69,49 @@ static void on_sigusr1(int signo UNUSED) {
 	dump = true;
 }
 
+static void on_sigchld(int signo UNUSED) {
+}
+
 static void init_signals(fastd_context_t *ctx) {
 	struct sigaction action;
 
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 
+	/* unblock all signals */
+	sigprocmask(SIG_SETMASK, &action.sa_mask, NULL);
+
 	action.sa_handler = on_sighup;
-	if(sigaction(SIGHUP, &action, NULL))
+	if (sigaction(SIGHUP, &action, NULL))
 		exit_errno(ctx, "sigaction");
 
 	action.sa_handler = on_terminate;
-	if(sigaction(SIGTERM, &action, NULL))
+	if (sigaction(SIGTERM, &action, NULL))
 		exit_errno(ctx, "sigaction");
-	if(sigaction(SIGQUIT, &action, NULL))
+	if (sigaction(SIGQUIT, &action, NULL))
 		exit_errno(ctx, "sigaction");
-	if(sigaction(SIGINT, &action, NULL))
+	if (sigaction(SIGINT, &action, NULL))
 		exit_errno(ctx, "sigaction");
 
 	action.sa_handler = on_sigusr1;
-	if(sigaction(SIGUSR1, &action, NULL))
+	if (sigaction(SIGUSR1, &action, NULL))
+		exit_errno(ctx, "sigaction");
+
+	action.sa_handler = on_sigchld;
+	if (sigaction(SIGCHLD, &action, NULL))
 		exit_errno(ctx, "sigaction");
 
 	action.sa_handler = SIG_IGN;
-	if(sigaction(SIGPIPE, &action, NULL))
+	if (sigaction(SIGPIPE, &action, NULL))
 		exit_errno(ctx, "sigaction");
+	if (sigaction(SIGTTIN, &action, NULL))
+		exit_errno(ctx, "sigaction");
+	if (sigaction(SIGTTOU, &action, NULL))
+		exit_errno(ctx, "sigaction");
+
 }
 
-static void init_pipes(fastd_context_t *ctx) {
+static void open_pipe(fastd_context_t *ctx, int *readfd, int *writefd) {
 	int pipefd[2];
 
 	if (pipe(pipefd))
@@ -104,8 +120,12 @@ static void init_pipes(fastd_context_t *ctx) {
 	fastd_setfd(ctx, pipefd[0], FD_CLOEXEC, 0);
 	fastd_setfd(ctx, pipefd[1], FD_CLOEXEC, 0);
 
-	ctx->resolverfd = pipefd[0];
-	ctx->resolvewfd = pipefd[1];
+	*readfd = pipefd[0];
+	*writefd = pipefd[1];
+}
+
+static inline void init_pipes(fastd_context_t *ctx) {
+	open_pipe(ctx, &ctx->resolverfd, &ctx->resolvewfd);
 }
 
 static void init_log(fastd_context_t *ctx) {
@@ -737,6 +757,96 @@ static void drop_caps(fastd_context_t *ctx) {
 	fastd_cap_drop(ctx);
 }
 
+/* will double fork and forward potential exit codes from the child to the parent */
+static int daemonize(fastd_context_t *ctx) {
+	static const uint8_t ERROR_STATUS = 1;
+
+	uint8_t status = 1;
+	int parent_rpipe, parent_wpipe;
+	open_pipe(ctx, &parent_rpipe, &parent_wpipe);
+
+	pid_t fork1 = fork();
+
+	if (fork1 < 0) {
+		exit_errno(ctx, "fork");
+	}
+	else if (fork1 == 0) {
+		/* child 1 */
+		if (close(parent_rpipe) < 0)
+			pr_error_errno(ctx, "close");
+
+		if (setsid() < 0)
+			pr_error_errno(ctx, "setsid");
+
+		int child_rpipe, child_wpipe;
+		open_pipe(ctx, &child_rpipe, &child_wpipe);
+
+		pid_t fork2 = fork();
+
+		if (fork2 < 0) {
+			write(parent_wpipe, &ERROR_STATUS, 1);
+			exit_errno(ctx, "fork");
+		}
+		else if (fork2 == 0) {
+			/* child 2 */
+
+			if (close(child_rpipe) < 0 || close(parent_wpipe) < 0) {
+				write(child_wpipe, &ERROR_STATUS, 1);
+				pr_error_errno(ctx, "close");
+			}
+
+			return child_wpipe;
+		}
+		else {
+			/* still child 1 */
+			int child_status;
+			pid_t ret;
+			do {
+				if (read(child_rpipe, &status, 1) > 0) {
+					write(parent_wpipe, &status, 1);
+					exit(0);
+				}
+
+				ret = waitpid(fork2, &child_status, WNOHANG);
+			} while (!ret);
+
+			if (ret < 0) {
+				write(child_wpipe, &ERROR_STATUS, 1);
+				pr_error_errno(ctx, "waitpid");
+			}
+
+			if (WIFEXITED(child_status)) {
+				status = WEXITSTATUS(child_status);
+				write(parent_wpipe, &status, 1);
+				exit(status);
+			}
+			else {
+				write(parent_wpipe, &ERROR_STATUS, 1);
+				if (WIFSIGNALED(child_status))
+					exit_error(ctx, "child exited with signal %i", WTERMSIG(child_status));
+				exit(1);
+			}
+		}
+	}
+	else {
+		/* parent */
+		struct sigaction action;
+		action.sa_flags = 0;
+		sigemptyset(&action.sa_mask);
+		action.sa_handler = SIG_IGN;
+
+		if (sigaction(SIGCHLD, &action, NULL))
+			exit_errno(ctx, "sigaction");
+
+		if (read(parent_rpipe, &status, 1) < 0)
+			exit_errno(ctx, "read");
+
+		exit(status);
+	}
+
+	return -1;
+}
+
 int main(int argc, char *argv[]) {
 #ifdef HAVE_LIBSODIUM
 	sodium_init();
@@ -749,6 +859,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 	fastd_context_t ctx = {};
+	int status_fd = -1;
 
 	close_fds(&ctx);
 
@@ -771,8 +882,12 @@ int main(int argc, char *argv[]) {
 		exit(0);
 	}
 
-	init_log(&ctx);
 	init_signals(&ctx);
+
+	if (conf.daemon)
+		status_fd = daemonize(&ctx);
+
+	init_log(&ctx);
 
 	update_time(&ctx);
 
@@ -799,21 +914,15 @@ int main(int argc, char *argv[]) {
 	fastd_tuntap_open(&ctx);
 
 	init_peer_groups(&ctx);
-	if (conf.daemon) {
-		pid_t pid = fork();
-		if (pid < 0) {
-			exit_errno(&ctx, "fork");
-		}
-		else if (pid > 0) {
-			write_pid(&ctx, pid);
-			exit(0);
-		}
 
-		if (setsid() < 0)
-			pr_error_errno(&ctx, "setsid");
-	}
-	else {
-		write_pid(&ctx, getpid());
+	write_pid(&ctx, getpid());
+
+	if (status_fd >= 0) {
+		static const uint8_t STATUS = 0;
+		if (write(status_fd, &STATUS, 1) < 0)
+			exit_errno(&ctx, "status: write");
+		if (close(status_fd))
+			exit_errno(&ctx, "status: close");
 	}
 
 	if (conf.drop_caps == DROP_CAPS_EARLY)
