@@ -447,20 +447,26 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 	fastd_peer_schedule_handshake_default(ctx, peer);
 
 	if (!fastd_peer_may_connect(ctx, peer)) {
-		peer->next_remote = peer->remotes;
-		peer->next_remote->current_address = 0;
+		if (peer->next_remote != NULL) {
+			pr_debug(ctx, "disabling handshakes with %P because of the peer limit", peer);
+			peer->next_remote = NULL;
+		}
+
 		return;
 	}
 
-	send_handshake(ctx, peer);
+	if (peer->next_remote) {
+		send_handshake(ctx, peer);
 
-	if (fastd_peer_is_established(peer))
-		return;
+		if (fastd_peer_is_established(peer))
+			return;
 
-	if (++peer->next_remote->current_address < peer->next_remote->n_addresses)
-		return;
+		if (++peer->next_remote->current_address < peer->next_remote->n_addresses)
+			return;
 
-	peer->next_remote = peer->next_remote->next;
+		peer->next_remote = peer->next_remote->next;
+	}
+
 	if (!peer->next_remote)
 		peer->next_remote = peer->remotes;
 
