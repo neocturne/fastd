@@ -448,6 +448,7 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 
 	if (!fastd_peer_may_connect(ctx, peer)) {
 		peer->next_remote = peer->remotes;
+		peer->next_remote->current_address = 0;
 		return;
 	}
 

@@ -223,6 +223,8 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
 	if (peer->next_remote) {
+		peer->next_remote->current_address = 0;
+
 		if (fastd_remote_is_dynamic(peer->next_remote)) {
 			peer->state = STATE_RESOLVING;
 			fastd_resolve_peer(ctx, peer, peer->next_remote);
