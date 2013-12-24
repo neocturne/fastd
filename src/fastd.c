@@ -445,14 +445,14 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 
 	if (!fastd_peer_may_connect(ctx, peer)) {
 		if (peer->next_remote != NULL) {
-			pr_debug(ctx, "disabling handshakes with %P because of the peer limit", peer);
+			pr_debug(ctx, "temporarily disabling handshakes with %P", peer);
 			peer->next_remote = NULL;
 		}
 
 		return;
 	}
 
-	if (peer->next_remote) {
+	if (peer->next_remote || fastd_peer_is_established(peer)) {
 		send_handshake(ctx, peer);
 
 		if (fastd_peer_is_established(peer))
