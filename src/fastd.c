@@ -407,8 +407,17 @@ static inline void update_time(fastd_context_t *ctx) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
+static inline void no_valid_address_debug(fastd_context_t *ctx, const fastd_peer_t *peer) {
+	pr_debug(ctx, "not sending a handshake to %P (no valid address resolved)", peer);
+}
+
 static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (!fastd_peer_is_established(peer)) {
+		if (!peer->next_remote->n_addresses) {
+			no_valid_address_debug(ctx, peer);
+			return;
+		}
+
 		fastd_peer_claim_address(ctx, peer, NULL, NULL, &peer->next_remote->addresses[peer->next_remote->current_address]);
 		fastd_peer_reset_socket(ctx, peer);
 	}
@@ -417,7 +426,7 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 		return;
 
 	if (peer->address.sa.sa_family == AF_UNSPEC) {
-		pr_debug(ctx, "not sending a handshake to %P (no valid address resolved)", peer);
+		no_valid_address_debug(ctx, peer);
 		return;
 	}
 
