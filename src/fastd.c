@@ -871,24 +871,12 @@ static int daemonize(fastd_context_t *ctx) {
 }
 
 int main(int argc, char *argv[]) {
-#ifdef HAVE_LIBSODIUM
-	sodium_init();
-#endif
-
-#ifdef USE_OPENSSL
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
-	OPENSSL_config(NULL);
-#endif
-
 	fastd_context_t ctx = {};
 	int status_fd = -1;
 
 	close_fds(&ctx);
 
 	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
-
-	init_pipes(&ctx);
 
 	fastd_config_t conf;
 	fastd_configure(&ctx, &conf, argc, argv);
@@ -913,6 +901,16 @@ int main(int argc, char *argv[]) {
 
 	init_log(&ctx);
 
+#ifdef HAVE_LIBSODIUM
+	sodium_init();
+#endif
+
+#ifdef USE_OPENSSL
+	ERR_load_crypto_strings();
+	OpenSSL_add_all_algorithms();
+	OPENSSL_config(NULL);
+#endif
+
 	fastd_config_check(&ctx, &conf);
 
 	update_time(&ctx);
@@ -930,6 +928,7 @@ int main(int argc, char *argv[]) {
 	/* change groups early as the can be relevant for file access (for PID file & log files) */
 	set_groups(&ctx);
 
+	init_pipes(&ctx);
 	init_sockets(&ctx);
 
 	if (!fastd_socket_handle_binds(&ctx))
@@ -1009,14 +1008,14 @@ int main(int argc, char *argv[]) {
 	free(ctx.eth_addr);
 	free(ctx.ifname);
 
-	close_log(&ctx);
-	fastd_config_release(&ctx, &conf);
-
 #ifdef USE_OPENSSL
 	CONF_modules_free();
 	EVP_cleanup();
 	ERR_free_strings();
 #endif
+
+	close_log(&ctx);
+	fastd_config_release(&ctx, &conf);
 
 	return 0;
 }
