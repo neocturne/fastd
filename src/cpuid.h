@@ -27,9 +27,7 @@
 #ifndef _FASTD_CPUID_H_
 #define _FASTD_CPUID_H_
 
-#include <cpuid.h>
 #include <stdint.h>
-
 
 #define CPUID_FXSR	((uint64_t)1 << 24)
 #define CPUID_SSE2	((uint64_t)1 << 26)
@@ -38,10 +36,9 @@
 
 
 static inline uint64_t fastd_cpuid(void) {
-	unsigned eax, ebc, ecx, edx;
+	unsigned eax, ebx, ecx, edx;
 
-	if (!__get_cpuid(1, &eax, &ebc, &ecx, &edx))
-		return 0;
+	__asm__("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (1));
 
 	return ((uint64_t)ecx) << 32 | edx;
 }
