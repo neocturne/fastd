@@ -1,9 +1,13 @@
+include(CheckCCompilerFlag)
 include(CheckCSourceCompiles)
 include(CheckPrototypeDefinition)
 include(CheckSymbolExists)
 include(CheckTypeSize)
 set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
 
+if(ARCH_X86 OR ARCH_X86_64)
+  check_c_compiler_flag("-mpclmul" HAVE_PCLMUL)
+endif(ARCH_X86 OR ARCH_X86_64)
 
 check_c_source_compiles("
 #include <sys/types.h>
