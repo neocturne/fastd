@@ -69,7 +69,8 @@ static void* resolve_peer(void *varg) {
 			n_addr++;
 	}
 
-	fastd_resolve_return_t *ret = alloca(sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t));
+	uint8_t retbuf[sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)];
+	fastd_resolve_return_t *ret = (fastd_resolve_return_t*)retbuf;
 	ret->remote = arg->remote;
 
 	if (n_addr) {
