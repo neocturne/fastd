@@ -5076,3 +5076,8 @@ add  $64,%esi
 
 # qhasm: goto bytesbetween1and255
 jmp ._bytesbetween1and255
+
+
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
+#endif
