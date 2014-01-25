@@ -49,11 +49,6 @@ static const char *const RECORD_TYPES[RECORD_MAX] = {
 	"TLV message authentication code",
 };
 
-static const char *const REPLY_TYPES[REPLY_MAX] = {
-	"success",
-	"mandatory field missing",
-	"unacceptable value",
-};
 
 #define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
 #define AS_UINT16(ptr) ((*(uint8_t*)(ptr).data) + (*((uint8_t*)(ptr).data+1) << 8))
