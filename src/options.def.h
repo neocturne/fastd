@@ -16,8 +16,8 @@ SEPARATOR;
 #endif
 
 #ifdef WITH_CMDLINE_LOGGING
-OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug", "Sets the stderr log level; default is info, if no alternative log destination is configured");
-OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug", "Sets the log level for syslog output; default is not to use syslog");
+OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug|debug2", "Sets the stderr log level; default is info, if no alternative log destination is configured");
+OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug|debug2", "Sets the log level for syslog output; default is not to use syslog");
 OPTION_ARG(option_syslog_ident, "--syslog-ident", "<ident>", "Sets the syslog identification; default is 'fastd'");
 OPTION(option_hide_ip_addresses, "--hide-ip-addresses", "Hides IP addresses in log output");
 OPTION(option_hide_mac_addresses, "--hide-mac-addresses", "Hides MAC addresses in log output");
