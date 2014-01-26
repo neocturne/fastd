@@ -114,7 +114,8 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 			bind_address.in6.sin6_scope_id = if_nametoindex(addr->bindtodev);
 
 		if (!bind_address.in6.sin6_scope_id) {
-			pr_warn_errno(ctx, "if_nametoindex");
+			if (warn)
+				pr_warn_errno(ctx, "if_nametoindex");
 			goto error;
 		}
 	}
@@ -145,7 +146,7 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 
 	if (warn) {
 		if (addr->bindtodev)
-			pr_warn(ctx, "unable to bind to %B on `%s'", &addr->addr, addr->bindtodev);
+			pr_warn(ctx, fastd_peer_address_is_v6_ll(&addr->addr) ? "unable to bind to %L" : "unable to bind to %B on `%s'", &addr->addr, addr->bindtodev);
 		else
 			pr_warn(ctx, "unable to bind to %B", &addr->addr);
 	}

@@ -44,7 +44,7 @@ static inline size_t snprintf_safe(char *buffer, size_t size, const char *format
 	return min_size_t(ret, size);
 }
 
-static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address, bool bind_address) {
+static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
 	switch (address->sa.sa_family) {
@@ -66,13 +66,14 @@ static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, siz
 		if (!bind_address && ctx->conf->hide_ip_addresses)
 			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
-			if (IN6_IS_ADDR_LINKLOCAL(&address->in6.sin6_addr)) {
-				char ifname_buf[IF_NAMESIZE];
-				if (if_indextoname(address->in6.sin6_scope_id, ifname_buf))
-					return snprintf_safe(buffer, size, "[%s%%%s]:%u", addr_buf, if_indextoname(address->in6.sin6_scope_id, ifname_buf), ntohs(address->in6.sin6_port));
-			}
+			char ifname_buf[IF_NAMESIZE];
+			if (!iface && IN6_IS_ADDR_LINKLOCAL(&address->in6.sin6_addr))
+				iface = if_indextoname(address->in6.sin6_scope_id, ifname_buf);
 
-			return snprintf_safe(buffer, size, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
+			if (iface)
+				return snprintf_safe(buffer, size, "[%s%%%s]:%u", addr_buf, iface, ntohs(address->in6.sin6_port));
+			else
+				return snprintf_safe(buffer, size, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
 		}
 		else
 			return 0;
@@ -103,6 +104,7 @@ static int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size
 
 	for (; *format; format++) {
 		const void *p;
+		const char *iface;
 		const fastd_eth_addr_t *eth_addr;
 
 		if (buffer >= buffer_end)
@@ -164,10 +166,13 @@ static int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size
 
 		case 'I':
 		case 'B':
+		case 'L':
 			p = va_arg(ap, const fastd_peer_address_t*);
 
+			iface = (*format == 'L') ? va_arg(ap, const char*) : NULL;
+
 			if (p)
-				buffer += snprint_peer_address(ctx, buffer, buffer_end-buffer, (const fastd_peer_address_t*)p, *format == 'B');
+				buffer += snprint_peer_address(ctx, buffer, buffer_end-buffer, (const fastd_peer_address_t*)p, iface, *format != 'I');
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;
