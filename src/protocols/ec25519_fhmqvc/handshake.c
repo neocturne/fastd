@@ -517,7 +517,7 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer
 
 static inline bool backoff(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	return (peer->protocol_state && is_session_valid(ctx, &peer->protocol_state->session)
-		&& timespec_diff(&ctx->now, &peer->protocol_state->session.established) < 15000);
+		&& timespec_diff(&ctx->now, &peer->protocol_state->session.established) < (int)ctx->conf->min_handshake_interval*1000);
 }
 
 void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
