@@ -108,9 +108,10 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	fastd_peer_address_t bind_address = addr->addr;
 
 	if (fastd_peer_address_is_v6_ll(&addr->addr) && addr->bindtodev) {
-		bind_address.in6.sin6_scope_id = atoi(addr->bindtodev);
+		char *end;
+		bind_address.in6.sin6_scope_id = strtoul(addr->bindtodev, &end, 10);
 
-		if (!bind_address.in6.sin6_scope_id)
+		if (*end)
 			bind_address.in6.sin6_scope_id = if_nametoindex(addr->bindtodev);
 
 		if (!bind_address.in6.sin6_scope_id) {
