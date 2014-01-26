@@ -56,7 +56,7 @@ static inline bool fastd_method_session_common_is_valid(fastd_context_t *ctx, co
 	if (session->send_nonce[0] == 0xff && session->send_nonce[1] == 0xff)
 		return false;
 
-	return (timespec_after(&session->valid_till, &ctx->now));
+	return (!fastd_timed_out(ctx, &session->valid_till));
 }
 
 static inline bool fastd_method_session_common_is_initiator(const fastd_method_common_t *session) {
@@ -67,15 +67,14 @@ static inline bool fastd_method_session_common_want_refresh(fastd_context_t *ctx
 	if (session->send_nonce[0] == 0xff)
 		return true;
 
-	if (fastd_method_session_common_is_initiator(session) && timespec_after(&ctx->now, &session->refresh_after))
+	if (fastd_method_session_common_is_initiator(session) && fastd_timed_out(ctx, &session->refresh_after))
 		return true;
 
 	return false;
 }
 
 static inline void fastd_method_session_common_superseded(fastd_context_t *ctx, fastd_method_common_t *session) {
-	struct timespec valid_max = ctx->now;
-	valid_max.tv_sec += ctx->conf->key_valid_old;
+	struct timespec valid_max = fastd_in_seconds(ctx, ctx->conf->key_valid_old);
 
 	if (timespec_after(&session->valid_till, &valid_max))
 		session->valid_till = valid_max;

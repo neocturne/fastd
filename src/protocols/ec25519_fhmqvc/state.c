@@ -32,8 +32,8 @@ static void init_protocol_state(fastd_context_t *ctx) {
 	if (!ctx->protocol_state) {
 		ctx->protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
 
-		ctx->protocol_state->prev_handshake_key.preferred_till = ctx->conf->long_ago;
-		ctx->protocol_state->handshake_key.preferred_till = ctx->conf->long_ago;
+		ctx->protocol_state->prev_handshake_key.preferred_till = ctx->now;
+		ctx->protocol_state->handshake_key.preferred_till = ctx->now;
 	}
 }
 
@@ -58,11 +58,8 @@ void fastd_protocol_ec25519_fhmqvc_maintenance(fastd_context_t *ctx) {
 
 		new_handshake_key(ctx, &ctx->protocol_state->handshake_key.key);
 
-		ctx->protocol_state->handshake_key.preferred_till = ctx->now;
-		ctx->protocol_state->handshake_key.preferred_till.tv_sec += 15;
-
-		ctx->protocol_state->handshake_key.valid_till = ctx->now;
-		ctx->protocol_state->handshake_key.valid_till.tv_sec += 30;
+		ctx->protocol_state->handshake_key.preferred_till = fastd_in_seconds(ctx, 15);
+		ctx->protocol_state->handshake_key.valid_till = fastd_in_seconds(ctx, 30);
 	}
 }
 

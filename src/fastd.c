@@ -430,14 +430,14 @@ static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 		return;
 	}
 
-	if (timespec_diff(&ctx->now, &peer->last_handshake) < (int)ctx->conf->min_handshake_interval*1000
+	if (!fastd_timed_out(ctx, &peer->last_handshake_timeout)
 	    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
 		pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
 		return;
 	}
 
 	pr_debug(ctx, "sending handshake to %P[%I]...", peer, &peer->address);
-	peer->last_handshake = ctx->now;
+	peer->last_handshake_timeout = fastd_in_seconds(ctx, ctx->conf->min_handshake_interval);
 	peer->last_handshake_address = peer->address;
 	ctx->conf->protocol->handshake_init(ctx, peer->sock, &peer->local_address, &peer->address, peer);
 }
@@ -447,7 +447,7 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 		return;
 
 	fastd_peer_t *peer = container_of(ctx->handshake_queue.next, fastd_peer_t, handshake_entry);
-	if (timespec_after(&peer->next_handshake, &ctx->now))
+	if (!fastd_timed_out(ctx, &peer->next_handshake))
 		return;
 
 	fastd_peer_schedule_handshake_default(ctx, peer);
@@ -672,7 +672,7 @@ static void maintenance(fastd_context_t *ctx) {
 
 	fastd_socket_handle_binds(ctx);
 
-	if (timespec_after(&ctx->now, &ctx->next_keepalives)) {
+	if (fastd_timed_out(ctx, &ctx->next_keepalives)) {
 		fastd_peer_t *peer;
 		for (peer = ctx->peers; peer; peer = peer->next) {
 			if (!fastd_peer_is_established(peer))
@@ -914,9 +914,6 @@ int main(int argc, char *argv[]) {
 	fastd_config_check(&ctx, &conf);
 
 	update_time(&ctx);
-
-	conf.long_ago = ctx.now;
-	conf.long_ago.tv_sec -= 86400; /* 24h in the past */
 
 	ctx.next_keepalives = ctx.now;
 	ctx.next_keepalives.tv_sec += conf.keepalive_interval;

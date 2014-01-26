@@ -30,11 +30,8 @@
 void fastd_method_common_init(fastd_context_t *ctx, fastd_method_common_t *session, bool initiator) {
 	memset(session, 0, sizeof(*session));
 
-	session->valid_till = ctx->now;
-	session->valid_till.tv_sec += ctx->conf->key_valid;
-
-	session->refresh_after = ctx->now;
-	session->refresh_after.tv_sec += ctx->conf->key_refresh - fastd_rand(ctx, 0, ctx->conf->key_refresh_splay);
+	session->valid_till = fastd_in_seconds(ctx, ctx->conf->key_valid);
+	session->refresh_after = fastd_in_seconds(ctx, ctx->conf->key_refresh - fastd_rand(ctx, 0, ctx->conf->key_refresh_splay));
 
 	if (initiator) {
 		session->send_nonce[COMMON_NONCEBYTES-1] = 3;

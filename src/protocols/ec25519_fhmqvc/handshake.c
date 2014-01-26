@@ -601,15 +601,15 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_
 	memcpy(&peer_handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 
 	if (handshake->type == 1) {
-		if (timespec_diff(&ctx->now, &peer->last_handshake_response) < (int)ctx->conf->min_handshake_interval*1000
+		if (!fastd_timed_out(ctx, &peer->last_handshake_response_timeout)
 		    && fastd_peer_address_equal(remote_addr, &peer->last_handshake_response_address)) {
-			pr_debug(ctx, "not responding repeated handshake from %P[%I]", peer, remote_addr);
+			pr_debug(ctx, "not responding to repeated handshake from %P[%I]", peer, remote_addr);
 			return;
 		}
 
 		pr_verbose(ctx, "received handshake from %P[%I]%s%s", peer, remote_addr, handshake->peer_version ? " using fastd " : "", handshake->peer_version ?: "");
 
-		peer->last_handshake_response = ctx->now;
+		peer->last_handshake_response_timeout = fastd_in_seconds(ctx, ctx->conf->min_handshake_interval);
 		peer->last_handshake_response_address = *remote_addr;
 		respond_handshake(ctx, sock, local_addr, remote_addr, peer, &ctx->protocol_state->handshake_key, &peer_handshake_key, handshake, method);
 		return;

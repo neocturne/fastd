@@ -45,11 +45,11 @@ struct fastd_protocol_state {
 
 
 static inline bool is_handshake_key_valid(fastd_context_t *ctx, const handshake_key_t *handshake_key) {
-	return timespec_after(&handshake_key->valid_till, &ctx->now);
+	return !fastd_timed_out(ctx, &handshake_key->valid_till);
 }
 
 static inline bool is_handshake_key_preferred(fastd_context_t *ctx, const handshake_key_t *handshake_key) {
-	return timespec_after(&handshake_key->preferred_till, &ctx->now);
+	return !fastd_timed_out(ctx, &handshake_key->preferred_till);
 }
 
 #endif /* _FASTD_PROTOCOL_EC25519_FHMQVC_HANDSHAKE_H_ */

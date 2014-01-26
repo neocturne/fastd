@@ -50,10 +50,10 @@ struct fastd_peer {
 	struct timespec next_handshake;
 	fastd_dlist_head_t handshake_entry;
 
-	struct timespec last_handshake;
+	struct timespec last_handshake_timeout;
 	fastd_peer_address_t last_handshake_address;
 
-	struct timespec last_handshake_response;
+	struct timespec last_handshake_response_timeout;
 	fastd_peer_address_t last_handshake_response_address;
 
 	fastd_protocol_peer_config_t *protocol_config;
@@ -94,8 +94,8 @@ struct fastd_remote {
 	size_t current_address;
 	fastd_peer_address_t *addresses;
 
-	struct timespec last_resolve;
-	struct timespec last_resolve_return;
+	struct timespec last_resolve_timeout;
+	bool resolving;
 };
 
 struct fastd_remote_config {

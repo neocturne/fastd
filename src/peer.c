@@ -186,7 +186,7 @@ static void init_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
 }
 
 void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses) {
-	remote->last_resolve_return = ctx->now;
+	remote->resolving = false;
 
 	free(remote->addresses);
 	remote->addresses = malloc(n_addresses*sizeof(fastd_peer_address_t));
@@ -207,16 +207,16 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	fastd_remote_t *remote;
 	for (remote = peer->remotes; remote; remote = remote->next) {
-		remote->last_resolve = ctx->conf->long_ago;
-		remote->last_resolve_return = ctx->conf->long_ago;
+		remote->last_resolve_timeout = ctx->now;
+		remote->resolving = false;
 	}
 
 	peer->next_remote = peer->remotes;
 
-	peer->last_handshake = ctx->conf->long_ago;
+	peer->last_handshake_timeout = ctx->now;
 	peer->last_handshake_address.sa.sa_family = AF_UNSPEC;
 
-	peer->last_handshake_response = ctx->conf->long_ago;
+	peer->last_handshake_response_timeout = ctx->now;
 	peer->last_handshake_response_address.sa.sa_family = AF_UNSPEC;
 
 	if (!peer->protocol_state)

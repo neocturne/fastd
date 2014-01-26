@@ -108,12 +108,12 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 	if (!peer->config)
 		exit_bug(ctx, "trying to resolve temporary peer");
 
-	if (timespec_after(&remote->last_resolve, &remote->last_resolve_return)) {
+	if (remote->resolving) {
 		pr_debug(ctx, "not resolving %P as there is already a resolve running", peer);
 		return;
 	}
 
-	if (timespec_diff(&ctx->now, &remote->last_resolve) < (int)ctx->conf->min_resolve_interval*1000) {
+	if (!fastd_timed_out(ctx, &remote->last_resolve_timeout)) {
 		/* last resolve was just a few seconds ago */
 		return;
 	}
@@ -121,7 +121,8 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 	pr_verbose(ctx, "resolving host `%s' for peer %P...", remote->config->hostname, peer);
 
 	fastd_remote_ref(remote);
-	remote->last_resolve = ctx->now;
+	remote->last_resolve_timeout = fastd_in_seconds(ctx, ctx->conf->min_resolve_interval);
+	remote->resolving = true;
 
 	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
 
