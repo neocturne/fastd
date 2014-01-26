@@ -358,7 +358,7 @@ static int parse_keyword(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 
 	char *token = get_token(lex);
 	const keyword_t key = { .keyword = token };
-	const keyword_t *ret = bsearch(&key, keywords, sizeof(keywords)/sizeof(keyword_t), sizeof(keyword_t), compare_keywords);
+	const keyword_t *ret = bsearch(&key, keywords, array_size(keywords), sizeof(keyword_t), compare_keywords);
 	free(token);
 
 	if (!ret)
