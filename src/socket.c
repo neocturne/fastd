@@ -96,6 +96,15 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	}
 #endif
 
+#ifdef USE_PACKET_MARK
+	if (ctx->conf->packet_mark) {
+		if (setsockopt(fd, SOL_SOCKET, SO_MARK, &ctx->conf->packet_mark, sizeof(ctx->conf->packet_mark))) {
+			pr_error_errno(ctx, "setsockopt: unable to set packet mark");
+			goto error;
+		}
+	}
+#endif
+
 	fastd_peer_address_t bind_address = addr->addr;
 
 	if (bind_address.sa.sa_family == AF_UNSPEC) {

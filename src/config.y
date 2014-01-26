@@ -95,11 +95,13 @@
 %token TOK_LIMIT
 %token TOK_LOG
 %token TOK_MAC
+%token TOK_MARK
 %token TOK_METHOD
 %token TOK_MODE
 %token TOK_MTU
 %token TOK_NO
 %token TOK_ON
+%token TOK_PACKET
 %token TOK_PEER
 %token TOK_PEERS
 %token TOK_PMTU
@@ -175,6 +177,7 @@ statement:	peer_group_statement
 	|	TOK_HIDE hide ';'
 	|	TOK_INTERFACE interface ';'
 	|	TOK_BIND bind ';'
+	|	TOK_PACKET TOK_MARK packet_mark ';'
 	|	TOK_MTU mtu ';'
 	|	TOK_PMTU pmtu ';'
 	|	TOK_MODE mode ';'
@@ -327,6 +330,10 @@ bind_default:
 			$$ = AF_UNSPEC;
 		}
 	;
+
+packet_mark:	TOK_UINT {
+			conf->packet_mark = $1;
+		}
 
 mtu:		TOK_UINT {
 			if ($1 < 576 || $1 > 65535) {

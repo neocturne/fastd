@@ -554,6 +554,11 @@ void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
 		exit_error(ctx, "config error: setting pmtu is not supported on this system");
 #endif
 
+#ifndef USE_PACKET_MARK
+	if (conf->packet_mark)
+		exit_error(ctx, "config error: setting a packet mark is not supported on this system");
+#endif
+
 	if (!conf->method_list) {
 		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
 		fastd_config_method(ctx, conf, "null");
