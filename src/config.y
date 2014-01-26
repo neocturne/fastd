@@ -47,6 +47,10 @@
 	struct in_addr addr4;
 	struct in6_addr addr6;
 	fastd_peer_address_t addr;
+	struct {
+		struct in6_addr addr;
+		char ifname[IFNAMSIZ];
+	} addr6_scoped;
 
 	const char *error;
 }
@@ -60,6 +64,7 @@
 
 %token <addr4> TOK_ADDR4
 %token <addr6> TOK_ADDR6
+%token <addr6_scoped> TOK_ADDR6_SCOPED
 
 %token TOK_ADDRESSES
 %token TOK_ANY
@@ -467,6 +472,26 @@ peer_remote:	TOK_ADDR4 port {
 			(*remote)->address.in6.sin6_addr = $1;
 			(*remote)->address.in6.sin6_port = htons($2);
 			fastd_peer_address_simplify(&(*remote)->address);
+		}
+	|	TOK_ADDR6_SCOPED port {
+			char addrbuf[INET6_ADDRSTRLEN];
+			size_t addrlen;
+			fastd_remote_config_t **remote = &conf->peers->remotes;
+			while (*remote)
+				remote = &(*remote)->next;
+
+			inet_ntop(AF_INET6, &$1.addr, addrbuf, sizeof(addrbuf));
+			addrlen = strlen(addrbuf);
+
+			*remote = calloc(1, sizeof(fastd_remote_config_t));
+
+			(*remote)->hostname = malloc(addrlen + strlen($1.ifname) + 2);
+			memcpy((*remote)->hostname, addrbuf, addrlen);
+			(*remote)->hostname[addrlen] = '%';
+			strcpy((*remote)->hostname+addrlen+1, $1.ifname);
+
+			(*remote)->address.sa.sa_family = AF_INET6;
+			(*remote)->address.in.sin_port = htons($2);
 		}
 	|	maybe_af TOK_STRING port maybe_float {
 			fastd_remote_config_t **remote = &conf->peers->remotes;

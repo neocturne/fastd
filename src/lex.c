@@ -279,20 +279,54 @@ static int parse_ipv6_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 			break;
 	}
 
-	bool ok = (current(lex) == ']');
+	char cur = current(lex);
+
+	bool ifname = (cur == '%') ? lex->start + lex->tok_len + 1 : 0;
+
+	bool ok = ifname || (cur == ']');
 
 	if (ok) {
 		lex->buffer[lex->start + lex->tok_len] = 0;
-		ok = inet_pton(AF_INET6, lex->buffer+lex->start+1, &yylval->addr6);
+		ok = inet_pton(AF_INET6, lex->buffer+lex->start+1, ifname ? &yylval->addr6_scoped.addr : &yylval->addr6);
 	}
 
 	if (!ok)
 		return syntax_error(yylval, lex);
 
+	if (ifname) {
+		consume(lex, false);
+
+		size_t pos = 0;
+
+		while (true) {
+			if (!next(yylloc, lex, true))
+				return syntax_error(yylval, lex);
+
+			cur = current(lex);
+
+			if (cur == ']')
+				break;
+
+			if (cur == '\\') {
+				if (!next(yylloc, lex, true))
+					return syntax_error(yylval, lex);
+
+				cur = current(lex);
+			}
+
+			if (pos == sizeof(yylval->addr6_scoped.ifname)-1)
+				return syntax_error(yylval, lex);
+
+			yylval->addr6_scoped.ifname[pos++] = cur;
+		}
+
+		yylval->addr6_scoped.ifname[pos] = 0;
+	}
+
 	next(yylloc, lex, true);
 	consume(lex, true);
 
-	return TOK_ADDR6;
+	return ifname ? TOK_ADDR6_SCOPED : TOK_ADDR6;
 }
 
 static int parse_ipv4_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
