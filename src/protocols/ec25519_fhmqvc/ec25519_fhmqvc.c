@@ -160,7 +160,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 	}
 
 	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, peer, send_buffer, stat_size);
-	peer->last_send = ctx->now;
+	peer->keepalive_timeout = fastd_in_seconds(ctx, ctx->conf->keepalive_timeout);
 }
 
 static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {

@@ -113,7 +113,6 @@ static inline bool new_session(fastd_context_t *ctx, fastd_peer_t *peer, const f
 	if (!peer->protocol_state->session.method_state)
 		return false;
 
-	peer->protocol_state->session.established = ctx->now;
 	peer->protocol_state->session.handshakes_cleaned = false;
 	peer->protocol_state->session.refreshing = false;
 	peer->protocol_state->session.method = method;
@@ -150,6 +149,7 @@ static bool establish(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_meth
 		return false;
 	}
 
+	peer->establish_handshake_timeout = fastd_in_seconds(ctx, ctx->conf->min_handshake_interval);
 	fastd_peer_seen(ctx, peer);
 	fastd_peer_set_established(ctx, peer);
 
@@ -515,11 +515,6 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer
 }
 
 
-static inline bool backoff(fastd_context_t *ctx, const fastd_peer_t *peer) {
-	return (peer->protocol_state && is_session_valid(ctx, &peer->protocol_state->session)
-		&& timespec_diff(&ctx->now, &peer->protocol_state->session.established) < (int)ctx->conf->min_handshake_interval*1000);
-}
-
 void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
 	fastd_protocol_ec25519_fhmqvc_maintenance(ctx);
 
@@ -580,7 +575,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_
 		return;
 	}
 
-	if (backoff(ctx, peer)) {
+	if (!fastd_timed_out(ctx, &peer->establish_handshake_timeout)) {
 		pr_debug(ctx, "received repeated handshakes from %P[%I], ignoring", peer, remote_addr);
 		return;
 	}

@@ -42,7 +42,7 @@ typedef struct fastd_method_common {
 	uint8_t send_nonce[COMMON_NONCEBYTES];
 	uint8_t receive_nonce[COMMON_NONCEBYTES];
 
-	struct timespec receive_last;
+	struct timespec reorder_timeout;
 	uint64_t receive_reorder_seen;
 } fastd_method_common_t;
 

@@ -558,13 +558,13 @@ static inline int handshake_timeout(fastd_context_t *ctx) {
 	if (!ctx->handshake_queue.next)
 		return -1;
 
-       fastd_peer_t *peer = container_of(ctx->handshake_queue.next, fastd_peer_t, handshake_entry);
+	fastd_peer_t *peer = container_of(ctx->handshake_queue.next, fastd_peer_t, handshake_entry);
 
-       int diff_msec = timespec_diff(&peer->next_handshake, &ctx->now);
-       if (diff_msec < 0)
-	       return 0;
-       else
-	       return diff_msec;
+	int diff_msec = timespec_diff(&peer->next_handshake, &ctx->now);
+	if (diff_msec < 0)
+		return 0;
+	else
+		return diff_msec;
 }
 
 static void handle_input(fastd_context_t *ctx) {
@@ -647,7 +647,7 @@ static void cleanup_peers(fastd_context_t *ctx) {
 		next = peer->next;
 
 		if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
-			if (timespec_diff(&ctx->now, &peer->seen) > (int)ctx->conf->peer_stale_time*1000) {
+			if (fastd_timed_out(ctx, &peer->timeout)) {
 				if (fastd_peer_is_temporary(peer)) {
 					fastd_peer_delete(ctx, peer);
 				}
@@ -678,7 +678,7 @@ static void maintenance(fastd_context_t *ctx) {
 			if (!fastd_peer_is_established(peer))
 				continue;
 
-			if (timespec_diff(&ctx->now, &peer->last_send) < (int)ctx->conf->keepalive_timeout*1000)
+			if (!fastd_timed_out(ctx, &peer->keepalive_timeout))
 				continue;
 
 			pr_debug2(ctx, "sending keepalive to %P", peer);
@@ -915,8 +915,7 @@ int main(int argc, char *argv[]) {
 
 	update_time(&ctx);
 
-	ctx.next_keepalives = ctx.now;
-	ctx.next_keepalives.tv_sec += conf.keepalive_interval;
+	ctx.next_keepalives = fastd_in_seconds(&ctx, conf.keepalive_interval);
 
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 

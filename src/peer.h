@@ -41,8 +41,8 @@ struct fastd_peer {
 	fastd_peer_address_t address;
 
 	fastd_peer_state_t state;
-	struct timespec seen;
-	struct timespec last_send;
+	struct timespec timeout;
+	struct timespec keepalive_timeout;
 
 	fastd_remote_t *remotes;
 	fastd_remote_t *next_remote;
@@ -55,6 +55,8 @@ struct fastd_peer {
 
 	struct timespec last_handshake_response_timeout;
 	fastd_peer_address_t last_handshake_response_address;
+
+	struct timespec establish_handshake_timeout;
 
 	fastd_protocol_peer_config_t *protocol_config;
 	fastd_protocol_peer_state_t *protocol_state;
@@ -80,7 +82,7 @@ struct fastd_peer_config {
 struct fastd_peer_eth_addr {
 	fastd_eth_addr_t addr;
 	fastd_peer_t *peer;
-	struct timespec seen;
+	struct timespec timeout;
 };
 
 struct fastd_remote {
@@ -203,7 +205,7 @@ static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {
 }
 
 static inline void fastd_peer_seen(fastd_context_t *ctx, fastd_peer_t *peer) {
-	peer->seen = ctx->now;
+	peer->timeout = fastd_in_seconds(ctx, ctx->conf->peer_stale_time);
 }
 
 static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {

@@ -219,6 +219,8 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	peer->last_handshake_response_timeout = ctx->now;
 	peer->last_handshake_response_address.sa.sa_family = AF_UNSPEC;
 
+	peer->establish_handshake_timeout = ctx->now;
+
 	if (!peer->protocol_state)
 		ctx->conf->protocol->init_peer_state(ctx, peer);
 
@@ -565,7 +567,7 @@ fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx) {
 	ctx->peers_temp = peer;
 
 	peer->group = ctx->peer_group;
-	peer->seen = ctx->now;
+	fastd_peer_seen(ctx, peer);
 
 	pr_debug(ctx, "adding temporary peer");
 
@@ -678,7 +680,7 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth
 
 		if (cmp == 0) {
 			ctx->eth_addr[cur].peer = peer;
-			ctx->eth_addr[cur].seen = ctx->now;
+			ctx->eth_addr[cur].timeout = fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time);
 			return; /* We're done here. */
 		}
 		else if (cmp < 0) {
@@ -703,7 +705,7 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth
 	for (i = ctx->n_eth_addr-1; i > min; i--)
 		ctx->eth_addr[i] = ctx->eth_addr[i-1];
 
-	ctx->eth_addr[min] = (fastd_peer_eth_addr_t){ addr, peer, ctx->now };
+	ctx->eth_addr[min] = (fastd_peer_eth_addr_t){ addr, peer, fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time) };
 
 	pr_debug(ctx, "learned new MAC address %E on peer %P", &addr, peer);
 }
@@ -712,7 +714,7 @@ void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx) {
 	size_t i, deleted = 0;
 
 	for (i = 0; i < ctx->n_eth_addr; i++) {
-		if (timespec_diff(&ctx->now, &ctx->eth_addr[i].seen) > (int)ctx->conf->eth_addr_stale_time*1000) {
+		if (fastd_timed_out(ctx, &ctx->eth_addr[i].timeout)) {
 			deleted++;
 			pr_debug(ctx, "MAC address %E not seen for more than %u seconds, removing",
 				 &ctx->eth_addr[i].addr, ctx->conf->eth_addr_stale_time);

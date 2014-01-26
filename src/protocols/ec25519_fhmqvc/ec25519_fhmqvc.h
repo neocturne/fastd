@@ -55,8 +55,6 @@ struct fastd_protocol_peer_config {
 };
 
 typedef struct protocol_session {
-	struct timespec established;
-
 	bool handshakes_cleaned;
 	bool refreshing;
 
