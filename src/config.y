@@ -292,6 +292,10 @@ interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
 bind:		bind_address maybe_bind_interface maybe_bind_default {
 			fastd_config_bind_address(ctx, conf, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
 		}
+	|	TOK_ADDR6_SCOPED maybe_port maybe_bind_default {
+			fastd_peer_address_t addr = { .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1.addr, .sin6_port = htons($2) } };
+			fastd_config_bind_address(ctx, conf, &addr, $1.ifname, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+		}
 	;
 
 bind_address:

@@ -68,11 +68,11 @@ static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, siz
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
 			if (IN6_IS_ADDR_LINKLOCAL(&address->in6.sin6_addr)) {
 				char ifname_buf[IF_NAMESIZE];
-				return snprintf_safe(buffer, size, "[%s%%%s]:%u", addr_buf, if_indextoname(address->in6.sin6_scope_id, ifname_buf), ntohs(address->in6.sin6_port));
+				if (if_indextoname(address->in6.sin6_scope_id, ifname_buf))
+					return snprintf_safe(buffer, size, "[%s%%%s]:%u", addr_buf, if_indextoname(address->in6.sin6_scope_id, ifname_buf), ntohs(address->in6.sin6_port));
 			}
-			else {
-				return snprintf_safe(buffer, size, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
-			}
+
+			return snprintf_safe(buffer, size, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
 		}
 		else
 			return 0;

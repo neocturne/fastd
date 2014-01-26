@@ -112,7 +112,7 @@ void fastd_config_mac(fastd_context_t *ctx, fastd_config_t *conf, const char *na
 
 void fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
 #ifndef USE_BINDTODEVICE
-	if (bindtodev)
+	if (bindtodev && !fastd_peer_address_is_v6_ll(address))
 		exit_error(ctx, "config error: device bind configuration not supported on this system");
 #endif
 

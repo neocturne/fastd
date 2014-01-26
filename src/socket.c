@@ -77,7 +77,7 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	}
 
 #ifdef USE_BINDTODEVICE
-	if (addr->bindtodev) {
+	if (addr->bindtodev && !fastd_peer_address_is_v6_ll(&addr->addr)) {
 		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
 			if (warn)
 				pr_warn_errno(ctx, "setsockopt: unable to bind to device");
@@ -106,6 +106,18 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 #endif
 
 	fastd_peer_address_t bind_address = addr->addr;
+
+	if (fastd_peer_address_is_v6_ll(&addr->addr) && addr->bindtodev) {
+		bind_address.in6.sin6_scope_id = atoi(addr->bindtodev);
+
+		if (!bind_address.in6.sin6_scope_id)
+			bind_address.in6.sin6_scope_id = if_nametoindex(addr->bindtodev);
+
+		if (!bind_address.in6.sin6_scope_id) {
+			pr_warn_errno(ctx, "if_nametoindex");
+			goto error;
+		}
+	}
 
 	if (bind_address.sa.sa_family == AF_UNSPEC) {
 		memset(&bind_address, 0, sizeof(bind_address));
@@ -180,7 +192,7 @@ bool fastd_socket_handle_binds(fastd_context_t *ctx) {
 			if (!ctx->socks[i].addr->addr.sa.sa_family)
 				bound_addr.sa.sa_family = AF_UNSPEC;
 
-			if (ctx->socks[i].addr->bindtodev)
+			if (ctx->socks[i].addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
 				pr_info(ctx, "successfully bound to %B on `%s'", &bound_addr, ctx->socks[i].addr->bindtodev);
 			else
 				pr_info(ctx, "successfully bound to %B", &bound_addr);

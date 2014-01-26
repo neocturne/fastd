@@ -363,6 +363,10 @@ static inline size_t fastd_max_outer_packet(const fastd_context_t *ctx) {
 	return PACKET_TYPE_LEN + fastd_max_inner_packet(ctx) + ctx->conf->max_overhead;
 }
 
+static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
+	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));
+}
+
 static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
 	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = NULL;
