@@ -921,6 +921,8 @@ int main(int argc, char *argv[]) {
 	ctx.next_keepalives = ctx.now;
 	ctx.next_keepalives.tv_sec += conf.keepalive_interval;
 
+	ctx.unknown_handshakes[0].timeout = ctx.now;
+
 	pr_info(&ctx, "fastd " FASTD_VERSION " starting");
 
 	fastd_cap_init(&ctx);

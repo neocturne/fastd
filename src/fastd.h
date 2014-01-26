@@ -138,6 +138,11 @@ struct fastd_stats {
 	uint64_t bytes;
 };
 
+struct fastd_handshake_timeout {
+	fastd_peer_address_t address;
+	struct timespec timeout;
+};
+
 struct fastd_config {
 	struct timespec long_ago;
 
@@ -280,6 +285,9 @@ struct fastd_context {
 	fastd_peer_eth_addr_t *eth_addr;
 
 	unsigned int randseed;
+
+	size_t unknown_handshake_pos;
+	fastd_handshake_timeout_t unknown_handshakes[8];
 
 	fastd_protocol_state_t *protocol_state;
 };
