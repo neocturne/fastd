@@ -409,6 +409,16 @@ static inline int timespec_diff(const struct timespec *tp1, const struct timespe
 	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
 }
 
+static inline bool fastd_timed_out(const fastd_context_t *ctx, const struct timespec *timeout) {
+	return !timespec_after(timeout, &ctx->now);
+}
+
+static inline struct timespec fastd_in_seconds(const fastd_context_t *ctx, int seconds) {
+	struct timespec ret = ctx->now;
+	ret.tv_sec += seconds;
+	return ret;
+}
+
 static inline bool strequal(const char *str1, const char *str2) {
 	if (str1 && str2)
 		return (!strcmp(str1, str2));

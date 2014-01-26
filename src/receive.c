@@ -110,7 +110,7 @@ static inline bool backoff_unknown(fastd_context_t *ctx, const fastd_peer_addres
 	for (i = 0; i < array_size(ctx->unknown_handshakes); i++) {
 		const fastd_handshake_timeout_t *t = &ctx->unknown_handshakes[(ctx->unknown_handshake_pos + i) % array_size(ctx->unknown_handshakes)];
 
-		if (!timespec_after(&t->timeout, &ctx->now))
+		if (fastd_timed_out(ctx, &t->timeout))
 			break;
 
 		if (fastd_peer_address_equal(addr, &t->address)) {
@@ -127,9 +127,7 @@ static inline bool backoff_unknown(fastd_context_t *ctx, const fastd_peer_addres
 	fastd_handshake_timeout_t *t = &ctx->unknown_handshakes[ctx->unknown_handshake_pos];
 
 	t->address = *addr;
-
-	t->timeout = ctx->now;
-	t->timeout.tv_sec += ctx->conf->min_handshake_interval;
+	t->timeout = fastd_in_seconds(ctx, ctx->conf->min_handshake_interval);
 
 	return false;
 }
