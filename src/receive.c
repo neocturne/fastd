@@ -76,36 +76,7 @@ static inline void handle_socket_control(struct msghdr *message, const fastd_soc
 	}
 }
 
-static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (!fastd_peer_may_connect(ctx, peer)) {
-		fastd_buffer_free(buffer);
-		return;
-	}
-
-	const uint8_t *packet_type = buffer.data;
-	fastd_buffer_push_head(ctx, &buffer, 1);
-
-	switch (*packet_type) {
-	case PACKET_DATA:
-		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
-			fastd_buffer_free(buffer);
-			ctx->conf->protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
-			return;
-		}
-
-		ctx->conf->protocol->handle_recv(ctx, peer, buffer);
-		break;
-
-	case PACKET_HANDSHAKE:
-		fastd_handshake_handle(ctx, sock, local_addr, remote_addr, peer, buffer);
-	}
-}
-
-static inline bool allow_unknown_peers(fastd_context_t *ctx) {
-	return ctx->conf->has_floating || ctx->conf->on_verify;
-}
-
-static inline bool backoff_unknown(fastd_context_t *ctx, const fastd_peer_address_t *addr) {
+static bool backoff_unknown(fastd_context_t *ctx, const fastd_peer_address_t *addr) {
 	size_t i;
 	for (i = 0; i < array_size(ctx->unknown_handshakes); i++) {
 		const fastd_handshake_timeout_t *t = &ctx->unknown_handshakes[(ctx->unknown_handshake_pos + i) % array_size(ctx->unknown_handshakes)];
@@ -130,6 +101,37 @@ static inline bool backoff_unknown(fastd_context_t *ctx, const fastd_peer_addres
 	t->timeout = fastd_in_seconds(ctx, ctx->conf->min_handshake_interval);
 
 	return false;
+}
+
+static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+	if (!fastd_peer_may_connect(ctx, peer)) {
+		fastd_buffer_free(buffer);
+		return;
+	}
+
+	const uint8_t *packet_type = buffer.data;
+	fastd_buffer_push_head(ctx, &buffer, 1);
+
+	switch (*packet_type) {
+	case PACKET_DATA:
+		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
+			fastd_buffer_free(buffer);
+
+			if (!backoff_unknown(ctx, remote_addr))
+				ctx->conf->protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+			return;
+		}
+
+		ctx->conf->protocol->handle_recv(ctx, peer, buffer);
+		break;
+
+	case PACKET_HANDSHAKE:
+		fastd_handshake_handle(ctx, sock, local_addr, remote_addr, peer, buffer);
+	}
+}
+
+static inline bool allow_unknown_peers(fastd_context_t *ctx) {
+	return ctx->conf->has_floating || ctx->conf->on_verify;
 }
 
 static inline void handle_socket_receive_unknown(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
