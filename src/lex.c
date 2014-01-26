@@ -318,21 +318,27 @@ static int parse_ipv4_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 }
 
 static int parse_number(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+	bool digitonly = true;
+
 	if (lex->needspace)
 		return syntax_error(yylval, lex);
 
 	while (next(yylloc, lex, false)) {
 		char cur = current(lex);
 
-		if (cur == '.')
+		if (cur == '.' && digitonly)
 			return parse_ipv4_address(yylval, yylloc, lex);
 
-		if (!(cur >= '0' && cur <= '9'))
-			break;
+		if (!(cur >= '0' && cur <= '9')) {
+			if ((cur >= 'a' && cur <= 'z') || (cur >= 'A' && cur <= 'Z'))
+				digitonly = false;
+			else
+				break;
+		}
 	}
 
 	char *endptr, *token = get_token(lex);
-	yylval->uint64 = strtoull(token, &endptr, 10);
+	yylval->uint64 = strtoull(token, &endptr, 0);
 
 	bool ok = !*endptr;
 	free(token);
