@@ -34,7 +34,7 @@
 
 static void print_usage(const char *options, const char *message) {
 	/* 28 spaces */
-	static const char spaces[] = "                            ";
+	static const char spaces[] = {[0 ... 27] = ' ', [28] = 0};
 
 	int len = strlen(options);
 
