@@ -132,6 +132,8 @@ typedef struct fastd_string_stack fastd_string_stack_t;
 typedef struct fastd_resolve_return fastd_resolve_return_t;
 
 
+typedef uint8_t data_t __attribute__((aligned(8)));
+
 typedef union fastd_block128 {
 	uint8_t b[16];
 	uint64_t qw[2];

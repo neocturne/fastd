@@ -187,7 +187,7 @@ void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
 	struct iovec buffer_vec = { .iov_base = buffer.data, .iov_len = buffer.len };
-	char cbuf[1024];
+	data_t cbuf[1024];
 
 	struct msghdr message = {
 		.msg_name = &recvaddr,

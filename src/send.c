@@ -78,7 +78,7 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 		exit_bug(ctx, "send: sock == NULL");
 
 	struct msghdr msg = {};
-	char cbuf[1024] = {};
+	data_t cbuf[1024] = {};
 	fastd_peer_address_t remote_addr6;
 
 	switch (remote_addr->sa.sa_family) {

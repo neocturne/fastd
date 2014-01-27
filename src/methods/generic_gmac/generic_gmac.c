@@ -106,7 +106,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	fastd_block128_t H;
 
 	size_t iv_length = method->cipher_info->iv_length;
-	uint8_t zeroiv[iv_length];
+	data_t zeroiv[iv_length];
 	memset(zeroiv, 0, iv_length);
 
 	if (!session->cipher->crypt(session->cipher_state, &H, &zeroblock, sizeof(fastd_block128_t), zeroiv)) {
@@ -164,7 +164,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	uint8_t nonce[session->method->cipher_info->iv_length];
+	data_t nonce[session->method->cipher_info->iv_length];
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
@@ -215,7 +215,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (flags)
 		return false;
 
-	uint8_t nonce[session->method->cipher_info->iv_length];
+	data_t nonce[session->method->cipher_info->iv_length];
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;

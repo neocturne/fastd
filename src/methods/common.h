@@ -108,7 +108,7 @@ static inline bool fastd_method_handle_common_header(fastd_context_t *ctx, const
 }
 
 
-static inline void fastd_method_expand_nonce(uint8_t *buf, const uint8_t nonce[COMMON_NONCEBYTES], size_t len) {
+static inline void fastd_method_expand_nonce(data_t *buf, const uint8_t nonce[COMMON_NONCEBYTES], size_t len) {
 	if (!len)
 		return;
 
