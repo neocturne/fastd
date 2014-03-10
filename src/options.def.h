@@ -46,6 +46,7 @@ OPTION_ARG(option_on_verify, "--on-verify", "<command>", "Sets a shell command t
 SEPARATOR;
 #endif
 
+OPTION(option_verify_config, "--verify-config", "Checks the configuration and exits");
 OPTION(option_generate_key, "--generate-key", "Generates a new keypair");
 OPTION(option_show_key, "--show-key", "Shows the public key corresponding to the configured secret");
 OPTION(option_machine_readable, "--machine-readable", "Suppresses output of explaining text in the --show-key and --generate-key commands");

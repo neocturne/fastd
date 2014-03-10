@@ -896,10 +896,12 @@ int main(int argc, char *argv[]) {
 
 	init_signals(&ctx);
 
-	if (conf.daemon)
-		status_fd = daemonize(&ctx);
+	if (!conf.verify_config) {
+		if (conf.daemon)
+			status_fd = daemonize(&ctx);
 
-	init_log(&ctx);
+		init_log(&ctx);
+	}
 
 #ifdef HAVE_LIBSODIUM
 	sodium_init();
@@ -912,6 +914,9 @@ int main(int argc, char *argv[]) {
 #endif
 
 	fastd_config_check(&ctx, &conf);
+
+	if (conf.verify_config)
+		exit(0);
 
 	update_time(&ctx);
 

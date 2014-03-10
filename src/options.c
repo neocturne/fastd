@@ -319,6 +319,10 @@ static void option_on_verify(fastd_context_t *ctx UNUSED, fastd_config_t *conf, 
 
 #endif
 
+static void option_verify_config(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
+	conf->verify_config = true;
+}
+
 static void option_generate_key(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 	conf->generate_key = true;
 	conf->show_key = false;

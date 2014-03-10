@@ -242,6 +242,7 @@ struct fastd_config {
 	bool machine_readable;
 	bool generate_key;
 	bool show_key;
+	bool verify_config;
 };
 
 struct fastd_context {
