@@ -52,6 +52,7 @@ struct fastd_protocol {
 	const char *name;
 
 	fastd_protocol_config_t* (*init)(fastd_context_t *ctx);
+	void (*peer_verify)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
 	void (*peer_configure)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
 	bool (*peer_check)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
 	bool (*peer_check_temporary)(fastd_context_t *ctx, fastd_peer_t *peer);

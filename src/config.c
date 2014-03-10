@@ -531,23 +531,20 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
 }
 
-void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
+static void config_check_base(fastd_context_t *ctx, fastd_config_t *conf) {
 	if (conf->ifname) {
 		if (strchr(conf->ifname, '/'))
 			exit_error(ctx, "config error: invalid interface name");
 	}
 
 	if (conf->mode == MODE_TUN) {
-		if (!conf->peers || conf->peers->next)
+		if (conf->peers->next)
 			exit_error(ctx, "config error: in TUN mode exactly one peer must be configured");
 		if (conf->peer_group->children)
 			exit_error(ctx, "config error: in TUN mode peer groups can't be used");
 		if (has_peer_group_peer_dirs(conf->peer_group))
 			exit_error(ctx, "config error: in TUN mode peer directories can't be used");
 	}
-
-	if (!conf->peers && !has_peer_group_peer_dirs(conf->peer_group))
-		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
 
 #ifndef USE_PMTU
 	if (conf->pmtu.set)
@@ -558,6 +555,18 @@ void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
 	if (conf->packet_mark)
 		exit_error(ctx, "config error: setting a packet mark is not supported on this system");
 #endif
+}
+
+void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
+	config_check_base(ctx, conf);
+
+	if (conf->mode == MODE_TUN) {
+		if (!conf->peers)
+			exit_error(ctx, "config error: in TUN mode exactly one peer must be configured");
+	}
+
+	if (!conf->peers && !has_peer_group_peer_dirs(conf->peer_group))
+		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
 
 	if (!conf->method_list) {
 		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
@@ -569,6 +578,15 @@ void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
 
 	configure_user(ctx, conf);
 	configure_methods(ctx, conf);
+}
+
+void fastd_config_verify(fastd_context_t *ctx, fastd_config_t *conf) {
+	config_check_base(ctx, conf);
+	configure_methods(ctx, conf);
+
+	fastd_peer_config_t *peer;
+	for (peer = conf->peers; peer; peer = peer->next)
+		conf->protocol->peer_verify(ctx, peer);
 }
 
 static void peer_dirs_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {

@@ -43,6 +43,7 @@ void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char 
 void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf);
 void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]);
+void fastd_config_verify(fastd_context_t *ctx, fastd_config_t *conf);
 
 void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);

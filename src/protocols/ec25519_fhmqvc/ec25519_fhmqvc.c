@@ -65,6 +65,15 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 	return protocol_config;
 }
 
+static void protocol_peer_verify(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
+	if (!peer_conf->key)
+		exit_error(ctx, "no key configured for peer `%s'", peer_conf->name);
+
+	aligned_int256_t key;
+	if (!read_key(key.u8, peer_conf->key))
+		exit_error(ctx, "invalid key configured for peer `%s'", peer_conf->name);
+}
+
 static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
 	if (peer_conf->protocol_config)
 		return;
@@ -188,6 +197,7 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.name = "ec25519-fhmqvc",
 
 	.init = protocol_init,
+	.peer_verify = protocol_peer_verify,
 	.peer_configure = protocol_peer_configure,
 
 	.peer_check = fastd_protocol_ec25519_fhmqvc_peer_check,
