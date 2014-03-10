@@ -69,7 +69,7 @@ static void* resolve_peer(void *varg) {
 			n_addr++;
 	}
 
-	data_t retbuf[sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)];
+	uint8_t retbuf[sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)] __attribute__((aligned(8)));
 	fastd_resolve_return_t *ret = (fastd_resolve_return_t*)retbuf;
 	ret->remote = arg->remote;
 

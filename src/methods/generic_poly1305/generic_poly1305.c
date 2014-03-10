@@ -126,14 +126,14 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	data_t nonce[session->method->cipher_info->iv_length];
+	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
-	data_t tag[TAGBYTES];
+	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
 
 	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 
@@ -171,10 +171,10 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (flags)
 		return false;
 
-	data_t nonce[session->method->cipher_info->iv_length];
+	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
-	data_t tag[TAGBYTES];
+	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
 	fastd_buffer_push_head_to(ctx, &in, tag, TAGBYTES);
 	fastd_buffer_pull_head_zero(ctx, &in, KEYBYTES);
 

@@ -35,6 +35,6 @@ static inline void fastd_hkdf_sha256_extract(fastd_sha256_t *out, const uint32_t
 	fastd_hmacsha256(out, salt, in, len);
 }
 
-void fastd_hkdf_sha256_expand(fastd_sha256_t *out, size_t blocks, const fastd_sha256_t *prk, const data_t *info, size_t infolen);
+void fastd_hkdf_sha256_expand(fastd_sha256_t *out, size_t blocks, const fastd_sha256_t *prk, const uint8_t *info, size_t infolen);
 
 #endif /* _FASTD_HKDF_SHA256_H_ */

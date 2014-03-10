@@ -54,7 +54,7 @@ static void derive_key(fastd_sha256_t *out, size_t blocks, const uint32_t *salt,
 		       const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
 		       const aligned_int256_t *sigma) {
 	size_t methodlen = strlen(method_name);
-	data_t info[4*PUBLICKEYBYTES + methodlen];
+	uint8_t info[4*PUBLICKEYBYTES + methodlen] __attribute__((aligned(8)));
 
 	memcpy(info, A, PUBLICKEYBYTES);
 	memcpy(info+PUBLICKEYBYTES, B, PUBLICKEYBYTES);
@@ -317,7 +317,7 @@ static void finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, const f
 
 	bool valid;
 	if (!compat) {
-		data_t mac[HASHBYTES];
+		uint8_t mac[HASHBYTES] __attribute__((aligned(8)));
 		memcpy(mac, handshake->records[RECORD_TLV_MAC].data, HASHBYTES);
 		memset(handshake->records[RECORD_TLV_MAC].data, 0, HASHBYTES);
 

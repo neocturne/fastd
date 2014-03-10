@@ -29,7 +29,7 @@
 #include <string.h>
 
 
-void fastd_hkdf_sha256_expand(fastd_sha256_t *out, size_t blocks, const fastd_sha256_t *prk, const data_t *info, size_t infolen) {
+void fastd_hkdf_sha256_expand(fastd_sha256_t *out, size_t blocks, const fastd_sha256_t *prk, const uint8_t *info, size_t infolen) {
 	if (!blocks)
 		return;
 

@@ -131,7 +131,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	fastd_block128_t H;
 
 	size_t gmac_iv_length = method->gmac_cipher_info->iv_length;
-	data_t zeroiv[gmac_iv_length];
+	uint8_t zeroiv[gmac_iv_length] __attribute__((aligned(8)));
 	memset(zeroiv, 0, gmac_iv_length);
 
 	if (!session->gmac_cipher->crypt(session->gmac_cipher_state, &H, &ZERO_BLOCK, sizeof(fastd_block128_t), zeroiv)) {
@@ -196,13 +196,13 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
-	data_t gmac_nonce[session->method->gmac_cipher_info->iv_length];
+	uint8_t gmac_nonce[session->method->gmac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(gmac_nonce, session->common.send_nonce, sizeof(gmac_nonce));
 
 	bool ok = session->gmac_cipher->crypt(session->gmac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), gmac_nonce);
 
 	if (ok) {
-		data_t nonce[session->method->cipher_info->iv_length];
+		uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 		fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
 		ok = session->cipher->crypt(session->cipher_state, outblocks+1, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
@@ -248,10 +248,10 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (flags)
 		return false;
 
-	data_t nonce[session->method->cipher_info->iv_length];
+	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
-	data_t gmac_nonce[session->method->gmac_cipher_info->iv_length];
+	uint8_t gmac_nonce[session->method->gmac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(gmac_nonce, in_nonce, sizeof(gmac_nonce));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;

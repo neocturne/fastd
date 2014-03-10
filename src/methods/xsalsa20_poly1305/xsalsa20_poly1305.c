@@ -34,7 +34,7 @@
 struct fastd_method_session_state {
 	fastd_method_common_t common;
 
-	data_t key[crypto_secretbox_xsalsa20poly1305_KEYBYTES];
+	uint8_t key[crypto_secretbox_xsalsa20poly1305_KEYBYTES] __attribute__((aligned(8)));
 };
 
 
@@ -121,7 +121,7 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
 
-	data_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES] = {};
+	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES] __attribute__((aligned(8))) = {};
 	memcpy_nonce(nonce, session->common.send_nonce);
 
 	crypto_secretbox_xsalsa20poly1305(out->data, in.data, in.len, nonce, session->key);
@@ -151,7 +151,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	if (flags)
 		return false;
 
-	data_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES] = {};
+	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES] __attribute__((aligned(8))) = {};
 	memcpy_nonce(nonce, in_nonce);
 
 	fastd_buffer_pull_head_zero(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
