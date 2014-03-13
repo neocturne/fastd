@@ -3,8 +3,8 @@ Description=Fast and Secure Tunnelling Daemon (connection %i)
 After=network.target
 
 [Service]
-Type=forking
-ExecStart=/usr/bin/fastd -c /etc/fastd/%i/fastd.conf --daemon
+Type=notify
+ExecStart=/usr/bin/fastd -c /etc/fastd/%i/fastd.conf
 ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]

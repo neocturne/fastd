@@ -51,6 +51,10 @@
 #include <openssl/err.h>
 #endif
 
+#ifdef ENABLE_SYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 
 static volatile bool sighup = false;
 static volatile bool terminate = false;
@@ -874,6 +878,17 @@ int main(int argc, char *argv[]) {
 	fastd_context_t ctx = {};
 	int status_fd = -1;
 
+#ifdef ENABLE_SYSTEMD
+	char *notify_socket = getenv("NOTIFY_SOCKET");
+
+	if (notify_socket) {
+		notify_socket = strdup(notify_socket);
+
+		/* unset the socket to allow calling on_pre_up safely */
+		unsetenv("NOTIFY_SOCKET");
+	}
+#endif
+
 	close_fds(&ctx);
 
 	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
@@ -944,6 +959,14 @@ int main(int argc, char *argv[]) {
 	init_peer_groups(&ctx);
 
 	write_pid(&ctx, getpid());
+
+#ifdef ENABLE_SYSTEMD
+	if (notify_socket) {
+		setenv("NOTIFY_SOCKET", notify_socket, 1);
+		sd_notifyf(1, "READY=1\nMAINPID=%lu", (unsigned long) getpid());
+		free(notify_socket);
+	}
+#endif
 
 	if (status_fd >= 0) {
 		static const uint8_t STATUS = 0;
