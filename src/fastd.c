@@ -45,7 +45,7 @@
 #include <sodium/core.h>
 #endif
 
-#ifdef USE_OPENSSL
+#ifdef ENABLE_OPENSSL
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
@@ -910,7 +910,7 @@ int main(int argc, char *argv[]) {
 	sodium_init();
 #endif
 
-#ifdef USE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	ERR_load_crypto_strings();
 	OpenSSL_add_all_algorithms();
 	OPENSSL_config(NULL);
@@ -1011,7 +1011,7 @@ int main(int argc, char *argv[]) {
 	free(ctx.eth_addr);
 	free(ctx.ifname);
 
-#ifdef USE_OPENSSL
+#ifdef ENABLE_OPENSSL
 	CONF_modules_free();
 	EVP_cleanup();
 	ERR_free_strings();

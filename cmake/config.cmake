@@ -18,8 +18,8 @@ endif()
 
 set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilities")
 
-set(USE_LIBSODIUM FALSE CACHE BOOL "Use libsodium instead of NaCl")
-set(USE_OPENSSL FALSE CACHE BOOL "Use OpenSSL")
+set(ENABLE_LIBSODIUM FALSE CACHE BOOL "Use libsodium instead of NaCl")
+set(ENABLE_OPENSSL FALSE CACHE BOOL "Enable crypto implementations using OpenSSL")
 
 set(WITH_CMDLINE_USER TRUE CACHE BOOL "Include support for setting user/group related options on the command line")
 set(WITH_CMDLINE_LOGGING TRUE CACHE BOOL "Include support for setting logging related options on the command line")
