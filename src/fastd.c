@@ -502,10 +502,8 @@ static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
 
 	fastd_peer_t *peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
-	if (!peer || !fastd_peer_is_established(peer)) {
-		fastd_buffer_free(buffer);
-		return true;
-	}
+	if (!peer || !fastd_peer_is_established(peer))
+		return false;
 
 	ctx->conf->protocol->send(ctx, peer, buffer);
 	return true;
