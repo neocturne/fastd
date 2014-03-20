@@ -64,6 +64,7 @@ static void default_config(fastd_config_t *conf) {
 	conf->mtu = 1500;
 	conf->mode = MODE_TAP;
 
+	conf->secure_handshakes = true;
 	conf->drop_caps = DROP_CAPS_ON;
 
 	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
@@ -572,9 +573,6 @@ void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
 		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
 		fastd_config_method(ctx, conf, "null");
 	}
-
-	if (!conf->secure_handshakes_set)
-		pr_warn(ctx, "`secure handshakes' not set, please read the documentation about this option; defaulting to no");
 
 	configure_user(ctx, conf);
 	configure_methods(ctx, conf);

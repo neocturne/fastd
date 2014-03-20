@@ -231,7 +231,6 @@ drop_capabilities_enabled:
 
 secure_handshakes:
 		boolean {
-			conf->secure_handshakes_set = true;
 			conf->secure_handshakes = $1;
 		}
 	;
