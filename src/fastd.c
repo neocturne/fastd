@@ -232,16 +232,17 @@ static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *source_pee
 	if (fastd_eth_addr_is_unicast(dest_addr)) {
 		fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
-		if (!dest_peer || dest_peer == source_peer || !fastd_peer_is_established(dest_peer)) {
-			fastd_buffer_free(buffer);
+		if (dest_peer) {
+			if (dest_peer != source_peer)
+				ctx->conf->protocol->send(ctx, dest_peer, buffer);
+			else
+				fastd_buffer_free(buffer);
+
 			return;
 		}
+	}
 
-		ctx->conf->protocol->send(ctx, dest_peer, buffer);
-	}
-	else {
-		fastd_send_all(ctx, source_peer, buffer);
-	}
+	fastd_send_all(ctx, source_peer, buffer);
 }
 
 void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
@@ -502,7 +503,7 @@ static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
 
 	fastd_peer_t *peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
 
-	if (!peer || !fastd_peer_is_established(peer))
+	if (!peer)
 		return false;
 
 	ctx->conf->protocol->send(ctx, peer, buffer);
