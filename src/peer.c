@@ -674,6 +674,9 @@ static inline fastd_peer_eth_addr_t* peer_get_by_addr(fastd_context_t *ctx, fast
 void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth_addr_t addr) {
 	int min = 0, max = ctx->n_eth_addr;
 
+	if (!fastd_peer_is_established(peer))
+		exit_bug(ctx, "tried to learn ethernet address on non-established peer");
+
 	while (max > min) {
 		int cur = (min+max)/2;
 		int cmp = fastd_eth_addr_cmp(&addr, &ctx->eth_addr[cur].addr);
