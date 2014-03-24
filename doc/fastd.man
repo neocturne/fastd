@@ -1,0 +1,118 @@
+.TH FASTD 1 "March 2014" "fastd v12" "User Commands"
+.SH NAME
+fastd \- Fast and Secure Tunnelling Daemon
+.SH SYNOPSIS
+.B fastd
+\fIOPTION\fR...
+.SH DESCRIPTION
+fastd is a very small VPN daemon which tunnels IP packets and Ethernet frames over UDP. It supports various modern
+encryption and authentication schemes and can be used in many different network topologies (1:1, 1:n, meshed).
+.SH OPTIONS
+.TP
+\fB\-\-help\fR, \fB\-h\fR
+Shows a help text.
+.TP
+\fB\-\-version\fR, \fB\-v\fR
+Shows the fastd version.
+.TP
+\fB\-\-daemon\fR, \fB\-d\fR
+Runs fastd in the background.
+.TP
+\fB\-\-pid\-file\fR <filename>
+Writes fastd's PID to the specified file.
+.TP
+\fB\-\-config\fR, \fB\-c\fR <filename>
+Loads a config file. - can be specified to read a config file from stdin. More than one config file can be loaded.
+.TP
+\fB\-\-config\-peer\fR <filename>
+Loads a config file for a single peer. The filename will be used as the peer name.
+.TP
+\fB\-\-config\-peer\-dir\fR <dir>
+Loads all files from a directory as peer configs. On \fBSIGHUP\fR fastd will reload peer directories.
+.TP
+\fB\-\-user\fR <user>
+Sets the user to run fastd as.
+.TP
+\fB\-\-group\fR <group>
+Sets the group to run fastd as.
+.TP
+\fB\-\-log\-level\fR error|warn|info|verbose|debug|debug2
+Sets the stderr log level; default is \fIinfo\fR if no alternative log destination is configured.
+.TP
+\fB\-\-syslog\-level\fR error|warn|info|verbose|debug|debug2
+Sets the log level for syslog output; default is not to use syslog.
+.TP
+\fB\-\-syslog\-ident\fR <ident>
+Sets the syslog identification; default is \fIfastd\fR.
+.TP
+\fB\-\-hide\-ip\-addresses\fR
+Hides IP addresses in log output.
+.TP
+\fB\-\-hide\-mac\-addresses\fR
+Hides MAC addresses in log output.
+.TP
+\fB\-\-mode\fR, \fB\-m\fR tap|tun
+Sets the mode of the interface; default is TAP mode.
+.TP
+\fB\-\-interface\fR, \fB\-i\fR <name>
+Sets the name of the TUN/TAP interface to use. If not specified, default names specified by the system will be used.
+.TP
+\fB\-\-mtu\fR, \fB\-M\fR <mtu>
+Sets the MTU; must be at least 576.
+.TP
+\fB\-\-bind\fR, \fB\-b\fR <address>[:<port>]
+Sets the bind address. Address can be an IPv4 address or an IPv6 address, or the keyword any. IPv6 addresses must be put in square brackets.
+
+By default fastd will to bind to a random port for both IPv4 and IPv6. It is currently
+not possible to specify an IPv6 link-local address on the command line.
+.TP
+\fB\-\-protocol\fR, \fB\-p\fR <protocol>
+Sets the handshake protocol. Currently the only protocol available is \fIec25519-fhmqvc\fR, which provides a secure authentication of peers based on public/secret keys.
+.TP
+\fB\-\-method\fR <method>
+Sets the encryption method.
+.TP
+\fB\-\-forward\fR
+Enables forwarding of packets between peers; read the full documentation before use!
+.TP
+\fB\-\-on\-pre\-up\fR <command>
+Sets a shell command to execute before interface creation.
+.TP
+\fB\-\-on\-up\fR <command>
+Sets a shell command to execute after interface creation.
+.TP
+\fB\-\-on\-down\fR <command>
+Sets a shell command to execute before interface destruction.
+.TP
+\fB\-\-on\-post\-down\fR <command>
+Sets a shell command to execute after interface destruction.
+.TP
+\fB\-\-on\-establish\fR <command>
+Sets a shell command to execute when a new connection is established.
+.TP
+\fB\-\-on\-disestablish\fR <command>
+Sets a shell command to execute when a connection is lost.
+.TP
+\fB\-\-on\-verify\fR <command>
+Sets a shell command to execute to check a connection attempt by an unknown peer.
+.TP
+\fB\-\-verify\-config\fR
+Checks the configuration and exits.
+.TP
+\fB\-\-generate\-key\fR
+Generates a new keypair.
+.TP
+\fB\-\-show\-key\fR
+Shows the public key corresponding to the configured secret.
+.TP
+\fB\-\-machine\-readable\fR
+Suppresses output of explaining text in the \fB\-\-show\-key\fR and \fB\-\-generate\-key\fR commands.
+.SH "SEE ALSO"
+The full documentation for
+.B fastd
+is maintained in the Wiki at
+\fIhttps://projects.universe-factory.net/projects/fastd/wiki/Fastd\fR.
+
+See the user manual at
+\fIhttps://projects.universe-factory.net/projects/fastd/wiki/User_manual\fR
+in particular.
