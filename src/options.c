@@ -188,9 +188,10 @@ static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *
 	char *charptr;
 	char *endptr;
 	char *addrstr;
+	char *ifname = NULL;
 
 	if (arg[0] == '[') {
-		charptr = strchr(arg, ']');
+		charptr = strrchr(arg, ']');
 		if (!charptr || (charptr[1] != ':' && charptr[1] != '\0'))
 			exit_error(ctx, "invalid bind address `%s'", arg);
 
@@ -202,7 +203,7 @@ static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *
 			charptr = NULL;
 	}
 	else {
-		charptr = strchr(arg, ':');
+		charptr = strrchr(arg, ':');
 		if (charptr) {
 			addrstr = strndup(arg, charptr-arg);
 		}
@@ -222,15 +223,22 @@ static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *
 
 	fastd_peer_address_t addr = {};
 
-	if (strcmp(addrstr, "any") == 0) {
-		/* nothing to do */
-	}
-	else if (arg[0] == '[') {
+	if (arg[0] == '[') {
 		addr.in6.sin6_family = AF_INET6;
 		addr.in6.sin6_port = htons(l);
 
+		ifname = strchr(addrstr, '%');
+		if (ifname) {
+			*ifname = '\0';
+			ifname++;
+		}
+
 		if (inet_pton(AF_INET6, addrstr, &addr.in6.sin6_addr) != 1)
-			exit_error(ctx, "invalid bind address `%s'", addrstr);
+			exit_error(ctx, "invalid bind address `[%s]'", addrstr);
+	}
+	else if (strcmp(addrstr, "any") == 0) {
+		addr.in.sin_family = AF_UNSPEC;
+		addr.in.sin_port = htons(l);
 	}
 	else {
 		addr.in.sin_family = AF_INET;
@@ -242,7 +250,7 @@ static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *
 
 	free(addrstr);
 
-	fastd_config_bind_address(ctx, conf, &addr, NULL, false, false);
+	fastd_config_bind_address(ctx, conf, &addr, ifname, false, false);
 }
 
 static void option_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
