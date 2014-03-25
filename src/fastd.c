@@ -51,8 +51,8 @@
 #include <openssl/err.h>
 #endif
 
-#ifdef ENABLE_SYSTEMD
-#include <systemd/sd-daemon.h>
+#ifdef USE_SYSTEMD
+#include <sys/un.h>
 #endif
 
 
@@ -873,11 +873,42 @@ static int daemonize(fastd_context_t *ctx) {
 	return -1;
 }
 
+#ifdef USE_SYSTEMD
+static void notify_systemd(fastd_context_t *ctx, const char *notify_socket) {
+	int fd;
+	struct sockaddr_un sa = {};
+
+	if ((notify_socket[0] != '@' && notify_socket[0] != '/') || notify_socket[1] == 0)
+		return;
+
+	fd = socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0);
+	if (fd < 0)
+		return;
+
+	sa.sun_family = AF_UNIX;
+
+	strncpy(sa.sun_path, notify_socket, sizeof(sa.sun_path));
+	if (sa.sun_path[0] == '@')
+		sa.sun_path[0] = 0;
+
+	if (connect(fd, (struct sockaddr*)&sa, offsetof(struct sockaddr_un, sun_path) + strnlen(notify_socket, sizeof(sa.sun_path))) < 0) {
+		pr_debug_errno(ctx, "unable to connect to notify socket: connect");
+		close(fd);
+		return;
+	}
+
+	dprintf(fd, "READY=1\nMAINPID=%lu", (unsigned long) getpid());
+	pr_debug(ctx, "sent startup notification to systemd");
+
+	close(fd);
+}
+#endif
+
 int main(int argc, char *argv[]) {
 	fastd_context_t ctx = {};
 	int status_fd = -1;
 
-#ifdef ENABLE_SYSTEMD
+#ifdef USE_SYSTEMD
 	char *notify_socket = getenv("NOTIFY_SOCKET");
 
 	if (notify_socket) {
@@ -959,10 +990,9 @@ int main(int argc, char *argv[]) {
 
 	write_pid(&ctx, getpid());
 
-#ifdef ENABLE_SYSTEMD
+#ifdef USE_SYSTEMD
 	if (notify_socket) {
-		setenv("NOTIFY_SOCKET", notify_socket, 1);
-		sd_notifyf(1, "READY=1\nMAINPID=%lu", (unsigned long) getpid());
+		notify_systemd(&ctx, notify_socket);
 		free(notify_socket);
 	}
 #endif

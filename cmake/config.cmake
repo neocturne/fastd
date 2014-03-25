@@ -9,6 +9,7 @@ set(USE_BINDTODEVICE ${LINUX})
 set(USE_PMTU ${LINUX})
 set(USE_PKTINFO ${LINUX})
 set(USE_PACKET_MARK ${LINUX})
+set(USE_SYSTEMD ${LINUX})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
   set(USE_MULTIAF_BIND FALSE)
@@ -20,7 +21,6 @@ set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilitie
 
 set(ENABLE_LIBSODIUM FALSE CACHE BOOL "Use libsodium instead of NaCl")
 set(ENABLE_OPENSSL FALSE CACHE BOOL "Enable crypto implementations using OpenSSL")
-set(ENABLE_SYSTEMD FALSE CACHE BOOL "Enable systemd support")
 
 set(WITH_CMDLINE_USER TRUE CACHE BOOL "Include support for setting user/group related options on the command line")
 set(WITH_CMDLINE_LOGGING TRUE CACHE BOOL "Include support for setting logging related options on the command line")

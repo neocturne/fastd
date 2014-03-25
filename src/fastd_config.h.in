@@ -37,6 +37,7 @@
 #cmakedefine USE_PKTINFO
 #cmakedefine USE_PACKET_MARK
 #cmakedefine USE_MULTIAF_BIND
+#cmakedefine USE_SYSTEMD
 
 
 #cmakedefine WITH_CAPABILITIES
@@ -48,7 +49,6 @@
 
 #cmakedefine HAVE_LIBSODIUM
 #cmakedefine ENABLE_OPENSSL
-#cmakedefine ENABLE_SYSTEMD
 
 #define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
 
