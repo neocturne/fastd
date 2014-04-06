@@ -6,6 +6,7 @@ endif()
 
 
 set(USE_BINDTODEVICE ${LINUX})
+set(USE_FREEBIND ${LINUX})
 set(USE_PMTU ${LINUX})
 set(USE_PKTINFO ${LINUX})
 set(USE_PACKET_MARK ${LINUX})

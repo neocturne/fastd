@@ -69,6 +69,11 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 	}
 #endif
 
+#ifdef USE_FREEBIND
+	if (setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
+		pr_warn_errno(ctx, "setsockopt: unable to set IP_FREEBIND");
+#endif
+
 	if (af == AF_INET6) {
 		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
 			pr_error_errno(ctx, "setsockopt: unable to set IPV6_RECVPKTINFO");

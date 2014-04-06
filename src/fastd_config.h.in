@@ -33,6 +33,7 @@
 
 
 #cmakedefine USE_BINDTODEVICE
+#cmakedefine USE_FREEBIND
 #cmakedefine USE_PMTU
 #cmakedefine USE_PKTINFO
 #cmakedefine USE_PACKET_MARK
