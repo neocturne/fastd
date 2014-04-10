@@ -26,6 +26,7 @@
 
 #include "fastd.h"
 #include "peer.h"
+#include "async.h"
 
 #include <netdb.h>
 #include <pthread.h>
@@ -69,8 +70,8 @@ static void* resolve_peer(void *varg) {
 			n_addr++;
 	}
 
-	uint8_t retbuf[sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)] __attribute__((aligned(8)));
-	fastd_resolve_return_t *ret = (fastd_resolve_return_t*)retbuf;
+	uint8_t retbuf[sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)] __attribute__((aligned(8)));
+	fastd_async_resolve_return_t *ret = (fastd_async_resolve_return_t*)retbuf;
 	ret->remote = arg->remote;
 
 	if (n_addr) {
@@ -94,8 +95,7 @@ static void* resolve_peer(void *varg) {
 
 	ret->n_addr = n_addr;
 
-	if (write(arg->ctx->async_wfd, ret, sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)) < 0)
-		pr_error_errno(arg->ctx, "can't write resolve return");
+	fastd_async_enqueue(arg->ctx, ASYNC_TYPE_RESOLVE_RETURN, ret, sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t));
 
 	freeaddrinfo(res);
 	free(arg->hostname);

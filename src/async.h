@@ -27,8 +27,16 @@
 #pragma once
 
 #include "types.h"
+#include "peer.h"
+
+
+struct fastd_async_resolve_return {
+	fastd_remote_t *remote;
+	size_t n_addr;
+	fastd_peer_address_t addr[];
+};
 
 
 void fastd_async_init(fastd_context_t *ctx);
 void fastd_async_handle(fastd_context_t *ctx);
-
+void fastd_async_enqueue(fastd_context_t *ctx, fastd_async_type_t type, const void *data, size_t len);

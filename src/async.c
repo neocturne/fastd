@@ -26,7 +26,6 @@
 
 #include "async.h"
 #include "fastd.h"
-#include "peer.h"
 
 
 void fastd_async_init(fastd_context_t *ctx) {
@@ -34,7 +33,7 @@ void fastd_async_init(fastd_context_t *ctx) {
 }
 
 static void handle_resolve_return(fastd_context_t *ctx) {
-	fastd_resolve_return_t resolve_return;
+	fastd_async_resolve_return_t resolve_return;
 	while (read(ctx->async_rfd, &resolve_return, sizeof(resolve_return)) < 0) {
 		if (errno != EINTR)
 			exit_errno(ctx, "handle_resolve_return: read");
@@ -69,5 +68,29 @@ static void handle_resolve_return(fastd_context_t *ctx) {
 }
 
 void fastd_async_handle(fastd_context_t *ctx) {
-	handle_resolve_return(ctx);
+	fastd_async_type_t type;
+
+	while (read(ctx->async_rfd, &type, sizeof(type)) < 0) {
+		if (errno != EINTR)
+			exit_errno(ctx, "fastd_async_handle: read");
+	}
+
+	switch (type) {
+	case ASYNC_TYPE_RESOLVE_RETURN:
+		handle_resolve_return(ctx);
+		break;
+
+	default:
+		exit_bug(ctx, "fastd_async_handle: unknown type");
+	}
+}
+
+void fastd_async_enqueue(fastd_context_t *ctx, fastd_async_type_t type, const void *data, size_t len) {
+	struct iovec vec[2] = {
+		{ .iov_base = &type, .iov_len = sizeof(type) },
+		{ .iov_base = (void *)data, .iov_len = len },
+	};
+
+	if (writev(ctx->async_wfd, vec, 2) < 0)
+		pr_error_errno(ctx, "fastd_async_enqueue");
 }

@@ -78,12 +78,6 @@ union fastd_peer_address {
 	struct sockaddr_in6 in6;
 };
 
-struct fastd_resolve_return {
-	fastd_remote_t *remote;
-	size_t n_addr;
-	fastd_peer_address_t addr[];
-};
-
 struct fastd_log_file {
 	fastd_log_file_t *next;
 
