@@ -94,7 +94,7 @@ static void* resolve_peer(void *varg) {
 
 	ret->n_addr = n_addr;
 
-	if (write(arg->ctx->resolvewfd, ret, sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)) < 0)
+	if (write(arg->ctx->async_wfd, ret, sizeof(fastd_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)) < 0)
 		pr_error_errno(arg->ctx, "can't write resolve return");
 
 	freeaddrinfo(res);

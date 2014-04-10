@@ -18,11 +18,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fastd_config.h.in ${CMAKE_CURRENT_BIN
 BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
 
 add_executable(fastd
-  fastd.c
+  async.c
   capabilities.c
   config.c
   handshake.c
   hkdf_sha256.c
+  fastd.c
   lex.c
   log.c
   options.c

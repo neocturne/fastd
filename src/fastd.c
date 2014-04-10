@@ -25,6 +25,7 @@
 
 
 #include "fastd.h"
+#include "async.h"
 #include "config.h"
 #include "crypto.h"
 #include "handshake.h"
@@ -115,7 +116,7 @@ static void init_signals(fastd_context_t *ctx) {
 
 }
 
-static void open_pipe(fastd_context_t *ctx, int *readfd, int *writefd) {
+void fastd_open_pipe(fastd_context_t *ctx, int *readfd, int *writefd) {
 	int pipefd[2];
 
 	if (pipe(pipefd))
@@ -126,10 +127,6 @@ static void open_pipe(fastd_context_t *ctx, int *readfd, int *writefd) {
 
 	*readfd = pipefd[0];
 	*writefd = pipefd[1];
-}
-
-static inline void init_pipes(fastd_context_t *ctx) {
-	open_pipe(ctx, &ctx->resolverfd, &ctx->resolvewfd);
 }
 
 static void init_log(fastd_context_t *ctx) {
@@ -522,41 +519,6 @@ static void handle_tun(fastd_context_t *ctx) {
 	fastd_send_all(ctx, NULL, buffer);
 }
 
-static void handle_resolve_returns(fastd_context_t *ctx) {
-	fastd_resolve_return_t resolve_return;
-	while (read(ctx->resolverfd, &resolve_return, sizeof(resolve_return)) < 0) {
-		if (errno != EINTR)
-			exit_errno(ctx, "handle_resolve_return: read");
-	}
-
-	fastd_peer_address_t addresses[resolve_return.n_addr];
-	while (read(ctx->resolverfd, &addresses, sizeof(addresses)) < 0) {
-		if (errno != EINTR)
-			exit_errno(ctx, "handle_resolve_return: read");
-	}
-
-	fastd_peer_t *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (!peer->config)
-			continue;
-
-		fastd_remote_t *remote;
-		for (remote = peer->remotes; remote; remote = remote->next) {
-			if (remote == resolve_return.remote)
-				break;
-		}
-
-		if (!remote)
-			continue;
-
-		fastd_peer_handle_resolve(ctx, peer, remote, resolve_return.n_addr, addresses);
-
-		break;
-	}
-
-	fastd_remote_unref(resolve_return.remote);
-}
-
 static inline int handshake_timeout(fastd_context_t *ctx) {
 	if (!ctx->handshake_queue.next)
 		return -1;
@@ -575,7 +537,7 @@ static void handle_input(fastd_context_t *ctx) {
 	struct pollfd fds[n_fds];
 	fds[0].fd = ctx->tunfd;
 	fds[0].events = POLLIN;
-	fds[1].fd = ctx->resolverfd;
+	fds[1].fd = ctx->async_rfd;
 	fds[1].events = POLLIN;
 
 	unsigned i;
@@ -621,7 +583,7 @@ static void handle_input(fastd_context_t *ctx) {
 	if (fds[0].revents & POLLIN)
 		handle_tun(ctx);
 	if (fds[1].revents & POLLIN)
-		handle_resolve_returns(ctx);
+		fastd_async_handle(ctx);
 
 	for (i = 2; i < ctx->n_socks+2; i++) {
 		if (fds[i].revents & (POLLERR|POLLHUP|POLLNVAL))
@@ -789,7 +751,7 @@ static int daemonize(fastd_context_t *ctx) {
 
 	uint8_t status = 1;
 	int parent_rpipe, parent_wpipe;
-	open_pipe(ctx, &parent_rpipe, &parent_wpipe);
+	fastd_open_pipe(ctx, &parent_rpipe, &parent_wpipe);
 
 	pid_t fork1 = fork();
 
@@ -805,7 +767,7 @@ static int daemonize(fastd_context_t *ctx) {
 			pr_error_errno(ctx, "setsid");
 
 		int child_rpipe, child_wpipe;
-		open_pipe(ctx, &child_rpipe, &child_wpipe);
+		fastd_open_pipe(ctx, &child_rpipe, &child_wpipe);
 
 		pid_t fork2 = fork();
 
@@ -976,7 +938,7 @@ int main(int argc, char *argv[]) {
 	/* change groups early as the can be relevant for file access (for PID file & log files) */
 	set_groups(&ctx);
 
-	init_pipes(&ctx);
+	fastd_async_init(&ctx);
 	init_sockets(&ctx);
 
 	if (!fastd_socket_handle_binds(&ctx))

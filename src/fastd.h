@@ -262,8 +262,8 @@ struct fastd_context {
 	fastd_dlist_head_t handshake_queue;
 	struct timespec next_keepalives;
 
-	int resolverfd;
-	int resolvewfd;
+	int async_rfd;
+	int async_wfd;
 
 	int tunfd;
 
@@ -309,6 +309,7 @@ fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int 
 void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock);
 void fastd_socket_error(fastd_context_t *ctx, fastd_socket_t *sock);
 
+void fastd_open_pipe(fastd_context_t *ctx, int *readfd, int *writefd);
 void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset);
 void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset);
 
