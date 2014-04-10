@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_CPUID_H_
-#define _FASTD_CPUID_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -42,5 +41,3 @@ static inline uint64_t fastd_cpuid(void) {
 
 	return ((uint64_t)ecx) << 32 | edx;
 }
-
-#endif /* _FASTD_CPUID_H_ */

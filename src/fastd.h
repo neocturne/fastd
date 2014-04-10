@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_FASTD_H_
-#define _FASTD_FASTD_H_
+#pragma once
 
 #include "compat.h"
 #include "types.h"
@@ -436,5 +435,3 @@ static inline size_t max_size_t(size_t a, size_t b) {
 static inline size_t min_size_t(size_t a, size_t b) {
 	return (a < b) ? a : b;
 }
-
-#endif /* _FASTD_FASTD_H_ */

@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_DLIST_H_
-#define _FASTD_DLIST_H_
+#pragma once
 
 #include "types.h"
 
@@ -63,5 +62,3 @@ static inline void fastd_dlist_remove(fastd_dlist_head_t *elem) {
 
 	elem->prev = elem->next = NULL;
 }
-
-#endif /* _FASTD_DLIST_H_ */

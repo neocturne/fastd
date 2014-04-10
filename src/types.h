@@ -30,8 +30,7 @@
 */
 
 
-#ifndef _FASTD_TYPES_H_
-#define _FASTD_TYPES_H_
+#pragma once
 
 #include <fastd_config.h>
 
@@ -149,5 +148,3 @@ typedef struct fastd_method_session_state fastd_method_session_state_t;
 
 typedef struct fastd_cipher_state fastd_cipher_state_t;
 typedef struct fastd_mac_state fastd_mac_state_t;
-
-#endif /* _FASTD_TYPES_H_ */

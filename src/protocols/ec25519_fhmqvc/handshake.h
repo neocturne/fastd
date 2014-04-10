@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_PROTOCOL_EC25519_FHMQVC_HANDSHAKE_H_
-#define _FASTD_PROTOCOL_EC25519_FHMQVC_HANDSHAKE_H_
+#pragma once
 
 #include "ec25519_fhmqvc.h"
 
@@ -51,5 +50,3 @@ static inline bool is_handshake_key_valid(fastd_context_t *ctx, const handshake_
 static inline bool is_handshake_key_preferred(fastd_context_t *ctx, const handshake_key_t *handshake_key) {
 	return !fastd_timed_out(ctx, &handshake_key->preferred_till);
 }
-
-#endif /* _FASTD_PROTOCOL_EC25519_FHMQVC_HANDSHAKE_H_ */

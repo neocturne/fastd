@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_SHA256_H_
-#define _FASTD_SHA256_H_
+#pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -56,5 +55,3 @@ void fastd_hmacsha256_blocks(fastd_sha256_t *out, const uint32_t key[FASTD_HMACS
 bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...);
 void fastd_hmacsha256(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], const uint32_t *in, size_t len);
 bool fastd_hmacsha256_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], const uint32_t *in, size_t len);
-
-#endif /* _FASTD_SHA256_H_ */

@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_LEX_H_
-#define _FASTD_LEX_H_
+#pragma once
 
 #include "types.h"
 #include <config.yy.h>
@@ -37,5 +36,3 @@ fastd_lex_t* fastd_lex_init(FILE *file);
 void fastd_lex_destroy(fastd_lex_t *lex);
 
 int fastd_lex(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex);
-
-#endif /* _FASTD_LEX_H_ */

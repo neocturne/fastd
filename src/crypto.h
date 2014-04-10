@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_CRYPTO_H_
-#define _FASTD_CRYPTO_H_
+#pragma once
 
 #include "types.h"
 
@@ -92,5 +91,3 @@ static inline void xor_a(fastd_block128_t *x, const fastd_block128_t *a) {
 static inline bool fastd_true(void) {
 	return true;
 }
-
-#endif /* _FASTD_CRYPTO_H_ */

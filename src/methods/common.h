@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_METHODS_COMMON_H_
-#define _FASTD_METHODS_COMMON_H_
+#pragma once
 
 #include "../fastd.h"
 
@@ -116,5 +115,3 @@ static inline void fastd_method_expand_nonce(uint8_t *buf, const uint8_t nonce[C
 	memcpy(buf, nonce, min_size_t(len, COMMON_NONCEBYTES));
 	buf[len-1] = 1;
 }
-
-#endif /* _FASTD_METHODS_COMMON_H_ */

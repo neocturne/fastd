@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_COMPAT_H_
-#define _FASTD_COMPAT_H_
+#pragma once
 
 #include <fastd_config.h>
 
@@ -72,5 +71,3 @@ static inline char *get_current_dir_name(void) {
 #endif
 
 #endif
-
-#endif /* _FASTD_COMPAT_H_ */

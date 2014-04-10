@@ -24,6 +24,8 @@
 */
 
 
+#pragma once
+
 #include "../../../../crypto.h"
 
 

@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_PEER_H_
-#define _FASTD_PEER_H_
+#pragma once
 
 #include "fastd.h"
 
@@ -219,5 +218,3 @@ static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth_addr_t addr);
 void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx);
 fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, fastd_eth_addr_t addr);
-
-#endif /* _FASTD_PEER_H_ */

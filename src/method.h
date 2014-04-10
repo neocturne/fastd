@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_METHOD_H_
-#define _FASTD_METHOD_H_
+#pragma once
 
 #include "fastd.h"
 
@@ -73,5 +72,3 @@ static inline const fastd_method_info_t* fastd_method_get_by_name(fastd_context_
 
 	return NULL;
 }
-
-#endif /* _FASTD_METHOD_H_ */

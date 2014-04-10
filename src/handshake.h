@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_HANDSHAKE_H_
-#define _FASTD_HANDSHAKE_H_
+#pragma once
 
 #include "fastd.h"
 
@@ -138,6 +137,3 @@ static inline void fastd_handshake_add_uint16(fastd_context_t *ctx, fastd_buffer
 	dst[0] = value;
 	dst[1] = value >> 8;
 }
-
-
-#endif /* _FASTD_HANDSHAKE_H_ */

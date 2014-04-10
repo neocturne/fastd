@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_LOG_H_
-#define _FASTD_LOG_H_
+#pragma once
 
 #include "types.h"
 
@@ -55,6 +54,3 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 #define exit_bug(ctx, message) exit_fatal(ctx, "BUG: %s", message)
 #define exit_error(ctx, args...) do { pr_error(ctx, args); exit(1); } while(0)
 #define exit_errno(ctx, message) exit_error(ctx, "%s: %s", message, strerror(errno))
-
-#endif /* _FASTD_LOG_H_ */
-

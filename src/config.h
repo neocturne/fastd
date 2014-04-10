@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_CONFIG_H_
-#define _FASTD_CONFIG_H_
+#pragma once
 
 #include "fastd.h"
 
@@ -47,5 +46,3 @@ void fastd_config_verify(fastd_context_t *ctx, fastd_config_t *conf);
 
 void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir);
 bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth);
-
-#endif /* _FASTD_CONFIG_H_ */

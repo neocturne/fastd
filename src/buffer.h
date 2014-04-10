@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_BUFFER_H_
-#define _FASTD_BUFFER_H_
+#pragma once
 
 #include "log.h"
 
@@ -91,5 +90,3 @@ static inline void fastd_buffer_push_head_to(const fastd_context_t *ctx, fastd_b
 	memcpy(data, buffer->data, len);
 	fastd_buffer_push_head(ctx, buffer, len);
 }
-
-#endif /* _FASTD_BUFFER_H_ */

@@ -24,8 +24,7 @@
 */
 
 
-#ifndef _FASTD_FASTD_CONFIG_H_
-#define _FASTD_FASTD_CONFIG_H_
+#pragma once
 
 #cmakedefine HAVE_AI_ADDRCONFIG
 #cmakedefine HAVE_ETHHDR
@@ -52,5 +51,3 @@
 #cmakedefine ENABLE_OPENSSL
 
 #define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
-
-#endif /* _FASTD_FASTD_CONFIG_H_ */
