@@ -24,6 +24,7 @@
 */
 
 
+#include "shell.h"
 #include "peer.h"
 
 #include <arpa/inet.h>
@@ -31,12 +32,16 @@
 #include <sys/wait.h>
 
 
-bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
+bool fastd_shell_command_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
+	if (!fastd_shell_command_isset(command))
+		return true;
+
 	int result = -1;
 	bool ok = false;
 	char *cwd = get_current_dir_name();
 
-	if(!chdir(dir)) {
+
+	if(!chdir(command->dir)) {
 		/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
 		char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
 
@@ -128,7 +133,7 @@ bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir
 
 		ctx->conf->protocol->set_shell_env(ctx, peer);
 
-		result = system(command);
+		result = system(command->command);
 
 		if (ret) {
 			*ret = result;
@@ -147,7 +152,7 @@ bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir
 			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
 	}
 	else {
-		pr_error(ctx, "can't chdir to `%s': %s", dir, strerror(errno));
+		pr_error(ctx, "can't chdir to `%s': %s", command->dir, strerror(errno));
 	}
 
 	free(cwd);

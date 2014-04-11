@@ -374,65 +374,37 @@ secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1->str); }
 	;
 
 on_pre_up:	TOK_STRING {
-			free(conf->on_pre_up);
-			free(conf->on_pre_up_dir);
-
-			conf->on_pre_up = strdup($1->str);
-			conf->on_pre_up_dir = get_current_dir_name();
+			fastd_shell_command_set(&conf->on_pre_up, $1->str);
 		}
 	;
 
 on_up:		TOK_STRING {
-			free(conf->on_up);
-			free(conf->on_up_dir);
-
-			conf->on_up = strdup($1->str);
-			conf->on_up_dir = get_current_dir_name();
+			fastd_shell_command_set(&conf->on_up, $1->str);
 		}
 	;
 
 on_down:	TOK_STRING {
-			free(conf->on_down);
-			free(conf->on_down_dir);
-
-			conf->on_down = strdup($1->str);
-			conf->on_down_dir = get_current_dir_name();
+			fastd_shell_command_set(&conf->on_down, $1->str);
 		}
 	;
 
 on_post_down:	TOK_STRING {
-			free(conf->on_post_down);
-			free(conf->on_post_down_dir);
-
-			conf->on_post_down = strdup($1->str);
-			conf->on_post_down_dir = get_current_dir_name();
+			fastd_shell_command_set(&conf->on_post_down, $1->str);
 		}
 	;
 
 on_establish:	TOK_STRING {
-			free(conf->on_establish);
-			free(conf->on_establish_dir);
-
-			conf->on_establish = strdup($1->str);
-			conf->on_establish_dir = get_current_dir_name();
+			fastd_shell_command_set(&conf->on_establish, $1->str);
 		}
 	;
 
 on_disestablish: TOK_STRING {
-			free(conf->on_disestablish);
-			free(conf->on_disestablish_dir);
-
-			conf->on_disestablish = strdup($1->str);
-			conf->on_disestablish_dir = get_current_dir_name();
+			fastd_shell_command_set(&conf->on_disestablish, $1->str);
 		}
 	;
 
 on_verify: TOK_STRING {
-			free(conf->on_verify);
-			free(conf->on_verify_dir);
-
-			conf->on_verify = strdup($1->str);
-			conf->on_verify_dir = get_current_dir_name();
+			fastd_shell_command_set(&conf->on_verify, $1->str);
 		}
 	;
 

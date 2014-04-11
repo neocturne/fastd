@@ -160,10 +160,6 @@ static inline bool fastd_peer_handshake_scheduled(fastd_context_t *ctx UNUSED, f
 fastd_eth_addr_t fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
 fastd_eth_addr_t fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
 
-static inline bool fastd_peer_allow_unknown(fastd_context_t *ctx) {
-	return ctx->conf->on_verify;
-}
-
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *config) {
 	return (!config->remotes || config->floating);
 }

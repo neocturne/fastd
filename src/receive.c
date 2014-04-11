@@ -131,7 +131,7 @@ static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socke
 }
 
 static inline bool allow_unknown_peers(fastd_context_t *ctx) {
-	return ctx->conf->has_floating || ctx->conf->on_verify;
+	return ctx->conf->has_floating || fastd_shell_command_isset(&ctx->conf->on_verify);
 }
 
 static inline void handle_socket_receive_unknown(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {

@@ -26,11 +26,11 @@
 
 #pragma once
 
-#include "compat.h"
 #include "types.h"
 #include "dlist.h"
 #include "buffer.h"
 #include "log.h"
+#include "shell.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -205,26 +205,13 @@ struct fastd_config {
 
 	fastd_protocol_config_t *protocol_config;
 
-	char *on_pre_up;
-	char *on_pre_up_dir;
-
-	char *on_up;
-	char *on_up_dir;
-
-	char *on_down;
-	char *on_down_dir;
-
-	char *on_post_down;
-	char *on_post_down_dir;
-
-	char *on_establish;
-	char *on_establish_dir;
-
-	char *on_disestablish;
-	char *on_disestablish_dir;
-
-	char *on_verify;
-	char *on_verify_dir;
+	fastd_shell_command_t on_pre_up;
+	fastd_shell_command_t on_up;
+	fastd_shell_command_t on_down;
+	fastd_shell_command_t on_post_down;
+	fastd_shell_command_t on_establish;
+	fastd_shell_command_t on_disestablish;
+	fastd_shell_command_t on_verify;
 
 	bool daemon;
 	char *pid_file;
@@ -316,8 +303,6 @@ void fastd_tuntap_close(fastd_context_t *ctx);
 
 void fastd_cap_init(fastd_context_t *ctx);
 void fastd_cap_drop(fastd_context_t *ctx);
-
-bool fastd_shell_exec(fastd_context_t *ctx, const char *command, const char *dir, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret);
 
 void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure);
 

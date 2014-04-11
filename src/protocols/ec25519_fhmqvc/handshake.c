@@ -486,8 +486,12 @@ bool fastd_protocol_ec25519_fhmqvc_peer_check_temporary(fastd_context_t *ctx, fa
 	return true;
 }
 
+static inline bool allow_unknown(fastd_context_t *ctx) {
+	return fastd_shell_command_isset(&ctx->conf->on_verify);
+}
+
 static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const unsigned char key[32]) {
-	if (!fastd_peer_allow_unknown(ctx)) {
+	if (!allow_unknown(ctx)) {
 		pr_debug(ctx, "ignoring handshake from %I (unknown key)", remote_addr);
 		return NULL;
 	}

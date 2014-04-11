@@ -691,25 +691,19 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 	fastd_mac_config_free(conf->macs);
 	fastd_cipher_config_free(conf->ciphers);
 
+	fastd_shell_command_unset(&conf->on_pre_up);
+	fastd_shell_command_unset(&conf->on_up);
+	fastd_shell_command_unset(&conf->on_down);
+	fastd_shell_command_unset(&conf->on_post_down);
+	fastd_shell_command_unset(&conf->on_establish);
+	fastd_shell_command_unset(&conf->on_disestablish);
+	fastd_shell_command_unset(&conf->on_verify);
+
 	free(conf->user);
 	free(conf->group);
 	free(conf->groups);
 	free(conf->ifname);
 	free(conf->secret);
-	free(conf->on_pre_up);
-	free(conf->on_pre_up_dir);
-	free(conf->on_up);
-	free(conf->on_up_dir);
-	free(conf->on_down);
-	free(conf->on_down_dir);
-	free(conf->on_post_down);
-	free(conf->on_post_down_dir);
-	free(conf->on_establish);
-	free(conf->on_establish_dir);
-	free(conf->on_disestablish);
-	free(conf->on_disestablish_dir);
-	free(conf->on_verify);
-	free(conf->on_verify_dir);
 	free(conf->protocol_config);
 	free(conf->log_syslog_ident);
 }

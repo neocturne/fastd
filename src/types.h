@@ -32,11 +32,10 @@
 
 #pragma once
 
-#include <fastd_config.h>
+#include "compat.h"
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
 
 
 #define UNUSED __attribute__((unused))
@@ -131,6 +130,8 @@ typedef struct fastd_handshake fastd_handshake_t;
 
 typedef struct fastd_lex fastd_lex_t;
 typedef struct fastd_string_stack fastd_string_stack_t;
+
+typedef struct fastd_shell_command fastd_shell_command_t;
 
 typedef struct fastd_async_resolve_return fastd_async_resolve_return_t;
 
