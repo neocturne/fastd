@@ -36,12 +36,11 @@ bool fastd_shell_command_exec(fastd_context_t *ctx, const fastd_shell_command_t 
 	if (!fastd_shell_command_isset(command))
 		return true;
 
-	int result = -1;
 	bool ok = false;
 	char *cwd = get_current_dir_name();
 
 
-	if(!chdir(command->dir)) {
+	if (!chdir(command->dir)) {
 		/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
 		char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
 
@@ -133,19 +132,35 @@ bool fastd_shell_command_exec(fastd_context_t *ctx, const fastd_shell_command_t 
 
 		ctx->conf->protocol->set_shell_env(ctx, peer);
 
-		result = system(command->command);
+		if (command->sync) {
+			int result = system(command->command);
 
-		if (ret) {
-			*ret = result;
-			ok = true;
+			if (ret) {
+				*ret = result;
+				ok = true;
+			}
+			else {
+				if (WIFSIGNALED(result))
+					pr_error(ctx, "command exited with signal %i", WTERMSIG(result));
+				else if (WEXITSTATUS(result))
+					pr_warn(ctx, "command exited with status %i", WEXITSTATUS(result));
+				else
+					ok = true;
+			}
+
 		}
 		else {
-			if (WIFSIGNALED(result))
-				pr_error(ctx, "command exited with signal %i", WTERMSIG(result));
-			else if (WEXITSTATUS(result))
-				pr_warn(ctx, "command exited with status %i", WEXITSTATUS(result));
-			else
+			pid_t pid = fork();
+			if (pid == 0) {
+				execl("/bin/sh", "sh", "-c", command->command, (char*)NULL);
+				_exit(127);
+			}
+			else if (pid > 0) {
 				ok = true;
+			}
+			else {
+				pr_error_errno(ctx, "fastd_shell_exec_command: fork");
+			}
 		}
 
 		if(chdir(cwd))

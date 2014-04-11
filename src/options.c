@@ -270,31 +270,31 @@ static void option_forward(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
 #ifdef WITH_CMDLINE_COMMANDS
 
 static void option_on_pre_up(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_pre_up, arg);
+	fastd_shell_command_set(&conf->on_pre_up, arg, true);
 }
 
 static void option_on_up(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_up, arg);
+	fastd_shell_command_set(&conf->on_up, arg, true);
 }
 
 static void option_on_down(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_down, arg);
+	fastd_shell_command_set(&conf->on_down, arg, true);
 }
 
 static void option_on_post_down(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_post_down, arg);
+	fastd_shell_command_set(&conf->on_post_down, arg, true);
 }
 
 static void option_on_establish(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_establish, arg);
+	fastd_shell_command_set(&conf->on_establish, arg, false);
 }
 
 static void option_on_disestablish(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_disestablish, arg);
+	fastd_shell_command_set(&conf->on_disestablish, arg, false);
 }
 
 static void option_on_verify(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_verify, arg);
+	fastd_shell_command_set(&conf->on_verify, arg, false);
 }
 
 #endif

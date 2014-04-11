@@ -69,6 +69,7 @@
 %token TOK_ADDRESSES
 %token TOK_ANY
 %token TOK_AS
+%token TOK_ASYNC
 %token TOK_AUTO
 %token TOK_BIND
 %token TOK_CAPABILITIES
@@ -118,6 +119,7 @@
 %token TOK_SECRET
 %token TOK_SECURE
 %token TOK_STDERR
+%token TOK_SYNC
 %token TOK_SYSLOG
 %token TOK_TAP
 %token TOK_TO
@@ -155,6 +157,9 @@
 %type <uint64> bind_default
 %type <uint64> drop_capabilities_enabled
 %type <tristate> autobool
+%type <boolean> sync
+%type <boolean> sync_def_sync
+%type <boolean> sync_def_async
 
 %%
 start:		START_CONFIG config
@@ -373,38 +378,38 @@ method:		TOK_STRING {
 secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1->str); }
 	;
 
-on_pre_up:	TOK_STRING {
-			fastd_shell_command_set(&conf->on_pre_up, $1->str);
+on_pre_up:	sync_def_sync TOK_STRING {
+			fastd_shell_command_set(&conf->on_pre_up, $2->str, $1);
 		}
 	;
 
-on_up:		TOK_STRING {
-			fastd_shell_command_set(&conf->on_up, $1->str);
+on_up:		sync_def_sync TOK_STRING {
+			fastd_shell_command_set(&conf->on_up, $2->str, $1);
 		}
 	;
 
-on_down:	TOK_STRING {
-			fastd_shell_command_set(&conf->on_down, $1->str);
+on_down:	sync_def_sync TOK_STRING {
+			fastd_shell_command_set(&conf->on_down, $2->str, $1);
 		}
 	;
 
-on_post_down:	TOK_STRING {
-			fastd_shell_command_set(&conf->on_post_down, $1->str);
+on_post_down:	sync_def_sync TOK_STRING {
+			fastd_shell_command_set(&conf->on_post_down, $2->str, $1);
 		}
 	;
 
-on_establish:	TOK_STRING {
-			fastd_shell_command_set(&conf->on_establish, $1->str);
+on_establish:	sync_def_async TOK_STRING {
+			fastd_shell_command_set(&conf->on_establish, $2->str, $1);
 		}
 	;
 
-on_disestablish: TOK_STRING {
-			fastd_shell_command_set(&conf->on_disestablish, $1->str);
+on_disestablish: sync_def_async TOK_STRING {
+			fastd_shell_command_set(&conf->on_disestablish, $2->str, $1);
 		}
 	;
 
-on_verify: TOK_STRING {
-			fastd_shell_command_set(&conf->on_verify, $1->str);
+on_verify:	sync_def_async TOK_STRING {
+			fastd_shell_command_set(&conf->on_verify, $2->str, $1);
 		}
 	;
 
@@ -564,6 +569,17 @@ maybe_af:	TOK_IPV4	{ $$ = AF_INET; }
 maybe_float:	TOK_FLOAT	{ $$ = true; }
 	|			{ $$ = false; }
 	;
+
+sync_def_sync:	sync		{ $$ = $1; }
+	|			{ $$ = true; }
+	;
+
+sync_def_async: sync		{ $$ = $1; }
+	|			{ $$ = false; }
+	;
+
+sync:		TOK_SYNC	{ $$ = true; }
+	|	TOK_ASYNC	{ $$ = false; }
 
 boolean:	TOK_YES		{ $$ = true; }
 	|	TOK_NO		{ $$ = false; }

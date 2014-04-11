@@ -35,6 +35,7 @@
 struct fastd_shell_command {
 	char *command;
 	char *dir;
+	bool sync;
 };
 
 static inline void fastd_shell_command_unset(fastd_shell_command_t *command) {
@@ -45,11 +46,12 @@ static inline void fastd_shell_command_unset(fastd_shell_command_t *command) {
 	command->dir = NULL;
 }
 
-static inline void fastd_shell_command_set(fastd_shell_command_t *command, const char *val) {
+static inline void fastd_shell_command_set(fastd_shell_command_t *command, const char *val, bool sync) {
 	fastd_shell_command_unset(command);
 
 	command->command = strdup(val);
 	command->dir = get_current_dir_name();
+	command->sync = sync;
 }
 
 static inline bool fastd_shell_command_isset(const fastd_shell_command_t *command) {
