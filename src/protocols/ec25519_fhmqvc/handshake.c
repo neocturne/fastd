@@ -539,7 +539,8 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fa
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }
 
-void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
+void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+						    fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	bool temporary_added = false;
 
 	fastd_protocol_ec25519_fhmqvc_maintenance(ctx);
