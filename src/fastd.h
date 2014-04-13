@@ -209,6 +209,7 @@ struct fastd_config {
 	fastd_shell_command_t on_up;
 	fastd_shell_command_t on_down;
 	fastd_shell_command_t on_post_down;
+	fastd_shell_command_t on_connect;
 	fastd_shell_command_t on_establish;
 	fastd_shell_command_t on_disestablish;
 	fastd_shell_command_t on_verify;

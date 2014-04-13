@@ -56,6 +56,7 @@ static const keyword_t keywords[] = {
 	{ "bind", TOK_BIND },
 	{ "capabilities", TOK_CAPABILITIES },
 	{ "cipher", TOK_CIPHER },
+	{ "connect", TOK_CONNECT },
 	{ "debug", TOK_DEBUG },
 	{ "debug2", TOK_DEBUG2 },
 	{ "default", TOK_DEFAULT },

@@ -74,6 +74,7 @@
 %token TOK_BIND
 %token TOK_CAPABILITIES
 %token TOK_CIPHER
+%token TOK_CONNECT
 %token TOK_DEBUG
 %token TOK_DEBUG2
 %token TOK_DEFAULT
@@ -198,6 +199,7 @@ statement:	peer_group_statement
 	|	TOK_ON TOK_UP on_up ';'
 	|	TOK_ON TOK_DOWN on_down ';'
 	|	TOK_ON TOK_POST_DOWN on_post_down ';'
+	|	TOK_ON TOK_CONNECT on_connect ';'
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_ON TOK_VERIFY on_verify ';'
@@ -395,6 +397,11 @@ on_down:	sync_def_sync TOK_STRING {
 
 on_post_down:	sync_def_sync TOK_STRING {
 			fastd_shell_command_set(&conf->on_post_down, $2->str, $1);
+		}
+	;
+
+on_connect:	sync_def_async TOK_STRING {
+			fastd_shell_command_set(&conf->on_connect, $2->str, $1);
 		}
 	;
 

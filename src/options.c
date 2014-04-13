@@ -285,6 +285,10 @@ static void option_on_post_down(fastd_context_t *ctx UNUSED, fastd_config_t *con
 	fastd_shell_command_set(&conf->on_post_down, arg, true);
 }
 
+static void option_on_connect(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
+	fastd_shell_command_set(&conf->on_connect, arg, false);
+}
+
 static void option_on_establish(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
 	fastd_shell_command_set(&conf->on_establish, arg, false);
 }
