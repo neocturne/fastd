@@ -490,14 +490,14 @@ static inline bool allow_unknown(fastd_context_t *ctx) {
 	return fastd_shell_command_isset(&ctx->conf->on_verify);
 }
 
-static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const unsigned char key[32]) {
+static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer_address_t *addr, const unsigned char key[32]) {
 	if (!allow_unknown(ctx)) {
-		pr_debug(ctx, "ignoring handshake from %I (unknown key)", remote_addr);
+		pr_debug(ctx, "ignoring handshake from %I (unknown key)", addr);
 		return NULL;
 	}
 
 	if (key_count(ctx, key)) {
-		pr_debug(ctx, "ignoring handshake from %I (disabled key)", remote_addr);
+		pr_debug(ctx, "ignoring handshake from %I (disabled key)", addr);
 		return NULL;
 	}
 
@@ -508,12 +508,6 @@ static inline fastd_peer_t* add_temporary(fastd_context_t *ctx, const fastd_peer
 
 	/* Ugly hack */
 	peer->protocol_state->last_serial--;
-
-	if (!fastd_peer_verify_temporary(ctx, peer, local_addr, remote_addr)) {
-		pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, remote_addr);
-		fastd_peer_delete(ctx, peer);
-		return NULL;
-	}
 
 	return peer;
 }
@@ -541,8 +535,6 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fa
 
 void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 						    fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
-	bool temporary_added = false;
-
 	fastd_protocol_ec25519_fhmqvc_maintenance(ctx);
 
 	if (!has_field(handshake, RECORD_SENDER_KEY, PUBLICKEYBYTES)) {
@@ -558,11 +550,9 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_
 			return;
 
 		case ENOENT:
-			peer = add_temporary(ctx, local_addr, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
-			if (peer) {
-				temporary_added = true;
+			peer = add_temporary(ctx, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
+			if (peer)
 				break;
-			}
 
 			return;
 
@@ -571,11 +561,10 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_
 		}
 	}
 
-	if (fastd_peer_is_temporary(peer) && !temporary_added) {
-		if (!fastd_peer_verify_temporary(ctx, peer, local_addr, remote_addr)) {
-			pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, remote_addr);
-			return;
-		}
+	if (fastd_peer_is_temporary(peer) && !fastd_peer_verify_temporary(ctx, peer, local_addr, remote_addr)) {
+		pr_debug(ctx, "ignoring handshake from %P[%I] (verification failed)", peer, remote_addr);
+		fastd_peer_delete(ctx, peer);
+		return;
 	}
 
 	if (!fastd_peer_may_connect(ctx, peer)) {
