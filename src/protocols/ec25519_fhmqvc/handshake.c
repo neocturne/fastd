@@ -528,7 +528,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fa
 	fastd_handshake_add(ctx, &buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx->protocol_state->handshake_key.key.public);
 
 	if (!peer || !fastd_peer_is_established(peer))
-		fastd_shell_command_exec(ctx, &ctx->conf->on_connect, peer, (local_addr && local_addr->sa.sa_family) ? local_addr : sock->bound_addr, remote_addr, NULL);
+		fastd_shell_command_exec(ctx, &ctx->conf->on_connect, peer, (local_addr && local_addr->sa.sa_family) ? local_addr : sock->bound_addr, remote_addr);
 
 	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
 }

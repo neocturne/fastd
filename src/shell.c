@@ -32,145 +32,158 @@
 #include <sys/wait.h>
 
 
-bool fastd_shell_command_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
+static void shell_command_setenv(fastd_context_t *ctx, pid_t pid, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+	/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
+	char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
+
+	snprintf(buf, sizeof(buf), "%u", (unsigned)pid);
+	setenv("FASTD_PID", buf, 1);
+
+	if (ctx->ifname) {
+		setenv("INTERFACE", ctx->ifname, 1);
+	}
+	else if (ctx->conf->ifname) {
+		char ifname[IF_NAMESIZE];
+
+		strncpy(ifname, ctx->conf->ifname, sizeof(ifname)-1);
+		ifname[sizeof(ifname)-1] = 0;
+
+		setenv("INTERFACE", ifname, 1);
+	}
+	else {
+		unsetenv("INTERFACE");
+	}
+
+	snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
+	setenv("INTERFACE_MTU", buf, 1);
+
+	if (peer && peer->config && peer->config->name)
+		setenv("PEER_NAME", peer->config->name, 1);
+	else
+		unsetenv("PEER_NAME");
+
+	switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
+	case AF_INET:
+		inet_ntop(AF_INET, &local_addr->in.sin_addr, buf, sizeof(buf));
+		setenv("LOCAL_ADDRESS", buf, 1);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in.sin_port));
+		setenv("LOCAL_PORT", buf, 1);
+
+		break;
+
+	case AF_INET6:
+		inet_ntop(AF_INET6, &local_addr->in6.sin6_addr, buf, sizeof(buf));
+
+		if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr)) {
+			if (if_indextoname(local_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
+				buf[strlen(buf)] = '%';
+		}
+
+		setenv("LOCAL_ADDRESS", buf, 1);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in6.sin6_port));
+		setenv("LOCAL_PORT", buf, 1);
+
+		break;
+
+	default:
+		unsetenv("LOCAL_ADDRESS");
+		unsetenv("LOCAL_PORT");
+	}
+
+	switch(peer_addr ? peer_addr->sa.sa_family : AF_UNSPEC) {
+	case AF_INET:
+		inet_ntop(AF_INET, &peer_addr->in.sin_addr, buf, sizeof(buf));
+		setenv("PEER_ADDRESS", buf, 1);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in.sin_port));
+		setenv("PEER_PORT", buf, 1);
+
+		break;
+
+	case AF_INET6:
+		inet_ntop(AF_INET6, &peer_addr->in6.sin6_addr, buf, sizeof(buf));
+
+		if (IN6_IS_ADDR_LINKLOCAL(&peer_addr->in6.sin6_addr)) {
+			if (if_indextoname(peer_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
+				buf[strlen(buf)] = '%';
+		}
+
+		setenv("PEER_ADDRESS", buf, 1);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in6.sin6_port));
+		setenv("PEER_PORT", buf, 1);
+
+		break;
+
+	default:
+		unsetenv("PEER_ADDRESS");
+		unsetenv("PEER_PORT");
+	}
+
+	ctx->conf->protocol->set_shell_env(ctx, peer);
+}
+
+static bool shell_command_do_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, pid_t *pid_ret) {
+	pid_t parent = getpid();
+
+	pid_t pid = fork();
+	if (pid < 0) {
+		pr_error_errno(ctx, "shell_command_do_exec: fork");
+		return false;
+	}
+	else if (pid > 0) {
+		if (pid_ret)
+			*pid_ret = pid;
+
+		return true;
+	}
+
+	/* child process */
+	if (chdir(command->dir))
+		_exit(126);
+
+	shell_command_setenv(ctx, parent, peer, local_addr, peer_addr);
+
+	execl("/bin/sh", "sh", "-c", command->command, (char*)NULL);
+	_exit(127);
+}
+
+bool fastd_shell_command_exec_sync(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
 	if (!fastd_shell_command_isset(command))
 		return true;
 
-	bool ok = false;
-	char *cwd = get_current_dir_name();
+	pid_t pid;
+	if (!shell_command_do_exec(ctx, command, peer, local_addr, peer_addr, &pid))
+		return false;
 
+	int status;
+	if (waitpid(pid, &status, 0) <= 0) {
+		pr_error_errno(ctx, "fastd_shell_command_exec_sync: waitpid");
+		return false;
+	}
 
-	if (!chdir(command->dir)) {
-		/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
-		char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
-
-		snprintf(buf, sizeof(buf), "%u", (unsigned)getpid());
-		setenv("FASTD_PID", buf, 1);
-
-		if (ctx->ifname) {
-			setenv("INTERFACE", ctx->ifname, 1);
-		}
-		else if (ctx->conf->ifname) {
-			char ifname[IF_NAMESIZE];
-
-			strncpy(ifname, ctx->conf->ifname, sizeof(ifname)-1);
-			ifname[sizeof(ifname)-1] = 0;
-
-			setenv("INTERFACE", ifname, 1);
-		}
-		else {
-			unsetenv("INTERFACE");
-		}
-
-		snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
-		setenv("INTERFACE_MTU", buf, 1);
-
-		if (peer && peer->config && peer->config->name)
-			setenv("PEER_NAME", peer->config->name, 1);
-		else
-			unsetenv("PEER_NAME");
-
-		switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
-		case AF_INET:
-			inet_ntop(AF_INET, &local_addr->in.sin_addr, buf, sizeof(buf));
-			setenv("LOCAL_ADDRESS", buf, 1);
-
-			snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in.sin_port));
-			setenv("LOCAL_PORT", buf, 1);
-
-			break;
-
-		case AF_INET6:
-			inet_ntop(AF_INET6, &local_addr->in6.sin6_addr, buf, sizeof(buf));
-
-			if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr)) {
-				if (if_indextoname(local_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
-					buf[strlen(buf)] = '%';
-			}
-
-			setenv("LOCAL_ADDRESS", buf, 1);
-
-			snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in6.sin6_port));
-			setenv("LOCAL_PORT", buf, 1);
-
-			break;
-
-		default:
-			unsetenv("LOCAL_ADDRESS");
-			unsetenv("LOCAL_PORT");
-		}
-
-		switch(peer_addr ? peer_addr->sa.sa_family : AF_UNSPEC) {
-		case AF_INET:
-			inet_ntop(AF_INET, &peer_addr->in.sin_addr, buf, sizeof(buf));
-			setenv("PEER_ADDRESS", buf, 1);
-
-			snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in.sin_port));
-			setenv("PEER_PORT", buf, 1);
-
-			break;
-
-		case AF_INET6:
-			inet_ntop(AF_INET6, &peer_addr->in6.sin6_addr, buf, sizeof(buf));
-
-			if (IN6_IS_ADDR_LINKLOCAL(&peer_addr->in6.sin6_addr)) {
-				if (if_indextoname(peer_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
-					buf[strlen(buf)] = '%';
-			}
-
-			setenv("PEER_ADDRESS", buf, 1);
-
-			snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in6.sin6_port));
-			setenv("PEER_PORT", buf, 1);
-
-			break;
-
-		default:
-			unsetenv("PEER_ADDRESS");
-			unsetenv("PEER_PORT");
-		}
-
-		ctx->conf->protocol->set_shell_env(ctx, peer);
-
-		if (command->sync) {
-			int result = system(command->command);
-
-			if (ret) {
-				*ret = result;
-				ok = true;
-			}
-			else {
-				if (WIFSIGNALED(result))
-					pr_error(ctx, "command exited with signal %i", WTERMSIG(result));
-				else if (WEXITSTATUS(result))
-					pr_warn(ctx, "command exited with status %i", WEXITSTATUS(result));
-				else
-					ok = true;
-			}
-
-		}
-		else {
-			pid_t pid = fork();
-			if (pid == 0) {
-				execl("/bin/sh", "sh", "-c", command->command, (char*)NULL);
-				_exit(127);
-			}
-			else if (pid > 0) {
-				ok = true;
-			}
-			else {
-				pr_error_errno(ctx, "fastd_shell_exec_command: fork");
-			}
-		}
-
-		if(chdir(cwd))
-			pr_error(ctx, "can't chdir to `%s': %s", cwd, strerror(errno));
+	if (ret) {
+		*ret = status;
 	}
 	else {
-		pr_error(ctx, "can't chdir to `%s': %s", command->dir, strerror(errno));
+		if (WIFSIGNALED(status))
+			pr_warn(ctx, "command exited with signal %i", WTERMSIG(status));
+		else if (WEXITSTATUS(status))
+			pr_warn(ctx, "command exited with status %i", WEXITSTATUS(status));
 	}
 
-	free(cwd);
+	return true;
+}
 
-	return ok;
+
+void fastd_shell_command_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+	if (!fastd_shell_command_isset(command))
+		return;
+
+	if (command->sync)
+		fastd_shell_command_exec_sync(ctx, command, peer, local_addr, peer_addr, NULL);
+	else
+		shell_command_do_exec(ctx, command, peer, local_addr, peer_addr, NULL);
 }

@@ -270,19 +270,19 @@ void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer
 }
 
 static inline void on_pre_up(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_pre_up, NULL, NULL, NULL, NULL);
+	fastd_shell_command_exec(ctx, &ctx->conf->on_pre_up, NULL, NULL, NULL);
 }
 
 static inline void on_up(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_up, NULL, NULL, NULL, NULL);
+	fastd_shell_command_exec(ctx, &ctx->conf->on_up, NULL, NULL, NULL);
 }
 
 static inline void on_down(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_down, NULL, NULL, NULL, NULL);
+	fastd_shell_command_exec(ctx, &ctx->conf->on_down, NULL, NULL, NULL);
 }
 
 static inline void on_post_down(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_post_down, NULL, NULL, NULL, NULL);
+	fastd_shell_command_exec(ctx, &ctx->conf->on_post_down, NULL, NULL, NULL);
 }
 
 static fastd_peer_group_t* init_peer_group(const fastd_peer_group_config_t *config, fastd_peer_group_t *parent) {
@@ -699,9 +699,6 @@ static void write_pid(fastd_context_t *ctx, pid_t pid) {
 }
 
 static void set_user(fastd_context_t *ctx) {
-	if (chdir("/"))
-		pr_error(ctx, "can't chdir to `/': %s", strerror(errno));
-
 	if (ctx->conf->user || ctx->conf->group) {
 		if (setgid(ctx->conf->gid) < 0)
 			exit_errno(ctx, "setgid");
@@ -898,6 +895,9 @@ int main(int argc, char *argv[]) {
 
 	if (conf.daemon)
 		status_fd = daemonize(&ctx);
+
+	if (chdir("/"))
+		pr_error(&ctx, "can't chdir to `/': %s", strerror(errno));
 
 	init_log(&ctx);
 

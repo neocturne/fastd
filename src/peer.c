@@ -31,11 +31,11 @@
 
 
 static inline void on_establish(fastd_context_t *ctx, const fastd_peer_t *peer) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_establish, peer, &peer->local_address, &peer->address, NULL);
+	fastd_shell_command_exec(ctx, &ctx->conf->on_establish, peer, &peer->local_address, &peer->address);
 }
 
 static inline void on_disestablish(fastd_context_t *ctx, const fastd_peer_t *peer) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_disestablish, peer, &peer->local_address, &peer->address, NULL);
+	fastd_shell_command_exec(ctx, &ctx->conf->on_disestablish, peer, &peer->local_address, &peer->address);
 }
 
 static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
@@ -574,11 +574,10 @@ bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const
 	if (!fastd_shell_command_isset(&ctx->conf->on_verify))
 		exit_bug(ctx, "tried to verify temporary peer without on-verify command");
 
-	fastd_shell_command_t cmd = ctx->conf->on_verify;
-	cmd.sync = true; /* TODO: async not supported yet */
+	/* TODO: async not supported yet */
 
 	int ret;
-	if (!fastd_shell_command_exec(ctx, &cmd, peer, local_addr, peer_addr, &ret))
+	if (!fastd_shell_command_exec_sync(ctx, &ctx->conf->on_verify, peer, local_addr, peer_addr, &ret))
 		return false;
 
 	if (WIFSIGNALED(ret)) {
