@@ -154,12 +154,22 @@ bool fastd_shell_command_exec_sync(fastd_context_t *ctx, const fastd_shell_comma
 	if (!fastd_shell_command_isset(command))
 		return true;
 
+	/* block SIGCHLD */
+	sigset_t set, oldset;
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	pthread_sigmask(SIG_BLOCK, &set, &oldset);
+
 	pid_t pid;
 	if (!shell_command_do_exec(ctx, command, peer, local_addr, peer_addr, &pid))
 		return false;
 
 	int status;
-	if (waitpid(pid, &status, 0) <= 0) {
+	pid_t err = waitpid(pid, &status, 0);
+
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+
+	if (err <= 0) {
 		pr_error_errno(ctx, "fastd_shell_command_exec_sync: waitpid");
 		return false;
 	}

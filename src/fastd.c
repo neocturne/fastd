@@ -75,6 +75,7 @@ static void on_sigusr1(int signo UNUSED) {
 }
 
 static void on_sigchld(int signo UNUSED) {
+	while (waitpid(-1, NULL, WNOHANG) > 0) {}
 }
 
 static void init_signals(fastd_context_t *ctx) {
