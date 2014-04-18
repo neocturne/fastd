@@ -141,10 +141,17 @@ static bool shell_command_do_exec(fastd_context_t *ctx, const fastd_shell_comman
 	}
 
 	/* child process */
+
 	if (chdir(command->dir))
 		_exit(126);
 
 	shell_command_setenv(ctx, parent, peer, local_addr, peer_addr);
+
+	/* unblock SIGCHLD */
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 
 	execl("/bin/sh", "sh", "-c", command->command, (char*)NULL);
 	_exit(127);
