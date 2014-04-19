@@ -25,6 +25,7 @@
 
 
 #include "fastd.h"
+#include "poll.h"
 
 #include <fcntl.h>
 #include <net/if.h>
@@ -100,6 +101,8 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 
 	if (close(ctl_sock))
 		pr_error_errno(ctx, "close");
+
+	fastd_poll_set_fd_tuntap(ctx, ctx->tunfd);
 
 	pr_debug(ctx, "tun/tap device initialized.");
 }
@@ -201,6 +204,8 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 		exit_bug(ctx, "invalid mode");
 	}
 
+	fastd_poll_set_fd_tuntap(ctx, ctx->tunfd);
+
 	pr_debug(ctx, "tun/tap device initialized.");
 }
 
@@ -267,6 +272,8 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
+
+	fastd_poll_set_fd_tuntap(ctx, ctx->tunfd);
 
 	pr_debug(ctx, "tun device initialized.");
 }

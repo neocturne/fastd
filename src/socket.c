@@ -25,6 +25,7 @@
 
 
 #include "fastd.h"
+#include "poll.h"
 
 #include <fcntl.h>
 
@@ -194,6 +195,8 @@ bool fastd_socket_handle_binds(fastd_context_t *ctx) {
 				fastd_socket_close(ctx, &ctx->socks[i]);
 				continue;
 			}
+
+			fastd_poll_set_fd_sock(ctx, ctx->socks[i].fd, i);
 
 			fastd_peer_address_t bound_addr = *ctx->socks[i].bound_addr;
 			if (!ctx->socks[i].addr->addr.sa.sa_family)

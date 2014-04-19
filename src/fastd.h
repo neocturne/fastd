@@ -34,6 +34,7 @@
 #include "vector.h"
 
 #include <errno.h>
+#include <poll.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -240,6 +241,8 @@ struct fastd_context {
 	fastd_peer_group_t *peer_group;
 
 	VECTOR(fastd_peer_t*) peers;
+	VECTOR(struct pollfd) pollfds;
+
 	VECTOR(fastd_peer_t*) peers_temp;
 
 	fastd_dlist_head_t handshake_queue;
@@ -399,6 +402,10 @@ static inline struct timespec fastd_in_seconds(const fastd_context_t *ctx, int s
 	struct timespec ret = ctx->now;
 	ret.tv_sec += seconds;
 	return ret;
+}
+
+static inline void fastd_update_time(fastd_context_t *ctx) {
+	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
 }
 
 static inline bool strequal(const char *str1, const char *str2) {

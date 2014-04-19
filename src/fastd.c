@@ -30,11 +30,11 @@
 #include "crypto.h"
 #include "handshake.h"
 #include "peer.h"
+#include "poll.h"
 #include <fastd_version.h>
 
 #include <fcntl.h>
 #include <grp.h>
-#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
@@ -397,10 +397,6 @@ static void dump_state(fastd_context_t *ctx) {
 	pr_info(ctx, "dump finished.");
 }
 
-static inline void update_time(fastd_context_t *ctx) {
-	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
-}
-
 static inline void no_valid_address_debug(fastd_context_t *ctx, const fastd_peer_t *peer) {
 	pr_debug(ctx, "not sending a handshake to %P (no valid address resolved)", peer);
 }
@@ -474,120 +470,6 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 
 	if (fastd_remote_is_dynamic(peer->next_remote))
 		fastd_resolve_peer(ctx, peer, peer->next_remote);
-}
-
-static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
-	if (ctx->conf->mode != MODE_TAP)
-		return false;
-
-	if (buffer.len < ETH_HLEN) {
-		pr_debug(ctx, "truncated packet on tap interface");
-		fastd_buffer_free(buffer);
-		return true;
-	}
-
-	fastd_eth_addr_t dest_addr = fastd_get_dest_address(ctx, buffer);
-	if (!fastd_eth_addr_is_unicast(dest_addr))
-		return false;
-
-	fastd_peer_t *peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
-
-	if (!peer)
-		return false;
-
-	ctx->conf->protocol->send(ctx, peer, buffer);
-	return true;
-}
-
-static void handle_tun(fastd_context_t *ctx) {
-	fastd_buffer_t buffer = fastd_tuntap_read(ctx);
-	if (!buffer.len)
-		return;
-
-	if (handle_tun_tap(ctx, buffer))
-		return;
-
-	/* TUN mode or multicast packet */
-	fastd_send_all(ctx, NULL, buffer);
-}
-
-static inline int handshake_timeout(fastd_context_t *ctx) {
-	if (!ctx->handshake_queue.next)
-		return -1;
-
-	fastd_peer_t *peer = container_of(ctx->handshake_queue.next, fastd_peer_t, handshake_entry);
-
-	int diff_msec = timespec_diff(&peer->next_handshake, &ctx->now);
-	if (diff_msec < 0)
-		return 0;
-	else
-		return diff_msec;
-}
-
-static void handle_input(fastd_context_t *ctx) {
-	const size_t n_fds = 2 + ctx->n_socks + VECTOR_LEN(ctx->peers);
-	struct pollfd fds[n_fds];
-	fds[0].fd = ctx->tunfd;
-	fds[0].events = POLLIN;
-	fds[1].fd = ctx->async_rfd;
-	fds[1].events = POLLIN;
-
-	size_t i;
-	for (i = 0; i < ctx->n_socks; i++) {
-		fds[2+i].fd = ctx->socks[i].fd;
-		fds[2+i].events = POLLIN;
-	}
-
-	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
-
-		if (peer->sock && fastd_peer_is_socket_dynamic(peer))
-			fds[2+ctx->n_socks+i].fd = peer->sock->fd;
-		else
-			fds[2+ctx->n_socks+i].fd = -1;
-
-		fds[i+2+ctx->n_socks].events = POLLIN;
-	}
-
-	int maintenance_timeout = timespec_diff(&ctx->next_maintenance, &ctx->now);
-
-	if (maintenance_timeout < 0)
-		maintenance_timeout = 0;
-
-	int timeout = handshake_timeout(ctx);
-	if (timeout < 0 || timeout > maintenance_timeout)
-		timeout = maintenance_timeout;
-
-	int ret = poll(fds, n_fds, timeout);
-	if (ret < 0) {
-		if (errno == EINTR)
-			return;
-
-		exit_errno(ctx, "poll");
-	}
-
-	update_time(ctx);
-
-	if (fds[0].revents & POLLIN)
-		handle_tun(ctx);
-	if (fds[1].revents & POLLIN)
-		fastd_async_handle(ctx);
-
-	for (i = 0; i < ctx->n_socks; i++) {
-		if (fds[2+i].revents & (POLLERR|POLLHUP|POLLNVAL))
-			fastd_socket_error(ctx, &ctx->socks[i]);
-		else if (fds[2+i].revents & POLLIN)
-			fastd_receive(ctx, &ctx->socks[i]);
-	}
-
-	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
-
-		if (fds[2+ctx->n_socks+i].revents & (POLLERR|POLLHUP|POLLNVAL))
-			fastd_peer_reset_socket(ctx, peer);
-		else if (fds[2+ctx->n_socks+i].revents & POLLIN)
-			fastd_receive(ctx, peer->sock);
-	}
 }
 
 static void enable_temporaries(fastd_context_t *ctx) {
@@ -913,7 +795,7 @@ int main(int argc, char *argv[]) {
 
 	fastd_config_check(&ctx, &conf);
 
-	update_time(&ctx);
+	fastd_update_time(&ctx);
 
 	ctx.next_maintenance = fastd_in_seconds(&ctx, conf.maintenance_interval);
 
@@ -926,8 +808,9 @@ int main(int argc, char *argv[]) {
 	/* change groups early as the can be relevant for file access (for PID file & log files) */
 	set_groups(&ctx);
 
-	fastd_async_init(&ctx);
 	init_sockets(&ctx);
+	fastd_async_init(&ctx);
+	fastd_poll_init(&ctx);
 
 	if (!fastd_socket_handle_binds(&ctx))
 		exit_error(&ctx, "unable to bind default socket");
@@ -976,7 +859,7 @@ int main(int argc, char *argv[]) {
 	while (!terminate) {
 		handle_handshake_queue(&ctx);
 
-		handle_input(&ctx);
+		fastd_poll_handle(&ctx);
 
 		enable_temporaries(&ctx);
 
@@ -1014,6 +897,7 @@ int main(int argc, char *argv[]) {
 
 	fastd_tuntap_close(&ctx);
 	close_sockets(&ctx);
+	fastd_poll_free(&ctx);
 
 	on_post_down(&ctx);
 

@@ -25,6 +25,7 @@
 
 
 #include "peer.h"
+#include "poll.h"
 
 #include <arpa/inet.h>
 #include <sys/wait.h>
@@ -46,6 +47,14 @@ static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 			fastd_socket_close(ctx, peer->sock);
 			free(peer->sock);
+
+			size_t i;
+			for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+				if (VECTOR_INDEX(ctx->peers, i) == peer) {
+					fastd_poll_set_fd_peer(ctx, -1, i);
+					break;
+				}
+			}
 		}
 		peer->sock = NULL;
 	}
@@ -86,6 +95,17 @@ void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 			peer->sock = ctx->sock_default_v6;
 		else
 			peer->sock = fastd_socket_open(ctx, peer, AF_INET6);
+	}
+
+	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
+		return;
+
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		if (VECTOR_INDEX(ctx->peers, i) == peer) {
+			fastd_poll_set_fd_peer(ctx, peer->sock->fd, i);
+			break;
+		}
 	}
 }
 
@@ -238,6 +258,7 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
 		if (VECTOR_INDEX(ctx->peers, i) == peer) {
 			VECTOR_DELETE(ctx->peers, i);
+			fastd_poll_delete_peer(ctx, i);
 			break;
 		}
 	}
@@ -550,6 +571,7 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 	setup_peer(ctx, peer);
 
 	VECTOR_ADD(ctx->peers, peer);
+	fastd_poll_add_peer(ctx);
 
 	return peer;
 }
@@ -599,6 +621,7 @@ void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
 		exit_bug(ctx, "trying to re-enable non-temporary peer");
 
 	VECTOR_ADD(ctx->peers, peer);
+	fastd_poll_add_peer(ctx);
 }
 
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer) {
