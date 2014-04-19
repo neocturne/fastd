@@ -618,18 +618,19 @@ static void maintain_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	}
 }
 
-static void maintenance(fastd_context_t *ctx) {
-	fastd_peer_t *peer, *next;
-
+static void enable_temporaries(fastd_context_t *ctx) {
 	while (ctx->peers_temp) {
-		peer = ctx->peers_temp;
+		fastd_peer_t *peer = ctx->peers_temp;
 		ctx->peers_temp = ctx->peers_temp->next;
 
 		fastd_peer_enable_temporary(ctx, peer);
 	}
+}
 
+static void maintenance(fastd_context_t *ctx) {
 	fastd_socket_handle_binds(ctx);
 
+	fastd_peer_t *peer, *next;
 	for (peer = ctx->peers; peer; peer = next) {
 		next = peer->next;
 		maintain_peer(ctx, peer);
@@ -970,6 +971,8 @@ int main(int argc, char *argv[]) {
 		handle_handshake_queue(&ctx);
 
 		handle_input(&ctx);
+
+		enable_temporaries(&ctx);
 
 		if (fastd_timed_out(&ctx, &ctx.next_maintenance))
 			maintenance(&ctx);
