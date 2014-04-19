@@ -31,6 +31,7 @@
 #include "buffer.h"
 #include "log.h"
 #include "shell.h"
+#include "vector.h"
 
 #include <errno.h>
 #include <stdarg.h>
@@ -261,9 +262,7 @@ struct fastd_context {
 	fastd_stats_t tx_dropped;
 	fastd_stats_t tx_error;
 
-	size_t eth_addr_size;
-	size_t n_eth_addr;
-	fastd_peer_eth_addr_t *eth_addr;
+	VECTOR(fastd_peer_eth_addr_t) eth_addrs;
 
 	unsigned int randseed;
 

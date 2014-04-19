@@ -154,16 +154,16 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	ctx->conf->protocol->reset_peer_state(ctx, peer);
 
 	size_t i, deleted = 0;
-	for (i = 0; i < ctx->n_eth_addr; i++) {
-		if (ctx->eth_addr[i].peer == peer) {
+	for (i = 0; i < VECTOR_LEN(ctx->eth_addrs); i++) {
+		if (VECTOR_INDEX(ctx->eth_addrs, i).peer == peer) {
 			deleted++;
 		}
 		else if (deleted) {
-			ctx->eth_addr[i-deleted] = ctx->eth_addr[i];
+			VECTOR_INDEX(ctx->eth_addrs, i-deleted) = VECTOR_INDEX(ctx->eth_addrs, i);
 		}
 	}
 
-	ctx->n_eth_addr -= deleted;
+	VECTOR_RESIZE(ctx->eth_addrs, VECTOR_LEN(ctx->eth_addrs)-deleted);
 
 	fastd_peer_unschedule_handshake(ctx, peer);
 }
@@ -658,7 +658,7 @@ static inline int fastd_eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_
 }
 
 static inline fastd_peer_eth_addr_t* peer_get_by_addr(fastd_context_t *ctx, fastd_eth_addr_t addr) {
-	fastd_eth_addr_t *ret = bsearch(&addr, &ctx->eth_addr[0].addr, ctx->n_eth_addr, sizeof(fastd_peer_eth_addr_t),
+	fastd_eth_addr_t *ret = bsearch(&addr, &VECTOR_INDEX(ctx->eth_addrs, 0).addr, VECTOR_LEN(ctx->eth_addrs), sizeof(fastd_peer_eth_addr_t),
 					(int (*)(const void *, const void *))fastd_eth_addr_cmp);
 
 	if (ret)
@@ -668,18 +668,18 @@ static inline fastd_peer_eth_addr_t* peer_get_by_addr(fastd_context_t *ctx, fast
 }
 
 void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth_addr_t addr) {
-	int min = 0, max = ctx->n_eth_addr;
+	int min = 0, max = VECTOR_LEN(ctx->eth_addrs);
 
 	if (!fastd_peer_is_established(peer))
 		exit_bug(ctx, "tried to learn ethernet address on non-established peer");
 
 	while (max > min) {
 		int cur = (min+max)/2;
-		int cmp = fastd_eth_addr_cmp(&addr, &ctx->eth_addr[cur].addr);
+		int cmp = fastd_eth_addr_cmp(&addr, &VECTOR_INDEX(ctx->eth_addrs, cur).addr);
 
 		if (cmp == 0) {
-			ctx->eth_addr[cur].peer = peer;
-			ctx->eth_addr[cur].timeout = fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time);
+			VECTOR_INDEX(ctx->eth_addrs, cur).peer = peer;
+			VECTOR_INDEX(ctx->eth_addrs, cur).timeout = fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time);
 			return; /* We're done here. */
 		}
 		else if (cmp < 0) {
@@ -690,21 +690,7 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth
 		}
 	}
 
-	ctx->n_eth_addr++;
-	if (ctx->n_eth_addr > ctx->eth_addr_size) {
-		if (ctx->eth_addr_size == 0)
-			ctx->eth_addr_size = 16;
-		else
-			ctx->eth_addr_size *= 2;
-
-		ctx->eth_addr = realloc(ctx->eth_addr, ctx->eth_addr_size*sizeof(fastd_peer_eth_addr_t));
-	}
-
-	int i;
-	for (i = ctx->n_eth_addr-1; i > min; i--)
-		ctx->eth_addr[i] = ctx->eth_addr[i-1];
-
-	ctx->eth_addr[min] = (fastd_peer_eth_addr_t){ addr, peer, fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time) };
+	VECTOR_INSERT(ctx->eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time)}), min);
 
 	pr_debug(ctx, "learned new MAC address %E on peer %P", &addr, peer);
 }
@@ -712,18 +698,18 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth
 void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx) {
 	size_t i, deleted = 0;
 
-	for (i = 0; i < ctx->n_eth_addr; i++) {
-		if (fastd_timed_out(ctx, &ctx->eth_addr[i].timeout)) {
+	for (i = 0; i < VECTOR_LEN(ctx->eth_addrs); i++) {
+		if (fastd_timed_out(ctx, &VECTOR_INDEX(ctx->eth_addrs, i).timeout)) {
 			deleted++;
 			pr_debug(ctx, "MAC address %E not seen for more than %u seconds, removing",
-				 &ctx->eth_addr[i].addr, ctx->conf->eth_addr_stale_time);
+				 &VECTOR_INDEX(ctx->eth_addrs, i).addr, ctx->conf->eth_addr_stale_time);
 		}
 		else if (deleted) {
-			ctx->eth_addr[i-deleted] = ctx->eth_addr[i];
+			VECTOR_INDEX(ctx->eth_addrs, i-deleted) = VECTOR_INDEX(ctx->eth_addrs, i);
 		}
 	}
 
-	ctx->n_eth_addr -= deleted;
+	VECTOR_RESIZE(ctx->eth_addrs, VECTOR_LEN(ctx->eth_addrs)-deleted);
 }
 
 fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, const fastd_eth_addr_t addr) {

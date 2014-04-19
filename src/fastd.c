@@ -379,8 +379,8 @@ static void dump_state(fastd_context_t *ctx) {
 		if (ctx->conf->mode == MODE_TAP) {
 			unsigned int eth_addresses = 0;
 			size_t i;
-			for (i = 0; i < ctx->n_eth_addr; i++) {
-				if (ctx->eth_addr[i].peer == peer)
+			for (i = 0; i < VECTOR_LEN(ctx->eth_addrs); i++) {
+				if (VECTOR_INDEX(ctx->eth_addrs, i).peer == peer)
 					eth_addresses++;
 			}
 
@@ -965,6 +965,8 @@ int main(int argc, char *argv[]) {
 		set_user(&ctx);
 
 	fastd_config_load_peer_dirs(&ctx, &conf);
+
+	VECTOR_ALLOC(ctx.eth_addrs, 0);
 	init_peers(&ctx);
 
 	while (!terminate) {
@@ -1011,8 +1013,9 @@ int main(int argc, char *argv[]) {
 
 	on_post_down(&ctx);
 
+	VECTOR_FREE(ctx.eth_addrs);
+
 	free(ctx.protocol_state);
-	free(ctx.eth_addr);
 	free(ctx.ifname);
 
 #ifdef ENABLE_OPENSSL
