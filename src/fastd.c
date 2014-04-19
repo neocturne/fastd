@@ -30,6 +30,7 @@
 #include "crypto.h"
 #include "handshake.h"
 #include "peer.h"
+#include "peer_hashtable.h"
 #include "poll.h"
 #include <fastd_version.h>
 
@@ -854,6 +855,8 @@ int main(int argc, char *argv[]) {
 	VECTOR_ALLOC(ctx.peers, 0);
 	VECTOR_ALLOC(ctx.peers_temp, 0);
 
+	fastd_peer_hashtable_init(&ctx);
+
 	init_peers(&ctx);
 
 	while (!terminate) {
@@ -900,6 +903,8 @@ int main(int argc, char *argv[]) {
 	fastd_poll_free(&ctx);
 
 	on_post_down(&ctx);
+
+	fastd_peer_hashtable_free(&ctx);
 
 	VECTOR_FREE(ctx.peers_temp);
 	VECTOR_FREE(ctx.peers);

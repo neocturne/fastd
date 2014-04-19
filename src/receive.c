@@ -27,6 +27,7 @@
 #include "fastd.h"
 #include "handshake.h"
 #include "peer.h"
+#include "peer_hashtable.h"
 
 
 static inline void handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
@@ -163,13 +164,7 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 		peer = sock->peer;
 	}
 	else {
-		size_t i;
-		for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
-			peer = VECTOR_INDEX(ctx->peers, i);
-
-			if (fastd_peer_address_equal(&peer->address, remote_addr))
-				break;
-		}
+		peer = fastd_peer_hashtable_lookup(ctx, remote_addr);
 	}
 
 	if (peer) {

@@ -245,6 +245,9 @@ struct fastd_context {
 
 	VECTOR(fastd_peer_t*) peers_temp;
 
+	uint32_t peer_addr_ht_seed;
+	VECTOR(fastd_peer_t*) *peer_addr_ht;
+
 	fastd_dlist_head_t handshake_queue;
 	struct timespec next_maintenance;
 

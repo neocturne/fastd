@@ -28,6 +28,7 @@ add_executable(fastd
   log.c
   options.c
   peer.c
+  peer_hashtable.c
   poll.c
   random.c
   receive.c
