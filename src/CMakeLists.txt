@@ -36,6 +36,7 @@ add_executable(fastd
   shell.c
   socket.c
   tuntap.c
+  vector.c
   ${BISON_fastd_config_parse_OUTPUTS}
 )
 set_property(TARGET fastd PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
