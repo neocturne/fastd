@@ -550,14 +550,14 @@ static void handle_input(fastd_context_t *ctx) {
 	if (i != n_fds)
 		exit_bug(ctx, "fd count mismatch");
 
-	int keepalive_timeout = timespec_diff(&ctx->next_keepalives, &ctx->now);
+	int maintenance_timeout = timespec_diff(&ctx->next_maintenance, &ctx->now);
 
-	if (keepalive_timeout < 0)
-		keepalive_timeout = 0;
+	if (maintenance_timeout < 0)
+		maintenance_timeout = 0;
 
 	int timeout = handshake_timeout(ctx);
-	if (timeout < 0 || timeout > keepalive_timeout)
-		timeout = keepalive_timeout;
+	if (timeout < 0 || timeout > maintenance_timeout)
+		timeout = maintenance_timeout;
 
 	int ret = poll(fds, n_fds, timeout);
 	if (ret < 0) {
@@ -594,53 +594,50 @@ static void handle_input(fastd_context_t *ctx) {
 		exit_bug(ctx, "fd count mismatch");
 }
 
-static void cleanup_peers(fastd_context_t *ctx) {
-	fastd_peer_t *peer, *next;
+static void maintain_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
+	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
+		/* check for peer timeout */
+		if (fastd_timed_out(ctx, &peer->timeout)) {
+			if (fastd_peer_is_temporary(peer))
+				fastd_peer_delete(ctx, peer);
+			else
+				fastd_peer_reset(ctx, peer);
 
-	for (peer = ctx->peers; peer; peer = next) {
-		next = peer->next;
-
-		if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
-			if (fastd_timed_out(ctx, &peer->timeout)) {
-				if (fastd_peer_is_temporary(peer)) {
-					fastd_peer_delete(ctx, peer);
-				}
-				else {
-					fastd_peer_reset(ctx, peer);
-				}
-			}
+			return;
 		}
+
+		/* check for keepalive timeout */
+		if (!fastd_peer_is_established(peer))
+			return;
+
+		if (!fastd_timed_out(ctx, &peer->keepalive_timeout))
+			return;
+
+		pr_debug2(ctx, "sending keepalive to %P", peer);
+		ctx->conf->protocol->send(ctx, peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
 	}
 }
 
 static void maintenance(fastd_context_t *ctx) {
+	fastd_peer_t *peer, *next;
+
 	while (ctx->peers_temp) {
-		fastd_peer_t *peer = ctx->peers_temp;
+		peer = ctx->peers_temp;
 		ctx->peers_temp = ctx->peers_temp->next;
 
 		fastd_peer_enable_temporary(ctx, peer);
 	}
 
-	cleanup_peers(ctx);
-	fastd_peer_eth_addr_cleanup(ctx);
-
 	fastd_socket_handle_binds(ctx);
 
-	if (fastd_timed_out(ctx, &ctx->next_keepalives)) {
-		fastd_peer_t *peer;
-		for (peer = ctx->peers; peer; peer = peer->next) {
-			if (!fastd_peer_is_established(peer))
-				continue;
-
-			if (!fastd_timed_out(ctx, &peer->keepalive_timeout))
-				continue;
-
-			pr_debug2(ctx, "sending keepalive to %P", peer);
-			ctx->conf->protocol->send(ctx, peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
-		}
-
-		ctx->next_keepalives.tv_sec += ctx->conf->keepalive_interval;
+	for (peer = ctx->peers; peer; peer = next) {
+		next = peer->next;
+		maintain_peer(ctx, peer);
 	}
+
+	fastd_peer_eth_addr_cleanup(ctx);
+
+	ctx->next_maintenance.tv_sec += ctx->conf->maintenance_interval;
 }
 
 
@@ -916,7 +913,7 @@ int main(int argc, char *argv[]) {
 
 	update_time(&ctx);
 
-	ctx.next_keepalives = fastd_in_seconds(&ctx, conf.keepalive_interval);
+	ctx.next_maintenance = fastd_in_seconds(&ctx, conf.maintenance_interval);
 
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 
@@ -974,7 +971,8 @@ int main(int argc, char *argv[]) {
 
 		handle_input(&ctx);
 
-		maintenance(&ctx);
+		if (fastd_timed_out(&ctx, &ctx.next_maintenance))
+			maintenance(&ctx);
 
 		sigset_t set, oldset;
 		sigemptyset(&set);

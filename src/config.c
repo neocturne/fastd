@@ -51,7 +51,7 @@ static void default_config(fastd_config_t *conf) {
 
 	conf->log_syslog_ident = strdup("fastd");
 
-	conf->keepalive_interval = 10;
+	conf->maintenance_interval = 10;
 	conf->keepalive_timeout = 15;
 	conf->peer_stale_time = 90;
 	conf->eth_addr_stale_time = 300;

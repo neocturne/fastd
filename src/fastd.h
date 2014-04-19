@@ -143,8 +143,8 @@ struct fastd_config {
 	char *log_syslog_ident;
 	fastd_log_file_t *log_files;
 
+	unsigned maintenance_interval;
 	unsigned keepalive_timeout;
-	unsigned keepalive_interval;
 	unsigned peer_stale_time;
 	unsigned eth_addr_stale_time;
 
@@ -242,7 +242,7 @@ struct fastd_context {
 	fastd_peer_t *peers_temp;
 
 	fastd_dlist_head_t handshake_queue;
-	struct timespec next_keepalives;
+	struct timespec next_maintenance;
 
 	int async_rfd;
 	int async_wfd;
