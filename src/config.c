@@ -695,6 +695,7 @@ void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
 	fastd_shell_command_unset(&conf->on_up);
 	fastd_shell_command_unset(&conf->on_down);
 	fastd_shell_command_unset(&conf->on_post_down);
+	fastd_shell_command_unset(&conf->on_connect);
 	fastd_shell_command_unset(&conf->on_establish);
 	fastd_shell_command_unset(&conf->on_disestablish);
 	fastd_shell_command_unset(&conf->on_verify);
