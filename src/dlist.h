@@ -26,9 +26,7 @@
 
 #pragma once
 
-#include "types.h"
-
-#include <stdlib.h>
+#include <stddef.h>
 
 
 typedef struct fastd_dlist_head fastd_dlist_head_t;
