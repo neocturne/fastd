@@ -177,13 +177,14 @@ void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, cons
 }
 
 void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
-	fastd_peer_t *dest_peer;
-	for (dest_peer = ctx->peers; dest_peer; dest_peer = dest_peer->next) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		fastd_peer_t *dest_peer = VECTOR_INDEX(ctx->peers, i);
 		if (dest_peer == source_peer || !fastd_peer_is_established(dest_peer))
 			continue;
 
 		/* optimization, primarily for TUN mode: don't duplicate the buffer for the last (or only) peer */
-		if (!dest_peer->next) {
+		if (i == VECTOR_LEN(ctx->peers)-1) {
 			ctx->conf->protocol->send(ctx, dest_peer, buffer);
 			return;
 		}

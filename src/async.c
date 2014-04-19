@@ -45,8 +45,10 @@ static void handle_resolve_return(fastd_context_t *ctx) {
 			exit_errno(ctx, "handle_resolve_return: read");
 	}
 
-	fastd_peer_t *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
 		if (!peer->config)
 			continue;
 

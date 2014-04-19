@@ -336,30 +336,31 @@ static void init_peers(fastd_context_t *ctx) {
 		peer_conf->enabled = enable;
 	}
 
-	fastd_peer_t *peer, *next;
-	for (peer = ctx->peers; peer; peer = next) {
-		next = peer->next;
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
 
 		if (peer->config) {
 			if (!peer->config->enabled) {
 				pr_info(ctx, "previously enabled peer %P disabled, deleting.", peer);
 				fastd_peer_delete(ctx, peer);
+				continue;
 			}
 		}
 		else {
-			if (!ctx->conf->protocol->peer_check_temporary(ctx, peer))
+			if (!ctx->conf->protocol->peer_check_temporary(ctx, peer)) {
 				fastd_peer_delete(ctx, peer);
+				continue;
+			}
 		}
+
+		i++;
 	}
 }
 
 static void delete_peers(fastd_context_t *ctx) {
-	fastd_peer_t *peer, *next;
-	for (peer = ctx->peers; peer; peer = next) {
-		next = peer->next;
-
-		fastd_peer_delete(ctx, peer);
-	}
+	while (VECTOR_LEN(ctx->peers))
+		fastd_peer_delete(ctx, VECTOR_INDEX(ctx->peers, VECTOR_LEN(ctx->peers)-1));
 }
 
 static void dump_state(fastd_context_t *ctx) {
@@ -369,8 +370,10 @@ static void dump_state(fastd_context_t *ctx) {
 
 	pr_info(ctx, "dumping peers:");
 
-	fastd_peer_t *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
 		if (!fastd_peer_is_established(peer)) {
 			pr_info(ctx, "peer %P not connected, address: %I", peer, &peer->address);
 			continue;
@@ -522,33 +525,29 @@ static inline int handshake_timeout(fastd_context_t *ctx) {
 }
 
 static void handle_input(fastd_context_t *ctx) {
-	const size_t n_fds = 2 + ctx->n_socks + ctx->n_peers;
+	const size_t n_fds = 2 + ctx->n_socks + VECTOR_LEN(ctx->peers);
 	struct pollfd fds[n_fds];
 	fds[0].fd = ctx->tunfd;
 	fds[0].events = POLLIN;
 	fds[1].fd = ctx->async_rfd;
 	fds[1].events = POLLIN;
 
-	unsigned i;
-	for (i = 2; i < ctx->n_socks+2; i++) {
-		fds[i].fd = ctx->socks[i-2].fd;
-		fds[i].events = POLLIN;
+	size_t i;
+	for (i = 0; i < ctx->n_socks; i++) {
+		fds[2+i].fd = ctx->socks[i].fd;
+		fds[2+i].events = POLLIN;
 	}
 
-	fastd_peer_t *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
 		if (peer->sock && fastd_peer_is_socket_dynamic(peer))
-			fds[i].fd = peer->sock->fd;
+			fds[2+ctx->n_socks+i].fd = peer->sock->fd;
 		else
-			fds[i].fd = -1;
+			fds[2+ctx->n_socks+i].fd = -1;
 
-		fds[i].events = POLLIN;
-
-		i++;
+		fds[i+2+ctx->n_socks].events = POLLIN;
 	}
-
-	if (i != n_fds)
-		exit_bug(ctx, "fd count mismatch");
 
 	int maintenance_timeout = timespec_diff(&ctx->next_maintenance, &ctx->now);
 
@@ -574,66 +573,68 @@ static void handle_input(fastd_context_t *ctx) {
 	if (fds[1].revents & POLLIN)
 		fastd_async_handle(ctx);
 
-	for (i = 2; i < ctx->n_socks+2; i++) {
-		if (fds[i].revents & (POLLERR|POLLHUP|POLLNVAL))
-			fastd_socket_error(ctx, &ctx->socks[i-2]);
-		else if (fds[i].revents & POLLIN)
-			fastd_receive(ctx, &ctx->socks[i-2]);
+	for (i = 0; i < ctx->n_socks; i++) {
+		if (fds[2+i].revents & (POLLERR|POLLHUP|POLLNVAL))
+			fastd_socket_error(ctx, &ctx->socks[i]);
+		else if (fds[2+i].revents & POLLIN)
+			fastd_receive(ctx, &ctx->socks[i]);
 	}
 
-	for (peer = ctx->peers; peer; peer = peer->next) {
-		if (fds[i].revents & (POLLERR|POLLHUP|POLLNVAL))
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
+		if (fds[2+ctx->n_socks+i].revents & (POLLERR|POLLHUP|POLLNVAL))
 			fastd_peer_reset_socket(ctx, peer);
-		else if (fds[i].revents & POLLIN)
+		else if (fds[2+ctx->n_socks+i].revents & POLLIN)
 			fastd_receive(ctx, peer->sock);
-
-		i++;
-	}
-
-	if (i != n_fds)
-		exit_bug(ctx, "fd count mismatch");
-}
-
-static void maintain_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
-		/* check for peer timeout */
-		if (fastd_timed_out(ctx, &peer->timeout)) {
-			if (fastd_peer_is_temporary(peer))
-				fastd_peer_delete(ctx, peer);
-			else
-				fastd_peer_reset(ctx, peer);
-
-			return;
-		}
-
-		/* check for keepalive timeout */
-		if (!fastd_peer_is_established(peer))
-			return;
-
-		if (!fastd_timed_out(ctx, &peer->keepalive_timeout))
-			return;
-
-		pr_debug2(ctx, "sending keepalive to %P", peer);
-		ctx->conf->protocol->send(ctx, peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
 	}
 }
 
 static void enable_temporaries(fastd_context_t *ctx) {
-	while (ctx->peers_temp) {
-		fastd_peer_t *peer = ctx->peers_temp;
-		ctx->peers_temp = ctx->peers_temp->next;
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers_temp); i++)
+		fastd_peer_enable_temporary(ctx, VECTOR_INDEX(ctx->peers_temp, i));
 
-		fastd_peer_enable_temporary(ctx, peer);
+	VECTOR_RESIZE(ctx->peers_temp, 0);
+}
+
+static bool maintain_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
+	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
+		/* check for peer timeout */
+		if (fastd_timed_out(ctx, &peer->timeout)) {
+			if (fastd_peer_is_temporary(peer)) {
+				fastd_peer_delete(ctx, peer);
+				return false;
+			}
+			else {
+				fastd_peer_reset(ctx, peer);
+				return true;
+			}
+		}
+
+		/* check for keepalive timeout */
+		if (!fastd_peer_is_established(peer))
+			return true;
+
+		if (!fastd_timed_out(ctx, &peer->keepalive_timeout))
+			return true;
+
+		pr_debug2(ctx, "sending keepalive to %P", peer);
+		ctx->conf->protocol->send(ctx, peer, fastd_buffer_alloc(ctx, 0, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
 	}
+
+	return true;
 }
 
 static void maintenance(fastd_context_t *ctx) {
 	fastd_socket_handle_binds(ctx);
 
-	fastd_peer_t *peer, *next;
-	for (peer = ctx->peers; peer; peer = next) {
-		next = peer->next;
-		maintain_peer(ctx, peer);
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
+		if (maintain_peer(ctx, peer))
+			i++;
 	}
 
 	fastd_peer_eth_addr_cleanup(ctx);
@@ -967,6 +968,9 @@ int main(int argc, char *argv[]) {
 	fastd_config_load_peer_dirs(&ctx, &conf);
 
 	VECTOR_ALLOC(ctx.eth_addrs, 0);
+	VECTOR_ALLOC(ctx.peers, 0);
+	VECTOR_ALLOC(ctx.peers_temp, 0);
+
 	init_peers(&ctx);
 
 	while (!terminate) {
@@ -1013,6 +1017,8 @@ int main(int argc, char *argv[]) {
 
 	on_post_down(&ctx);
 
+	VECTOR_FREE(ctx.peers_temp);
+	VECTOR_FREE(ctx.peers);
 	VECTOR_FREE(ctx.eth_addrs);
 
 	free(ctx.protocol_state);

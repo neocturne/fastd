@@ -30,8 +30,6 @@
 
 
 struct fastd_peer {
-	fastd_peer_t *next;
-
 	const fastd_peer_config_t *config;
 	fastd_peer_group_t *group;
 

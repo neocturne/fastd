@@ -391,12 +391,15 @@ static void handle_finish_handshake(fastd_context_t *ctx, fastd_socket_t *sock, 
 	clear_shared_handshake_key(ctx, peer);
 }
 
-static fastd_peer_t* find_sender_key(fastd_context_t *ctx, const fastd_peer_address_t *address, const unsigned char key[32], fastd_peer_t *peers) {
+static fastd_peer_t* find_sender_key(fastd_context_t *ctx, const fastd_peer_address_t *address, const unsigned char key[32]) {
 	errno = 0;
 
-	fastd_peer_t *ret = NULL, *peer;
+	fastd_peer_t *ret = NULL;
+	size_t i;
 
-	for (peer = peers; peer; peer = peer->next) {
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
 		if (memcmp(&peer->protocol_config->public_key, key, PUBLICKEYBYTES) == 0) {
 			if (!fastd_peer_matches_address(ctx, peer, address)) {
 				errno = EPERM;
@@ -435,12 +438,7 @@ static fastd_peer_t* match_sender_key(fastd_context_t *ctx, const fastd_socket_t
 		}
 	}
 
-	peer = find_sender_key(ctx, address, key, ctx->peers);
-
-	if (!peer && errno == ENOENT)
-		peer = find_sender_key(ctx, address, key, ctx->peers_temp);
-
-	return peer;
+	return find_sender_key(ctx, address, key);
 }
 
 static size_t key_count(fastd_context_t *ctx, const unsigned char key[32]) {

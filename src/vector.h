@@ -73,7 +73,8 @@ void _fastd_vector_delete(fastd_vector_desc_t *desc, void **data, size_t pos, si
 
 #define VECTOR_ADD(v, elem) ({						\
 			__typeof__(v) *_v = &(v);			\
-			VECTOR_INSERT(*_v, (elem), _v->desc.length);	\
+			__typeof__(*_v->data) _e = (elem);		\
+			_fastd_vector_insert(&_v->desc, (void**)&_v->data, &_e, _v->desc.length, sizeof(_e)); \
 		})
 
 #define VECTOR_DELETE(v, pos) ({					\

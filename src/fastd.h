@@ -237,10 +237,10 @@ struct fastd_context {
 
 	struct timespec now;
 
-	unsigned n_peers;
 	fastd_peer_group_t *peer_group;
-	fastd_peer_t *peers;
-	fastd_peer_t *peers_temp;
+
+	VECTOR(fastd_peer_t*) peers;
+	VECTOR(fastd_peer_t*) peers_temp;
 
 	fastd_dlist_head_t handshake_queue;
 	struct timespec next_maintenance;

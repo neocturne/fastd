@@ -163,7 +163,10 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 		peer = sock->peer;
 	}
 	else {
-		for (peer = ctx->peers; peer; peer = peer->next) {
+		size_t i;
+		for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+			peer = VECTOR_INDEX(ctx->peers, i);
+
 			if (fastd_peer_address_equal(&peer->address, remote_addr))
 				break;
 		}

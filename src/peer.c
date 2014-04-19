@@ -234,18 +234,18 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	pr_debug(ctx, "deleting peer %P", peer);
 
-	fastd_peer_t **cur_peer;
-	for (cur_peer = &ctx->peers; *cur_peer; cur_peer = &(*cur_peer)->next) {
-		if ((*cur_peer) == peer) {
-			*cur_peer = peer->next;
-			ctx->n_peers--;
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		if (VECTOR_INDEX(ctx->peers, i) == peer) {
+			VECTOR_DELETE(ctx->peers, i);
 			break;
 		}
 	}
-	if (!*cur_peer) {
-		for (cur_peer = &ctx->peers_temp; *cur_peer; cur_peer = &(*cur_peer)->next) {
-			if ((*cur_peer) == peer) {
-				*cur_peer = peer->next;
+
+	if (i == VECTOR_LEN(ctx->peers)) {
+		for (i = 0; i < VECTOR_LEN(ctx->peers_temp); i++) {
+			if (VECTOR_INDEX(ctx->peers_temp, i) == peer) {
+				VECTOR_DELETE(ctx->peers_temp, i);
 				break;
 			}
 		}
@@ -300,12 +300,14 @@ void fastd_peer_config_delete(fastd_context_t *ctx UNUSED, fastd_config_t *conf)
 }
 
 void fastd_peer_config_purge(fastd_context_t *ctx, fastd_peer_config_t *conf) {
-	fastd_peer_t *peer, *next;
-	for (peer = ctx->peers; peer; peer = next) {
-		next = peer->next;
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
 
-		if (peer->config == conf)
+		if (peer->config == conf) {
 			fastd_peer_delete(ctx, peer);
+			break;
+		}
 	}
 
 	fastd_peer_config_free(conf);
@@ -410,8 +412,10 @@ bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *new_peer, fast
 			fastd_peer_reset(ctx, new_peer);
 	}
 	else {
-		fastd_peer_t *peer;
-		for (peer = ctx->peers; peer; peer = peer->next) {
+		size_t i;
+		for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+			fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
 			if (peer == new_peer)
 				continue;
 
@@ -488,8 +492,10 @@ void fastd_peer_delete(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 static inline unsigned count_established_group_peers(fastd_context_t *ctx, fastd_peer_group_t *group) {
 	unsigned ret = 0;
-	fastd_peer_t *peer;
-	for (peer = ctx->peers; peer; peer = peer->next) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
 		if (fastd_peer_is_established(peer) && is_peer_in_group(peer, group))
 			ret++;
 	}
@@ -517,9 +523,6 @@ bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer) {
 fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
 	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
 
-	peer->next = ctx->peers;
-	ctx->peers = peer;
-
 	peer->config = peer_conf;
 	peer->group = find_peer_group(ctx->peer_group, peer_conf->group);
 	peer->protocol_config = peer_conf->protocol_config;
@@ -546,7 +549,7 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 
 	setup_peer(ctx, peer);
 
-	ctx->n_peers++;
+	VECTOR_ADD(ctx->peers, peer);
 
 	return peer;
 }
@@ -557,15 +560,14 @@ fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx) {
 
 	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
 
-	peer->next = ctx->peers_temp;
-	ctx->peers_temp = peer;
-
 	peer->group = ctx->peer_group;
 	fastd_peer_seen(ctx, peer);
 
 	pr_debug(ctx, "adding temporary peer");
 
 	setup_peer(ctx, peer);
+
+	VECTOR_ADD(ctx->peers_temp, peer);
 
 	return peer;
 }
@@ -596,9 +598,7 @@ void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer) {
 	if (peer->config)
 		exit_bug(ctx, "trying to re-enable non-temporary peer");
 
-	peer->next = ctx->peers;
-	ctx->peers = peer;
-	ctx->n_peers++;
+	VECTOR_ADD(ctx->peers, peer);
 }
 
 void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer) {
