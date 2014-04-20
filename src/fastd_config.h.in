@@ -32,6 +32,7 @@
 
 
 #cmakedefine USE_BINDTODEVICE
+#cmakedefine USE_EPOLL
 #cmakedefine USE_FREEBIND
 #cmakedefine USE_PMTU
 #cmakedefine USE_PKTINFO

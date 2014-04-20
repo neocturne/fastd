@@ -241,9 +241,13 @@ struct fastd_context {
 	fastd_peer_group_t *peer_group;
 
 	VECTOR(fastd_peer_t*) peers;
-	VECTOR(struct pollfd) pollfds;
-
 	VECTOR(fastd_peer_t*) peers_temp;
+
+#ifdef USE_EPOLL
+	int epoll_fd;
+#else
+	VECTOR(struct pollfd) pollfds;
+#endif
 
 	uint32_t peer_addr_ht_seed;
 	VECTOR(fastd_peer_t*) *peer_addr_ht;
