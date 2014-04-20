@@ -106,11 +106,11 @@ const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
 	return NULL;
 }
 
-const fastd_cipher_t* fastd_cipher_get(fastd_context_t *ctx, const fastd_cipher_info_t *info) {
+const fastd_cipher_t* fastd_cipher_get(const fastd_cipher_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (ciphers[i].info == info)
-			return ctx->conf->ciphers[i];
+			return conf.ciphers[i];
 	}
 
 	return NULL;

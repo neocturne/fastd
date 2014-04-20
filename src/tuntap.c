@@ -64,10 +64,10 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
 		exit_errno(ctx, "could not open tun/tap device file");
 
-	if (ctx->conf->ifname)
-		strncpy(ifr.ifr_name, ctx->conf->ifname, IFNAMSIZ-1);
+	if (conf.ifname)
+		strncpy(ifr.ifr_name, conf.ifname, IFNAMSIZ-1);
 
-	switch (ctx->conf->mode) {
+	switch (conf.mode) {
 	case MODE_TAP:
 		ifr.ifr_flags = IFF_TAP;
 		break;
@@ -93,8 +93,8 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	if (ioctl(ctl_sock, SIOCGIFMTU, &ifr) < 0)
 		exit_errno(ctx, "SIOCGIFMTU ioctl failed");
 
-	if (ifr.ifr_mtu != ctx->conf->mtu) {
-		ifr.ifr_mtu = ctx->conf->mtu;
+	if (ifr.ifr_mtu != conf.mtu) {
+		ifr.ifr_mtu = conf.mtu;
 		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
 			exit_errno(ctx, "SIOCSIFMTU ioctl failed");
 	}
@@ -115,7 +115,7 @@ static void set_tun_mtu(fastd_context_t *ctx) {
 	if (ioctl(ctx->tunfd, TUNGIFINFO, &tuninfo) < 0)
 		exit_errno(ctx, "TUNGIFINFO ioctl failed");
 
-	tuninfo.mtu = ctx->conf->mtu;
+	tuninfo.mtu = conf.mtu;
 
 	if (ioctl(ctx->tunfd, TUNSIFINFO, &tuninfo) < 0)
 		exit_errno(ctx, "TUNSIFINFO ioctl failed");
@@ -130,7 +130,7 @@ static void set_tap_mtu(fastd_context_t *ctx) {
 	if (ioctl(ctx->tunfd, TAPGIFINFO, &tapinfo) < 0)
 		exit_errno(ctx, "TAPGIFINFO ioctl failed");
 
-	tapinfo.mtu = ctx->conf->mtu;
+	tapinfo.mtu = conf.mtu;
 
 	if (ioctl(ctx->tunfd, TAPSIFINFO, &tapinfo) < 0)
 		exit_errno(ctx, "TAPSIFINFO ioctl failed");
@@ -162,7 +162,7 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	const char *type;
 
-	switch (ctx->conf->mode) {
+	switch (conf.mode) {
 	case MODE_TAP:
 		type = "tap";
 		break;
@@ -175,11 +175,11 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 		exit_bug(ctx, "invalid mode");
 	}
 
-	if (ctx->conf->ifname) {
-		if (strncmp(ctx->conf->ifname, type, 3) != 0)
-			exit_error(ctx, "`%s' doesn't seem to be a %s device", ctx->conf->ifname, type);
+	if (conf.ifname) {
+		if (strncmp(conf.ifname, type, 3) != 0)
+			exit_error(ctx, "`%s' doesn't seem to be a %s device", conf.ifname, type);
 
-		strncat(ifname, ctx->conf->ifname, IFNAMSIZ-1);
+		strncat(ifname, conf.ifname, IFNAMSIZ-1);
 	}
 	else {
 		strncat(ifname, type, IFNAMSIZ-1);
@@ -191,7 +191,7 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 	if (!(ctx->ifname = fdevname_r(ctx->tunfd, malloc(IFNAMSIZ), IFNAMSIZ)))
 		exit_errno(ctx, "could not get tun/tap interface name");
 
-	switch (ctx->conf->mode) {
+	switch (conf.mode) {
 	case MODE_TAP:
 		setup_tap(ctx);
 		break;
@@ -246,21 +246,21 @@ static void setup_tap(fastd_context_t *ctx) {
 
 void fastd_tuntap_open(fastd_context_t *ctx) {
 	char ifname[5+IFNAMSIZ] = "/dev/";
-	if (!ctx->conf->ifname)
+	if (!conf.ifname)
 		exit_error(ctx, "config error: no interface name given.");
-	else if (strncmp(ctx->conf->ifname, "tun", 3) != 0)
-		exit_error(ctx, "config error: `%s' doesn't seem to be a tun device", ctx->conf->ifname);
+	else if (strncmp(conf.ifname, "tun", 3) != 0)
+		exit_error(ctx, "config error: `%s' doesn't seem to be a tun device", conf.ifname);
 	else
-		strncat(ifname, ctx->conf->ifname, IFNAMSIZ-1);
+		strncat(ifname, conf.ifname, IFNAMSIZ-1);
 
 	pr_debug(ctx, "initializing tun device...");
 
 	if ((ctx->tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
 		exit_errno(ctx, "could not open tun device file");
 
-	ctx->ifname = strndup(ctx->conf->ifname, IFNAMSIZ-1);
+	ctx->ifname = strndup(conf.ifname, IFNAMSIZ-1);
 
-	switch (ctx->conf->mode) {
+	switch (conf.mode) {
 	case MODE_TAP:
 		setup_tap(ctx);
 		break;
@@ -291,10 +291,10 @@ fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
 	size_t max_len = fastd_max_inner_packet(ctx);
 
 	fastd_buffer_t buffer;
-	if (multiaf_tun && ctx->conf->mode == MODE_TUN)
-		buffer = fastd_buffer_alloc(ctx, max_len+4, ctx->conf->min_encrypt_head_space+12, ctx->conf->min_encrypt_tail_space);
+	if (multiaf_tun && conf.mode == MODE_TUN)
+		buffer = fastd_buffer_alloc(ctx, max_len+4, conf.min_encrypt_head_space+12, conf.min_encrypt_tail_space);
 	else
-		buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space);
+		buffer = fastd_buffer_alloc(ctx, max_len, conf.min_encrypt_head_space, conf.min_encrypt_tail_space);
 
 	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
 	if (len < 0) {
@@ -308,14 +308,14 @@ fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
 
 	buffer.len = len;
 
-	if (multiaf_tun && ctx->conf->mode == MODE_TUN)
+	if (multiaf_tun && conf.mode == MODE_TUN)
 		fastd_buffer_push_head(ctx, &buffer, 4);
 
 	return buffer;
 }
 
 void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
-	if (multiaf_tun && ctx->conf->mode == MODE_TUN) {
+	if (multiaf_tun && conf.mode == MODE_TUN) {
 		uint8_t version = *((uint8_t*)buffer.data) >> 4;
 		uint32_t af;
 

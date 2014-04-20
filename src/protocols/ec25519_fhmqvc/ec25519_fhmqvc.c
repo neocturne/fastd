@@ -52,10 +52,10 @@ static inline void check_session_refresh(fastd_context_t *ctx, fastd_peer_t *pee
 static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 	fastd_protocol_config_t *protocol_config = malloc(sizeof(fastd_protocol_config_t));
 
-	if (!ctx->conf->secret)
+	if (!conf.secret)
 		exit_error(ctx, "no secret key configured");
 
-	if (!read_key(protocol_config->key.secret.p, ctx->conf->secret))
+	if (!read_key(protocol_config->key.secret.p, conf.secret))
 		exit_error(ctx, "invalid secret key");
 
 	ecc_25519_work_t work;
@@ -92,7 +92,7 @@ static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *p
 	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
 	peer_conf->protocol_config->public_key = key;
 
-	if (memcmp(&peer_conf->protocol_config->public_key, &ctx->conf->protocol_config->key.public, 32) == 0)
+	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, 32) == 0)
 		pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
 }
 
@@ -169,7 +169,7 @@ static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_
 	}
 
 	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, peer, send_buffer, stat_size);
-	peer->keepalive_timeout = fastd_in_seconds(ctx, ctx->conf->keepalive_timeout);
+	peer->keepalive_timeout = fastd_in_seconds(ctx, conf.keepalive_timeout);
 }
 
 static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {

@@ -33,11 +33,11 @@
 
 
 static inline void on_establish(fastd_context_t *ctx, const fastd_peer_t *peer) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_establish, peer, &peer->local_address, &peer->address);
+	fastd_shell_command_exec(ctx, &conf.on_establish, peer, &peer->local_address, &peer->address);
 }
 
 static inline void on_disestablish(fastd_context_t *ctx, const fastd_peer_t *peer) {
-	fastd_shell_command_exec(ctx, &ctx->conf->on_disestablish, peer, &peer->local_address, &peer->address);
+	fastd_shell_command_exec(ctx, &conf.on_disestablish, peer, &peer->local_address, &peer->address);
 }
 
 static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
@@ -175,7 +175,7 @@ static void reset_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	memset(&peer->local_address, 0, sizeof(peer->local_address));
 
-	ctx->conf->protocol->reset_peer_state(ctx, peer);
+	conf.protocol->reset_peer_state(ctx, peer);
 
 	size_t i, deleted = 0;
 	for (i = 0; i < VECTOR_LEN(ctx->eth_addrs); i++) {
@@ -240,7 +240,7 @@ static void setup_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 	peer->establish_handshake_timeout = ctx->now;
 
 	if (!peer->protocol_state)
-		ctx->conf->protocol->init_peer_state(ctx, peer);
+		conf.protocol->init_peer_state(ctx, peer);
 
 	if (peer->next_remote) {
 		peer->next_remote->current_address = 0;
@@ -278,7 +278,7 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 	fastd_peer_hashtable_remove(ctx, peer);
 
-	ctx->conf->protocol->free_peer_state(ctx, peer);
+	conf.protocol->free_peer_state(ctx, peer);
 
 	if (!peer->config)
 		free(peer->protocol_config);
@@ -294,13 +294,13 @@ static void delete_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 }
 
 
-fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
+fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx UNUSED) {
 	fastd_peer_config_t *peer = calloc(1, sizeof(fastd_peer_config_t));
 
-	peer->group = conf->peer_group;
+	peer->group = conf.peer_group;
 
-	peer->next = conf->peers;
-	conf->peers = peer;
+	peer->next = conf.peers;
+	conf.peers = peer;
 
 	return peer;
 }
@@ -320,24 +320,24 @@ void fastd_peer_config_free(fastd_peer_config_t *peer) {
 	free(peer);
 }
 
-void fastd_peer_config_delete(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	fastd_peer_config_t *peer = conf->peers, *next = peer->next;
+void fastd_peer_config_delete(fastd_context_t *ctx UNUSED) {
+	fastd_peer_config_t *peer = conf.peers, *next = peer->next;
 	fastd_peer_config_free(peer);
-	conf->peers = next;
+	conf.peers = next;
 }
 
-void fastd_peer_config_purge(fastd_context_t *ctx, fastd_peer_config_t *conf) {
+void fastd_peer_config_purge(fastd_context_t *ctx, fastd_peer_config_t *config) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
 
-		if (peer->config == conf) {
+		if (peer->config == config) {
 			fastd_peer_delete(ctx, peer);
 			break;
 		}
 	}
 
-	fastd_peer_config_free(conf);
+	fastd_peer_config_free(config);
 }
 
 bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2) {
@@ -590,7 +590,7 @@ fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_con
 }
 
 fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx) {
-	if (!fastd_shell_command_isset(&ctx->conf->on_verify))
+	if (!fastd_shell_command_isset(&conf.on_verify))
 		exit_bug(ctx, "tried to add temporary peer without on-verify command");
 
 	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
@@ -608,13 +608,13 @@ fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx) {
 }
 
 bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
-	if (!fastd_shell_command_isset(&ctx->conf->on_verify))
+	if (!fastd_shell_command_isset(&conf.on_verify))
 		exit_bug(ctx, "tried to verify temporary peer without on-verify command");
 
 	/* TODO: async not supported yet */
 
 	int ret;
-	if (!fastd_shell_command_exec_sync(ctx, &ctx->conf->on_verify, peer, local_addr, peer_addr, &ret))
+	if (!fastd_shell_command_exec_sync(ctx, &conf.on_verify, peer, local_addr, peer_addr, &ret))
 		return false;
 
 	if (WIFSIGNALED(ret)) {
@@ -649,7 +649,7 @@ void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer) {
 fastd_eth_addr_t fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
 	fastd_eth_addr_t ret;
 
-	switch (ctx->conf->mode) {
+	switch (conf.mode) {
 	case MODE_TAP:
 		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
 		return ret;
@@ -660,7 +660,7 @@ fastd_eth_addr_t fastd_get_source_address(const fastd_context_t *ctx, fastd_buff
 
 fastd_eth_addr_t fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer) {
 	fastd_eth_addr_t ret;
-	switch (ctx->conf->mode) {
+	switch (conf.mode) {
 	case MODE_TAP:
 		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
 		return ret;
@@ -715,7 +715,7 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth
 
 		if (cmp == 0) {
 			VECTOR_INDEX(ctx->eth_addrs, cur).peer = peer;
-			VECTOR_INDEX(ctx->eth_addrs, cur).timeout = fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time);
+			VECTOR_INDEX(ctx->eth_addrs, cur).timeout = fastd_in_seconds(ctx, conf.eth_addr_stale_time);
 			return; /* We're done here. */
 		}
 		else if (cmp < 0) {
@@ -726,7 +726,7 @@ void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth
 		}
 	}
 
-	VECTOR_INSERT(ctx->eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, fastd_in_seconds(ctx, ctx->conf->eth_addr_stale_time)}), min);
+	VECTOR_INSERT(ctx->eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, fastd_in_seconds(ctx, conf.eth_addr_stale_time)}), min);
 
 	pr_debug(ctx, "learned new MAC address %E on peer %P", &addr, peer);
 }
@@ -738,7 +738,7 @@ void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx) {
 		if (fastd_timed_out(ctx, &VECTOR_INDEX(ctx->eth_addrs, i).timeout)) {
 			deleted++;
 			pr_debug(ctx, "MAC address %E not seen for more than %u seconds, removing",
-				 &VECTOR_INDEX(ctx->eth_addrs, i).addr, ctx->conf->eth_addr_stale_time);
+				 &VECTOR_INDEX(ctx->eth_addrs, i).addr, conf.eth_addr_stale_time);
 		}
 		else if (deleted) {
 			VECTOR_INDEX(ctx->eth_addrs, i-deleted) = VECTOR_INDEX(ctx->eth_addrs, i);

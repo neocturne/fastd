@@ -29,7 +29,6 @@
 %name-prefix "fastd_config_"
 %locations
 %parse-param {fastd_context_t *ctx}
-%parse-param {fastd_config_t *conf}
 %parse-param {const char *filename}
 %parse-param {int depth}
 
@@ -140,7 +139,7 @@
 
 	#include <limits.h>
 
-	void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf, const char *filename, int depth, const char *s);
+	void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, const char *filename, int depth, const char *s);
 }
 
 
@@ -214,18 +213,18 @@ peer_group_statement:
 	;
 
 user:		TOK_STRING {
-			free(conf->user);
-			conf->user = strdup($1->str);
+			free(conf.user);
+			conf.user = strdup($1->str);
 		}
 
 group:		TOK_STRING {
-			free(conf->group);
-			conf->group = strdup($1->str);
+			free(conf.group);
+			conf.group = strdup($1->str);
 		}
 
 drop_capabilities:
 		drop_capabilities_enabled {
-			conf->drop_caps = $1;
+			conf.drop_caps = $1;
 		}
 
 drop_capabilities_enabled:
@@ -238,43 +237,43 @@ drop_capabilities_enabled:
 
 secure_handshakes:
 		boolean {
-			conf->secure_handshakes = $1;
+			conf.secure_handshakes = $1;
 		}
 	;
 
 cipher:		TOK_STRING TOK_USE TOK_STRING {
-			fastd_config_cipher(ctx, conf, $1->str, $3->str);
+			fastd_config_cipher(ctx, $1->str, $3->str);
 		}
 
 mac:		TOK_STRING TOK_USE TOK_STRING {
-			fastd_config_mac(ctx, conf, $1->str, $3->str);
+			fastd_config_mac(ctx, $1->str, $3->str);
 		}
 
 log:		TOK_LEVEL log_level {
-			conf->log_stderr_level = $2;
+			conf.log_stderr_level = $2;
 		}
 	|	TOK_TO TOK_STDERR maybe_log_level {
-			conf->log_stderr_level = $3;
+			conf.log_stderr_level = $3;
 		}
 	|	TOK_TO TOK_SYSLOG maybe_log_level {
-			conf->log_syslog_level = $3;
+			conf.log_syslog_level = $3;
 		}
 	|	TOK_TO TOK_SYSLOG TOK_AS TOK_STRING maybe_log_level {
-			free(conf->log_syslog_ident);
-			conf->log_syslog_ident = strdup($4->str);
+			free(conf.log_syslog_ident);
+			conf.log_syslog_ident = strdup($4->str);
 
-			conf->log_syslog_level = $5;
+			conf.log_syslog_level = $5;
 		}
 	|	TOK_TO TOK_STRING maybe_log_level {
-			fastd_config_add_log_file(ctx, conf, $2->str, $3);
+			fastd_config_add_log_file(ctx, $2->str, $3);
 		}
 	;
 
 hide:		TOK_IP TOK_ADDRESSES boolean {
-			conf->hide_ip_addresses = $3;
+			conf.hide_ip_addresses = $3;
 		}
 	|	TOK_MAC TOK_ADDRESSES boolean {
-			conf->hide_mac_addresses = $3;
+			conf.hide_mac_addresses = $3;
 		}
 	;
 
@@ -292,15 +291,15 @@ log_level:	TOK_FATAL	{ $$ = LL_FATAL; }
 	|	TOK_DEBUG2	{ $$ = LL_DEBUG2; }
 	;
 
-interface:	TOK_STRING	{ free(conf->ifname); conf->ifname = strdup($1->str); }
+interface:	TOK_STRING	{ free(conf.ifname); conf.ifname = strdup($1->str); }
 	;
 
 bind:		bind_address maybe_bind_interface maybe_bind_default {
-			fastd_config_bind_address(ctx, conf, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+			fastd_config_bind_address(ctx, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
 		}
 	|	TOK_ADDR6_SCOPED maybe_port maybe_bind_default {
 			fastd_peer_address_t addr = { .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1.addr, .sin6_port = htons($2) } };
-			fastd_config_bind_address(ctx, conf, &addr, $1.ifname, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+			fastd_config_bind_address(ctx, &addr, $1.ifname, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
 		}
 	;
 
@@ -347,82 +346,82 @@ bind_default:
 	;
 
 packet_mark:	TOK_UINT {
-			conf->packet_mark = $1;
+			conf.packet_mark = $1;
 		}
 
 mtu:		TOK_UINT {
 			if ($1 < 576 || $1 > 65535) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid MTU");
+				fastd_config_error(&@$, ctx, filename, depth, "invalid MTU");
 				YYERROR;
 			}
 
-			conf->mtu = $1;
+			conf.mtu = $1;
 		}
 	;
 
-pmtu:		autobool	{ conf->pmtu = $1; }
+pmtu:		autobool	{ conf.pmtu = $1; }
 	;
 
-mode:		TOK_TAP		{ conf->mode = MODE_TAP; }
-	|	TOK_TUN		{ conf->mode = MODE_TUN; }
+mode:		TOK_TAP		{ conf.mode = MODE_TAP; }
+	|	TOK_TUN		{ conf.mode = MODE_TUN; }
 	;
 
 protocol:	TOK_STRING {
-			fastd_config_protocol(ctx, conf, $1->str);
+			fastd_config_protocol(ctx, $1->str);
 		}
 	;
 
 method:		TOK_STRING {
-			fastd_config_method(ctx, conf, $1->str);
+			fastd_config_method(ctx, $1->str);
 		}
 	;
 
-secret:		TOK_STRING	{ free(conf->secret); conf->secret = strdup($1->str); }
+secret:		TOK_STRING	{ free(conf.secret); conf.secret = strdup($1->str); }
 	;
 
 on_pre_up:	sync_def_sync TOK_STRING {
-			fastd_shell_command_set(&conf->on_pre_up, $2->str, $1);
+			fastd_shell_command_set(&conf.on_pre_up, $2->str, $1);
 		}
 	;
 
 on_up:		sync_def_sync TOK_STRING {
-			fastd_shell_command_set(&conf->on_up, $2->str, $1);
+			fastd_shell_command_set(&conf.on_up, $2->str, $1);
 		}
 	;
 
 on_down:	sync_def_sync TOK_STRING {
-			fastd_shell_command_set(&conf->on_down, $2->str, $1);
+			fastd_shell_command_set(&conf.on_down, $2->str, $1);
 		}
 	;
 
 on_post_down:	sync_def_sync TOK_STRING {
-			fastd_shell_command_set(&conf->on_post_down, $2->str, $1);
+			fastd_shell_command_set(&conf.on_post_down, $2->str, $1);
 		}
 	;
 
 on_connect:	sync_def_async TOK_STRING {
-			fastd_shell_command_set(&conf->on_connect, $2->str, $1);
+			fastd_shell_command_set(&conf.on_connect, $2->str, $1);
 		}
 	;
 
 on_establish:	sync_def_async TOK_STRING {
-			fastd_shell_command_set(&conf->on_establish, $2->str, $1);
+			fastd_shell_command_set(&conf.on_establish, $2->str, $1);
 		}
 	;
 
 on_disestablish: sync_def_async TOK_STRING {
-			fastd_shell_command_set(&conf->on_disestablish, $2->str, $1);
+			fastd_shell_command_set(&conf.on_disestablish, $2->str, $1);
 		}
 	;
 
 on_verify:	sync_def_async TOK_STRING {
-			fastd_shell_command_set(&conf->on_verify, $2->str, $1);
+			fastd_shell_command_set(&conf.on_verify, $2->str, $1);
 		}
 	;
 
 peer:		TOK_STRING {
-			fastd_peer_config_new(ctx, conf);
-			conf->peers->name = strdup($1->str);
+			fastd_peer_config_new(ctx);
+			conf.peers->name = strdup($1->str);
 		}
 	;
 
@@ -437,7 +436,7 @@ peer_statement: TOK_REMOTE peer_remote ';'
 	;
 
 peer_remote:	TOK_ADDR4 port {
-			fastd_remote_config_t **remote = &conf->peers->remotes;
+			fastd_remote_config_t **remote = &conf.peers->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -449,7 +448,7 @@ peer_remote:	TOK_ADDR4 port {
 			fastd_peer_address_simplify(&(*remote)->address);
 		}
 	|	TOK_ADDR6 port {
-			fastd_remote_config_t **remote = &conf->peers->remotes;
+			fastd_remote_config_t **remote = &conf.peers->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -463,7 +462,7 @@ peer_remote:	TOK_ADDR4 port {
 	|	TOK_ADDR6_SCOPED port {
 			char addrbuf[INET6_ADDRSTRLEN];
 			size_t addrlen;
-			fastd_remote_config_t **remote = &conf->peers->remotes;
+			fastd_remote_config_t **remote = &conf.peers->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -481,7 +480,7 @@ peer_remote:	TOK_ADDR4 port {
 			(*remote)->address.in.sin_port = htons($2);
 		}
 	|	maybe_af TOK_STRING port maybe_float {
-			fastd_remote_config_t **remote = &conf->peers->remotes;
+			fastd_remote_config_t **remote = &conf.peers->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -492,67 +491,67 @@ peer_remote:	TOK_ADDR4 port {
 			(*remote)->address.in.sin_port = htons($3);
 
 			if ($4) {
-				conf->peers->floating = true;
-				conf->peers->dynamic_float_deprecated = true;
+				conf.peers->floating = true;
+				conf.peers->dynamic_float_deprecated = true;
 			}
 		}
 	;
 
 peer_float:	boolean {
-			conf->peers->floating = $1;
+			conf.peers->floating = $1;
 		}
 	;
 
 peer_key:	TOK_STRING {
-			free(conf->peers->key); conf->peers->key = strdup($1->str);
+			free(conf.peers->key); conf.peers->key = strdup($1->str);
 		}
 	;
 
 peer_include:	TOK_STRING {
-			if (!fastd_read_config(ctx, conf, $1->str, true, depth))
+			if (!fastd_read_config(ctx, $1->str, true, depth))
 				YYERROR;
 		}
 	;
 
 
 peer_group:	TOK_STRING {
-			fastd_config_peer_group_push(ctx, conf, $1->str);
+			fastd_config_peer_group_push(ctx, $1->str);
 		}
 	;
 
 peer_group_after:
 		{
-			fastd_config_peer_group_pop(ctx, conf);
+			fastd_config_peer_group_pop(ctx);
 		}
 	;
 
 peer_limit:	TOK_UINT {
 			if ($1 > INT_MAX) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid peer limit");
+				fastd_config_error(&@$, ctx, filename, depth, "invalid peer limit");
 				YYERROR;
 			}
 
-			conf->peer_group->max_connections = $1;
+			conf.peer_group->max_connections = $1;
 		}
 	;
 
-forward:	boolean		{ conf->forward = $1; }
+forward:	boolean		{ conf.forward = $1; }
 	;
 
 
 include:	TOK_PEER TOK_STRING maybe_as {
-			fastd_peer_config_new(ctx, conf);
+			fastd_peer_config_new(ctx);
 			if ($3)
-				conf->peers->name = strdup($3->str);
+				conf.peers->name = strdup($3->str);
 
-			if (!fastd_read_config(ctx, conf, $2->str, true, depth))
+			if (!fastd_read_config(ctx, $2->str, true, depth))
 				YYERROR;
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
-			fastd_add_peer_dir(ctx, conf, $3->str);
+			fastd_add_peer_dir(ctx, $3->str);
 		}
 	|	TOK_STRING {
-			if (!fastd_read_config(ctx, conf, $1->str, false, depth))
+			if (!fastd_read_config(ctx, $1->str, false, depth))
 				YYERROR;
 		}
 	;
@@ -602,7 +601,7 @@ colon_or_port:	':'
 
 port:		colon_or_port TOK_UINT {
 			if ($2 < 1 || $2 > 65535) {
-				fastd_config_error(&@$, ctx, conf, filename, depth, "invalid port");
+				fastd_config_error(&@$, ctx, filename, depth, "invalid port");
 				YYERROR;
 			}
 			$$ = $2;
@@ -610,6 +609,6 @@ port:		colon_or_port TOK_UINT {
 	;
 
 %%
-void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, fastd_config_t *conf UNUSED, const char *filename, int depth UNUSED, const char *s) {
+void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, const char *filename, int depth UNUSED, const char *s) {
 	pr_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
 }

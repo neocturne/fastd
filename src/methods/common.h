@@ -73,7 +73,7 @@ static inline bool fastd_method_session_common_want_refresh(fastd_context_t *ctx
 }
 
 static inline void fastd_method_session_common_superseded(fastd_context_t *ctx, fastd_method_common_t *session) {
-	struct timespec valid_max = fastd_in_seconds(ctx, ctx->conf->key_valid_old);
+	struct timespec valid_max = fastd_in_seconds(ctx, conf.key_valid_old);
 
 	if (timespec_after(&session->valid_till, &valid_max))
 		session->valid_till = valid_max;

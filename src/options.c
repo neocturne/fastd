@@ -48,7 +48,7 @@ static void print_usage(const char *options, const char *message) {
 	puts(message);
 }
 
-static void usage(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED) {
+static void usage(fastd_context_t *ctx UNUSED) {
 	puts("fastd (Fast and Secure Tunnelling Daemon) " FASTD_VERSION " usage:\n");
 
 #define OR ", "
@@ -64,51 +64,51 @@ static void usage(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED) {
 	exit(0);
 }
 
-static void version(fastd_context_t *ctx UNUSED, fastd_config_t *conf UNUSED) {
+static void version(fastd_context_t *ctx UNUSED) {
 	puts("fastd " FASTD_VERSION);
 	exit(0);
 }
 
-static void option_daemon(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->daemon = true;
+static void option_daemon(fastd_context_t *ctx UNUSED) {
+	conf.daemon = true;
 }
 
-static void option_pid_file(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	free(conf->pid_file);
-	conf->pid_file = strdup(arg);
+static void option_pid_file(fastd_context_t *ctx UNUSED, const char *arg) {
+	free(conf.pid_file);
+	conf.pid_file = strdup(arg);
 }
 
 
-static void option_config(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_config(fastd_context_t *ctx, const char *arg) {
 	if (!strcmp(arg, "-"))
 		arg = NULL;
 
-	if (!fastd_read_config(ctx, conf, arg, false, 0))
+	if (!fastd_read_config(ctx, arg, false, 0))
 		exit(1);
 }
 
-static void option_config_peer(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	fastd_peer_config_new(ctx, conf);
+static void option_config_peer(fastd_context_t *ctx, const char *arg) {
+	fastd_peer_config_new(ctx);
 
-	if(!fastd_read_config(ctx, conf, arg, true, 0))
+	if(!fastd_read_config(ctx, arg, true, 0))
 		exit(1);
 }
 
-static void option_config_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	fastd_add_peer_dir(ctx, conf, arg);
+static void option_config_peer_dir(fastd_context_t *ctx, const char *arg) {
+	fastd_add_peer_dir(ctx, arg);
 }
 
 
 #ifdef WITH_CMDLINE_USER
 
-static void option_user(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	free(conf->user);
-	conf->user = strdup(arg);
+static void option_user(fastd_context_t *ctx UNUSED, const char *arg) {
+	free(conf.user);
+	conf.user = strdup(arg);
 }
 
-static void option_group(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	free(conf->group);
-	conf->group = strdup(arg);
+static void option_group(fastd_context_t *ctx UNUSED, const char *arg) {
+	free(conf.group);
+	conf.group = strdup(arg);
 }
 
 #endif
@@ -134,56 +134,56 @@ static int parse_log_level(fastd_context_t *ctx, const char *arg) {
 		exit_error(ctx, "invalid log level `%s'", arg);
 }
 
-static void option_log_level(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	conf->log_stderr_level = parse_log_level(ctx, arg);
+static void option_log_level(fastd_context_t *ctx, const char *arg) {
+	conf.log_stderr_level = parse_log_level(ctx, arg);
 }
 
-static void option_syslog_level(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	conf->log_syslog_level = parse_log_level(ctx, arg);
+static void option_syslog_level(fastd_context_t *ctx, const char *arg) {
+	conf.log_syslog_level = parse_log_level(ctx, arg);
 }
 
-static void option_syslog_ident(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	free(conf->log_syslog_ident);
-	conf->log_syslog_ident = strdup(arg);
+static void option_syslog_ident(fastd_context_t *ctx UNUSED, const char *arg) {
+	free(conf.log_syslog_ident);
+	conf.log_syslog_ident = strdup(arg);
 }
 
-static void option_hide_ip_addresses(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->hide_ip_addresses = true;
+static void option_hide_ip_addresses(fastd_context_t *ctx UNUSED) {
+	conf.hide_ip_addresses = true;
 }
 
-static void option_hide_mac_addresses(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->hide_mac_addresses = true;
+static void option_hide_mac_addresses(fastd_context_t *ctx UNUSED) {
+	conf.hide_mac_addresses = true;
 }
 
 #endif
 
 #ifdef WITH_CMDLINE_OPERATION
 
-static void option_mode(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_mode(fastd_context_t *ctx, const char *arg) {
 	if (!strcmp(arg, "tap"))
-		conf->mode = MODE_TAP;
+		conf.mode = MODE_TAP;
 	else if (!strcmp(arg, "tun"))
-		conf->mode = MODE_TUN;
+		conf.mode = MODE_TUN;
 	else
 		exit_error(ctx, "invalid mode `%s'", arg);
 }
 
-static void option_interface(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	free(conf->ifname);
-	conf->ifname = strdup(arg);
+static void option_interface(fastd_context_t *ctx UNUSED, const char *arg) {
+	free(conf.ifname);
+	conf.ifname = strdup(arg);
 }
 
-static void option_mtu(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_mtu(fastd_context_t *ctx, const char *arg) {
 	char *endptr;
 	long mtu = strtol(arg, &endptr, 10);
 
 	if (*endptr || mtu < 576 || mtu > 65535)
 		exit_error(ctx, "invalid mtu `%s'", arg);
 
-	conf->mtu = mtu;
+	conf.mtu = mtu;
 }
 
-static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
+static void option_bind(fastd_context_t *ctx, const char *arg) {
 	long l;
 	char *charptr;
 	char *endptr;
@@ -250,75 +250,75 @@ static void option_bind(fastd_context_t *ctx, fastd_config_t *conf, const char *
 
 	free(addrstr);
 
-	fastd_config_bind_address(ctx, conf, &addr, ifname, false, false);
+	fastd_config_bind_address(ctx, &addr, ifname, false, false);
 }
 
-static void option_protocol(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	fastd_config_protocol(ctx, conf, arg);
+static void option_protocol(fastd_context_t *ctx, const char *arg) {
+	fastd_config_protocol(ctx, arg);
 }
 
-static void option_method(fastd_context_t *ctx, fastd_config_t *conf, const char *arg) {
-	fastd_config_method(ctx, conf, arg);
+static void option_method(fastd_context_t *ctx, const char *arg) {
+	fastd_config_method(ctx, arg);
 }
 
-static void option_forward(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->forward = true;
+static void option_forward(fastd_context_t *ctx UNUSED) {
+	conf.forward = true;
 }
 
 #endif
 
 #ifdef WITH_CMDLINE_COMMANDS
 
-static void option_on_pre_up(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_pre_up, arg, true);
+static void option_on_pre_up(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_pre_up, arg, true);
 }
 
-static void option_on_up(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_up, arg, true);
+static void option_on_up(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_up, arg, true);
 }
 
-static void option_on_down(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_down, arg, true);
+static void option_on_down(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_down, arg, true);
 }
 
-static void option_on_post_down(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_post_down, arg, true);
+static void option_on_post_down(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_post_down, arg, true);
 }
 
-static void option_on_connect(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_connect, arg, false);
+static void option_on_connect(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_connect, arg, false);
 }
 
-static void option_on_establish(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_establish, arg, false);
+static void option_on_establish(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_establish, arg, false);
 }
 
-static void option_on_disestablish(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_disestablish, arg, false);
+static void option_on_disestablish(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_disestablish, arg, false);
 }
 
-static void option_on_verify(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *arg) {
-	fastd_shell_command_set(&conf->on_verify, arg, false);
+static void option_on_verify(fastd_context_t *ctx UNUSED, const char *arg) {
+	fastd_shell_command_set(&conf.on_verify, arg, false);
 }
 
 #endif
 
-static void option_verify_config(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->verify_config = true;
+static void option_verify_config(fastd_context_t *ctx UNUSED) {
+	conf.verify_config = true;
 }
 
-static void option_generate_key(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->generate_key = true;
-	conf->show_key = false;
+static void option_generate_key(fastd_context_t *ctx UNUSED) {
+	conf.generate_key = true;
+	conf.show_key = false;
 }
 
-static void option_show_key(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->generate_key = false;
-	conf->show_key = true;
+static void option_show_key(fastd_context_t *ctx UNUSED) {
+	conf.generate_key = false;
+	conf.show_key = true;
 }
 
-static void option_machine_readable(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->machine_readable = true;
+static void option_machine_readable(fastd_context_t *ctx UNUSED) {
+	conf.machine_readable = true;
 }
 
 
@@ -341,7 +341,7 @@ static bool config_match(const char *opt, ...) {
 	return match;
 }
 
-void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]) {
+void fastd_config_handle_options(fastd_context_t *ctx, int argc, char *const argv[]) {
 	int i = 1;
 
 	while (i < argc) {
@@ -351,7 +351,7 @@ void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int
 		({							\
 			if(config_match(argv[i], options, NULL)) {	\
 				i++;					\
-				func(ctx, conf);			\
+				func(ctx);			\
 				continue;				\
 			}						\
 		})
@@ -361,7 +361,7 @@ void fastd_config_handle_options(fastd_context_t *ctx, fastd_config_t *conf, int
 				i+=2;					\
 				if (i > argc)				\
 					exit_error(ctx, "command line error: option `%s' needs an argument; see --help for usage", argv[i-2]); \
-				func(ctx, conf, argv[i-1]);		\
+				func(ctx, argv[i-1]);		\
 				continue;				\
 			}						\
 		})

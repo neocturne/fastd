@@ -63,11 +63,11 @@ struct fastd_method_provider {
 bool fastd_method_create_by_name(const char *name, const fastd_method_provider_t **provider, fastd_method_t **method);
 
 
-static inline const fastd_method_info_t* fastd_method_get_by_name(fastd_context_t *ctx, const char *name) {
+static inline const fastd_method_info_t* fastd_method_get_by_name(const char *name) {
 	size_t i;
-	for (i = 0; ctx->conf->methods[i].name; i++) {
-		if (!strcmp(ctx->conf->methods[i].name, name))
-			return &ctx->conf->methods[i];
+	for (i = 0; conf.methods[i].name; i++) {
+		if (!strcmp(conf.methods[i].name, name))
+			return &conf.methods[i];
 	}
 
 	return NULL;

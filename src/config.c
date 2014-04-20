@@ -43,55 +43,58 @@
 #include <sys/types.h>
 
 
+fastd_config_t conf = {};
+
+
 extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
 
-static void default_config(fastd_config_t *conf) {
-	memset(conf, 0, sizeof(fastd_config_t));
+static void default_config(void) {
+	memset(&conf, 0, sizeof(fastd_config_t));
 
-	conf->log_syslog_ident = strdup("fastd");
+	conf.log_syslog_ident = strdup("fastd");
 
-	conf->maintenance_interval = 10;
-	conf->keepalive_timeout = 15;
-	conf->peer_stale_time = 90;
-	conf->eth_addr_stale_time = 300;
+	conf.maintenance_interval = 10;
+	conf.keepalive_timeout = 15;
+	conf.peer_stale_time = 90;
+	conf.eth_addr_stale_time = 300;
 
-	conf->reorder_time = 10;
+	conf.reorder_time = 10;
 
-	conf->min_handshake_interval = 15;
-	conf->min_resolve_interval = 15;
+	conf.min_handshake_interval = 15;
+	conf.min_resolve_interval = 15;
 
-	conf->mtu = 1500;
-	conf->mode = MODE_TAP;
+	conf.mtu = 1500;
+	conf.mode = MODE_TAP;
 
-	conf->secure_handshakes = true;
-	conf->drop_caps = DROP_CAPS_ON;
+	conf.secure_handshakes = true;
+	conf.drop_caps = DROP_CAPS_ON;
 
-	conf->protocol = &fastd_protocol_ec25519_fhmqvc;
-	conf->key_valid = 3600;		/* 60 minutes */
-	conf->key_valid_old = 60;	/* 1 minute */
-	conf->key_refresh = 3300;	/* 55 minutes */
-	conf->key_refresh_splay = 300;	/* 5 minutes */
+	conf.protocol = &fastd_protocol_ec25519_fhmqvc;
+	conf.key_valid = 3600;		/* 60 minutes */
+	conf.key_valid_old = 60;	/* 1 minute */
+	conf.key_refresh = 3300;	/* 55 minutes */
+	conf.key_refresh_splay = 300;	/* 5 minutes */
 
-	conf->peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
-	conf->peer_group->name = strdup("default");
-	conf->peer_group->max_connections = -1;
+	conf.peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
+	conf.peer_group->name = strdup("default");
+	conf.peer_group->max_connections = -1;
 
-	conf->ciphers = fastd_cipher_config_alloc();
-	conf->macs = fastd_mac_config_alloc();
+	conf.ciphers = fastd_cipher_config_alloc();
+	conf.macs = fastd_mac_config_alloc();
 }
 
-void fastd_config_protocol(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
+void fastd_config_protocol(fastd_context_t *ctx UNUSED, const char *name) {
 	if (!strcmp(name, "ec25519-fhmqvc"))
-		conf->protocol = &fastd_protocol_ec25519_fhmqvc;
+		conf.protocol = &fastd_protocol_ec25519_fhmqvc;
 	else
 		exit_error(ctx, "config error: protocol `%s' not supported", name);
 }
 
-void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char *name) {
+void fastd_config_method(fastd_context_t *ctx, const char *name) {
 	fastd_string_stack_t **method;
 
-	for (method = &conf->method_list; *method; method = &(*method)->next) {
+	for (method = &conf.method_list; *method; method = &(*method)->next) {
 		if (!strcmp((*method)->str, name)) {
 			pr_debug(ctx, "duplicate method name `%s', ignoring", name);
 			return;
@@ -101,17 +104,17 @@ void fastd_config_method(fastd_context_t *ctx, fastd_config_t *conf, const char 
 	*method = fastd_string_stack_dup(name);
 }
 
-void fastd_config_cipher(fastd_context_t *ctx, fastd_config_t *conf, const char *name, const char *impl) {
-	if (!fastd_cipher_config(conf->ciphers, name, impl))
+void fastd_config_cipher(fastd_context_t *ctx, const char *name, const char *impl) {
+	if (!fastd_cipher_config(conf.ciphers, name, impl))
 		exit_error(ctx, "config error: implementation `%s' is not supported for cipher `%s' (or cipher `%s' is not supported)", impl, name, name);
 }
 
-void fastd_config_mac(fastd_context_t *ctx, fastd_config_t *conf, const char *name, const char *impl) {
-	if (!fastd_mac_config(conf->macs, name, impl))
+void fastd_config_mac(fastd_context_t *ctx, const char *name, const char *impl) {
+	if (!fastd_mac_config(conf.macs, name, impl))
 		exit_error(ctx, "config error: implementation `%s' is not supported for MAC `%s' (or MAC `%s' is not supported)", impl, name, name);
 }
 
-void fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+void fastd_config_bind_address(fastd_context_t *ctx UNUSED, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev && !fastd_peer_address_is_v6_ll(address))
 		exit_error(ctx, "config error: device bind configuration not supported on this system");
@@ -122,44 +125,44 @@ void fastd_config_bind_address(fastd_context_t *ctx UNUSED, fastd_config_t *conf
 		fastd_peer_address_t addr4 = { .in = { .sin_family = AF_INET, .sin_port = address->in.sin_port } };
 		fastd_peer_address_t addr6 = { .in6 = { .sin6_family = AF_INET6, .sin6_port = address->in.sin_port } };
 
-		fastd_config_bind_address(ctx, conf, &addr4, bindtodev, default_v4, default_v6);
-		fastd_config_bind_address(ctx, conf, &addr6, bindtodev, default_v4, default_v6);
+		fastd_config_bind_address(ctx, &addr4, bindtodev, default_v4, default_v6);
+		fastd_config_bind_address(ctx, &addr6, bindtodev, default_v4, default_v6);
 		return;
 	}
 #endif
 
 	fastd_bind_address_t *addr = malloc(sizeof(fastd_bind_address_t));
-	addr->next = conf->bind_addrs;
-	conf->bind_addrs = addr;
-	conf->n_bind_addrs++;
+	addr->next = conf.bind_addrs;
+	conf.bind_addrs = addr;
+	conf.n_bind_addrs++;
 
 	addr->addr = *address;
 	addr->bindtodev = bindtodev ? strdup(bindtodev) : NULL;
 
 	fastd_peer_address_simplify(&addr->addr);
 
-	if (addr->addr.sa.sa_family != AF_INET6 && (default_v4 || !conf->bind_addr_default_v4))
-		conf->bind_addr_default_v4 = addr;
+	if (addr->addr.sa.sa_family != AF_INET6 && (default_v4 || !conf.bind_addr_default_v4))
+		conf.bind_addr_default_v4 = addr;
 
-	if (addr->addr.sa.sa_family != AF_INET && (default_v6 || !conf->bind_addr_default_v6))
-		conf->bind_addr_default_v6 = addr;
+	if (addr->addr.sa.sa_family != AF_INET && (default_v6 || !conf.bind_addr_default_v6))
+		conf.bind_addr_default_v6 = addr;
 }
 
-void fastd_config_peer_group_push(fastd_context_t *ctx UNUSED, fastd_config_t *conf, const char *name) {
+void fastd_config_peer_group_push(fastd_context_t *ctx UNUSED, const char *name) {
 	fastd_peer_group_config_t *group = calloc(1, sizeof(fastd_peer_group_config_t));
 	group->name = strdup(name);
 	group->max_connections = -1;
 
-	group->parent = conf->peer_group;
+	group->parent = conf.peer_group;
 	group->next = group->parent->children;
 
 	group->parent->children = group;
 
-	conf->peer_group = group;
+	conf.peer_group = group;
 }
 
-void fastd_config_peer_group_pop(fastd_context_t *ctx UNUSED, fastd_config_t *conf) {
-	conf->peer_group = conf->peer_group->parent;
+void fastd_config_peer_group_pop(fastd_context_t *ctx UNUSED) {
+	conf.peer_group = conf.peer_group->parent;
 }
 
 static void free_peer_group(fastd_peer_group_config_t *group) {
@@ -187,7 +190,7 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_config_t *group) {
 	return false;
 }
 
-void fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const char *name, fastd_loglevel_t level) {
+void fastd_config_add_log_file(fastd_context_t *ctx, const char *name, fastd_loglevel_t level) {
 	char *name2 = strdup(name);
 	char *name3 = strdup(name);
 
@@ -208,8 +211,8 @@ void fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const
 
 		file->level = level;
 
-		file->next = conf->log_files;
-		conf->log_files = file;
+		file->next = conf.log_files;
+		conf.log_files = file;
 
 		if(chdir(oldcwd))
 			pr_error(ctx, "can't chdir to `%s': %s", oldcwd, strerror(errno));
@@ -225,7 +228,7 @@ void fastd_config_add_log_file(fastd_context_t *ctx, fastd_config_t *conf, const
 	free(name3);
 }
 
-static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir) {
+static void read_peer_dir(fastd_context_t *ctx, const char *dir) {
 	DIR *dirh = opendir(".");
 
 	if (dirh) {
@@ -257,13 +260,13 @@ static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char
 				continue;
 			}
 
-			fastd_peer_config_new(ctx, conf);
-			conf->peers->name = strdup(result->d_name);
-			conf->peers->config_source_dir = dir;
+			fastd_peer_config_new(ctx);
+			conf.peers->name = strdup(result->d_name);
+			conf.peers->config_source_dir = dir;
 
-			if (!fastd_read_config(ctx, conf, result->d_name, true, 0)) {
+			if (!fastd_read_config(ctx, result->d_name, true, 0)) {
 				pr_warn(ctx, "peer config `%s' will be ignored", result->d_name);
-				fastd_peer_config_delete(ctx, conf);
+				fastd_peer_config_delete(ctx);
 			}
 		}
 
@@ -276,13 +279,13 @@ static void read_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char
 	}
 }
 
-static void read_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf) {
+static void read_peer_dirs(fastd_context_t *ctx) {
 	char *oldcwd = get_current_dir_name();
 
 	fastd_string_stack_t *dir;
-	for (dir = conf->peer_group->peer_dirs; dir; dir = dir->next) {
+	for (dir = conf.peer_group->peer_dirs; dir; dir = dir->next) {
 		if (!chdir(dir->str))
-			read_peer_dir(ctx, conf, dir->str);
+			read_peer_dir(ctx, dir->str);
 		else
 			pr_error(ctx, "change from directory `%s' to `%s' failed: %s", oldcwd, dir->str, strerror(errno));
 	}
@@ -293,12 +296,12 @@ static void read_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf) {
 	free(oldcwd);
 }
 
-void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *dir) {
+void fastd_add_peer_dir(fastd_context_t *ctx, const char *dir) {
 	char *oldcwd = get_current_dir_name();
 
 	if (!chdir(dir)) {
 		char *newdir = get_current_dir_name();
-		conf->peer_group->peer_dirs = fastd_string_stack_push(conf->peer_group->peer_dirs, newdir);
+		conf.peer_group->peer_dirs = fastd_string_stack_push(conf.peer_group->peer_dirs, newdir);
 		free(newdir);
 
 		if(chdir(oldcwd))
@@ -311,7 +314,7 @@ void fastd_add_peer_dir(fastd_context_t *ctx, fastd_config_t *conf, const char *
 	free(oldcwd);
 }
 
-bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *filename, bool peer_config, int depth) {
+bool fastd_read_config(fastd_context_t *ctx, const char *filename, bool peer_config, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error(ctx, "maximum config include depth exceeded");
 
@@ -358,9 +361,9 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 	if (peer_config)
 		token = START_PEER_CONFIG;
 	else
-		token = conf->peer_group->parent ? START_PEER_GROUP_CONFIG : START_CONFIG;
+		token = conf.peer_group->parent ? START_PEER_GROUP_CONFIG : START_CONFIG;
 
-	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1);
+	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, filename, depth+1);
 
 	while(parse_ret == YYPUSH_MORE) {
 		token = fastd_lex(&token_val, &loc, lex);
@@ -376,7 +379,7 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 			strings = token_val.str;
 		}
 
-		parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, conf, filename, depth+1);
+		parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, ctx, filename, depth+1);
 	}
 
 	if (parse_ret)
@@ -400,13 +403,13 @@ bool fastd_read_config(fastd_context_t *ctx, fastd_config_t *conf, const char *f
 	return ret;
 }
 
-static void assess_peers(fastd_context_t *ctx, fastd_config_t *conf) {
-	conf->has_floating = false;
+static void assess_peers(fastd_context_t *ctx) {
+	conf.has_floating = false;
 
 	fastd_peer_config_t *peer;
-	for (peer = conf->peers; peer; peer = peer->next) {
+	for (peer = conf.peers; peer; peer = peer->next) {
 		if (fastd_peer_config_is_floating(peer))
-			conf->has_floating = true;
+			conf.has_floating = true;
 
 		if (peer->dynamic_float_deprecated)
 			pr_warn(ctx, "peer `%s' uses deprecated float syntax, please update your configuration", peer->name);
@@ -414,18 +417,18 @@ static void assess_peers(fastd_context_t *ctx, fastd_config_t *conf) {
 }
 
 
-static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
-	conf->uid = getuid();
-	conf->gid = getgid();
+static void configure_user(fastd_context_t *ctx) {
+	conf.uid = getuid();
+	conf.gid = getgid();
 
-	if (conf->user) {
+	if (conf.user) {
 		struct passwd pwd, *pwdr;
 		size_t bufspace = 1024;
 		int error;
 
 		do {
 			char buf[bufspace];
-			error = getpwnam_r(conf->user, &pwd, buf, bufspace, &pwdr);
+			error = getpwnam_r(conf.user, &pwd, buf, bufspace, &pwdr);
 			bufspace *= 2;
 		} while(error == ERANGE);
 
@@ -433,20 +436,20 @@ static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
 			exit_errno(ctx, "getpwnam_r");
 
 		if (!pwdr)
-			exit_error(ctx, "config error: unable to find user `%s'.", conf->user);
+			exit_error(ctx, "config error: unable to find user `%s'.", conf.user);
 
-		conf->uid = pwdr->pw_uid;
-		conf->gid = pwdr->pw_gid;
+		conf.uid = pwdr->pw_uid;
+		conf.gid = pwdr->pw_gid;
 	}
 
-	if (conf->group) {
+	if (conf.group) {
 		struct group grp, *grpr;
 		size_t bufspace = 1024;
 		int error;
 
 		do {
 			char buf[bufspace];
-			error = getgrnam_r(conf->group, &grp, buf, bufspace, &grpr);
+			error = getgrnam_r(conf.group, &grp, buf, bufspace, &grpr);
 			bufspace *= 2;
 		} while(error == ERANGE);
 
@@ -454,146 +457,146 @@ static void configure_user(fastd_context_t *ctx, fastd_config_t *conf) {
 			exit_errno(ctx, "getgrnam_r");
 
 		if (!grpr)
-			exit_error(ctx, "config error: unable to find group `%s'.", conf->group);
+			exit_error(ctx, "config error: unable to find group `%s'.", conf.group);
 
-		conf->gid = grpr->gr_gid;
+		conf.gid = grpr->gr_gid;
 	}
 
-	if (conf->user) {
+	if (conf.user) {
 		int ngroups = 0;
-		if (getgrouplist(conf->user, conf->gid, NULL, &ngroups) < 0) {
+		if (getgrouplist(conf.user, conf.gid, NULL, &ngroups) < 0) {
 			/* the user has supplementary groups */
 
-			conf->groups = calloc(ngroups, sizeof(gid_t));
-			if (getgrouplist(conf->user, conf->gid, conf->groups, &ngroups) < 0)
+			conf.groups = calloc(ngroups, sizeof(gid_t));
+			if (getgrouplist(conf.user, conf.gid, conf.groups, &ngroups) < 0)
 				exit_errno(ctx, "getgrouplist");
 
-			conf->n_groups = ngroups;
+			conf.n_groups = ngroups;
 		}
 	}
 }
 
-static void configure_method_parameters(fastd_config_t *conf) {
-	conf->max_overhead = 0;
-	conf->min_encrypt_head_space = 0;
-	conf->min_decrypt_head_space = 0;
-	conf->min_encrypt_tail_space = 0;
-	conf->min_decrypt_tail_space = 0;
+static void configure_method_parameters(void) {
+	conf.max_overhead = 0;
+	conf.min_encrypt_head_space = 0;
+	conf.min_decrypt_head_space = 0;
+	conf.min_encrypt_tail_space = 0;
+	conf.min_decrypt_tail_space = 0;
 
 	size_t i;
-	for (i = 0; conf->methods[i].name; i++) {
-		const fastd_method_provider_t *provider = conf->methods[i].provider;
+	for (i = 0; conf.methods[i].name; i++) {
+		const fastd_method_provider_t *provider = conf.methods[i].provider;
 
-		conf->max_overhead = max_size_t(conf->max_overhead, provider->max_overhead);
-		conf->min_encrypt_head_space = max_size_t(conf->min_encrypt_head_space, provider->min_encrypt_head_space);
-		conf->min_decrypt_head_space = max_size_t(conf->min_decrypt_head_space, provider->min_decrypt_head_space);
-		conf->min_encrypt_tail_space = max_size_t(conf->min_encrypt_tail_space, provider->min_encrypt_tail_space);
-		conf->min_decrypt_tail_space = max_size_t(conf->min_decrypt_tail_space, provider->min_decrypt_tail_space);
+		conf.max_overhead = max_size_t(conf.max_overhead, provider->max_overhead);
+		conf.min_encrypt_head_space = max_size_t(conf.min_encrypt_head_space, provider->min_encrypt_head_space);
+		conf.min_decrypt_head_space = max_size_t(conf.min_decrypt_head_space, provider->min_decrypt_head_space);
+		conf.min_encrypt_tail_space = max_size_t(conf.min_encrypt_tail_space, provider->min_encrypt_tail_space);
+		conf.min_decrypt_tail_space = max_size_t(conf.min_decrypt_tail_space, provider->min_decrypt_tail_space);
 	}
 
-	conf->min_encrypt_head_space = alignto(conf->min_encrypt_head_space, 16);
+	conf.min_encrypt_head_space = alignto(conf.min_encrypt_head_space, 16);
 
 	/* ugly hack to get alignment right for aes128-gcm, which needs data aligned to 16 and has a 24 byte header */
-	conf->min_decrypt_head_space = alignto(conf->min_decrypt_head_space, 16) + 8;
+	conf.min_decrypt_head_space = alignto(conf.min_decrypt_head_space, 16) + 8;
 }
 
-static void configure_methods(fastd_context_t *ctx, fastd_config_t *conf) {
+static void configure_methods(fastd_context_t *ctx) {
 	size_t n_methods = 0, i;
 	fastd_string_stack_t *method_name;
-	for (method_name = conf->method_list; method_name; method_name = method_name->next)
+	for (method_name = conf.method_list; method_name; method_name = method_name->next)
 		n_methods++;
 
-	conf->methods = calloc(n_methods+1, sizeof(fastd_method_info_t));
+	conf.methods = calloc(n_methods+1, sizeof(fastd_method_info_t));
 
-	for (i = 0, method_name = conf->method_list; method_name; i++, method_name = method_name->next) {
-		conf->methods[i].name = method_name->str;
-		if (!fastd_method_create_by_name(method_name->str, &conf->methods[i].provider, &conf->methods[i].method))
+	for (i = 0, method_name = conf.method_list; method_name; i++, method_name = method_name->next) {
+		conf.methods[i].name = method_name->str;
+		if (!fastd_method_create_by_name(method_name->str, &conf.methods[i].provider, &conf.methods[i].method))
 			exit_error(ctx, "config error: method `%s' not supported", method_name->str);
 	}
 
-	configure_method_parameters(conf);
+	configure_method_parameters();
 }
 
-static void destroy_methods(fastd_config_t *conf) {
+static void destroy_methods(void) {
 	size_t i;
-	for (i = 0; conf->methods[i].name; i++) {
-		conf->methods[i].provider->destroy(conf->methods[i].method);
+	for (i = 0; conf.methods[i].name; i++) {
+		conf.methods[i].provider->destroy(conf.methods[i].method);
 	}
 
-	free(conf->methods);
+	free(conf.methods);
 }
 
-void fastd_configure(fastd_context_t *ctx, fastd_config_t *conf, int argc, char *const argv[]) {
-	default_config(conf);
+void fastd_configure(fastd_context_t *ctx, int argc, char *const argv[]) {
+	default_config();
 
-	fastd_config_handle_options(ctx, conf, argc, argv);
+	fastd_config_handle_options(ctx, argc, argv);
 
-	if (!conf->log_stderr_level && !conf->log_syslog_level && !conf->log_files)
-		conf->log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
+	if (!conf.log_stderr_level && !conf.log_syslog_level && !conf.log_files)
+		conf.log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
 }
 
-static void config_check_base(fastd_context_t *ctx, fastd_config_t *conf) {
-	if (conf->ifname) {
-		if (strchr(conf->ifname, '/'))
+static void config_check_base(fastd_context_t *ctx) {
+	if (conf.ifname) {
+		if (strchr(conf.ifname, '/'))
 			exit_error(ctx, "config error: invalid interface name");
 	}
 
-	if (conf->mode == MODE_TUN) {
-		if (conf->peers->next)
+	if (conf.mode == MODE_TUN) {
+		if (conf.peers->next)
 			exit_error(ctx, "config error: in TUN mode exactly one peer must be configured");
-		if (conf->peer_group->children)
+		if (conf.peer_group->children)
 			exit_error(ctx, "config error: in TUN mode peer groups can't be used");
-		if (has_peer_group_peer_dirs(conf->peer_group))
+		if (has_peer_group_peer_dirs(conf.peer_group))
 			exit_error(ctx, "config error: in TUN mode peer directories can't be used");
 	}
 
 #ifndef USE_PMTU
-	if (conf->pmtu.set)
+	if (conf.pmtu.set)
 		exit_error(ctx, "config error: setting pmtu is not supported on this system");
 #endif
 
 #ifndef USE_PACKET_MARK
-	if (conf->packet_mark)
+	if (conf.packet_mark)
 		exit_error(ctx, "config error: setting a packet mark is not supported on this system");
 #endif
 }
 
-void fastd_config_check(fastd_context_t *ctx, fastd_config_t *conf) {
-	config_check_base(ctx, conf);
+void fastd_config_check(fastd_context_t *ctx) {
+	config_check_base(ctx);
 
-	if (conf->mode == MODE_TUN) {
-		if (!conf->peers)
+	if (conf.mode == MODE_TUN) {
+		if (!conf.peers)
 			exit_error(ctx, "config error: in TUN mode exactly one peer must be configured");
 	}
 
-	if (!conf->peers && !has_peer_group_peer_dirs(conf->peer_group))
+	if (!conf.peers && !has_peer_group_peer_dirs(conf.peer_group))
 		exit_error(ctx, "config error: neither fixed peers nor peer dirs have been configured");
 
-	if (!conf->method_list) {
+	if (!conf.method_list) {
 		pr_warn(ctx, "no encryption method configured, falling back to method `null' (unencrypted)");
-		fastd_config_method(ctx, conf, "null");
+		fastd_config_method(ctx, "null");
 	}
 
-	configure_user(ctx, conf);
-	configure_methods(ctx, conf);
+	configure_user(ctx);
+	configure_methods(ctx);
 }
 
-void fastd_config_verify(fastd_context_t *ctx, fastd_config_t *conf) {
-	config_check_base(ctx, conf);
-	configure_methods(ctx, conf);
+void fastd_config_verify(fastd_context_t *ctx) {
+	config_check_base(ctx);
+	configure_methods(ctx);
 
 	fastd_peer_config_t *peer;
-	for (peer = conf->peers; peer; peer = peer->next)
-		conf->protocol->peer_verify(ctx, peer);
+	for (peer = conf.peers; peer; peer = peer->next)
+		conf.protocol->peer_verify(ctx, peer);
 }
 
-static void peer_dirs_read_peer_group(fastd_context_t *ctx, fastd_config_t *new_conf) {
-	read_peer_dirs(ctx, new_conf);
+static void peer_dirs_read_peer_group(fastd_context_t *ctx) {
+	read_peer_dirs(ctx);
 
 	fastd_peer_group_config_t *group;
-	for (group = new_conf->peer_group->children; group; group = group->next) {
-		new_conf->peer_group = group;
-		peer_dirs_read_peer_group(ctx, new_conf);
+	for (group = conf.peer_group->children; group; group = group->next) {
+		conf.peer_group = group;
+		peer_dirs_read_peer_group(ctx);
 	}
 }
 
@@ -653,58 +656,61 @@ static void peer_dirs_handle_new_peers(fastd_context_t *ctx UNUSED, fastd_peer_c
 	}
 }
 
-void fastd_config_load_peer_dirs(fastd_context_t *ctx, fastd_config_t *conf) {
-	fastd_config_t temp_conf;
-	temp_conf.peer_group = conf->peer_group;
-	temp_conf.peers = NULL;
+void fastd_config_load_peer_dirs(fastd_context_t *ctx) {
+	fastd_peer_config_t *old_peers = conf.peers;
+	conf.peers = NULL;
 
-	peer_dirs_read_peer_group(ctx, &temp_conf);
-	peer_dirs_handle_old_peers(ctx, &conf->peers, &temp_conf.peers);
-	peer_dirs_handle_new_peers(ctx, &conf->peers, temp_conf.peers);
+	peer_dirs_read_peer_group(ctx);
 
-	assess_peers(ctx, conf);
+	fastd_peer_config_t *new_peers = conf.peers;
+	conf.peers = old_peers;
+
+	peer_dirs_handle_old_peers(ctx, &conf.peers, &new_peers);
+	peer_dirs_handle_new_peers(ctx, &conf.peers, new_peers);
+
+	assess_peers(ctx);
 }
 
-void fastd_config_release(fastd_context_t *ctx, fastd_config_t *conf) {
-	while (conf->peers)
-		fastd_peer_config_delete(ctx, conf);
+void fastd_config_release(fastd_context_t *ctx) {
+	while (conf.peers)
+		fastd_peer_config_delete(ctx);
 
-	while (conf->log_files) {
-		fastd_log_file_t *next = conf->log_files->next;
-		free(conf->log_files->filename);
-		free(conf->log_files);
-		conf->log_files = next;
+	while (conf.log_files) {
+		fastd_log_file_t *next = conf.log_files->next;
+		free(conf.log_files->filename);
+		free(conf.log_files);
+		conf.log_files = next;
 	}
 
-	while (conf->bind_addrs) {
-		fastd_bind_address_t *next = conf->bind_addrs->next;
-		free(conf->bind_addrs->bindtodev);
-		free(conf->bind_addrs);
-		conf->bind_addrs = next;
+	while (conf.bind_addrs) {
+		fastd_bind_address_t *next = conf.bind_addrs->next;
+		free(conf.bind_addrs->bindtodev);
+		free(conf.bind_addrs);
+		conf.bind_addrs = next;
 	}
 
-	free_peer_group(conf->peer_group);
+	free_peer_group(conf.peer_group);
 
-	destroy_methods(conf);
-	fastd_string_stack_free(conf->method_list);
+	destroy_methods();
+	fastd_string_stack_free(conf.method_list);
 
-	fastd_mac_config_free(conf->macs);
-	fastd_cipher_config_free(conf->ciphers);
+	fastd_mac_config_free(conf.macs);
+	fastd_cipher_config_free(conf.ciphers);
 
-	fastd_shell_command_unset(&conf->on_pre_up);
-	fastd_shell_command_unset(&conf->on_up);
-	fastd_shell_command_unset(&conf->on_down);
-	fastd_shell_command_unset(&conf->on_post_down);
-	fastd_shell_command_unset(&conf->on_connect);
-	fastd_shell_command_unset(&conf->on_establish);
-	fastd_shell_command_unset(&conf->on_disestablish);
-	fastd_shell_command_unset(&conf->on_verify);
+	fastd_shell_command_unset(&conf.on_pre_up);
+	fastd_shell_command_unset(&conf.on_up);
+	fastd_shell_command_unset(&conf.on_down);
+	fastd_shell_command_unset(&conf.on_post_down);
+	fastd_shell_command_unset(&conf.on_connect);
+	fastd_shell_command_unset(&conf.on_establish);
+	fastd_shell_command_unset(&conf.on_disestablish);
+	fastd_shell_command_unset(&conf.on_verify);
 
-	free(conf->user);
-	free(conf->group);
-	free(conf->groups);
-	free(conf->ifname);
-	free(conf->secret);
-	free(conf->protocol_config);
-	free(conf->log_syslog_ident);
+	free(conf.user);
+	free(conf.group);
+	free(conf.groups);
+	free(conf.ifname);
+	free(conf.secret);
+	free(conf.protocol_config);
+	free(conf.log_syslog_ident);
 }

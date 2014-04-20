@@ -90,8 +90,8 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session);
 
 void fastd_protocol_ec25519_fhmqvc_generate_key(fastd_context_t *ctx);
-void fastd_protocol_ec25519_fhmqvc_show_key(fastd_context_t *ctx);
-void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *peer);
+void fastd_protocol_ec25519_fhmqvc_show_key(void);
+void fastd_protocol_ec25519_fhmqvc_set_shell_env(const fastd_peer_t *peer);
 bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_context_t *ctx UNUSED, const fastd_peer_t *peer, char *buf, size_t len);
 
 

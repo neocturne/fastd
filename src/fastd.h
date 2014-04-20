@@ -69,8 +69,8 @@ struct fastd_protocol {
 	void (*free_peer_state)(fastd_context_t *ctx, fastd_peer_t *peer);
 
 	void (*generate_key)(fastd_context_t *ctx);
-	void (*show_key)(fastd_context_t *ctx);
-	void (*set_shell_env)(fastd_context_t *ctx, const fastd_peer_t *peer);
+	void (*show_key)(void);
+	void (*set_shell_env)(const fastd_peer_t *peer);
 	bool (*describe_peer)(const fastd_context_t *ctx, const fastd_peer_t *peer, char *buf, size_t len);
 };
 
@@ -228,9 +228,9 @@ struct fastd_config {
 	bool verify_config;
 };
 
-struct fastd_context {
-	const fastd_config_t *conf;
+extern fastd_config_t conf;
 
+struct fastd_context {
 	bool log_initialized;
 	fastd_log_fd_t *log_files;
 
@@ -339,18 +339,18 @@ static inline size_t alignto(size_t l, size_t a) {
 
 
 static inline size_t fastd_max_inner_packet(const fastd_context_t *ctx) {
-	switch (ctx->conf->mode) {
+	switch (conf.mode) {
 	case MODE_TAP:
-		return ctx->conf->mtu+ETH_HLEN;
+		return conf.mtu+ETH_HLEN;
 	case MODE_TUN:
-		return ctx->conf->mtu;
+		return conf.mtu;
 	default:
 		exit_bug(ctx, "invalid mode");
 	}
 }
 
 static inline size_t fastd_max_outer_packet(const fastd_context_t *ctx) {
-	return PACKET_TYPE_LEN + fastd_max_inner_packet(ctx) + ctx->conf->max_overhead;
+	return PACKET_TYPE_LEN + fastd_max_inner_packet(ctx) + conf.max_overhead;
 }
 
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {

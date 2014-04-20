@@ -55,7 +55,7 @@ static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, siz
 			return snprintf(buffer, size, "any");
 
 	case AF_INET:
-		if (!bind_address && ctx->conf->hide_ip_addresses)
+		if (!bind_address && conf.hide_ip_addresses)
 			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
 		else if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))
 			return snprintf_safe(buffer, size, "%s:%u", addr_buf, ntohs(address->in.sin_port));
@@ -63,7 +63,7 @@ static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, siz
 			return 0;
 
 	case AF_INET6:
-		if (!bind_address && ctx->conf->hide_ip_addresses)
+		if (!bind_address && conf.hide_ip_addresses)
 			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
 			char ifname_buf[IF_NAMESIZE];
@@ -89,7 +89,7 @@ static size_t snprint_peer_str(const fastd_context_t *ctx, char *buffer, size_t 
 	}
 	else {
 		char buf[65];
-		if (ctx->conf->protocol->describe_peer(ctx, peer, buf, sizeof(buf)))
+		if (conf.protocol->describe_peer(ctx, peer, buf, sizeof(buf)))
 			return snprintf_safe(buffer, size, "{%s}", buf);
 		else
 			return snprintf_safe(buffer, size, "(null)");
@@ -143,7 +143,7 @@ static int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size
 			eth_addr = va_arg(ap, const fastd_eth_addr_t*);
 
 			if (eth_addr) {
-				if (ctx->conf->hide_mac_addresses)
+				if (conf.hide_mac_addresses)
 					buffer += snprintf_safe(buffer, buffer_end-buffer, "[hidden]");
 				else
 					buffer += snprintf_safe(buffer, buffer_end-buffer, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -239,7 +239,7 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 
 	buffer[sizeof(buffer)-1] = 0;
 
-	if (!ctx->log_initialized || level <= ctx->conf->log_stderr_level || ctx->conf->log_files) {
+	if (!ctx->log_initialized || level <= conf.log_stderr_level || conf.log_files) {
 		time_t t;
 		struct tm tm;
 
@@ -250,11 +250,11 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 		}
 	}
 
-	if (!ctx->log_initialized || level <= ctx->conf->log_stderr_level)
+	if (!ctx->log_initialized || level <= conf.log_stderr_level)
 		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
 
 	if (ctx->log_initialized) {
-		if (level <= ctx->conf->log_syslog_level)
+		if (level <= conf.log_syslog_level)
 			syslog(get_syslog_level(level), "%s", buffer);
 
 		fastd_log_fd_t *file;

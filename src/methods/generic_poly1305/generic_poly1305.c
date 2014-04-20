@@ -88,7 +88,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 
 	fastd_method_common_init(ctx, &session->common, initiator);
 	session->method = method;
-	session->cipher = fastd_cipher_get(ctx, session->method->cipher_info);
+	session->cipher = fastd_cipher_get(session->method->cipher_info);
 	session->cipher_state = session->cipher->init(secret);
 
 	return session;

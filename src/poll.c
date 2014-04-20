@@ -35,8 +35,8 @@
 #endif
 
 
-static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
-	if (ctx->conf->mode != MODE_TAP)
+static inline bool handle_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
+	if (conf.mode != MODE_TAP)
 		return false;
 
 	if (buffer.len < ETH_HLEN) {
@@ -54,16 +54,16 @@ static inline bool handle_tun_tap(fastd_context_t *ctx, fastd_buffer_t buffer) {
 	if (!peer)
 		return false;
 
-	ctx->conf->protocol->send(ctx, peer, buffer);
+	conf.protocol->send(ctx, peer, buffer);
 	return true;
 }
 
-static void handle_tun(fastd_context_t *ctx) {
+static void handle_tuntap(fastd_context_t *ctx) {
 	fastd_buffer_t buffer = fastd_tuntap_read(ctx);
 	if (!buffer.len)
 		return;
 
-	if (handle_tun_tap(ctx, buffer))
+	if (handle_tap(ctx, buffer))
 		return;
 
 	/* TUN mode or multicast packet */
@@ -173,7 +173,7 @@ void fastd_poll_handle(fastd_context_t *ctx) {
 	for (i = 0; i < (size_t)ret; i++) {
 		if (events[i].data.ptr == &ctx->tunfd) {
 			if (events[i].events & EPOLLIN)
-				handle_tun(ctx);
+				handle_tuntap(ctx);
 		}
 		else if (events[i].data.ptr == &ctx->async_rfd) {
 			if (events[i].events & EPOLLIN)
@@ -280,7 +280,7 @@ void fastd_poll_handle(fastd_context_t *ctx) {
 	fastd_update_time(ctx);
 
 	if (VECTOR_INDEX(ctx->pollfds, 0).revents & POLLIN)
-		handle_tun(ctx);
+		handle_tuntap(ctx);
 	if (VECTOR_INDEX(ctx->pollfds, 1).revents & POLLIN)
 		fastd_async_handle(ctx);
 

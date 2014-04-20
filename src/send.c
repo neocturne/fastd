@@ -185,11 +185,11 @@ void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffe
 
 		/* optimization, primarily for TUN mode: don't duplicate the buffer for the last (or only) peer */
 		if (i == VECTOR_LEN(ctx->peers)-1) {
-			ctx->conf->protocol->send(ctx, dest_peer, buffer);
+			conf.protocol->send(ctx, dest_peer, buffer);
 			return;
 		}
 
-		ctx->conf->protocol->send(ctx, dest_peer, fastd_buffer_dup(ctx, buffer, ctx->conf->min_encrypt_head_space, ctx->conf->min_encrypt_tail_space));
+		conf.protocol->send(ctx, dest_peer, fastd_buffer_dup(ctx, buffer, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
 	}
 
 	fastd_buffer_free(buffer);

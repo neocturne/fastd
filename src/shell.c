@@ -42,10 +42,10 @@ static void shell_command_setenv(fastd_context_t *ctx, pid_t pid, const fastd_pe
 	if (ctx->ifname) {
 		setenv("INTERFACE", ctx->ifname, 1);
 	}
-	else if (ctx->conf->ifname) {
+	else if (conf.ifname) {
 		char ifname[IF_NAMESIZE];
 
-		strncpy(ifname, ctx->conf->ifname, sizeof(ifname)-1);
+		strncpy(ifname, conf.ifname, sizeof(ifname)-1);
 		ifname[sizeof(ifname)-1] = 0;
 
 		setenv("INTERFACE", ifname, 1);
@@ -54,7 +54,7 @@ static void shell_command_setenv(fastd_context_t *ctx, pid_t pid, const fastd_pe
 		unsetenv("INTERFACE");
 	}
 
-	snprintf(buf, sizeof(buf), "%u", ctx->conf->mtu);
+	snprintf(buf, sizeof(buf), "%u", conf.mtu);
 	setenv("INTERFACE_MTU", buf, 1);
 
 	if (peer && peer->config && peer->config->name)
@@ -122,7 +122,7 @@ static void shell_command_setenv(fastd_context_t *ctx, pid_t pid, const fastd_pe
 		unsetenv("PEER_PORT");
 	}
 
-	ctx->conf->protocol->set_shell_env(ctx, peer);
+	conf.protocol->set_shell_env(peer);
 }
 
 static bool shell_command_do_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, pid_t *pid_ret) {

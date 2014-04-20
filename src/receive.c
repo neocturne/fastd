@@ -99,7 +99,7 @@ static bool backoff_unknown(fastd_context_t *ctx, const fastd_peer_address_t *ad
 	fastd_handshake_timeout_t *t = &ctx->unknown_handshakes[ctx->unknown_handshake_pos];
 
 	t->address = *addr;
-	t->timeout = fastd_in_seconds(ctx, ctx->conf->min_handshake_interval);
+	t->timeout = fastd_in_seconds(ctx, conf.min_handshake_interval);
 
 	return false;
 }
@@ -119,11 +119,11 @@ static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socke
 			fastd_buffer_free(buffer);
 
 			if (!backoff_unknown(ctx, remote_addr))
-				ctx->conf->protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+				conf.protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
 			return;
 		}
 
-		ctx->conf->protocol->handle_recv(ctx, peer, buffer);
+		conf.protocol->handle_recv(ctx, peer, buffer);
 		break;
 
 	case PACKET_HANDSHAKE:
@@ -131,8 +131,8 @@ static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socke
 	}
 }
 
-static inline bool allow_unknown_peers(fastd_context_t *ctx) {
-	return ctx->conf->has_floating || fastd_shell_command_isset(&ctx->conf->on_verify);
+static inline bool allow_unknown_peers(void) {
+	return conf.has_floating || fastd_shell_command_isset(&conf.on_verify);
 }
 
 static inline void handle_socket_receive_unknown(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
@@ -144,7 +144,7 @@ static inline void handle_socket_receive_unknown(fastd_context_t *ctx, fastd_soc
 		fastd_buffer_free(buffer);
 
 		if (!backoff_unknown(ctx, remote_addr))
-			ctx->conf->protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+			conf.protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
 		break;
 
 	case PACKET_HANDSHAKE:
@@ -170,7 +170,7 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 	if (peer) {
 		handle_socket_receive_known(ctx, sock, local_addr, remote_addr, peer, buffer);
 	}
-	else if (allow_unknown_peers(ctx)) {
+	else if (allow_unknown_peers()) {
 		handle_socket_receive_unknown(ctx, sock, local_addr, remote_addr, buffer);
 	}
 	else  {
@@ -181,7 +181,7 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 
 void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
 	size_t max_len = fastd_max_outer_packet(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, ctx->conf->min_decrypt_head_space, ctx->conf->min_decrypt_tail_space);
+	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, conf.min_decrypt_head_space, conf.min_decrypt_tail_space);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
 	struct iovec buffer_vec = { .iov_base = buffer.data, .iov_len = buffer.len };

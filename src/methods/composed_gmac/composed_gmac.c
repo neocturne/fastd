@@ -122,10 +122,10 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	fastd_method_common_init(ctx, &session->common, initiator);
 	session->method = method;
 
-	session->cipher = fastd_cipher_get(ctx, method->cipher_info);
+	session->cipher = fastd_cipher_get(method->cipher_info);
 	session->cipher_state = session->cipher->init(secret);
 
-	session->gmac_cipher = fastd_cipher_get(ctx, method->gmac_cipher_info);
+	session->gmac_cipher = fastd_cipher_get(method->gmac_cipher_info);
 	session->gmac_cipher_state = session->gmac_cipher->init(secret + method->cipher_info->key_length);
 
 	fastd_block128_t H;
@@ -142,7 +142,7 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 		return NULL;
 	}
 
-	session->ghash = fastd_mac_get(ctx, method->ghash_info);
+	session->ghash = fastd_mac_get(method->ghash_info);
 	session->ghash_state = session->ghash->init(H.b);
 
 	return session;

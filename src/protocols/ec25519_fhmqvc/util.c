@@ -38,7 +38,7 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(fastd_context_t *ctx) {
 	ecc_int256_t secret_key;
 	ecc_int256_t public_key;
 
-	if (!ctx->conf->machine_readable)
+	if (!conf.machine_readable)
 		pr_info(ctx, "Reading 32 bytes from /dev/random...");
 
 	fastd_random_bytes(ctx, secret_key.p, 32, true);
@@ -48,7 +48,7 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(fastd_context_t *ctx) {
 	ecc_25519_scalarmult_base(&work, &secret_key);
 	ecc_25519_store_packed(&public_key, &work);
 
-	if (ctx->conf->machine_readable) {
+	if (conf.machine_readable) {
 		print_hexdump("", secret_key.p);
 	}
 	else {
@@ -57,17 +57,17 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(fastd_context_t *ctx) {
 	}
 }
 
-void fastd_protocol_ec25519_fhmqvc_show_key(fastd_context_t *ctx) {
-	if (ctx->conf->machine_readable)
-		print_hexdump("", ctx->conf->protocol_config->key.public.u8);
+void fastd_protocol_ec25519_fhmqvc_show_key(void) {
+	if (conf.machine_readable)
+		print_hexdump("", conf.protocol_config->key.public.u8);
 	else
-		print_hexdump("Public: ", ctx->conf->protocol_config->key.public.u8);
+		print_hexdump("Public: ", conf.protocol_config->key.public.u8);
 }
 
-void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_context_t *ctx, const fastd_peer_t *peer) {
+void fastd_protocol_ec25519_fhmqvc_set_shell_env(const fastd_peer_t *peer) {
 	char buf[65];
 
-	hexdump(buf, ctx->conf->protocol_config->key.public.u8);
+	hexdump(buf, conf.protocol_config->key.public.u8);
 	setenv("LOCAL_KEY", buf, 1);
 
 	if (peer && peer->protocol_config) {

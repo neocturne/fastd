@@ -121,7 +121,7 @@ void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t
 	pr_verbose(ctx, "resolving host `%s' for peer %P...", remote->config->hostname, peer);
 
 	fastd_remote_ref(remote);
-	remote->last_resolve_timeout = fastd_in_seconds(ctx, ctx->conf->min_resolve_interval);
+	remote->last_resolve_timeout = fastd_in_seconds(ctx, conf.min_resolve_interval);
 	remote->resolving = true;
 
 	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));

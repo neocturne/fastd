@@ -93,8 +93,8 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 #endif
 
 #ifdef USE_PMTU
-	if (ctx->conf->pmtu.set) {
-		int pmtu = ctx->conf->pmtu.state ? IP_PMTUDISC_DO : IP_PMTUDISC_DONT;
+	if (conf.pmtu.set) {
+		int pmtu = conf.pmtu.state ? IP_PMTUDISC_DO : IP_PMTUDISC_DONT;
 		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
 			pr_error_errno(ctx, "setsockopt: unable to set PMTU discovery");
 			goto error;
@@ -103,8 +103,8 @@ static int bind_socket(fastd_context_t *ctx, const fastd_bind_address_t *addr, b
 #endif
 
 #ifdef USE_PACKET_MARK
-	if (ctx->conf->packet_mark) {
-		if (setsockopt(fd, SOL_SOCKET, SO_MARK, &ctx->conf->packet_mark, sizeof(ctx->conf->packet_mark))) {
+	if (conf.packet_mark) {
+		if (setsockopt(fd, SOL_SOCKET, SO_MARK, &conf.packet_mark, sizeof(conf.packet_mark))) {
 			pr_error_errno(ctx, "setsockopt: unable to set packet mark");
 			goto error;
 		}
