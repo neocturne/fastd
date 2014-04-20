@@ -45,44 +45,44 @@ static bool method_create_by_name(const char *name, fastd_method_t **method UNUS
 static void method_destroy(fastd_method_t *method UNUSED) {
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_t *method UNUSED) {
+static size_t method_key_length(const fastd_method_t *method UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_t *method UNUSED, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
-	fastd_method_common_init(ctx, &session->common, initiator);
+	fastd_method_common_init(&session->common, initiator);
 
 	memcpy(session->key, secret, crypto_secretbox_xsalsa20poly1305_KEYBYTES);
 
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t* method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
-		exit_bug(ctx, "xsalsa20-poly1305: tried to init with short secret");
+		exit_bug("xsalsa20-poly1305: tried to init with short secret");
 
-	return method_session_init(ctx, method, secret, initiator);
+	return method_session_init(method, secret, initiator);
 }
 
-static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
-	return (session && fastd_method_session_common_is_valid(ctx, &session->common));
+static bool method_session_is_valid(fastd_method_session_state_t *session) {
+	return (session && fastd_method_session_common_is_valid(&session->common));
 }
 
-static bool method_session_is_initiator(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static bool method_session_is_initiator(fastd_method_session_state_t *session) {
 	return fastd_method_session_common_is_initiator(&session->common);
 }
 
-static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_session_state_t *session) {
-	return fastd_method_session_common_want_refresh(ctx, &session->common);
+static bool method_session_want_refresh(fastd_method_session_state_t *session) {
+	return fastd_method_session_common_want_refresh(&session->common);
 }
 
-static void method_session_superseded(fastd_context_t *ctx, fastd_method_session_state_t *session) {
-	fastd_method_session_common_superseded(ctx, &session->common);
+static void method_session_superseded(fastd_method_session_state_t *session) {
+	fastd_method_session_common_superseded(&session->common);
 }
 
-static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static void method_session_free(fastd_method_session_state_t *session) {
 	if(session) {
 		secure_memzero(session, sizeof(fastd_method_session_state_t));
 		free(session);
@@ -96,30 +96,30 @@ static inline void memcpy_nonce(uint8_t *dst, const uint8_t *src) {
 		dst[i] = src[COMMON_NONCEBYTES-i-1];
 }
 
-static inline void put_header(fastd_context_t *ctx, fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
-	fastd_buffer_pull_head_from(ctx, buffer, &flags, 1);
+static inline void put_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
+	fastd_buffer_pull_head_from(buffer, &flags, 1);
 
-	fastd_buffer_pull_head(ctx, buffer, COMMON_NONCEBYTES);
+	fastd_buffer_pull_head(buffer, COMMON_NONCEBYTES);
 	memcpy_nonce(buffer->data, nonce);
 }
 
-static inline void take_header(fastd_context_t *ctx, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
+static inline void take_header(fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
 	memcpy_nonce(nonce, buffer->data  );
-	fastd_buffer_push_head(ctx, buffer, COMMON_NONCEBYTES);
+	fastd_buffer_push_head(buffer, COMMON_NONCEBYTES);
 
-	fastd_buffer_push_head_to(ctx, buffer, flags, 1);
+	fastd_buffer_push_head_to(buffer, flags, 1);
 }
 
-static inline bool handle_header(fastd_context_t *ctx, const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
-	take_header(ctx, buffer, nonce, flags);
-	return fastd_method_is_nonce_valid(ctx, session, nonce, age);
+static inline bool handle_header(const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
+	take_header(buffer, nonce, flags);
+	return fastd_method_is_nonce_valid(session, nonce, age);
 }
 
 
-static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head_zero(ctx, &in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+	fastd_buffer_pull_head_zero(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
-	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
+	*out = fastd_buffer_alloc(in.len, 0, 0);
 
 	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES] __attribute__((aligned(8))) = {};
 	memcpy_nonce(nonce, session->common.send_nonce);
@@ -128,24 +128,24 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(ctx, out, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
-	put_header(ctx, out, session->common.send_nonce, 0);
+	fastd_buffer_push_head(out, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+	put_header(out, session->common.send_nonce, 0);
 	fastd_method_increment_nonce(&session->common);
 
 	return true;
 }
 
-static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	if (in.len < COMMON_HEADBYTES)
 		return false;
 
-	if (!method_session_is_valid(ctx, session))
+	if (!method_session_is_valid(session))
 		return false;
 
 	uint8_t in_nonce[COMMON_NONCEBYTES];
 	uint8_t flags;
 	int64_t age;
-	if (!handle_header(ctx, &session->common, &in, in_nonce, &flags, &age))
+	if (!handle_header(&session->common, &in, in_nonce, &flags, &age))
 		return false;
 
 	if (flags)
@@ -154,27 +154,27 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	uint8_t nonce[crypto_secretbox_xsalsa20poly1305_NONCEBYTES] __attribute__((aligned(8))) = {};
 	memcpy_nonce(nonce, in_nonce);
 
-	fastd_buffer_pull_head_zero(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+	fastd_buffer_pull_head_zero(&in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
 
-	*out = fastd_buffer_alloc(ctx, in.len, 0, 0);
+	*out = fastd_buffer_alloc(in.len, 0, 0);
 
 	if (crypto_secretbox_xsalsa20poly1305_open(out->data, in.data, in.len, nonce, session->key) != 0) {
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_push_head(ctx, &in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
-		put_header(ctx, &in, in_nonce, 0);
+		fastd_buffer_push_head(&in, crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES);
+		put_header(&in, in_nonce, 0);
 		return false;
 	}
 
 	fastd_buffer_free(in);
 
-	if (!fastd_method_reorder_check(ctx, peer, &session->common, in_nonce, age)) {
+	if (!fastd_method_reorder_check(peer, &session->common, in_nonce, age)) {
 		fastd_buffer_free(*out);
-		*out = fastd_buffer_alloc(ctx, crypto_secretbox_xsalsa20poly1305_ZEROBYTES, 0, 0);
+		*out = fastd_buffer_alloc(crypto_secretbox_xsalsa20poly1305_ZEROBYTES, 0, 0);
 	}
 
-	fastd_buffer_push_head(ctx, out, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
+	fastd_buffer_push_head(out, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	return true;
 }

@@ -37,6 +37,6 @@ struct fastd_async_resolve_return {
 };
 
 
-void fastd_async_init(fastd_context_t *ctx);
-void fastd_async_handle(fastd_context_t *ctx);
-void fastd_async_enqueue(fastd_context_t *ctx, fastd_async_type_t type, const void *data, size_t len);
+void fastd_async_init(void);
+void fastd_async_handle(void);
+void fastd_async_enqueue(fastd_async_type_t type, const void *data, size_t len);

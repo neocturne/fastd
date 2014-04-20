@@ -58,6 +58,9 @@
 #endif
 
 
+fastd_context_t ctx;
+
+
 static volatile bool sighup = false;
 static volatile bool terminate = false;
 static volatile bool dump = false;
@@ -79,7 +82,7 @@ static void on_sigchld(int signo UNUSED) {
 	while (waitpid(-1, NULL, WNOHANG) > 0) {}
 }
 
-static void init_signals(fastd_context_t *ctx) {
+static void init_signals(void) {
 	struct sigaction action;
 
 	action.sa_flags = 0;
@@ -90,56 +93,56 @@ static void init_signals(fastd_context_t *ctx) {
 
 	action.sa_handler = on_sighup;
 	if (sigaction(SIGHUP, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 
 	action.sa_handler = on_terminate;
 	if (sigaction(SIGTERM, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 	if (sigaction(SIGQUIT, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 	if (sigaction(SIGINT, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 
 	action.sa_handler = on_sigusr1;
 	if (sigaction(SIGUSR1, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 
 	action.sa_handler = on_sigchld;
 	if (sigaction(SIGCHLD, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 
 	action.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 	if (sigaction(SIGTTIN, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 	if (sigaction(SIGTTOU, &action, NULL))
-		exit_errno(ctx, "sigaction");
+		exit_errno("sigaction");
 
 }
 
-void fastd_open_pipe(fastd_context_t *ctx, int *readfd, int *writefd) {
+void fastd_open_pipe(int *readfd, int *writefd) {
 	int pipefd[2];
 
 	if (pipe(pipefd))
-		exit_errno(ctx, "pipe");
+		exit_errno("pipe");
 
-	fastd_setfd(ctx, pipefd[0], FD_CLOEXEC, 0);
-	fastd_setfd(ctx, pipefd[1], FD_CLOEXEC, 0);
+	fastd_setfd(pipefd[0], FD_CLOEXEC, 0);
+	fastd_setfd(pipefd[1], FD_CLOEXEC, 0);
 
 	*readfd = pipefd[0];
 	*writefd = pipefd[1];
 }
 
-static void init_log(fastd_context_t *ctx) {
+static void init_log(void) {
 	uid_t uid = geteuid();
 	gid_t gid = getegid();
 
 	if (conf.user || conf.group) {
 		if (setegid(conf.gid) < 0)
-			pr_debug_errno(ctx, "setegid");
+			pr_debug_errno("setegid");
 		if (seteuid(conf.uid) < 0)
-			pr_debug_errno(ctx, "seteuid");
+			pr_debug_errno("seteuid");
 	}
 
 	if (conf.log_syslog_level > LL_UNSPEC)
@@ -152,88 +155,88 @@ static void init_log(fastd_context_t *ctx) {
 		file->config = config;
 		file->fd = open(config->filename, O_WRONLY|O_APPEND|O_CREAT, 0600);
 
-		file->next = ctx->log_files;
-		ctx->log_files = file;
+		file->next = ctx.log_files;
+		ctx.log_files = file;
 	}
 
-	ctx->log_initialized = true;
+	ctx.log_initialized = true;
 
 	if (seteuid(uid) < 0)
-		pr_debug_errno(ctx, "seteuid");
+		pr_debug_errno("seteuid");
 	if (setegid(gid) < 0)
-		pr_debug_errno(ctx, "setegid");
+		pr_debug_errno("setegid");
 }
 
-static void close_log(fastd_context_t *ctx) {
-	while (ctx->log_files) {
-		fastd_log_fd_t *next = ctx->log_files->next;
+static void close_log(void) {
+	while (ctx.log_files) {
+		fastd_log_fd_t *next = ctx.log_files->next;
 
-		close(ctx->log_files->fd);
-		free(ctx->log_files);
+		close(ctx.log_files->fd);
+		free(ctx.log_files);
 
-		ctx->log_files = next;
+		ctx.log_files = next;
 	}
 
 	closelog();
 }
 
 
-static void init_sockets(fastd_context_t *ctx) {
-	ctx->socks = malloc(conf.n_bind_addrs * sizeof(fastd_socket_t));
+static void init_sockets(void) {
+	ctx.socks = malloc(conf.n_bind_addrs * sizeof(fastd_socket_t));
 
 	unsigned i;
 	fastd_bind_address_t *addr = conf.bind_addrs;
 	for (i = 0; i < conf.n_bind_addrs; i++) {
-		ctx->socks[i] = (fastd_socket_t){ .fd = -2, .addr = addr };
+		ctx.socks[i] = (fastd_socket_t){ .fd = -2, .addr = addr };
 
 		if (addr == conf.bind_addr_default_v4)
-			ctx->sock_default_v4 = &ctx->socks[i];
+			ctx.sock_default_v4 = &ctx.socks[i];
 
 		if (addr == conf.bind_addr_default_v6)
-			ctx->sock_default_v6 = &ctx->socks[i];
+			ctx.sock_default_v6 = &ctx.socks[i];
 
 		addr = addr->next;
 	}
 
-	ctx->n_socks = conf.n_bind_addrs;
+	ctx.n_socks = conf.n_bind_addrs;
 }
 
 
-void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset) {
+void fastd_setfd(const int fd, int set, int unset) {
 	int flags = fcntl(fd, F_GETFD);
 	if (flags < 0)
-		exit_errno(ctx, "Getting file descriptor flags failed: fcntl");
+		exit_errno("Getting file descriptor flags failed: fcntl");
 
 	if (fcntl(fd, F_SETFD, (flags|set) & (~unset)) < 0)
-		exit_errno(ctx, "Setting file descriptor flags failed: fcntl");
+		exit_errno("Setting file descriptor flags failed: fcntl");
 }
 
-void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset) {
+void fastd_setfl(const int fd, int set, int unset) {
 	int flags = fcntl(fd, F_GETFL);
 	if (flags < 0)
-		exit_errno(ctx, "Getting file status flags failed: fcntl");
+		exit_errno("Getting file status flags failed: fcntl");
 
 	if (fcntl(fd, F_SETFL, (flags|set) & (~unset)) < 0)
-		exit_errno(ctx, "Setting file status flags failed: fcntl");
+		exit_errno("Setting file status flags failed: fcntl");
 }
 
-static void close_sockets(fastd_context_t *ctx) {
+static void close_sockets(void) {
 	unsigned i;
-	for (i = 0; i < ctx->n_socks; i++)
-		fastd_socket_close(ctx, &ctx->socks[i]);
+	for (i = 0; i < ctx.n_socks; i++)
+		fastd_socket_close(&ctx.socks[i]);
 
-	free(ctx->socks);
+	free(ctx.socks);
 }
 
-static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
-	fastd_eth_addr_t dest_addr = fastd_get_dest_address(ctx, buffer);
+static inline void handle_forward(fastd_peer_t *source_peer, fastd_buffer_t buffer) {
+	fastd_eth_addr_t dest_addr = fastd_get_dest_address(buffer);
 
 	if (fastd_eth_addr_is_unicast(dest_addr)) {
-		fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(ctx, dest_addr);
+		fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(dest_addr);
 
 		if (dest_peer) {
 			if (dest_peer != source_peer)
-				conf.protocol->send(ctx, dest_peer, buffer);
+				conf.protocol->send(dest_peer, buffer);
 			else
 				fastd_buffer_free(buffer);
 
@@ -241,50 +244,50 @@ static inline void handle_forward(fastd_context_t *ctx, fastd_peer_t *source_pee
 		}
 	}
 
-	fastd_send_all(ctx, source_peer, buffer);
+	fastd_send_all(source_peer, buffer);
 }
 
-void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
+void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (conf.mode == MODE_TAP) {
 		if (buffer.len < ETH_HLEN) {
-			pr_debug(ctx, "received truncated packet");
+			pr_debug("received truncated packet");
 			fastd_buffer_free(buffer);
 			return;
 		}
 
-		fastd_eth_addr_t src_addr = fastd_get_source_address(ctx, buffer);
+		fastd_eth_addr_t src_addr = fastd_get_source_address(buffer);
 
 		if (fastd_eth_addr_is_unicast(src_addr))
-			fastd_peer_eth_addr_add(ctx, peer, src_addr);
+			fastd_peer_eth_addr_add(peer, src_addr);
 	}
 
-	ctx->rx.packets++;
-	ctx->rx.bytes += buffer.len;
+	ctx.rx.packets++;
+	ctx.rx.bytes += buffer.len;
 
-	fastd_tuntap_write(ctx, buffer);
+	fastd_tuntap_write(buffer);
 
 	if (conf.mode == MODE_TAP && conf.forward) {
-		handle_forward(ctx, peer, buffer);
+		handle_forward(peer, buffer);
 		return;
 	}
 
 	fastd_buffer_free(buffer);
 }
 
-static inline void on_pre_up(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &conf.on_pre_up, NULL, NULL, NULL);
+static inline void on_pre_up(void) {
+	fastd_shell_command_exec(&conf.on_pre_up, NULL, NULL, NULL);
 }
 
-static inline void on_up(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &conf.on_up, NULL, NULL, NULL);
+static inline void on_up(void) {
+	fastd_shell_command_exec(&conf.on_up, NULL, NULL, NULL);
 }
 
-static inline void on_down(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &conf.on_down, NULL, NULL, NULL);
+static inline void on_down(void) {
+	fastd_shell_command_exec(&conf.on_down, NULL, NULL, NULL);
 }
 
-static inline void on_post_down(fastd_context_t *ctx) {
-	fastd_shell_command_exec(ctx, &conf.on_post_down, NULL, NULL, NULL);
+static inline void on_post_down(void) {
+	fastd_shell_command_exec(&conf.on_post_down, NULL, NULL, NULL);
 }
 
 static fastd_peer_group_t* init_peer_group(const fastd_peer_group_config_t *config, fastd_peer_group_t *parent) {
@@ -304,8 +307,8 @@ static fastd_peer_group_t* init_peer_group(const fastd_peer_group_config_t *conf
 	return ret;
 }
 
-static void init_peer_groups(fastd_context_t *ctx) {
-	ctx->peer_group = init_peer_group(conf.peer_group, NULL);
+static void init_peer_groups(void) {
+	ctx.peer_group = init_peer_group(conf.peer_group, NULL);
 }
 
 static void free_peer_group(fastd_peer_group_t *group) {
@@ -319,38 +322,38 @@ static void free_peer_group(fastd_peer_group_t *group) {
 	free(group);
 }
 
-static void delete_peer_groups(fastd_context_t *ctx) {
-	free_peer_group(ctx->peer_group);
+static void delete_peer_groups(void) {
+	free_peer_group(ctx.peer_group);
 }
 
-static void init_peers(fastd_context_t *ctx) {
+static void init_peers(void) {
 	fastd_peer_config_t *peer_conf;
 	for (peer_conf = conf.peers; peer_conf; peer_conf = peer_conf->next)
-		conf.protocol->peer_configure(ctx, peer_conf);
+		conf.protocol->peer_configure(peer_conf);
 
 	for (peer_conf = conf.peers; peer_conf; peer_conf = peer_conf->next) {
-		bool enable = conf.protocol->peer_check(ctx, peer_conf);
+		bool enable = conf.protocol->peer_check(peer_conf);
 
 		if (enable && !peer_conf->enabled)
-			fastd_peer_add(ctx, peer_conf);
+			fastd_peer_add(peer_conf);
 
 		peer_conf->enabled = enable;
 	}
 
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx->peers);) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
 		if (peer->config) {
 			if (!peer->config->enabled) {
-				pr_info(ctx, "previously enabled peer %P disabled, deleting.", peer);
-				fastd_peer_delete(ctx, peer);
+				pr_info("previously enabled peer %P disabled, deleting.", peer);
+				fastd_peer_delete(peer);
 				continue;
 			}
 		}
 		else {
-			if (!conf.protocol->peer_check_temporary(ctx, peer)) {
-				fastd_peer_delete(ctx, peer);
+			if (!conf.protocol->peer_check_temporary(peer)) {
+				fastd_peer_delete(peer);
 				continue;
 			}
 		}
@@ -359,93 +362,93 @@ static void init_peers(fastd_context_t *ctx) {
 	}
 }
 
-static void delete_peers(fastd_context_t *ctx) {
-	while (VECTOR_LEN(ctx->peers))
-		fastd_peer_delete(ctx, VECTOR_INDEX(ctx->peers, VECTOR_LEN(ctx->peers)-1));
+static void delete_peers(void) {
+	while (VECTOR_LEN(ctx.peers))
+		fastd_peer_delete(VECTOR_INDEX(ctx.peers, VECTOR_LEN(ctx.peers)-1));
 }
 
-static void dump_state(fastd_context_t *ctx) {
-	pr_info(ctx, "TX stats: %U packet(s), %U byte(s); dropped: %U packet(s), %U byte(s); error: %U packet(s), %U byte(s)",
-		ctx->tx.packets, ctx->tx.bytes, ctx->tx_dropped.packets, ctx->tx_dropped.bytes, ctx->tx_error.packets, ctx->tx_error.bytes);
-	pr_info(ctx, "RX stats: %U packet(s), %U byte(s)", ctx->rx.packets, ctx->rx.bytes);
+static void dump_state(void) {
+	pr_info("TX stats: %U packet(s), %U byte(s); dropped: %U packet(s), %U byte(s); error: %U packet(s), %U byte(s)",
+		ctx.tx.packets, ctx.tx.bytes, ctx.tx_dropped.packets, ctx.tx_dropped.bytes, ctx.tx_error.packets, ctx.tx_error.bytes);
+	pr_info("RX stats: %U packet(s), %U byte(s)", ctx.rx.packets, ctx.rx.bytes);
 
-	pr_info(ctx, "dumping peers:");
+	pr_info("dumping peers:");
 
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx->peers);) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
 		if (!fastd_peer_is_established(peer)) {
-			pr_info(ctx, "peer %P not connected, address: %I", peer, &peer->address);
+			pr_info("peer %P not connected, address: %I", peer, &peer->address);
 			continue;
 		}
 
 		if (conf.mode == MODE_TAP) {
 			unsigned int eth_addresses = 0;
 			size_t i;
-			for (i = 0; i < VECTOR_LEN(ctx->eth_addrs); i++) {
-				if (VECTOR_INDEX(ctx->eth_addrs, i).peer == peer)
+			for (i = 0; i < VECTOR_LEN(ctx.eth_addrs); i++) {
+				if (VECTOR_INDEX(ctx.eth_addrs, i).peer == peer)
 					eth_addresses++;
 			}
 
-			pr_info(ctx, "peer %P connected, address: %I, associated MAC addresses: %u", peer, &peer->address, eth_addresses);
+			pr_info("peer %P connected, address: %I, associated MAC addresses: %u", peer, &peer->address, eth_addresses);
 		}
 		else {
-			pr_info(ctx, "peer %P connected, address: %I", peer, &peer->address);
+			pr_info("peer %P connected, address: %I", peer, &peer->address);
 		}
 	}
 
-	pr_info(ctx, "dump finished.");
+	pr_info("dump finished.");
 }
 
-static inline void no_valid_address_debug(fastd_context_t *ctx, const fastd_peer_t *peer) {
-	pr_debug(ctx, "not sending a handshake to %P (no valid address resolved)", peer);
+static inline void no_valid_address_debug(const fastd_peer_t *peer) {
+	pr_debug("not sending a handshake to %P (no valid address resolved)", peer);
 }
 
-static void send_handshake(fastd_context_t *ctx, fastd_peer_t *peer) {
+static void send_handshake(fastd_peer_t *peer) {
 	if (!fastd_peer_is_established(peer)) {
 		if (!peer->next_remote->n_addresses) {
-			no_valid_address_debug(ctx, peer);
+			no_valid_address_debug(peer);
 			return;
 		}
 
-		fastd_peer_claim_address(ctx, peer, NULL, NULL, &peer->next_remote->addresses[peer->next_remote->current_address]);
-		fastd_peer_reset_socket(ctx, peer);
+		fastd_peer_claim_address(peer, NULL, NULL, &peer->next_remote->addresses[peer->next_remote->current_address]);
+		fastd_peer_reset_socket(peer);
 	}
 
 	if (!peer->sock)
 		return;
 
 	if (peer->address.sa.sa_family == AF_UNSPEC) {
-		no_valid_address_debug(ctx, peer);
+		no_valid_address_debug(peer);
 		return;
 	}
 
-	if (!fastd_timed_out(ctx, &peer->last_handshake_timeout)
+	if (!fastd_timed_out(&peer->last_handshake_timeout)
 	    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
-		pr_debug(ctx, "not sending a handshake to %P as we sent one a short time ago", peer);
+		pr_debug("not sending a handshake to %P as we sent one a short time ago", peer);
 		return;
 	}
 
-	pr_debug(ctx, "sending handshake to %P[%I]...", peer, &peer->address);
-	peer->last_handshake_timeout = fastd_in_seconds(ctx, conf.min_handshake_interval);
+	pr_debug("sending handshake to %P[%I]...", peer, &peer->address);
+	peer->last_handshake_timeout = fastd_in_seconds(conf.min_handshake_interval);
 	peer->last_handshake_address = peer->address;
-	conf.protocol->handshake_init(ctx, peer->sock, &peer->local_address, &peer->address, peer);
+	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);
 }
 
-static void handle_handshake_queue(fastd_context_t *ctx) {
-	if (!ctx->handshake_queue.next)
+static void handle_handshake_queue(void) {
+	if (!ctx.handshake_queue.next)
 		return;
 
-	fastd_peer_t *peer = container_of(ctx->handshake_queue.next, fastd_peer_t, handshake_entry);
-	if (!fastd_timed_out(ctx, &peer->next_handshake))
+	fastd_peer_t *peer = container_of(ctx.handshake_queue.next, fastd_peer_t, handshake_entry);
+	if (!fastd_timed_out(&peer->next_handshake))
 		return;
 
-	fastd_peer_schedule_handshake_default(ctx, peer);
+	fastd_peer_schedule_handshake_default(peer);
 
-	if (!fastd_peer_may_connect(ctx, peer)) {
+	if (!fastd_peer_may_connect(peer)) {
 		if (peer->next_remote != NULL) {
-			pr_debug(ctx, "temporarily disabling handshakes with %P", peer);
+			pr_debug("temporarily disabling handshakes with %P", peer);
 			peer->next_remote = NULL;
 		}
 
@@ -453,7 +456,7 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 	}
 
 	if (peer->next_remote || fastd_peer_is_established(peer)) {
-		send_handshake(ctx, peer);
+		send_handshake(peer);
 
 		if (fastd_peer_is_established(peer))
 			return;
@@ -470,27 +473,27 @@ static void handle_handshake_queue(fastd_context_t *ctx) {
 	peer->next_remote->current_address = 0;
 
 	if (fastd_remote_is_dynamic(peer->next_remote))
-		fastd_resolve_peer(ctx, peer, peer->next_remote);
+		fastd_resolve_peer(peer, peer->next_remote);
 }
 
-static void enable_temporaries(fastd_context_t *ctx) {
+static void enable_temporaries(void) {
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx->peers_temp); i++)
-		fastd_peer_enable_temporary(ctx, VECTOR_INDEX(ctx->peers_temp, i));
+	for (i = 0; i < VECTOR_LEN(ctx.peers_temp); i++)
+		fastd_peer_enable_temporary(VECTOR_INDEX(ctx.peers_temp, i));
 
-	VECTOR_RESIZE(ctx->peers_temp, 0);
+	VECTOR_RESIZE(ctx.peers_temp, 0);
 }
 
-static bool maintain_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
+static bool maintain_peer(fastd_peer_t *peer) {
 	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
 		/* check for peer timeout */
-		if (fastd_timed_out(ctx, &peer->timeout)) {
+		if (fastd_timed_out(&peer->timeout)) {
 			if (fastd_peer_is_temporary(peer)) {
-				fastd_peer_delete(ctx, peer);
+				fastd_peer_delete(peer);
 				return false;
 			}
 			else {
-				fastd_peer_reset(ctx, peer);
+				fastd_peer_reset(peer);
 				return true;
 			}
 		}
@@ -499,34 +502,34 @@ static bool maintain_peer(fastd_context_t *ctx, fastd_peer_t *peer) {
 		if (!fastd_peer_is_established(peer))
 			return true;
 
-		if (!fastd_timed_out(ctx, &peer->keepalive_timeout))
+		if (!fastd_timed_out(&peer->keepalive_timeout))
 			return true;
 
-		pr_debug2(ctx, "sending keepalive to %P", peer);
-		conf.protocol->send(ctx, peer, fastd_buffer_alloc(ctx, 0, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
+		pr_debug2("sending keepalive to %P", peer);
+		conf.protocol->send(peer, fastd_buffer_alloc(0, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
 	}
 
 	return true;
 }
 
-static void maintenance(fastd_context_t *ctx) {
-	fastd_socket_handle_binds(ctx);
+static void maintenance(void) {
+	fastd_socket_handle_binds();
 
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx->peers);) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
-		if (maintain_peer(ctx, peer))
+		if (maintain_peer(peer))
 			i++;
 	}
 
-	fastd_peer_eth_addr_cleanup(ctx);
+	fastd_peer_eth_addr_cleanup();
 
-	ctx->next_maintenance.tv_sec += conf.maintenance_interval;
+	ctx.next_maintenance.tv_sec += conf.maintenance_interval;
 }
 
 
-static void close_fds(fastd_context_t *ctx) {
+static void close_fds(void) {
 	struct rlimit rl;
 	int fd, maxfd;
 
@@ -543,12 +546,12 @@ static void close_fds(fastd_context_t *ctx) {
 			}
 
 			if (errno != EBADF)
-				pr_error_errno(ctx, "close");
+				pr_error_errno("close");
 		}
 	}
 }
 
-static void write_pid(fastd_context_t *ctx, pid_t pid) {
+static void write_pid(pid_t pid) {
 	if (!conf.pid_file)
 		return;
 
@@ -557,98 +560,98 @@ static void write_pid(fastd_context_t *ctx, pid_t pid) {
 
 	if (conf.user || conf.group) {
 		if (setegid(conf.gid) < 0)
-			pr_debug_errno(ctx, "setegid");
+			pr_debug_errno("setegid");
 		if (seteuid(conf.uid) < 0)
-			pr_debug_errno(ctx, "seteuid");
+			pr_debug_errno("seteuid");
 	}
 
 	int fd = open(conf.pid_file, O_WRONLY|O_CREAT|O_TRUNC, 0666);
 	if (fd < 0) {
-		pr_error_errno(ctx, "can't write PID file: open");
+		pr_error_errno("can't write PID file: open");
 		goto end;
 	}
 
 	if (dprintf(fd, "%i", pid) < 0)
-		pr_error_errno(ctx, "can't write PID file: dprintf");
+		pr_error_errno("can't write PID file: dprintf");
 
 	if (close(fd) < 0)
-		pr_warn_errno(ctx, "close");
+		pr_warn_errno("close");
 
  end:
 	if (seteuid(uid) < 0)
-		pr_debug_errno(ctx, "seteuid");
+		pr_debug_errno("seteuid");
 	if (setegid(gid) < 0)
-		pr_debug_errno(ctx, "setegid");
+		pr_debug_errno("setegid");
 }
 
-static void set_user(fastd_context_t *ctx) {
+static void set_user(void) {
 	if (conf.user || conf.group) {
 		if (setgid(conf.gid) < 0)
-			exit_errno(ctx, "setgid");
+			exit_errno("setgid");
 
 		if (setuid(conf.uid) < 0)
-			exit_errno(ctx, "setuid");
+			exit_errno("setuid");
 
-		pr_info(ctx, "Changed to UID %i, GID %i.", conf.uid, conf.gid);
+		pr_info("Changed to UID %i, GID %i.", conf.uid, conf.gid);
 	}
 }
 
-static void set_groups(fastd_context_t *ctx) {
+static void set_groups(void) {
 	if (conf.groups) {
 		if (setgroups(conf.n_groups, conf.groups) < 0) {
 			if (errno != EPERM)
-				pr_debug_errno(ctx, "setgroups");
+				pr_debug_errno("setgroups");
 		}
 	}
 	else if (conf.user || conf.group) {
 		if (setgroups(1, &conf.gid) < 0) {
 			if (errno != EPERM)
-				pr_debug_errno(ctx, "setgroups");
+				pr_debug_errno("setgroups");
 		}
 	}
 }
 
-static void drop_caps(fastd_context_t *ctx) {
-	set_user(ctx);
-	fastd_cap_drop(ctx);
+static void drop_caps(void) {
+	set_user();
+	fastd_cap_drop();
 }
 
 /* will double fork and forward potential exit codes from the child to the parent */
-static int daemonize(fastd_context_t *ctx) {
+static int daemonize(void) {
 	static const uint8_t ERROR_STATUS = 1;
 
 	uint8_t status = 1;
 	int parent_rpipe, parent_wpipe;
-	fastd_open_pipe(ctx, &parent_rpipe, &parent_wpipe);
+	fastd_open_pipe(&parent_rpipe, &parent_wpipe);
 
 	pid_t fork1 = fork();
 
 	if (fork1 < 0) {
-		exit_errno(ctx, "fork");
+		exit_errno("fork");
 	}
 	else if (fork1 == 0) {
 		/* child 1 */
 		if (close(parent_rpipe) < 0)
-			pr_error_errno(ctx, "close");
+			pr_error_errno("close");
 
 		if (setsid() < 0)
-			pr_error_errno(ctx, "setsid");
+			pr_error_errno("setsid");
 
 		int child_rpipe, child_wpipe;
-		fastd_open_pipe(ctx, &child_rpipe, &child_wpipe);
+		fastd_open_pipe(&child_rpipe, &child_wpipe);
 
 		pid_t fork2 = fork();
 
 		if (fork2 < 0) {
 			write(parent_wpipe, &ERROR_STATUS, 1);
-			exit_errno(ctx, "fork");
+			exit_errno("fork");
 		}
 		else if (fork2 == 0) {
 			/* child 2 */
 
 			if (close(child_rpipe) < 0 || close(parent_wpipe) < 0) {
 				write(child_wpipe, &ERROR_STATUS, 1);
-				pr_error_errno(ctx, "close");
+				pr_error_errno("close");
 			}
 
 			return child_wpipe;
@@ -668,7 +671,7 @@ static int daemonize(fastd_context_t *ctx) {
 
 			if (ret < 0) {
 				write(child_wpipe, &ERROR_STATUS, 1);
-				pr_error_errno(ctx, "waitpid");
+				pr_error_errno("waitpid");
 			}
 
 			if (WIFEXITED(child_status)) {
@@ -679,7 +682,7 @@ static int daemonize(fastd_context_t *ctx) {
 			else {
 				write(parent_wpipe, &ERROR_STATUS, 1);
 				if (WIFSIGNALED(child_status))
-					exit_error(ctx, "child exited with signal %i", WTERMSIG(child_status));
+					exit_error("child exited with signal %i", WTERMSIG(child_status));
 				exit(1);
 			}
 		}
@@ -692,10 +695,10 @@ static int daemonize(fastd_context_t *ctx) {
 		action.sa_handler = SIG_IGN;
 
 		if (sigaction(SIGCHLD, &action, NULL))
-			exit_errno(ctx, "sigaction");
+			exit_errno("sigaction");
 
 		if (read(parent_rpipe, &status, 1) < 0)
-			exit_errno(ctx, "read");
+			exit_errno("read");
 
 		exit(status);
 	}
@@ -704,7 +707,7 @@ static int daemonize(fastd_context_t *ctx) {
 }
 
 #ifdef USE_SYSTEMD
-static void notify_systemd(fastd_context_t *ctx, const char *notify_socket) {
+static void notify_systemd(const char *notify_socket) {
 	int fd;
 	struct sockaddr_un sa = {};
 
@@ -722,20 +725,20 @@ static void notify_systemd(fastd_context_t *ctx, const char *notify_socket) {
 		sa.sun_path[0] = 0;
 
 	if (connect(fd, (struct sockaddr*)&sa, offsetof(struct sockaddr_un, sun_path) + strnlen(notify_socket, sizeof(sa.sun_path))) < 0) {
-		pr_debug_errno(ctx, "unable to connect to notify socket: connect");
+		pr_debug_errno("unable to connect to notify socket: connect");
 		close(fd);
 		return;
 	}
 
 	dprintf(fd, "READY=1\nMAINPID=%lu", (unsigned long) getpid());
-	pr_debug(ctx, "sent startup notification to systemd");
+	pr_debug("sent startup notification to systemd");
 
 	close(fd);
 }
 #endif
 
 int main(int argc, char *argv[]) {
-	fastd_context_t ctx = {};
+	memset(&ctx, 0, sizeof(ctx));
 	int status_fd = -1;
 
 #ifdef USE_SYSTEMD
@@ -749,38 +752,38 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 
-	close_fds(&ctx);
+	close_fds();
 
-	fastd_random_bytes(&ctx, &ctx.randseed, sizeof(ctx.randseed), false);
+	fastd_random_bytes(&ctx.randseed, sizeof(ctx.randseed), false);
 
-	fastd_configure(&ctx, argc, argv);
+	fastd_configure(argc, argv);
 
 	if (conf.verify_config) {
-		fastd_config_verify(&ctx);
+		fastd_config_verify();
 		exit(0);
 	}
 
 	if (conf.generate_key) {
-		conf.protocol->generate_key(&ctx);
+		conf.protocol->generate_key();
 		exit(0);
 	}
 
-	conf.protocol_config = conf.protocol->init(&ctx);
+	conf.protocol_config = conf.protocol->init();
 
 	if (conf.show_key) {
 		conf.protocol->show_key();
 		exit(0);
 	}
 
-	init_signals(&ctx);
+	init_signals();
 
 	if (conf.daemon)
-		status_fd = daemonize(&ctx);
+		status_fd = daemonize();
 
 	if (chdir("/"))
-		pr_error(&ctx, "can't chdir to `/': %s", strerror(errno));
+		pr_error("can't chdir to `/': %s", strerror(errno));
 
-	init_log(&ctx);
+	init_log();
 
 #ifdef HAVE_LIBSODIUM
 	sodium_init();
@@ -792,39 +795,39 @@ int main(int argc, char *argv[]) {
 	OPENSSL_config(NULL);
 #endif
 
-	fastd_config_check(&ctx);
+	fastd_config_check();
 
-	fastd_update_time(&ctx);
+	fastd_update_time();
 
-	ctx.next_maintenance = fastd_in_seconds(&ctx, conf.maintenance_interval);
+	ctx.next_maintenance = fastd_in_seconds(conf.maintenance_interval);
 
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 
-	pr_info(&ctx, "fastd " FASTD_VERSION " starting");
+	pr_info("fastd " FASTD_VERSION " starting");
 
-	fastd_cap_init(&ctx);
+	fastd_cap_init();
 
 	/* change groups early as the can be relevant for file access (for PID file & log files) */
-	set_groups(&ctx);
+	set_groups();
 
-	init_sockets(&ctx);
-	fastd_async_init(&ctx);
-	fastd_poll_init(&ctx);
+	init_sockets();
+	fastd_async_init();
+	fastd_poll_init();
 
-	if (!fastd_socket_handle_binds(&ctx))
-		exit_error(&ctx, "unable to bind default socket");
+	if (!fastd_socket_handle_binds())
+		exit_error("unable to bind default socket");
 
-	on_pre_up(&ctx);
+	on_pre_up();
 
-	fastd_tuntap_open(&ctx);
+	fastd_tuntap_open();
 
-	init_peer_groups(&ctx);
+	init_peer_groups();
 
-	write_pid(&ctx, getpid());
+	write_pid(getpid());
 
 #ifdef USE_SYSTEMD
 	if (notify_socket) {
-		notify_systemd(&ctx, notify_socket);
+		notify_systemd(notify_socket);
 		free(notify_socket);
 	}
 #endif
@@ -832,40 +835,40 @@ int main(int argc, char *argv[]) {
 	if (status_fd >= 0) {
 		static const uint8_t STATUS = 0;
 		if (write(status_fd, &STATUS, 1) < 0)
-			exit_errno(&ctx, "status: write");
+			exit_errno("status: write");
 		if (close(status_fd))
-			exit_errno(&ctx, "status: close");
+			exit_errno("status: close");
 	}
 
 	if (conf.drop_caps == DROP_CAPS_EARLY)
-		drop_caps(&ctx);
+		drop_caps();
 
-	on_up(&ctx);
+	on_up();
 
 	if (conf.drop_caps == DROP_CAPS_ON)
-		drop_caps(&ctx);
+		drop_caps();
 	else if (conf.drop_caps == DROP_CAPS_OFF)
-		set_user(&ctx);
+		set_user();
 
-	fastd_config_load_peer_dirs(&ctx);
+	fastd_config_load_peer_dirs();
 
 	VECTOR_ALLOC(ctx.eth_addrs, 0);
 	VECTOR_ALLOC(ctx.peers, 0);
 	VECTOR_ALLOC(ctx.peers_temp, 0);
 
-	fastd_peer_hashtable_init(&ctx);
+	fastd_peer_hashtable_init();
 
-	init_peers(&ctx);
+	init_peers();
 
 	while (!terminate) {
-		handle_handshake_queue(&ctx);
+		handle_handshake_queue();
 
-		fastd_poll_handle(&ctx);
+		fastd_poll_handle();
 
-		enable_temporaries(&ctx);
+		enable_temporaries();
 
-		if (fastd_timed_out(&ctx, &ctx.next_maintenance))
-			maintenance(&ctx);
+		if (fastd_timed_out(&ctx.next_maintenance))
+			maintenance();
 
 		sigset_t set, oldset;
 		sigemptyset(&set);
@@ -874,35 +877,35 @@ int main(int argc, char *argv[]) {
 		if (sighup) {
 			sighup = false;
 
-			pr_info(&ctx, "reconfigure triggered");
+			pr_info("reconfigure triggered");
 
-			close_log(&ctx);
-			init_log(&ctx);
+			close_log();
+			init_log();
 
-			fastd_config_load_peer_dirs(&ctx);
-			init_peers(&ctx);
+			fastd_config_load_peer_dirs();
+			init_peers();
 		}
 
 		if (dump) {
 			dump = false;
-			dump_state(&ctx);
+			dump_state();
 		}
 
 		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 	}
 
-	on_down(&ctx);
+	on_down();
 
-	delete_peers(&ctx);
-	delete_peer_groups(&ctx);
+	delete_peers();
+	delete_peer_groups();
 
-	fastd_tuntap_close(&ctx);
-	close_sockets(&ctx);
-	fastd_poll_free(&ctx);
+	fastd_tuntap_close();
+	close_sockets();
+	fastd_poll_free();
 
-	on_post_down(&ctx);
+	on_post_down();
 
-	fastd_peer_hashtable_free(&ctx);
+	fastd_peer_hashtable_free();
 
 	VECTOR_FREE(ctx.peers_temp);
 	VECTOR_FREE(ctx.peers);
@@ -917,8 +920,8 @@ int main(int argc, char *argv[]) {
 	ERR_free_strings();
 #endif
 
-	close_log(&ctx);
-	fastd_config_release(&ctx);
+	close_log();
+	fastd_config_release();
 
 	return 0;
 }

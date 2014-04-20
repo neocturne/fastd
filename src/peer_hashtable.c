@@ -33,26 +33,26 @@
 #define PEER_ADDR_HT_SIZE 64
 
 
-void fastd_peer_hashtable_init(fastd_context_t *ctx) {
-	fastd_random_bytes(ctx, &ctx->peer_addr_ht_seed, sizeof(ctx->peer_addr_ht_seed), false);
+void fastd_peer_hashtable_init(void) {
+	fastd_random_bytes(&ctx.peer_addr_ht_seed, sizeof(ctx.peer_addr_ht_seed), false);
 
-	ctx->peer_addr_ht = malloc(sizeof(*ctx->peer_addr_ht) * PEER_ADDR_HT_SIZE);
+	ctx.peer_addr_ht = malloc(sizeof(*ctx.peer_addr_ht) * PEER_ADDR_HT_SIZE);
 
 	size_t i;
 	for (i = 0; i < PEER_ADDR_HT_SIZE; i++)
-		VECTOR_ALLOC(ctx->peer_addr_ht[i], 0);
+		VECTOR_ALLOC(ctx.peer_addr_ht[i], 0);
 }
 
-void fastd_peer_hashtable_free(fastd_context_t *ctx) {
+void fastd_peer_hashtable_free(void) {
 	size_t i;
 	for (i = 0; i < PEER_ADDR_HT_SIZE; i++)
-		VECTOR_FREE(ctx->peer_addr_ht[i]);
+		VECTOR_FREE(ctx.peer_addr_ht[i]);
 
-	free(ctx->peer_addr_ht);
+	free(ctx.peer_addr_ht);
 }
 
-static size_t peer_address_bucket(fastd_context_t *ctx, const fastd_peer_address_t *addr) {
-	uint32_t hash = ctx->peer_addr_ht_seed;
+static size_t peer_address_bucket(const fastd_peer_address_t *addr) {
+	uint32_t hash = ctx.peer_addr_ht_seed;
 
 	switch(addr->sa.sa_family) {
 	case AF_INET:
@@ -64,7 +64,7 @@ static size_t peer_address_bucket(fastd_context_t *ctx, const fastd_peer_address
 		break;
 
 	default:
-		exit_bug(ctx, "peer_address_bucket: unknown address family");
+		exit_bug("peer_address_bucket: unknown address family");
 	}
 
 	fastd_hash_final(&hash);
@@ -72,32 +72,32 @@ static size_t peer_address_bucket(fastd_context_t *ctx, const fastd_peer_address
 	return hash % PEER_ADDR_HT_SIZE;
 }
 
-void fastd_peer_hashtable_insert(fastd_context_t *ctx, fastd_peer_t *peer) {
-	size_t b = peer_address_bucket(ctx, &peer->address);
-	VECTOR_ADD(ctx->peer_addr_ht[b], peer);
+void fastd_peer_hashtable_insert(fastd_peer_t *peer) {
+	size_t b = peer_address_bucket(&peer->address);
+	VECTOR_ADD(ctx.peer_addr_ht[b], peer);
 }
 
-void fastd_peer_hashtable_remove(fastd_context_t *ctx, fastd_peer_t *peer) {
+void fastd_peer_hashtable_remove(fastd_peer_t *peer) {
 	if (!peer->address.sa.sa_family)
 		return;
 
-	size_t b = peer_address_bucket(ctx, &peer->address);
+	size_t b = peer_address_bucket(&peer->address);
 
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx->peer_addr_ht[b]); i++) {
-		if (VECTOR_INDEX(ctx->peer_addr_ht[b], i) == peer) {
-			VECTOR_DELETE(ctx->peer_addr_ht[b], i);
+	for (i = 0; i < VECTOR_LEN(ctx.peer_addr_ht[b]); i++) {
+		if (VECTOR_INDEX(ctx.peer_addr_ht[b], i) == peer) {
+			VECTOR_DELETE(ctx.peer_addr_ht[b], i);
 			break;
 		}
 	}
 }
 
-fastd_peer_t *fastd_peer_hashtable_lookup(fastd_context_t *ctx, const fastd_peer_address_t *addr) {
-	size_t b = peer_address_bucket(ctx, addr);
+fastd_peer_t *fastd_peer_hashtable_lookup(const fastd_peer_address_t *addr) {
+	size_t b = peer_address_bucket(addr);
 
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx->peer_addr_ht[b]); i++) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx->peer_addr_ht[b], i);
+	for (i = 0; i < VECTOR_LEN(ctx.peer_addr_ht[b]); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peer_addr_ht[b], i);
 
 		if (fastd_peer_address_equal(&peer->address, addr))
 			return peer;

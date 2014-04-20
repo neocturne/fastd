@@ -46,34 +46,34 @@ typedef struct fastd_method_common {
 } fastd_method_common_t;
 
 
-void fastd_method_common_init(fastd_context_t *ctx, fastd_method_common_t *session, bool initiator);
-bool fastd_method_is_nonce_valid(fastd_context_t *ctx, const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age);
-bool fastd_method_reorder_check(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age);
+void fastd_method_common_init(fastd_method_common_t *session, bool initiator);
+bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age);
+bool fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age);
 
 
-static inline bool fastd_method_session_common_is_valid(fastd_context_t *ctx, const fastd_method_common_t *session) {
+static inline bool fastd_method_session_common_is_valid(const fastd_method_common_t *session) {
 	if (session->send_nonce[0] == 0xff && session->send_nonce[1] == 0xff)
 		return false;
 
-	return (!fastd_timed_out(ctx, &session->valid_till));
+	return (!fastd_timed_out(&session->valid_till));
 }
 
 static inline bool fastd_method_session_common_is_initiator(const fastd_method_common_t *session) {
 	return (session->send_nonce[COMMON_NONCEBYTES-1] & 1);
 }
 
-static inline bool fastd_method_session_common_want_refresh(fastd_context_t *ctx, const fastd_method_common_t *session) {
+static inline bool fastd_method_session_common_want_refresh(const fastd_method_common_t *session) {
 	if (session->send_nonce[0] == 0xff)
 		return true;
 
-	if (fastd_method_session_common_is_initiator(session) && fastd_timed_out(ctx, &session->refresh_after))
+	if (fastd_method_session_common_is_initiator(session) && fastd_timed_out(&session->refresh_after))
 		return true;
 
 	return false;
 }
 
-static inline void fastd_method_session_common_superseded(fastd_context_t *ctx, fastd_method_common_t *session) {
-	struct timespec valid_max = fastd_in_seconds(ctx, conf.key_valid_old);
+static inline void fastd_method_session_common_superseded(fastd_method_common_t *session) {
+	struct timespec valid_max = fastd_in_seconds(conf.key_valid_old);
 
 	if (timespec_after(&session->valid_till, &valid_max))
 		session->valid_till = valid_max;
@@ -91,19 +91,19 @@ static inline void fastd_method_increment_nonce(fastd_method_common_t *session) 
 	}
 }
 
-static inline void fastd_method_put_common_header(fastd_context_t *ctx, fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
-	fastd_buffer_pull_head_from(ctx, buffer, nonce, COMMON_NONCEBYTES);
-	fastd_buffer_pull_head_from(ctx, buffer, &flags, 1);
+static inline void fastd_method_put_common_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
+	fastd_buffer_pull_head_from(buffer, nonce, COMMON_NONCEBYTES);
+	fastd_buffer_pull_head_from(buffer, &flags, 1);
 }
 
-static inline void fastd_method_take_common_header(fastd_context_t *ctx, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
-	fastd_buffer_push_head_to(ctx, buffer, flags, 1);
-	fastd_buffer_push_head_to(ctx, buffer, nonce, COMMON_NONCEBYTES);
+static inline void fastd_method_take_common_header(fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
+	fastd_buffer_push_head_to(buffer, flags, 1);
+	fastd_buffer_push_head_to(buffer, nonce, COMMON_NONCEBYTES);
 }
 
-static inline bool fastd_method_handle_common_header(fastd_context_t *ctx, const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
-	fastd_method_take_common_header(ctx, buffer, nonce, flags);
-	return fastd_method_is_nonce_valid(ctx, session, nonce, age);
+static inline bool fastd_method_handle_common_header(const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
+	fastd_method_take_common_header(buffer, nonce, flags);
+	return fastd_method_is_nonce_valid(session, nonce, age);
 }
 
 

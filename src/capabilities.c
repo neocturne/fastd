@@ -31,7 +31,7 @@
 #include <sys/capability.h>
 
 
-static void try_cap(fastd_context_t *ctx, cap_value_t cap) {
+static void try_cap(cap_value_t cap) {
 	char *name = cap_to_name(cap);
 	if (!name)
 		return;
@@ -42,51 +42,51 @@ static void try_cap(fastd_context_t *ctx, cap_value_t cap) {
 
 	cap_flag_value_t val;
 	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &val) < 0) {
-		pr_debug_errno(ctx, "cap_get_flag");
+		pr_debug_errno("cap_get_flag");
 		goto end_free;
 	}
 
 	if (val == CAP_SET)
 		goto end_free;
 
-	pr_verbose(ctx, "Trying to acquire %s", name);
+	pr_verbose("Trying to acquire %s", name);
 
 	if (cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, CAP_SET) < 0) {
-		pr_debug_errno(ctx, "cap_set_flags");
+		pr_debug_errno("cap_set_flags");
 		goto end_free;
 	}
 
 	if (cap_set_proc(caps) < 0) {
-		pr_debug_errno(ctx, "cap_set_proc");
+		pr_debug_errno("cap_set_proc");
 		goto end_free;
 	}
 
-	pr_verbose(ctx, "Acquired capability %s.", name);
+	pr_verbose("Acquired capability %s.", name);
 
  end_free:
 	cap_free(caps);
 	cap_free(name);
 }
 
-void fastd_cap_init(fastd_context_t *ctx) {
+void fastd_cap_init(void) {
 	/* interface creation */
-	try_cap(ctx, CAP_NET_ADMIN);
+	try_cap(CAP_NET_ADMIN);
 
 	/* privileged binds */
-	try_cap(ctx, CAP_NET_BIND_SERVICE);
+	try_cap(CAP_NET_BIND_SERVICE);
 
 	/* for device binds */
-	try_cap(ctx, CAP_NET_RAW);
+	try_cap(CAP_NET_RAW);
 }
 
-void fastd_cap_drop(fastd_context_t *ctx) {
+void fastd_cap_drop(void) {
 	cap_t caps = cap_init();
 
 	if (cap_set_proc(caps) < 0) {
-		pr_debug_errno(ctx, "cap_set_proc");
+		pr_debug_errno("cap_set_proc");
 	}
 	else {
-		pr_verbose(ctx, "Dropped capabilities.");
+		pr_verbose("Dropped capabilities.");
 	}
 
 	cap_free(caps);
@@ -96,10 +96,10 @@ void fastd_cap_drop(fastd_context_t *ctx) {
 
 #else /* WITH_CAPABILITIES */
 
-void fastd_cap_init(fastd_context_t *ctx UNUSED) {
+void fastd_cap_init(void) {
 }
 
-void fastd_cap_drop(fastd_context_t *ctx UNUSED) {
+void fastd_cap_drop(void) {
 }
 
 #endif /* WITH_CAPABILITIES */

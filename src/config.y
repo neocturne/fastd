@@ -28,7 +28,6 @@
 %define api.push-pull push
 %name-prefix "fastd_config_"
 %locations
-%parse-param {fastd_context_t *ctx}
 %parse-param {const char *filename}
 %parse-param {int depth}
 
@@ -139,7 +138,7 @@
 
 	#include <limits.h>
 
-	void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, const char *filename, int depth, const char *s);
+	void fastd_config_error(YYLTYPE *loc, const char *filename, int depth, const char *s);
 }
 
 
@@ -242,11 +241,11 @@ secure_handshakes:
 	;
 
 cipher:		TOK_STRING TOK_USE TOK_STRING {
-			fastd_config_cipher(ctx, $1->str, $3->str);
+			fastd_config_cipher($1->str, $3->str);
 		}
 
 mac:		TOK_STRING TOK_USE TOK_STRING {
-			fastd_config_mac(ctx, $1->str, $3->str);
+			fastd_config_mac($1->str, $3->str);
 		}
 
 log:		TOK_LEVEL log_level {
@@ -265,7 +264,7 @@ log:		TOK_LEVEL log_level {
 			conf.log_syslog_level = $5;
 		}
 	|	TOK_TO TOK_STRING maybe_log_level {
-			fastd_config_add_log_file(ctx, $2->str, $3);
+			fastd_config_add_log_file($2->str, $3);
 		}
 	;
 
@@ -295,11 +294,11 @@ interface:	TOK_STRING	{ free(conf.ifname); conf.ifname = strdup($1->str); }
 	;
 
 bind:		bind_address maybe_bind_interface maybe_bind_default {
-			fastd_config_bind_address(ctx, &$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+			fastd_config_bind_address(&$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
 		}
 	|	TOK_ADDR6_SCOPED maybe_port maybe_bind_default {
 			fastd_peer_address_t addr = { .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1.addr, .sin6_port = htons($2) } };
-			fastd_config_bind_address(ctx, &addr, $1.ifname, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+			fastd_config_bind_address(&addr, $1.ifname, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
 		}
 	;
 
@@ -351,7 +350,7 @@ packet_mark:	TOK_UINT {
 
 mtu:		TOK_UINT {
 			if ($1 < 576 || $1 > 65535) {
-				fastd_config_error(&@$, ctx, filename, depth, "invalid MTU");
+				fastd_config_error(&@$, filename, depth, "invalid MTU");
 				YYERROR;
 			}
 
@@ -367,12 +366,12 @@ mode:		TOK_TAP		{ conf.mode = MODE_TAP; }
 	;
 
 protocol:	TOK_STRING {
-			fastd_config_protocol(ctx, $1->str);
+			fastd_config_protocol($1->str);
 		}
 	;
 
 method:		TOK_STRING {
-			fastd_config_method(ctx, $1->str);
+			fastd_config_method($1->str);
 		}
 	;
 
@@ -420,7 +419,7 @@ on_verify:	sync_def_async TOK_STRING {
 	;
 
 peer:		TOK_STRING {
-			fastd_peer_config_new(ctx);
+			fastd_peer_config_new();
 			conf.peers->name = strdup($1->str);
 		}
 	;
@@ -508,26 +507,26 @@ peer_key:	TOK_STRING {
 	;
 
 peer_include:	TOK_STRING {
-			if (!fastd_read_config(ctx, $1->str, true, depth))
+			if (!fastd_read_config($1->str, true, depth))
 				YYERROR;
 		}
 	;
 
 
 peer_group:	TOK_STRING {
-			fastd_config_peer_group_push(ctx, $1->str);
+			fastd_config_peer_group_push($1->str);
 		}
 	;
 
 peer_group_after:
 		{
-			fastd_config_peer_group_pop(ctx);
+			fastd_config_peer_group_pop();
 		}
 	;
 
 peer_limit:	TOK_UINT {
 			if ($1 > INT_MAX) {
-				fastd_config_error(&@$, ctx, filename, depth, "invalid peer limit");
+				fastd_config_error(&@$, filename, depth, "invalid peer limit");
 				YYERROR;
 			}
 
@@ -540,18 +539,18 @@ forward:	boolean		{ conf.forward = $1; }
 
 
 include:	TOK_PEER TOK_STRING maybe_as {
-			fastd_peer_config_new(ctx);
+			fastd_peer_config_new();
 			if ($3)
 				conf.peers->name = strdup($3->str);
 
-			if (!fastd_read_config(ctx, $2->str, true, depth))
+			if (!fastd_read_config($2->str, true, depth))
 				YYERROR;
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
-			fastd_add_peer_dir(ctx, $3->str);
+			fastd_add_peer_dir($3->str);
 		}
 	|	TOK_STRING {
-			if (!fastd_read_config(ctx, $1->str, false, depth))
+			if (!fastd_read_config($1->str, false, depth))
 				YYERROR;
 		}
 	;
@@ -601,7 +600,7 @@ colon_or_port:	':'
 
 port:		colon_or_port TOK_UINT {
 			if ($2 < 1 || $2 > 65535) {
-				fastd_config_error(&@$, ctx, filename, depth, "invalid port");
+				fastd_config_error(&@$, filename, depth, "invalid port");
 				YYERROR;
 			}
 			$$ = $2;
@@ -609,6 +608,6 @@ port:		colon_or_port TOK_UINT {
 	;
 
 %%
-void fastd_config_error(YYLTYPE *loc, fastd_context_t *ctx, const char *filename, int depth UNUSED, const char *s) {
-	pr_error(ctx, "config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
+void fastd_config_error(YYLTYPE *loc, const char *filename, int depth UNUSED, const char *s) {
+	pr_error("config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
 }

@@ -77,57 +77,57 @@ static inline void handle_socket_control(struct msghdr *message, const fastd_soc
 	}
 }
 
-static bool backoff_unknown(fastd_context_t *ctx, const fastd_peer_address_t *addr) {
+static bool backoff_unknown(const fastd_peer_address_t *addr) {
 	size_t i;
-	for (i = 0; i < array_size(ctx->unknown_handshakes); i++) {
-		const fastd_handshake_timeout_t *t = &ctx->unknown_handshakes[(ctx->unknown_handshake_pos + i) % array_size(ctx->unknown_handshakes)];
+	for (i = 0; i < array_size(ctx.unknown_handshakes); i++) {
+		const fastd_handshake_timeout_t *t = &ctx.unknown_handshakes[(ctx.unknown_handshake_pos + i) % array_size(ctx.unknown_handshakes)];
 
-		if (fastd_timed_out(ctx, &t->timeout))
+		if (fastd_timed_out(&t->timeout))
 			break;
 
 		if (fastd_peer_address_equal(addr, &t->address)) {
-			pr_debug2(ctx, "sent a handshake to unknown address %I a short time ago, not sending again", addr);
+			pr_debug2("sent a handshake to unknown address %I a short time ago, not sending again", addr);
 			return true;
 		}
 	}
 
-	if (ctx->unknown_handshake_pos == 0)
-		ctx->unknown_handshake_pos = array_size(ctx->unknown_handshakes)-1;
+	if (ctx.unknown_handshake_pos == 0)
+		ctx.unknown_handshake_pos = array_size(ctx.unknown_handshakes)-1;
 	else
-		ctx->unknown_handshake_pos--;
+		ctx.unknown_handshake_pos--;
 
-	fastd_handshake_timeout_t *t = &ctx->unknown_handshakes[ctx->unknown_handshake_pos];
+	fastd_handshake_timeout_t *t = &ctx.unknown_handshakes[ctx.unknown_handshake_pos];
 
 	t->address = *addr;
-	t->timeout = fastd_in_seconds(ctx, conf.min_handshake_interval);
+	t->timeout = fastd_in_seconds(conf.min_handshake_interval);
 
 	return false;
 }
 
-static inline void handle_socket_receive_known(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (!fastd_peer_may_connect(ctx, peer)) {
+static inline void handle_socket_receive_known(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+	if (!fastd_peer_may_connect(peer)) {
 		fastd_buffer_free(buffer);
 		return;
 	}
 
 	const uint8_t *packet_type = buffer.data;
-	fastd_buffer_push_head(ctx, &buffer, 1);
+	fastd_buffer_push_head(&buffer, 1);
 
 	switch (*packet_type) {
 	case PACKET_DATA:
 		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
 			fastd_buffer_free(buffer);
 
-			if (!backoff_unknown(ctx, remote_addr))
-				conf.protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+			if (!backoff_unknown(remote_addr))
+				conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
 			return;
 		}
 
-		conf.protocol->handle_recv(ctx, peer, buffer);
+		conf.protocol->handle_recv(peer, buffer);
 		break;
 
 	case PACKET_HANDSHAKE:
-		fastd_handshake_handle(ctx, sock, local_addr, remote_addr, peer, buffer);
+		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
 	}
 }
 
@@ -135,24 +135,24 @@ static inline bool allow_unknown_peers(void) {
 	return conf.has_floating || fastd_shell_command_isset(&conf.on_verify);
 }
 
-static inline void handle_socket_receive_unknown(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
+static inline void handle_socket_receive_unknown(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
 	const uint8_t *packet_type = buffer.data;
-	fastd_buffer_push_head(ctx, &buffer, 1);
+	fastd_buffer_push_head(&buffer, 1);
 
 	switch (*packet_type) {
 	case PACKET_DATA:
 		fastd_buffer_free(buffer);
 
-		if (!backoff_unknown(ctx, remote_addr))
-			conf.protocol->handshake_init(ctx, sock, local_addr, remote_addr, NULL);
+		if (!backoff_unknown(remote_addr))
+			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
 		break;
 
 	case PACKET_HANDSHAKE:
-		fastd_handshake_handle(ctx, sock, local_addr, remote_addr, NULL, buffer);
+		fastd_handshake_handle(sock, local_addr, remote_addr, NULL, buffer);
 	}
 }
 
-static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
+static inline void handle_socket_receive(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
 	fastd_peer_t *peer = NULL;
 
 	if (sock->peer) {
@@ -164,24 +164,24 @@ static inline void handle_socket_receive(fastd_context_t *ctx, fastd_socket_t *s
 		peer = sock->peer;
 	}
 	else {
-		peer = fastd_peer_hashtable_lookup(ctx, remote_addr);
+		peer = fastd_peer_hashtable_lookup(remote_addr);
 	}
 
 	if (peer) {
-		handle_socket_receive_known(ctx, sock, local_addr, remote_addr, peer, buffer);
+		handle_socket_receive_known(sock, local_addr, remote_addr, peer, buffer);
 	}
 	else if (allow_unknown_peers()) {
-		handle_socket_receive_unknown(ctx, sock, local_addr, remote_addr, buffer);
+		handle_socket_receive_unknown(sock, local_addr, remote_addr, buffer);
 	}
 	else  {
-		pr_debug(ctx, "received packet from unknown peer %I", remote_addr);
+		pr_debug("received packet from unknown peer %I", remote_addr);
 		fastd_buffer_free(buffer);
 	}
 }
 
-void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
-	size_t max_len = fastd_max_outer_packet(ctx);
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, max_len, conf.min_decrypt_head_space, conf.min_decrypt_tail_space);
+void fastd_receive(fastd_socket_t *sock) {
+	size_t max_len = fastd_max_outer_packet();
+	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, conf.min_decrypt_head_space, conf.min_decrypt_tail_space);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
 	struct iovec buffer_vec = { .iov_base = buffer.data, .iov_len = buffer.len };
@@ -199,7 +199,7 @@ void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
 	ssize_t len = recvmsg(sock->fd, &message, 0);
 	if (len <= 0) {
 		if (len < 0 && errno != EINTR)
-			pr_warn_errno(ctx, "recvmsg");
+			pr_warn_errno("recvmsg");
 
 		fastd_buffer_free(buffer);
 		return;
@@ -211,7 +211,7 @@ void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
 
 #ifdef USE_PKTINFO
 	if (!local_addr.sa.sa_family) {
-		pr_error(ctx, "received packet without packet info");
+		pr_error("received packet without packet info");
 		fastd_buffer_free(buffer);
 		return;
 	}
@@ -219,5 +219,5 @@ void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock) {
 
 	fastd_peer_address_simplify(&recvaddr);
 
-	handle_socket_receive(ctx, sock, &local_addr, &recvaddr, buffer);
+	handle_socket_receive(sock, &local_addr, &recvaddr, buffer);
 }

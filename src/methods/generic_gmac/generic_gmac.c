@@ -89,14 +89,14 @@ static void method_destroy(fastd_method_t *method) {
 	free(method);
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_t *method) {
+static size_t method_key_length(const fastd_method_t *method) {
 	return method->cipher_info->key_length;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t* method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
-	fastd_method_common_init(ctx, &session->common, initiator);
+	fastd_method_common_init(&session->common, initiator);
 	session->method = method;
 
 	session->cipher = fastd_cipher_get(method->cipher_info);
@@ -121,23 +121,23 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx, c
 	return session;
 }
 
-static bool method_session_is_valid(fastd_context_t *ctx, fastd_method_session_state_t *session) {
-	return (session && fastd_method_session_common_is_valid(ctx, &session->common));
+static bool method_session_is_valid(fastd_method_session_state_t *session) {
+	return (session && fastd_method_session_common_is_valid(&session->common));
 }
 
-static bool method_session_is_initiator(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static bool method_session_is_initiator(fastd_method_session_state_t *session) {
 	return fastd_method_session_common_is_initiator(&session->common);
 }
 
-static bool method_session_want_refresh(fastd_context_t *ctx, fastd_method_session_state_t *session) {
-	return fastd_method_session_common_want_refresh(ctx, &session->common);
+static bool method_session_want_refresh(fastd_method_session_state_t *session) {
+	return fastd_method_session_common_want_refresh(&session->common);
 }
 
-static void method_session_superseded(fastd_context_t *ctx, fastd_method_session_state_t *session) {
-	fastd_method_session_common_superseded(ctx, &session->common);
+static void method_session_superseded(fastd_method_session_state_t *session) {
+	fastd_method_session_common_superseded(&session->common);
 }
 
-static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static void method_session_free(fastd_method_session_state_t *session) {
 	if (session) {
 		session->cipher->free(session->cipher_state);
 		session->ghash->free(session->ghash_state);
@@ -155,11 +155,11 @@ static inline void put_size(fastd_block128_t *out, size_t len) {
 	out->b[15] = len << 3;
 }
 
-static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head_zero(ctx, &in, sizeof(fastd_block128_t));
+static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+	fastd_buffer_pull_head_zero(&in, sizeof(fastd_block128_t));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
-	*out = fastd_buffer_alloc(ctx, in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
+	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
 
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
@@ -193,23 +193,23 @@ static bool method_encrypt(fastd_context_t *ctx, fastd_peer_t *peer UNUSED, fast
 
 	fastd_buffer_free(in);
 
-	fastd_method_put_common_header(ctx, out, session->common.send_nonce, 0);
+	fastd_method_put_common_header(out, session->common.send_nonce, 0);
 	fastd_method_increment_nonce(&session->common);
 
 	return true;
 }
 
-static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	if (in.len < COMMON_HEADBYTES+sizeof(fastd_block128_t))
 		return false;
 
-	if (!method_session_is_valid(ctx, session))
+	if (!method_session_is_valid(session))
 		return false;
 
 	uint8_t in_nonce[COMMON_NONCEBYTES];
 	uint8_t flags;
 	int64_t age;
-	if (!fastd_method_handle_common_header(ctx, &session->common, &in, in_nonce, &flags, &age))
+	if (!fastd_method_handle_common_header(&session->common, &in, in_nonce, &flags, &age))
 		return false;
 
 	if (flags)
@@ -219,7 +219,7 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
-	*out = fastd_buffer_alloc(ctx, in.len, 0, tail_len);
+	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -245,11 +245,11 @@ static bool method_decrypt(fastd_context_t *ctx, fastd_peer_t *peer, fastd_metho
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(ctx, out, sizeof(fastd_block128_t));
+	fastd_buffer_push_head(out, sizeof(fastd_block128_t));
 
-	if (!fastd_method_reorder_check(ctx, peer, &session->common, in_nonce, age)) {
+	if (!fastd_method_reorder_check(peer, &session->common, in_nonce, age)) {
 		fastd_buffer_free(*out);
-		*out = fastd_buffer_alloc(ctx, 0, 0, 0);
+		*out = fastd_buffer_alloc(0, 0, 0);
 	}
 
 	return true;

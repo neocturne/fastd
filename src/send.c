@@ -73,9 +73,9 @@ static inline void count_stat(fastd_stats_t *stats, size_t stat_size) {
 	}
 }
 
-static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
+static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
 	if (!sock)
-		exit_bug(ctx, "send: sock == NULL");
+		exit_bug("send: sock == NULL");
 
 	struct msghdr msg = {};
 	uint8_t cbuf[1024] __attribute__((aligned(8))) = {};
@@ -93,7 +93,7 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 		break;
 
 	default:
-		exit_bug(ctx, "unsupported address family");
+		exit_bug("unsupported address family");
 	}
 
 	if (sock->bound_addr->sa.sa_family == AF_INET6) {
@@ -125,10 +125,10 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 	} while (ret < 0 && errno == EINTR);
 
 	if (ret < 0 && errno == EINVAL && msg.msg_controllen) {
-		pr_debug2(ctx, "sendmsg failed, trying again without pktinfo");
+		pr_debug2("sendmsg failed, trying again without pktinfo");
 
-		if (peer && !fastd_peer_handshake_scheduled(ctx, peer))
-			fastd_peer_schedule_handshake_default(ctx, peer);
+		if (peer && !fastd_peer_handshake_scheduled(peer))
+			fastd_peer_schedule_handshake_default(peer);
 
 		msg.msg_control = NULL;
 		msg.msg_controllen = 0;
@@ -145,51 +145,51 @@ static void send_type(fastd_context_t *ctx, const fastd_socket_t *sock, const fa
 #if EAGAIN != EWOULDBLOCK
 		case EWOULDBLOCK:
 #endif
-			pr_debug2_errno(ctx, "sendmsg");
-			count_stat(&ctx->tx_dropped, stat_size);
+			pr_debug2_errno("sendmsg");
+			count_stat(&ctx.tx_dropped, stat_size);
 			break;
 
 		case ENETDOWN:
 		case ENETUNREACH:
 		case EHOSTUNREACH:
-			pr_debug_errno(ctx, "sendmsg");
-			count_stat(&ctx->tx_error, stat_size);
+			pr_debug_errno("sendmsg");
+			count_stat(&ctx.tx_error, stat_size);
 			break;
 
 		default:
-			pr_warn_errno(ctx, "sendmsg");
-			count_stat(&ctx->tx_error, stat_size);
+			pr_warn_errno("sendmsg");
+			count_stat(&ctx.tx_error, stat_size);
 		}
 	}
 	else {
-		count_stat(&ctx->tx, stat_size);
+		count_stat(&ctx.tx, stat_size);
 	}
 
 	fastd_buffer_free(buffer);
 }
 
-void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
-	send_type(ctx, sock, local_addr, remote_addr, peer, PACKET_DATA, buffer, stat_size);
+void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
+	send_type(sock, local_addr, remote_addr, peer, PACKET_DATA, buffer, stat_size);
 }
 
-void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	send_type(ctx, sock, local_addr, remote_addr, peer, PACKET_HANDSHAKE, buffer, 0);
+void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+	send_type(sock, local_addr, remote_addr, peer, PACKET_HANDSHAKE, buffer, 0);
 }
 
-void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer) {
+void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer) {
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
-		fastd_peer_t *dest_peer = VECTOR_INDEX(ctx->peers, i);
+	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
+		fastd_peer_t *dest_peer = VECTOR_INDEX(ctx.peers, i);
 		if (dest_peer == source_peer || !fastd_peer_is_established(dest_peer))
 			continue;
 
 		/* optimization, primarily for TUN mode: don't duplicate the buffer for the last (or only) peer */
-		if (i == VECTOR_LEN(ctx->peers)-1) {
-			conf.protocol->send(ctx, dest_peer, buffer);
+		if (i == VECTOR_LEN(ctx.peers)-1) {
+			conf.protocol->send(dest_peer, buffer);
 			return;
 		}
 
-		conf.protocol->send(ctx, dest_peer, fastd_buffer_dup(ctx, buffer, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
+		conf.protocol->send(dest_peer, fastd_buffer_dup(buffer, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
 	}
 
 	fastd_buffer_free(buffer);

@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 
 
-void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure) {
+void fastd_random_bytes(void *buffer, size_t len, bool secure) {
 	int fd;
 	size_t read_bytes = 0;
 
@@ -40,7 +40,7 @@ void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool sec
 		fd = open("/dev/urandom", O_RDONLY);
 
 	if (fd < 0)
-		exit_errno(ctx, "unable to open random device");
+		exit_errno("unable to open random device");
 
 	while (read_bytes < len) {
 		ssize_t ret = read(fd, ((char*)buffer)+read_bytes, len-read_bytes);
@@ -49,7 +49,7 @@ void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool sec
 			if (errno == EINTR)
 				continue;
 
-			exit_errno(ctx, "unable to read from random device");
+			exit_errno("unable to read from random device");
 		}
 
 		read_bytes += ret;

@@ -35,22 +35,22 @@
 #define FASTD_DEFAULT_LOG_LEVEL LL_VERBOSE
 
 
-void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *format, ...);
+void fastd_logf(const fastd_loglevel_t level, const char *format, ...);
 
-#define pr_fatal(ctx, args...) fastd_logf(ctx, LL_FATAL, args)
-#define pr_error(ctx, args...) fastd_logf(ctx, LL_ERROR, args)
-#define pr_warn(ctx, args...) fastd_logf(ctx, LL_WARN, args)
-#define pr_info(ctx, args...) fastd_logf(ctx, LL_INFO, args)
-#define pr_verbose(ctx, args...) fastd_logf(ctx, LL_VERBOSE, args)
-#define pr_debug(ctx, args...) fastd_logf(ctx, LL_DEBUG, args)
-#define pr_debug2(ctx, args...) fastd_logf(ctx, LL_DEBUG2, args)
+#define pr_fatal(args...) fastd_logf(LL_FATAL, args)
+#define pr_error(args...) fastd_logf(LL_ERROR, args)
+#define pr_warn(args...) fastd_logf(LL_WARN, args)
+#define pr_info(args...) fastd_logf(LL_INFO, args)
+#define pr_verbose(args...) fastd_logf(LL_VERBOSE, args)
+#define pr_debug(args...) fastd_logf(LL_DEBUG, args)
+#define pr_debug2(args...) fastd_logf(LL_DEBUG2, args)
 
-#define pr_error_errno(ctx, message) pr_error(ctx, "%s: %s", message, strerror(errno))
-#define pr_warn_errno(ctx, message) pr_warn(ctx, "%s: %s", message, strerror(errno))
-#define pr_debug_errno(ctx, message) pr_debug(ctx, "%s: %s", message, strerror(errno))
-#define pr_debug2_errno(ctx, message) pr_debug2(ctx, "%s: %s", message, strerror(errno))
+#define pr_error_errno(message) pr_error("%s: %s", message, strerror(errno))
+#define pr_warn_errno(message) pr_warn("%s: %s", message, strerror(errno))
+#define pr_debug_errno(message) pr_debug("%s: %s", message, strerror(errno))
+#define pr_debug2_errno(message) pr_debug2("%s: %s", message, strerror(errno))
 
-#define exit_fatal(ctx, args...) do { pr_fatal(ctx, args); abort(); } while(0)
-#define exit_bug(ctx, message) exit_fatal(ctx, "BUG: %s", message)
-#define exit_error(ctx, args...) do { pr_error(ctx, args); exit(1); } while(0)
-#define exit_errno(ctx, message) exit_error(ctx, "%s: %s", message, strerror(errno))
+#define exit_fatal(args...) do { pr_fatal(args); abort(); } while(0)
+#define exit_bug(message) exit_fatal("BUG: %s", message)
+#define exit_error(args...) do { pr_error(args); exit(1); } while(0)
+#define exit_errno(message) exit_error("%s: %s", message, strerror(errno))

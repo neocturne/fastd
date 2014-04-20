@@ -40,11 +40,11 @@ static bool method_create_by_name(const char *name, fastd_method_t **method UNUS
 static void method_destroy(fastd_method_t *method UNUSED) {
 }
 
-static size_t method_key_length(fastd_context_t *ctx UNUSED, const fastd_method_t *method UNUSED) {
+static size_t method_key_length(const fastd_method_t *method UNUSED) {
 	return 0;
 }
 
-static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UNUSED, const fastd_method_t *method UNUSED, const uint8_t *secret UNUSED, bool initiator) {
+static fastd_method_session_state_t* method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret UNUSED, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
 	session->valid = true;
@@ -53,31 +53,31 @@ static fastd_method_session_state_t* method_session_init(fastd_context_t *ctx UN
 	return session;
 }
 
-static fastd_method_session_state_t* method_session_init_compat(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, size_t length UNUSED, bool initiator) {
-	return method_session_init(ctx, method, secret, initiator);
+static fastd_method_session_state_t* method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length UNUSED, bool initiator) {
+	return method_session_init(method, secret, initiator);
 }
 
-static bool method_session_is_valid(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static bool method_session_is_valid(fastd_method_session_state_t *session) {
 	return (session && session->valid);
 }
 
-static bool method_session_is_initiator(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static bool method_session_is_initiator(fastd_method_session_state_t *session) {
 	return (session->initiator);
 }
 
-static bool method_session_want_refresh(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session UNUSED) {
+static bool method_session_want_refresh(fastd_method_session_state_t *session UNUSED) {
 	return false;
 }
 
-static void method_session_superseded(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static void method_session_superseded(fastd_method_session_state_t *session) {
 	session->valid = false;
 }
 
-static void method_session_free(fastd_context_t *ctx UNUSED, fastd_method_session_state_t *session) {
+static void method_session_free(fastd_method_session_state_t *session) {
 	free(session);
 }
 
-static bool method_passthrough(fastd_context_t *ctx UNUSED, fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session UNUSED, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_passthrough(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session UNUSED, fastd_buffer_t *out, fastd_buffer_t in) {
 	*out = in;
 	return true;
 }

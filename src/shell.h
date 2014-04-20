@@ -58,5 +58,5 @@ static inline bool fastd_shell_command_isset(const fastd_shell_command_t *comman
 	return command->command;
 }
 
-bool fastd_shell_command_exec_sync(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret);
-void fastd_shell_command_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
+bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret);
+void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);

@@ -45,18 +45,18 @@ struct fastd_method_provider {
 	bool (*create_by_name)(const char *name, fastd_method_t **method);
 	void (*destroy)(fastd_method_t *method);
 
-	size_t (*key_length)(fastd_context_t *ctx, const fastd_method_t *method);
+	size_t (*key_length)(const fastd_method_t *method);
 
-	fastd_method_session_state_t* (*session_init)(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, bool initiator);
-	fastd_method_session_state_t* (*session_init_compat)(fastd_context_t *ctx, const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
-	bool (*session_is_valid)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	bool (*session_is_initiator)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	bool (*session_want_refresh)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	void (*session_superseded)(fastd_context_t *ctx, fastd_method_session_state_t *session);
-	void (*session_free)(fastd_context_t *ctx, fastd_method_session_state_t *session);
+	fastd_method_session_state_t* (*session_init)(const fastd_method_t *method, const uint8_t *secret, bool initiator);
+	fastd_method_session_state_t* (*session_init_compat)(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
+	bool (*session_is_valid)(fastd_method_session_state_t *session);
+	bool (*session_is_initiator)(fastd_method_session_state_t *session);
+	bool (*session_want_refresh)(fastd_method_session_state_t *session);
+	void (*session_superseded)(fastd_method_session_state_t *session);
+	void (*session_free)(fastd_method_session_state_t *session);
 
-	bool (*encrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
-	bool (*decrypt)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
+	bool (*encrypt)(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
+	bool (*decrypt)(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
 };
 
 

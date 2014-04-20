@@ -76,23 +76,23 @@ struct fastd_protocol_peer_state {
 };
 
 
-bool fastd_protocol_ec25519_fhmqvc_peer_check(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
-bool fastd_protocol_ec25519_fhmqvc_peer_check_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
+bool fastd_protocol_ec25519_fhmqvc_peer_check(fastd_peer_config_t *peer_conf);
+bool fastd_protocol_ec25519_fhmqvc_peer_check_temporary(fastd_peer_t *peer);
 
-void fastd_protocol_ec25519_fhmqvc_maintenance(fastd_context_t *ctx);
-void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_protocol_ec25519_fhmqvc_reset_peer_state(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_protocol_ec25519_fhmqvc_free_peer_state(fastd_context_t *ctx, fastd_peer_t *peer);
+void fastd_protocol_ec25519_fhmqvc_maintenance(void);
+void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_peer_t *peer);
+void fastd_protocol_ec25519_fhmqvc_reset_peer_state(fastd_peer_t *peer);
+void fastd_protocol_ec25519_fhmqvc_free_peer_state(fastd_peer_t *peer);
 
-void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
-void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
+void fastd_protocol_ec25519_fhmqvc_handshake_init(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
+void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
 
-void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session);
+void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_session_t *session);
 
-void fastd_protocol_ec25519_fhmqvc_generate_key(fastd_context_t *ctx);
+void fastd_protocol_ec25519_fhmqvc_generate_key(void);
 void fastd_protocol_ec25519_fhmqvc_show_key(void);
 void fastd_protocol_ec25519_fhmqvc_set_shell_env(const fastd_peer_t *peer);
-bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_context_t *ctx UNUSED, const fastd_peer_t *peer, char *buf, size_t len);
+bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len);
 
 
 static inline void hexdump(char out[65], const unsigned char d[32]) {
@@ -102,6 +102,6 @@ static inline void hexdump(char out[65], const unsigned char d[32]) {
 }
 
 
-static inline bool is_session_valid(fastd_context_t *ctx, const protocol_session_t *session) {
-	return (session->method && session->method->provider->session_is_valid(ctx, session->method_state));
+static inline bool is_session_valid(const protocol_session_t *session) {
+	return (session->method && session->method->provider->session_is_valid(session->method_state));
 }

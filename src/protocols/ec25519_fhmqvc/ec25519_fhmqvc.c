@@ -38,25 +38,25 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 	return true;
 }
 
-static inline void check_session_refresh(fastd_context_t *ctx, fastd_peer_t *peer) {
+static inline void check_session_refresh(fastd_peer_t *peer) {
 	protocol_session_t *session = &peer->protocol_state->session;
 
-	if (!session->refreshing && session->method->provider->session_want_refresh(ctx, session->method_state)) {
-		pr_verbose(ctx, "refreshing session with %P", peer);
+	if (!session->refreshing && session->method->provider->session_want_refresh(session->method_state)) {
+		pr_verbose("refreshing session with %P", peer);
 		session->handshakes_cleaned = true;
 		session->refreshing = true;
-		fastd_peer_schedule_handshake(ctx, peer, 0);
+		fastd_peer_schedule_handshake(peer, 0);
 	}
 }
 
-static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
+static fastd_protocol_config_t* protocol_init(void) {
 	fastd_protocol_config_t *protocol_config = malloc(sizeof(fastd_protocol_config_t));
 
 	if (!conf.secret)
-		exit_error(ctx, "no secret key configured");
+		exit_error("no secret key configured");
 
 	if (!read_key(protocol_config->key.secret.p, conf.secret))
-		exit_error(ctx, "invalid secret key");
+		exit_error("invalid secret key");
 
 	ecc_25519_work_t work;
 	ecc_25519_scalarmult_base(&work, &protocol_config->key.secret);
@@ -65,27 +65,27 @@ static fastd_protocol_config_t* protocol_init(fastd_context_t *ctx) {
 	return protocol_config;
 }
 
-static void protocol_peer_verify(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
+static void protocol_peer_verify(fastd_peer_config_t *peer_conf) {
 	if (!peer_conf->key)
-		exit_error(ctx, "no key configured for peer `%s'", peer_conf->name);
+		exit_error("no key configured for peer `%s'", peer_conf->name);
 
 	aligned_int256_t key;
 	if (!read_key(key.u8, peer_conf->key))
-		exit_error(ctx, "invalid key configured for peer `%s'", peer_conf->name);
+		exit_error("invalid key configured for peer `%s'", peer_conf->name);
 }
 
-static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *peer_conf) {
+static void protocol_peer_configure(fastd_peer_config_t *peer_conf) {
 	if (peer_conf->protocol_config)
 		return;
 
 	if (!peer_conf->key) {
-		pr_warn(ctx, "no key configured for `%s', disabling peer", peer_conf->name);
+		pr_warn("no key configured for `%s', disabling peer", peer_conf->name);
 		return;
 	}
 
 	aligned_int256_t key;
 	if (!read_key(key.u8, peer_conf->key)) {
-		pr_warn(ctx, "invalid key configured for `%s', disabling peer", peer_conf->name);
+		pr_warn("invalid key configured for `%s', disabling peer", peer_conf->name);
 		return;
 	}
 
@@ -93,62 +93,62 @@ static void protocol_peer_configure(fastd_context_t *ctx, fastd_peer_config_t *p
 	peer_conf->protocol_config->public_key = key;
 
 	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, 32) == 0)
-		pr_debug(ctx, "found own key as `%s', ignoring peer", peer_conf->name);
+		pr_debug("found own key as `%s', ignoring peer", peer_conf->name);
 }
 
-static inline bool check_session(fastd_context_t *ctx, fastd_peer_t *peer) {
-	if (is_session_valid(ctx, &peer->protocol_state->session))
+static inline bool check_session(fastd_peer_t *peer) {
+	if (is_session_valid(&peer->protocol_state->session))
 		return true;
 
-	pr_verbose(ctx, "active session with %P timed out", peer);
-	fastd_peer_reset(ctx, peer);
+	pr_verbose("active session with %P timed out", peer);
+	fastd_peer_reset(peer);
 	return false;
 }
 
-static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (!peer->protocol_state || !check_session(ctx, peer))
+static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
+	if (!peer->protocol_state || !check_session(peer))
 		goto fail;
 
 	fastd_buffer_t recv_buffer;
 	bool ok = false;
 
-	if (is_session_valid(ctx, &peer->protocol_state->old_session)) {
-		if (peer->protocol_state->old_session.method->provider->decrypt(ctx, peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
+	if (is_session_valid(&peer->protocol_state->old_session)) {
+		if (peer->protocol_state->old_session.method->provider->decrypt(peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
 			ok = true;
 	}
 
 	if (!ok) {
-		if (peer->protocol_state->session.method->provider->decrypt(ctx, peer, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
+		if (peer->protocol_state->session.method->provider->decrypt(peer, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
 			ok = true;
 
 			if (peer->protocol_state->old_session.method) {
-				pr_debug(ctx, "invalidating old session with %P", peer);
-				peer->protocol_state->old_session.method->provider->session_free(ctx, peer->protocol_state->old_session.method_state);
+				pr_debug("invalidating old session with %P", peer);
+				peer->protocol_state->old_session.method->provider->session_free(peer->protocol_state->old_session.method_state);
 				peer->protocol_state->old_session = (protocol_session_t){};
 			}
 
 			if (!peer->protocol_state->session.handshakes_cleaned) {
-				pr_debug(ctx, "cleaning left handshakes with %P", peer);
-				fastd_peer_unschedule_handshake(ctx, peer);
+				pr_debug("cleaning left handshakes with %P", peer);
+				fastd_peer_unschedule_handshake(peer);
 				peer->protocol_state->session.handshakes_cleaned = true;
 
-				if (peer->protocol_state->session.method->provider->session_is_initiator(ctx, peer->protocol_state->session.method_state))
-					fastd_protocol_ec25519_fhmqvc_send_empty(ctx, peer, &peer->protocol_state->session);
+				if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state))
+					fastd_protocol_ec25519_fhmqvc_send_empty(peer, &peer->protocol_state->session);
 			}
 
-			check_session_refresh(ctx, peer);
+			check_session_refresh(peer);
 		}
 	}
 
 	if (!ok) {
-		pr_verbose(ctx, "verification failed for packet received from %P", peer);
+		pr_verbose("verification failed for packet received from %P", peer);
 		goto fail;
 	}
 
-	fastd_peer_seen(ctx, peer);
+	fastd_peer_seen(peer);
 
 	if (recv_buffer.len)
-		fastd_handle_receive(ctx, peer, recv_buffer);
+		fastd_handle_receive(peer, recv_buffer);
 	else
 		fastd_buffer_free(recv_buffer);
 
@@ -158,39 +158,39 @@ static void protocol_handle_recv(fastd_context_t *ctx, fastd_peer_t *peer, fastd
 	fastd_buffer_free(buffer);
 }
 
-static void session_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer, protocol_session_t *session) {
+static void session_send(fastd_peer_t *peer, fastd_buffer_t buffer, protocol_session_t *session) {
 	size_t stat_size = buffer.len;
 
 	fastd_buffer_t send_buffer;
-	if (!session->method->provider->encrypt(ctx, peer, session->method_state, &send_buffer, buffer)) {
+	if (!session->method->provider->encrypt(peer, session->method_state, &send_buffer, buffer)) {
 		fastd_buffer_free(buffer);
-		pr_error(ctx, "failed to encrypt packet for %P", peer);
+		pr_error("failed to encrypt packet for %P", peer);
 		return;
 	}
 
-	fastd_send(ctx, peer->sock, &peer->local_address, &peer->address, peer, send_buffer, stat_size);
-	peer->keepalive_timeout = fastd_in_seconds(ctx, conf.keepalive_timeout);
+	fastd_send(peer->sock, &peer->local_address, &peer->address, peer, send_buffer, stat_size);
+	peer->keepalive_timeout = fastd_in_seconds(conf.keepalive_timeout);
 }
 
-static void protocol_send(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !check_session(ctx, peer)) {
+static void protocol_send(fastd_peer_t *peer, fastd_buffer_t buffer) {
+	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !check_session(peer)) {
 		fastd_buffer_free(buffer);
 		return;
 	}
 
-	check_session_refresh(ctx, peer);
+	check_session_refresh(peer);
 
-	if (peer->protocol_state->session.method->provider->session_is_initiator(ctx, peer->protocol_state->session.method_state) && is_session_valid(ctx, &peer->protocol_state->old_session)) {
-		pr_debug2(ctx, "sending packet for old session to %P", peer);
-		session_send(ctx, peer, buffer, &peer->protocol_state->old_session);
+	if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state) && is_session_valid(&peer->protocol_state->old_session)) {
+		pr_debug2("sending packet for old session to %P", peer);
+		session_send(peer, buffer, &peer->protocol_state->old_session);
 	}
 	else {
-		session_send(ctx, peer, buffer, &peer->protocol_state->session);
+		session_send(peer, buffer, &peer->protocol_state->session);
 	}
 }
 
-void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_context_t *ctx, fastd_peer_t *peer, protocol_session_t *session) {
-	session_send(ctx, peer, fastd_buffer_alloc(ctx, 0, alignto(session->method->provider->min_encrypt_head_space, 8), session->method->provider->min_encrypt_tail_space), session);
+void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_session_t *session) {
+	session_send(peer, fastd_buffer_alloc(0, alignto(session->method->provider->min_encrypt_head_space, 8), session->method->provider->min_encrypt_tail_space), session);
 }
 
 const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {

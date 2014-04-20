@@ -30,14 +30,14 @@
 #include "types.h"
 
 
-void fastd_poll_init(fastd_context_t *ctx);
-void fastd_poll_free(fastd_context_t *ctx);
+void fastd_poll_init(void);
+void fastd_poll_free(void);
 
-void fastd_poll_set_fd_tuntap(fastd_context_t *ctx);
-void fastd_poll_set_fd_sock(fastd_context_t *ctx, size_t i);
-void fastd_poll_set_fd_peer(fastd_context_t *ctx, size_t i);
+void fastd_poll_set_fd_tuntap(void);
+void fastd_poll_set_fd_sock(size_t i);
+void fastd_poll_set_fd_peer(size_t i);
 
-void fastd_poll_add_peer(fastd_context_t *ctx);
-void fastd_poll_delete_peer(fastd_context_t *ctx, size_t i);
+void fastd_poll_add_peer(void);
+void fastd_poll_delete_peer(size_t i);
 
-void fastd_poll_handle(fastd_context_t *ctx);
+void fastd_poll_handle(void);

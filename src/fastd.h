@@ -52,26 +52,26 @@ struct __attribute__((__packed__)) fastd_eth_addr {
 struct fastd_protocol {
 	const char *name;
 
-	fastd_protocol_config_t* (*init)(fastd_context_t *ctx);
-	void (*peer_verify)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
-	void (*peer_configure)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
-	bool (*peer_check)(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
-	bool (*peer_check_temporary)(fastd_context_t *ctx, fastd_peer_t *peer);
+	fastd_protocol_config_t* (*init)(void);
+	void (*peer_verify)(fastd_peer_config_t *peer_conf);
+	void (*peer_configure)(fastd_peer_config_t *peer_conf);
+	bool (*peer_check)(fastd_peer_config_t *peer_conf);
+	bool (*peer_check_temporary)(fastd_peer_t *peer);
 
-	void (*handshake_init)(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
-	void (*handshake_handle)(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
+	void (*handshake_init)(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
+	void (*handshake_handle)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
 
-	void (*handle_recv)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
-	void (*send)(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
+	void (*handle_recv)(fastd_peer_t *peer, fastd_buffer_t buffer);
+	void (*send)(fastd_peer_t *peer, fastd_buffer_t buffer);
 
-	void (*init_peer_state)(fastd_context_t *ctx, fastd_peer_t *peer);
-	void (*reset_peer_state)(fastd_context_t *ctx, fastd_peer_t *peer);
-	void (*free_peer_state)(fastd_context_t *ctx, fastd_peer_t *peer);
+	void (*init_peer_state)(fastd_peer_t *peer);
+	void (*reset_peer_state)(fastd_peer_t *peer);
+	void (*free_peer_state)(fastd_peer_t *peer);
 
-	void (*generate_key)(fastd_context_t *ctx);
+	void (*generate_key)(void);
 	void (*show_key)(void);
 	void (*set_shell_env)(const fastd_peer_t *peer);
-	bool (*describe_peer)(const fastd_context_t *ctx, const fastd_peer_t *peer, char *buf, size_t len);
+	bool (*describe_peer)(const fastd_peer_t *peer, char *buf, size_t len);
 };
 
 union fastd_peer_address {
@@ -228,8 +228,6 @@ struct fastd_config {
 	bool verify_config;
 };
 
-extern fastd_config_t conf;
-
 struct fastd_context {
 	bool log_initialized;
 	fastd_log_fd_t *log_files;
@@ -288,36 +286,40 @@ struct fastd_string_stack {
 };
 
 
-void fastd_send(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
-void fastd_send_all(fastd_context_t *ctx, fastd_peer_t *source_peer, fastd_buffer_t buffer);
-void fastd_send_handshake(fastd_context_t *ctx, const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
-void fastd_receive(fastd_context_t *ctx, fastd_socket_t *sock);
+extern fastd_context_t ctx;
+extern fastd_config_t conf;
 
-void fastd_handle_receive(fastd_context_t *ctx, fastd_peer_t *peer, fastd_buffer_t buffer);
 
-bool fastd_socket_handle_binds(fastd_context_t *ctx);
-fastd_socket_t* fastd_socket_open(fastd_context_t *ctx, fastd_peer_t *peer, int af);
-void fastd_socket_close(fastd_context_t *ctx, fastd_socket_t *sock);
-void fastd_socket_error(fastd_context_t *ctx, fastd_socket_t *sock);
+void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
+void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer);
+void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
+void fastd_receive(fastd_socket_t *sock);
 
-void fastd_open_pipe(fastd_context_t *ctx, int *readfd, int *writefd);
-void fastd_setfd(const fastd_context_t *ctx, int fd, int set, int unset);
-void fastd_setfl(const fastd_context_t *ctx, int fd, int set, int unset);
+void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer);
 
-void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote);
+bool fastd_socket_handle_binds(void);
+fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af);
+void fastd_socket_close(fastd_socket_t *sock);
+void fastd_socket_error(fastd_socket_t *sock);
 
-void fastd_tuntap_open(fastd_context_t *ctx);
-fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx);
-void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer);
-void fastd_tuntap_close(fastd_context_t *ctx);
+void fastd_open_pipe(int *readfd, int *writefd);
+void fastd_setfd(const int fd, int set, int unset);
+void fastd_setfl(const int fd, int set, int unset);
 
-void fastd_cap_init(fastd_context_t *ctx);
-void fastd_cap_drop(fastd_context_t *ctx);
+void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
-void fastd_random_bytes(fastd_context_t *ctx, void *buffer, size_t len, bool secure);
+void fastd_tuntap_open(void);
+fastd_buffer_t fastd_tuntap_read(void);
+void fastd_tuntap_write(fastd_buffer_t buffer);
+void fastd_tuntap_close(void);
 
-static inline int fastd_rand(fastd_context_t *ctx, int min, int max) {
-	unsigned int r = (unsigned int)rand_r(&ctx->randseed);
+void fastd_cap_init(void);
+void fastd_cap_drop(void);
+
+void fastd_random_bytes(void *buffer, size_t len, bool secure);
+
+static inline int fastd_rand(int min, int max) {
+	unsigned int r = (unsigned int)rand_r(&ctx.randseed);
 	return (r%(max-min) + min);
 }
 
@@ -338,19 +340,19 @@ static inline size_t alignto(size_t l, size_t a) {
 }
 
 
-static inline size_t fastd_max_inner_packet(const fastd_context_t *ctx) {
+static inline size_t fastd_max_inner_packet(void) {
 	switch (conf.mode) {
 	case MODE_TAP:
 		return conf.mtu+ETH_HLEN;
 	case MODE_TUN:
 		return conf.mtu;
 	default:
-		exit_bug(ctx, "invalid mode");
+		exit_bug("invalid mode");
 	}
 }
 
-static inline size_t fastd_max_outer_packet(const fastd_context_t *ctx) {
-	return PACKET_TYPE_LEN + fastd_max_inner_packet(ctx) + conf.max_overhead;
+static inline size_t fastd_max_outer_packet(void) {
+	return PACKET_TYPE_LEN + fastd_max_inner_packet() + conf.max_overhead;
 }
 
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
@@ -401,18 +403,18 @@ static inline int timespec_diff(const struct timespec *tp1, const struct timespe
 	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
 }
 
-static inline bool fastd_timed_out(const fastd_context_t *ctx, const struct timespec *timeout) {
-	return !timespec_after(timeout, &ctx->now);
+static inline bool fastd_timed_out(const struct timespec *timeout) {
+	return !timespec_after(timeout, &ctx.now);
 }
 
-static inline struct timespec fastd_in_seconds(const fastd_context_t *ctx, int seconds) {
-	struct timespec ret = ctx->now;
+static inline struct timespec fastd_in_seconds(const int seconds) {
+	struct timespec ret = ctx.now;
 	ret.tv_sec += seconds;
 	return ret;
 }
 
-static inline void fastd_update_time(fastd_context_t *ctx) {
-	clock_gettime(CLOCK_MONOTONIC, &ctx->now);
+static inline void fastd_update_time(void) {
+	clock_gettime(CLOCK_MONOTONIC, &ctx.now);
 }
 
 static inline bool strequal(const char *str1, const char *str2) {

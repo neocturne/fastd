@@ -122,41 +122,41 @@ static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *a
 	}
 }
 
-fastd_peer_config_t* fastd_peer_config_new(fastd_context_t *ctx);
+fastd_peer_config_t* fastd_peer_config_new(void);
 void fastd_peer_config_free(fastd_peer_config_t *peer);
-void fastd_peer_config_delete(fastd_context_t *ctx);
-void fastd_peer_config_purge(fastd_context_t *ctx, fastd_peer_config_t *config);
+void fastd_peer_config_delete(void);
+void fastd_peer_config_purge(fastd_peer_config_t *config);
 bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2);
 
-void fastd_peer_reset(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_peer_delete(fastd_context_t *ctx, fastd_peer_t *peer);
-fastd_peer_t* fastd_peer_add(fastd_context_t *ctx, fastd_peer_config_t *peer_conf);
-fastd_peer_t* fastd_peer_add_temporary(fastd_context_t *ctx);
-bool fastd_peer_verify_temporary(fastd_context_t *ctx, fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
-void fastd_peer_enable_temporary(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_peer_set_established(fastd_context_t *ctx, fastd_peer_t *peer);
-bool fastd_peer_may_connect(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_peer_handle_resolve(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);
-bool fastd_peer_owns_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr);
-bool fastd_peer_matches_address(fastd_context_t *ctx, const fastd_peer_t *peer, const fastd_peer_address_t *addr);
-bool fastd_peer_claim_address(fastd_context_t *ctx, fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
-void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_peer_schedule_handshake(fastd_context_t *ctx, fastd_peer_t *peer, int delay);
+void fastd_peer_reset(fastd_peer_t *peer);
+void fastd_peer_delete(fastd_peer_t *peer);
+fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf);
+fastd_peer_t* fastd_peer_add_temporary(void);
+bool fastd_peer_verify_temporary(fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
+void fastd_peer_enable_temporary(fastd_peer_t *peer);
+void fastd_peer_set_established(fastd_peer_t *peer);
+bool fastd_peer_may_connect(fastd_peer_t *peer);
+void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);
+bool fastd_peer_owns_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr);
+bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr);
+bool fastd_peer_claim_address(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
+void fastd_peer_reset_socket(fastd_peer_t *peer);
+void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay);
 
-static inline void fastd_peer_schedule_handshake_default(fastd_context_t *ctx, fastd_peer_t *peer) {
-	fastd_peer_schedule_handshake(ctx, peer, fastd_rand(ctx, 17500, 22500));
+static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
+	fastd_peer_schedule_handshake(peer, fastd_rand(17500, 22500));
 }
 
-static inline void fastd_peer_unschedule_handshake(fastd_context_t *ctx UNUSED, fastd_peer_t *peer) {
+static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 	fastd_dlist_remove(&peer->handshake_entry);
 }
 
-static inline bool fastd_peer_handshake_scheduled(fastd_context_t *ctx UNUSED, fastd_peer_t *peer) {
+static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
 	return fastd_dlist_linked(&peer->handshake_entry);
 }
 
-fastd_eth_addr_t fastd_get_source_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
-fastd_eth_addr_t fastd_get_dest_address(const fastd_context_t *ctx, fastd_buffer_t buffer);
+fastd_eth_addr_t fastd_get_source_address(const fastd_buffer_t buffer);
+fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffer);
 
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *config) {
 	return (!config->remotes || config->floating);
@@ -197,8 +197,8 @@ static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {
 	return remote->config->hostname;
 }
 
-static inline void fastd_peer_seen(fastd_context_t *ctx, fastd_peer_t *peer) {
-	peer->timeout = fastd_in_seconds(ctx, conf.peer_stale_time);
+static inline void fastd_peer_seen(fastd_peer_t *peer) {
+	peer->timeout = fastd_in_seconds(conf.peer_stale_time);
 }
 
 static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {
@@ -209,6 +209,6 @@ static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 	return ((addr.data[0] & 1) == 0);
 }
 
-void fastd_peer_eth_addr_add(fastd_context_t *ctx, fastd_peer_t *peer, fastd_eth_addr_t addr);
-void fastd_peer_eth_addr_cleanup(fastd_context_t *ctx);
-fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_context_t *ctx, fastd_eth_addr_t addr);
+void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
+void fastd_peer_eth_addr_cleanup(void);
+fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_eth_addr_t addr);

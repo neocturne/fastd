@@ -44,7 +44,7 @@ static inline size_t snprintf_safe(char *buffer, size_t size, const char *format
 	return min_size_t(ret, size);
 }
 
-static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address) {
+static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
 	switch (address->sa.sa_family) {
@@ -79,24 +79,24 @@ static size_t snprint_peer_address(const fastd_context_t *ctx, char *buffer, siz
 			return 0;
 
 	default:
-		exit_bug(ctx, "unsupported address family");
+		exit_bug("unsupported address family");
 	}
 }
 
-static size_t snprint_peer_str(const fastd_context_t *ctx, char *buffer, size_t size, const fastd_peer_t *peer) {
+static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *peer) {
 	if (peer->config && peer->config->name) {
 		return snprintf_safe(buffer, size, "<%s>", peer->config->name);
 	}
 	else {
 		char buf[65];
-		if (conf.protocol->describe_peer(ctx, peer, buf, sizeof(buf)))
+		if (conf.protocol->describe_peer(peer, buf, sizeof(buf)))
 			return snprintf_safe(buffer, size, "{%s}", buf);
 		else
 			return snprintf_safe(buffer, size, "(null)");
 	}
 }
 
-static int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size, const char *format, va_list ap) {
+static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_list ap) {
 	char *buffer_start = buffer;
 	char *buffer_end = buffer+size;
 
@@ -159,7 +159,7 @@ static int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size
 			p = va_arg(ap, const fastd_peer_t*);
 
 			if (p)
-				buffer += snprint_peer_str(ctx, buffer, buffer_end-buffer, (const fastd_peer_t*)p);
+				buffer += snprint_peer_str(buffer, buffer_end-buffer, (const fastd_peer_t*)p);
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;
@@ -172,13 +172,13 @@ static int fastd_vsnprintf(const fastd_context_t *ctx, char *buffer, size_t size
 			iface = (*format == 'L') ? va_arg(ap, const char*) : NULL;
 
 			if (p)
-				buffer += snprint_peer_address(ctx, buffer, buffer_end-buffer, (const fastd_peer_address_t*)p, iface, *format != 'I');
+				buffer += snprint_peer_address(buffer, buffer_end-buffer, (const fastd_peer_address_t*)p, iface, *format != 'I');
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;
 
 		default:
-			pr_warn(ctx, "fastd_vsnprintf: unknown format conversion specifier '%c'", *format);
+			pr_warn("fastd_vsnprintf: unknown format conversion specifier '%c'", *format);
 			*buffer_start = 0;
 			return -1;
 		}
@@ -228,18 +228,18 @@ static inline int get_syslog_level(fastd_loglevel_t log_level) {
 	}
 }
 
-void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *format, ...) {
+void fastd_logf(fastd_loglevel_t level, const char *format, ...) {
 	char buffer[1024];
 	char timestr[100] = "";
 	va_list ap;
 
 	va_start(ap, format);
-	fastd_vsnprintf(ctx, buffer, sizeof(buffer), format, ap);
+	fastd_vsnprintf(buffer, sizeof(buffer), format, ap);
 	va_end(ap);
 
 	buffer[sizeof(buffer)-1] = 0;
 
-	if (!ctx->log_initialized || level <= conf.log_stderr_level || conf.log_files) {
+	if (!ctx.log_initialized || level <= conf.log_stderr_level || conf.log_files) {
 		time_t t;
 		struct tm tm;
 
@@ -250,15 +250,15 @@ void fastd_logf(const fastd_context_t *ctx, fastd_loglevel_t level, const char *
 		}
 	}
 
-	if (!ctx->log_initialized || level <= conf.log_stderr_level)
+	if (!ctx.log_initialized || level <= conf.log_stderr_level)
 		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
 
-	if (ctx->log_initialized) {
+	if (ctx.log_initialized) {
 		if (level <= conf.log_syslog_level)
 			syslog(get_syslog_level(level), "%s", buffer);
 
 		fastd_log_fd_t *file;
-		for (file = ctx->log_files; file; file = file->next) {
+		for (file = ctx.log_files; file; file = file->next) {
 			if (level <= file->config->level)
 				dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
 		}

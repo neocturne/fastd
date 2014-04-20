@@ -56,13 +56,13 @@ static const bool multiaf_tun = true;
 
 #if defined(__linux__)
 
-void fastd_tuntap_open(fastd_context_t *ctx) {
+void fastd_tuntap_open(void) {
 	struct ifreq ifr = {};
 
-	pr_debug(ctx, "initializing tun/tap device...");
+	pr_debug("initializing tun/tap device...");
 
-	if ((ctx->tunfd = open("/dev/net/tun", O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
-		exit_errno(ctx, "could not open tun/tap device file");
+	if ((ctx.tunfd = open("/dev/net/tun", O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+		exit_errno("could not open tun/tap device file");
 
 	if (conf.ifname)
 		strncpy(ifr.ifr_name, conf.ifname, IFNAMSIZ-1);
@@ -77,87 +77,87 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 		break;
 
 	default:
-		exit_bug(ctx, "invalid mode");
+		exit_bug("invalid mode");
 	}
 
 	ifr.ifr_flags |= IFF_NO_PI;
-	if (ioctl(ctx->tunfd, TUNSETIFF, &ifr) < 0)
-		exit_errno(ctx, "TUNSETIFF ioctl failed");
+	if (ioctl(ctx.tunfd, TUNSETIFF, &ifr) < 0)
+		exit_errno("TUNSETIFF ioctl failed");
 
-	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+	ctx.ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
 
 	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (ctl_sock < 0)
-		exit_errno(ctx, "socket");
+		exit_errno("socket");
 
 	if (ioctl(ctl_sock, SIOCGIFMTU, &ifr) < 0)
-		exit_errno(ctx, "SIOCGIFMTU ioctl failed");
+		exit_errno("SIOCGIFMTU ioctl failed");
 
 	if (ifr.ifr_mtu != conf.mtu) {
 		ifr.ifr_mtu = conf.mtu;
 		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
-			exit_errno(ctx, "SIOCSIFMTU ioctl failed");
+			exit_errno("SIOCSIFMTU ioctl failed");
 	}
 
 	if (close(ctl_sock))
-		pr_error_errno(ctx, "close");
+		pr_error_errno("close");
 
-	fastd_poll_set_fd_tuntap(ctx);
+	fastd_poll_set_fd_tuntap();
 
-	pr_debug(ctx, "tun/tap device initialized.");
+	pr_debug("tun/tap device initialized.");
 }
 
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
 
-static void set_tun_mtu(fastd_context_t *ctx) {
+static void set_tun_mtu(void) {
 	struct tuninfo tuninfo;
 
-	if (ioctl(ctx->tunfd, TUNGIFINFO, &tuninfo) < 0)
-		exit_errno(ctx, "TUNGIFINFO ioctl failed");
+	if (ioctl(ctx.tunfd, TUNGIFINFO, &tuninfo) < 0)
+		exit_errno("TUNGIFINFO ioctl failed");
 
 	tuninfo.mtu = conf.mtu;
 
-	if (ioctl(ctx->tunfd, TUNSIFINFO, &tuninfo) < 0)
-		exit_errno(ctx, "TUNSIFINFO ioctl failed");
+	if (ioctl(ctx.tunfd, TUNSIFINFO, &tuninfo) < 0)
+		exit_errno("TUNSIFINFO ioctl failed");
 }
 
 
 #ifdef __FreeBSD__
 
-static void set_tap_mtu(fastd_context_t *ctx) {
+static void set_tap_mtu(void) {
 	struct tapinfo tapinfo;
 
-	if (ioctl(ctx->tunfd, TAPGIFINFO, &tapinfo) < 0)
-		exit_errno(ctx, "TAPGIFINFO ioctl failed");
+	if (ioctl(ctx.tunfd, TAPGIFINFO, &tapinfo) < 0)
+		exit_errno("TAPGIFINFO ioctl failed");
 
 	tapinfo.mtu = conf.mtu;
 
-	if (ioctl(ctx->tunfd, TAPSIFINFO, &tapinfo) < 0)
-		exit_errno(ctx, "TAPSIFINFO ioctl failed");
+	if (ioctl(ctx.tunfd, TAPSIFINFO, &tapinfo) < 0)
+		exit_errno("TAPSIFINFO ioctl failed");
 }
 
-static void setup_tun(fastd_context_t *ctx) {
+static void setup_tun(void) {
 	int one = 1;
-	if (ioctl(ctx->tunfd, TUNSIFHEAD, &one) < 0)
-		exit_errno(ctx, "TUNSIFHEAD ioctl failed");
+	if (ioctl(ctx.tunfd, TUNSIFHEAD, &one) < 0)
+		exit_errno("TUNSIFHEAD ioctl failed");
 
-	set_tun_mtu(ctx);
+	set_tun_mtu();
 }
 
-static void setup_tap(fastd_context_t *ctx) {
+static void setup_tap(void) {
 	struct ifreq ifr = {};
 
-	if (ioctl(ctx->tunfd, TAPGIFNAME, &ifr) < 0)
-		exit_errno(ctx, "TAPGIFNAME ioctl failed");
+	if (ioctl(ctx.tunfd, TAPGIFNAME, &ifr) < 0)
+		exit_errno("TAPGIFNAME ioctl failed");
 
-	free(ctx->ifname);
-	ctx->ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+	free(ctx.ifname);
+	ctx.ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
 
-	set_tap_mtu(ctx);
+	set_tap_mtu();
 }
 
-void fastd_tuntap_open(fastd_context_t *ctx) {
-	pr_debug(ctx, "initializing tun/tap device...");
+void fastd_tuntap_open(void) {
+	pr_debug("initializing tun/tap device...");
 
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	const char *type;
@@ -172,12 +172,12 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 		break;
 
 	default:
-		exit_bug(ctx, "invalid mode");
+		exit_bug("invalid mode");
 	}
 
 	if (conf.ifname) {
 		if (strncmp(conf.ifname, type, 3) != 0)
-			exit_error(ctx, "`%s' doesn't seem to be a %s device", conf.ifname, type);
+			exit_error("`%s' doesn't seem to be a %s device", conf.ifname, type);
 
 		strncat(ifname, conf.ifname, IFNAMSIZ-1);
 	}
@@ -185,42 +185,42 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 		strncat(ifname, type, IFNAMSIZ-1);
 	}
 
-	if ((ctx->tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
-		exit_errno(ctx, "could not open tun/tap device file");
+	if ((ctx.tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+		exit_errno("could not open tun/tap device file");
 
-	if (!(ctx->ifname = fdevname_r(ctx->tunfd, malloc(IFNAMSIZ), IFNAMSIZ)))
-		exit_errno(ctx, "could not get tun/tap interface name");
+	if (!(ctx.ifname = fdevname_r(ctx.tunfd, malloc(IFNAMSIZ), IFNAMSIZ)))
+		exit_errno("could not get tun/tap interface name");
 
 	switch (conf.mode) {
 	case MODE_TAP:
-		setup_tap(ctx);
+		setup_tap();
 		break;
 
 	case MODE_TUN:
-		setup_tun(ctx);
+		setup_tun();
 		break;
 
 	default:
-		exit_bug(ctx, "invalid mode");
+		exit_bug("invalid mode");
 	}
 
-	fastd_poll_set_fd_tuntap(ctx);
+	fastd_poll_set_fd_tuntap();
 
-	pr_debug(ctx, "tun/tap device initialized.");
+	pr_debug("tun/tap device initialized.");
 }
 
 #else /* __OpenBSD__ */
 
-static void set_link0(fastd_context_t *ctx, bool set) {
+static void set_link0(bool set) {
 	struct ifreq ifr = {};
 
 	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (ctl_sock < 0)
-		exit_errno(ctx, "socket");
+		exit_errno("socket");
 
-	strncpy(ifr.ifr_name, ctx->ifname, IFNAMSIZ-1);
+	strncpy(ifr.ifr_name, ctx.ifname, IFNAMSIZ-1);
 	if (ioctl(ctl_sock, SIOCGIFFLAGS, &ifr) < 0)
-		exit_errno(ctx, "SIOCGIFFLAGS ioctl failed");
+		exit_errno("SIOCGIFFLAGS ioctl failed");
 
 	if (set)
 		ifr.ifr_flags |= IFF_LINK0;
@@ -228,54 +228,54 @@ static void set_link0(fastd_context_t *ctx, bool set) {
 		ifr.ifr_flags &= ~IFF_LINK0;
 
 	if (ioctl(ctl_sock, SIOCSIFFLAGS, &ifr) < 0)
-		exit_errno(ctx, "SIOCSIFFLAGS ioctl failed");
+		exit_errno("SIOCSIFFLAGS ioctl failed");
 
 	if (close(ctl_sock))
-		pr_error_errno(ctx, "close");
+		pr_error_errno("close");
 }
 
-static void setup_tun(fastd_context_t *ctx) {
-	set_link0(ctx, false);
-	set_tun_mtu(ctx);
+static void setup_tun(void) {
+	set_link0(false);
+	set_tun_mtu();
 }
 
-static void setup_tap(fastd_context_t *ctx) {
-	set_link0(ctx, true);
-	set_tun_mtu(ctx);
+static void setup_tap(void) {
+	set_link0(true);
+	set_tun_mtu();
 }
 
-void fastd_tuntap_open(fastd_context_t *ctx) {
+void fastd_tuntap_open(void) {
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	if (!conf.ifname)
-		exit_error(ctx, "config error: no interface name given.");
+		exit_error("config error: no interface name given.");
 	else if (strncmp(conf.ifname, "tun", 3) != 0)
-		exit_error(ctx, "config error: `%s' doesn't seem to be a tun device", conf.ifname);
+		exit_error("config error: `%s' doesn't seem to be a tun device", conf.ifname);
 	else
 		strncat(ifname, conf.ifname, IFNAMSIZ-1);
 
-	pr_debug(ctx, "initializing tun device...");
+	pr_debug("initializing tun device...");
 
-	if ((ctx->tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
-		exit_errno(ctx, "could not open tun device file");
+	if ((ctx.tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+		exit_errno("could not open tun device file");
 
-	ctx->ifname = strndup(conf.ifname, IFNAMSIZ-1);
+	ctx.ifname = strndup(conf.ifname, IFNAMSIZ-1);
 
 	switch (conf.mode) {
 	case MODE_TAP:
-		setup_tap(ctx);
+		setup_tap();
 		break;
 
 	case MODE_TUN:
-		setup_tun(ctx);
+		setup_tun();
 		break;
 
 	default:
-		exit_bug(ctx, "invalid mode");
+		exit_bug("invalid mode");
 	}
 
-	fastd_poll_set_fd_tuntap(ctx);
+	fastd_poll_set_fd_tuntap();
 
-	pr_debug(ctx, "tun device initialized.");
+	pr_debug("tun device initialized.");
 }
 
 #endif
@@ -287,34 +287,34 @@ void fastd_tuntap_open(fastd_context_t *ctx) {
 #endif
 
 
-fastd_buffer_t fastd_tuntap_read(fastd_context_t *ctx) {
-	size_t max_len = fastd_max_inner_packet(ctx);
+fastd_buffer_t fastd_tuntap_read(void) {
+	size_t max_len = fastd_max_inner_packet();
 
 	fastd_buffer_t buffer;
 	if (multiaf_tun && conf.mode == MODE_TUN)
-		buffer = fastd_buffer_alloc(ctx, max_len+4, conf.min_encrypt_head_space+12, conf.min_encrypt_tail_space);
+		buffer = fastd_buffer_alloc(max_len+4, conf.min_encrypt_head_space+12, conf.min_encrypt_tail_space);
 	else
-		buffer = fastd_buffer_alloc(ctx, max_len, conf.min_encrypt_head_space, conf.min_encrypt_tail_space);
+		buffer = fastd_buffer_alloc(max_len, conf.min_encrypt_head_space, conf.min_encrypt_tail_space);
 
-	ssize_t len = read(ctx->tunfd, buffer.data, max_len);
+	ssize_t len = read(ctx.tunfd, buffer.data, max_len);
 	if (len < 0) {
 		if (errno == EINTR) {
 			fastd_buffer_free(buffer);
 			return (fastd_buffer_t){};
 		}
 
-		exit_errno(ctx, "read");
+		exit_errno("read");
 	}
 
 	buffer.len = len;
 
 	if (multiaf_tun && conf.mode == MODE_TUN)
-		fastd_buffer_push_head(ctx, &buffer, 4);
+		fastd_buffer_push_head(&buffer, 4);
 
 	return buffer;
 }
 
-void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
+void fastd_tuntap_write(fastd_buffer_t buffer) {
 	if (multiaf_tun && conf.mode == MODE_TUN) {
 		uint8_t version = *((uint8_t*)buffer.data) >> 4;
 		uint32_t af;
@@ -329,19 +329,19 @@ void fastd_tuntap_write(fastd_context_t *ctx, fastd_buffer_t buffer) {
 			break;
 
 		default:
-			pr_warn(ctx, "fastd_tuntap_write: unknown IP version %u", version);
+			pr_warn("fastd_tuntap_write: unknown IP version %u", version);
 			return;
 		}
 
-		fastd_buffer_pull_head(ctx, &buffer, 4);
+		fastd_buffer_pull_head(&buffer, 4);
 		memcpy(buffer.data, &af, 4);
 	}
 
-	if (write(ctx->tunfd, buffer.data, buffer.len) < 0)
-		pr_warn_errno(ctx, "write");
+	if (write(ctx.tunfd, buffer.data, buffer.len) < 0)
+		pr_warn_errno("write");
 }
 
-void fastd_tuntap_close(fastd_context_t *ctx) {
-	if (close(ctx->tunfd))
-		pr_warn_errno(ctx, "closing tun/tap: close");
+void fastd_tuntap_close(void) {
+	if (close(ctx.tunfd))
+		pr_warn_errno("closing tun/tap: close");
 }

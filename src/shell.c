@@ -32,15 +32,15 @@
 #include <sys/wait.h>
 
 
-static void shell_command_setenv(fastd_context_t *ctx, pid_t pid, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+static void shell_command_setenv(pid_t pid, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
 	/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
 	char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
 
 	snprintf(buf, sizeof(buf), "%u", (unsigned)pid);
 	setenv("FASTD_PID", buf, 1);
 
-	if (ctx->ifname) {
-		setenv("INTERFACE", ctx->ifname, 1);
+	if (ctx.ifname) {
+		setenv("INTERFACE", ctx.ifname, 1);
 	}
 	else if (conf.ifname) {
 		char ifname[IF_NAMESIZE];
@@ -125,12 +125,12 @@ static void shell_command_setenv(fastd_context_t *ctx, pid_t pid, const fastd_pe
 	conf.protocol->set_shell_env(peer);
 }
 
-static bool shell_command_do_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, pid_t *pid_ret) {
+static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, pid_t *pid_ret) {
 	pid_t parent = getpid();
 
 	pid_t pid = fork();
 	if (pid < 0) {
-		pr_error_errno(ctx, "shell_command_do_exec: fork");
+		pr_error_errno("shell_command_do_exec: fork");
 		return false;
 	}
 	else if (pid > 0) {
@@ -145,7 +145,7 @@ static bool shell_command_do_exec(fastd_context_t *ctx, const fastd_shell_comman
 	if (chdir(command->dir))
 		_exit(126);
 
-	shell_command_setenv(ctx, parent, peer, local_addr, peer_addr);
+	shell_command_setenv(parent, peer, local_addr, peer_addr);
 
 	/* unblock SIGCHLD */
 	sigset_t set;
@@ -157,7 +157,7 @@ static bool shell_command_do_exec(fastd_context_t *ctx, const fastd_shell_comman
 	_exit(127);
 }
 
-bool fastd_shell_command_exec_sync(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
+bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
 	if (!fastd_shell_command_isset(command))
 		return true;
 
@@ -168,7 +168,7 @@ bool fastd_shell_command_exec_sync(fastd_context_t *ctx, const fastd_shell_comma
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
 	pid_t pid;
-	if (!shell_command_do_exec(ctx, command, peer, local_addr, peer_addr, &pid))
+	if (!shell_command_do_exec(command, peer, local_addr, peer_addr, &pid))
 		return false;
 
 	int status;
@@ -177,7 +177,7 @@ bool fastd_shell_command_exec_sync(fastd_context_t *ctx, const fastd_shell_comma
 	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
 	if (err <= 0) {
-		pr_error_errno(ctx, "fastd_shell_command_exec_sync: waitpid");
+		pr_error_errno("fastd_shell_command_exec_sync: waitpid");
 		return false;
 	}
 
@@ -186,21 +186,21 @@ bool fastd_shell_command_exec_sync(fastd_context_t *ctx, const fastd_shell_comma
 	}
 	else {
 		if (WIFSIGNALED(status))
-			pr_warn(ctx, "command exited with signal %i", WTERMSIG(status));
+			pr_warn("command exited with signal %i", WTERMSIG(status));
 		else if (WEXITSTATUS(status))
-			pr_warn(ctx, "command exited with status %i", WEXITSTATUS(status));
+			pr_warn("command exited with status %i", WEXITSTATUS(status));
 	}
 
 	return true;
 }
 
 
-void fastd_shell_command_exec(fastd_context_t *ctx, const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
 	if (!fastd_shell_command_isset(command))
 		return;
 
 	if (command->sync)
-		fastd_shell_command_exec_sync(ctx, command, peer, local_addr, peer_addr, NULL);
+		fastd_shell_command_exec_sync(command, peer, local_addr, peer_addr, NULL);
 	else
-		shell_command_do_exec(ctx, command, peer, local_addr, peer_addr, NULL);
+		shell_command_do_exec(command, peer, local_addr, peer_addr, NULL);
 }

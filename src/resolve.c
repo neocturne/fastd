@@ -33,7 +33,6 @@
 
 
 typedef struct resolv_arg {
-	fastd_context_t *ctx;
 	fastd_remote_t *remote;
 	char *hostname;
 	fastd_peer_address_t constraints;
@@ -63,7 +62,7 @@ static void* resolve_peer(void *varg) {
 	gai_ret = getaddrinfo(arg->hostname, portstr, &hints, &res);
 
 	if (gai_ret || !res) {
-		pr_verbose(arg->ctx, "resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
+		pr_verbose("resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
 	}
 	else {
 		for (res2 = res; res2; res2 = res2->ai_next)
@@ -78,7 +77,7 @@ static void* resolve_peer(void *varg) {
 		n_addr = 0;
 		for (res2 = res; res2; res2 = res2->ai_next) {
 			if (res2->ai_addrlen > sizeof(fastd_peer_address_t) || (res2->ai_addr->sa_family != AF_INET && res2->ai_addr->sa_family != AF_INET6)) {
-				pr_warn(arg->ctx, "resolving host `%s': unsupported address returned", arg->hostname);
+				pr_warn("resolving host `%s': unsupported address returned", arg->hostname);
 				continue;
 			}
 
@@ -90,12 +89,12 @@ static void* resolve_peer(void *varg) {
 		}
 
 		if (n_addr)
-			pr_verbose(arg->ctx, "resolved host `%s' successfully", arg->hostname);
+			pr_verbose("resolved host `%s' successfully", arg->hostname);
 	}
 
 	ret->n_addr = n_addr;
 
-	fastd_async_enqueue(arg->ctx, ASYNC_TYPE_RESOLVE_RETURN, ret, sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t));
+	fastd_async_enqueue(ASYNC_TYPE_RESOLVE_RETURN, ret, sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t));
 
 	freeaddrinfo(res);
 	free(arg->hostname);
@@ -104,36 +103,35 @@ static void* resolve_peer(void *varg) {
 	return NULL;
 }
 
-void fastd_resolve_peer(fastd_context_t *ctx, fastd_peer_t *peer, fastd_remote_t *remote) {
+void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 	if (!peer->config)
-		exit_bug(ctx, "trying to resolve temporary peer");
+		exit_bug("trying to resolve temporary peer");
 
 	if (remote->resolving) {
-		pr_debug(ctx, "not resolving %P as there is already a resolve running", peer);
+		pr_debug("not resolving %P as there is already a resolve running", peer);
 		return;
 	}
 
-	if (!fastd_timed_out(ctx, &remote->last_resolve_timeout)) {
+	if (!fastd_timed_out(&remote->last_resolve_timeout)) {
 		/* last resolve was just a few seconds ago */
 		return;
 	}
 
-	pr_verbose(ctx, "resolving host `%s' for peer %P...", remote->config->hostname, peer);
+	pr_verbose("resolving host `%s' for peer %P...", remote->config->hostname, peer);
 
 	fastd_remote_ref(remote);
-	remote->last_resolve_timeout = fastd_in_seconds(ctx, conf.min_resolve_interval);
+	remote->last_resolve_timeout = fastd_in_seconds(conf.min_resolve_interval);
 	remote->resolving = true;
 
 	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
 
-	arg->ctx = ctx;
 	arg->remote = remote;
 	arg->hostname = strdup(remote->config->hostname);
 	arg->constraints = remote->config->address;
 
 	pthread_t thread;
 	if (pthread_create(&thread, NULL, resolve_peer, arg) != 0) {
-		pr_error_errno(ctx, "unable to create resolver thread");
+		pr_error_errno("unable to create resolver thread");
 
 		free(arg->hostname);
 		free(arg);

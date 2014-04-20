@@ -97,7 +97,7 @@ static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) 
 	return ret;
 }
 
-static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
+static fastd_buffer_t new_handshake(uint8_t type, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
 	size_t version_len = strlen(FASTD_VERSION);
 	size_t protocol_len = strlen(conf.protocol->name);
 	size_t method_len = method ? strlen(method->name) : 0;
@@ -108,7 +108,7 @@ static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const fa
 	if (with_method_list)
 		method_list = create_method_list(&method_list_len);
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 1,
+	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_handshake_packet_t), 1,
 						   3*5 +               /* handshake type, mode, reply code */
 						   6 +                 /* MTU */
 						   4+version_len +     /* version name */
@@ -121,35 +121,35 @@ static fastd_buffer_t new_handshake(fastd_context_t *ctx, uint8_t type, const fa
 	packet->rsv = 0;
 	packet->tlv_len = 0;
 
-	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, type);
-	fastd_handshake_add_uint8(ctx, &buffer, RECORD_MODE, conf.mode);
-	fastd_handshake_add_uint16(ctx, &buffer, RECORD_MTU, conf.mtu);
+	fastd_handshake_add_uint8(&buffer, RECORD_HANDSHAKE_TYPE, type);
+	fastd_handshake_add_uint8(&buffer, RECORD_MODE, conf.mode);
+	fastd_handshake_add_uint16(&buffer, RECORD_MTU, conf.mtu);
 
-	fastd_handshake_add(ctx, &buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
-	fastd_handshake_add(ctx, &buffer, RECORD_PROTOCOL_NAME, protocol_len, conf.protocol->name);
+	fastd_handshake_add(&buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
+	fastd_handshake_add(&buffer, RECORD_PROTOCOL_NAME, protocol_len, conf.protocol->name);
 
 	if (method && (!with_method_list || !conf.secure_handshakes))
-		fastd_handshake_add(ctx, &buffer, RECORD_METHOD_NAME, method_len, method->name);
+		fastd_handshake_add(&buffer, RECORD_METHOD_NAME, method_len, method->name);
 
 	if (with_method_list) {
-		fastd_handshake_add(ctx, &buffer, RECORD_METHOD_LIST, method_list_len, method_list);
+		fastd_handshake_add(&buffer, RECORD_METHOD_LIST, method_list_len, method_list);
 		free(method_list);
 	}
 
 	return buffer;
 }
 
-fastd_buffer_t fastd_handshake_new_init(fastd_context_t *ctx, size_t tail_space) {
-	return new_handshake(ctx, 1, NULL, !conf.secure_handshakes, tail_space);
+fastd_buffer_t fastd_handshake_new_init(size_t tail_space) {
+	return new_handshake(1, NULL, !conf.secure_handshakes, tail_space);
 }
 
-fastd_buffer_t fastd_handshake_new_reply(fastd_context_t *ctx, const fastd_handshake_t *handshake, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
-	fastd_buffer_t buffer = new_handshake(ctx, handshake->type+1, method, with_method_list, tail_space);
-	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, 0);
+fastd_buffer_t fastd_handshake_new_reply(const fastd_handshake_t *handshake, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
+	fastd_buffer_t buffer = new_handshake(handshake->type+1, method, with_method_list, tail_space);
+	fastd_handshake_add_uint8(&buffer, RECORD_REPLY_CODE, 0);
 	return buffer;
 }
 
-static void print_error(fastd_context_t *ctx, const char *prefix, const fastd_peer_address_t *remote_addr, uint8_t reply_code, uint8_t error_detail) {
+static void print_error(const char *prefix, const fastd_peer_address_t *remote_addr, uint8_t reply_code, uint8_t error_detail) {
 	const char *error_field_str;
 
 	if (error_detail >= RECORD_MAX)
@@ -162,32 +162,32 @@ static void print_error(fastd_context_t *ctx, const char *prefix, const fastd_pe
 		break;
 
 	case REPLY_MANDATORY_MISSING:
-		pr_warn(ctx, "Handshake with %I failed: %s error: mandatory field `%s' missing", remote_addr, prefix, error_field_str);
+		pr_warn("Handshake with %I failed: %s error: mandatory field `%s' missing", remote_addr, prefix, error_field_str);
 		break;
 
 	case REPLY_UNACCEPTABLE_VALUE:
-		pr_warn(ctx, "Handshake with %I failed: %s error: unacceptable value for field `%s'", remote_addr, prefix, error_field_str);
+		pr_warn("Handshake with %I failed: %s error: unacceptable value for field `%s'", remote_addr, prefix, error_field_str);
 		break;
 
 	default:
-		pr_warn(ctx, "Handshake with %I failed: %s error: unknown code %i", remote_addr, prefix, reply_code);
+		pr_warn("Handshake with %I failed: %s error: unknown code %i", remote_addr, prefix, reply_code);
 	}
 }
 
-static void send_error(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint8_t error_detail) {
-	print_error(ctx, "sending", remote_addr, reply_code, error_detail);
+static void send_error(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint8_t error_detail) {
+	print_error("sending", remote_addr, reply_code, error_detail);
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(ctx, sizeof(fastd_handshake_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
+	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_handshake_packet_t), 0, 3*5 /* enough space for handshake type, reply code and error detail */);
 	fastd_handshake_packet_t *reply = buffer.data;
 
 	reply->rsv = 0;
 	reply->tlv_len = 0;
 
-	fastd_handshake_add_uint8(ctx, &buffer, RECORD_HANDSHAKE_TYPE, handshake->type+1);
-	fastd_handshake_add_uint8(ctx, &buffer, RECORD_REPLY_CODE, reply_code);
-	fastd_handshake_add_uint8(ctx, &buffer, RECORD_ERROR_DETAIL, error_detail);
+	fastd_handshake_add_uint8(&buffer, RECORD_HANDSHAKE_TYPE, handshake->type+1);
+	fastd_handshake_add_uint8(&buffer, RECORD_REPLY_CODE, reply_code);
+	fastd_handshake_add_uint8(&buffer, RECORD_ERROR_DETAIL, error_detail);
 
-	fastd_send_handshake(ctx, sock, local_addr, remote_addr, peer, buffer);
+	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
 }
 
 static inline fastd_handshake_t parse_tlvs(const fastd_buffer_t *buffer) {
@@ -232,27 +232,27 @@ static inline fastd_handshake_t parse_tlvs(const fastd_buffer_t *buffer) {
 	return handshake;
 }
 
-static inline void print_error_reply(fastd_context_t *ctx, const fastd_peer_address_t *remote_addr, const fastd_handshake_t *handshake) {
+static inline void print_error_reply(const fastd_peer_address_t *remote_addr, const fastd_handshake_t *handshake) {
 	uint8_t reply_code = AS_UINT8(handshake->records[RECORD_REPLY_CODE]);
 	uint8_t error_detail = RECORD_MAX;
 
 	if (handshake->records[RECORD_ERROR_DETAIL].length == 1)
 		error_detail = AS_UINT8(handshake->records[RECORD_ERROR_DETAIL]);
 
-	print_error(ctx, "received", remote_addr, reply_code, error_detail);
+	print_error("received", remote_addr, reply_code, error_detail);
 }
 
-static inline bool check_records(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake) {
+static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake) {
 	if (handshake->records[RECORD_PROTOCOL_NAME].data) {
 		if (!record_equal(conf.protocol->name, &handshake->records[RECORD_PROTOCOL_NAME])) {
-			send_error(ctx, sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_PROTOCOL_NAME);
+			send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_PROTOCOL_NAME);
 			return false;
 		}
 	}
 
 	if (handshake->records[RECORD_MODE].data) {
 		if (handshake->records[RECORD_MODE].length != 1 || AS_UINT8(handshake->records[RECORD_MODE]) != conf.mode) {
-			send_error(ctx, sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MODE);
+			send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MODE);
 			return false;
 		}
 	}
@@ -260,7 +260,7 @@ static inline bool check_records(fastd_context_t *ctx, fastd_socket_t *sock, con
 	if (!conf.secure_handshakes || handshake->type > 1) {
 		if (handshake->records[RECORD_MTU].length == 2) {
 			if (AS_UINT16(handshake->records[RECORD_MTU]) != conf.mtu) {
-				pr_warn(ctx, "MTU configuration differs with peer %I: local MTU is %u, remote MTU is %u",
+				pr_warn("MTU configuration differs with peer %I: local MTU is %u, remote MTU is %u",
 					remote_addr, conf.mtu, AS_UINT16(handshake->records[RECORD_MTU]));
 			}
 		}
@@ -268,12 +268,12 @@ static inline bool check_records(fastd_context_t *ctx, fastd_socket_t *sock, con
 
 	if (handshake->type > 1) {
 		if (handshake->records[RECORD_REPLY_CODE].length != 1) {
-			pr_warn(ctx, "received handshake reply without reply code from %I", remote_addr);
+			pr_warn("received handshake reply without reply code from %I", remote_addr);
 			return false;
 		}
 
 		if (AS_UINT8(handshake->records[RECORD_REPLY_CODE]) != REPLY_SUCCESS) {
-			print_error_reply(ctx, remote_addr, handshake);
+			print_error_reply(remote_addr, handshake);
 			return false;
 		}
 	}
@@ -314,25 +314,25 @@ static inline const fastd_method_info_t* get_method(const fastd_handshake_t *han
 	return get_method_by_name((const char*)handshake->records[RECORD_METHOD_NAME].data, handshake->records[RECORD_METHOD_NAME].length);
 }
 
-void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+void fastd_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	char *peer_version = NULL;
 	const fastd_method_info_t *method = NULL;
 
 	fastd_handshake_t handshake = parse_tlvs(&buffer);
 
 	if (!handshake.tlv_data) {
-		pr_warn(ctx, "received a short handshake from %I", remote_addr);
+		pr_warn("received a short handshake from %I", remote_addr);
 		goto end_free;
 	}
 
 	if (handshake.records[RECORD_HANDSHAKE_TYPE].length != 1) {
-		pr_debug(ctx, "received handshake without handshake type from %I", remote_addr);
+		pr_debug("received handshake without handshake type from %I", remote_addr);
 		goto end_free;
 	}
 
 	handshake.type = AS_UINT8(handshake.records[RECORD_HANDSHAKE_TYPE]);
 
-	if (!check_records(ctx, sock, local_addr, remote_addr, peer, &handshake))
+	if (!check_records(sock, local_addr, remote_addr, peer, &handshake))
 		goto end_free;
 
 	if (!conf.secure_handshakes || handshake.type > 1) {
@@ -343,11 +343,11 @@ void fastd_handshake_handle(fastd_context_t *ctx, fastd_socket_t *sock, const fa
 	}
 
 	if (handshake.type > 1 && !method) {
-		send_error(ctx, sock, local_addr, remote_addr, peer, &handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_METHOD_LIST);
+		send_error(sock, local_addr, remote_addr, peer, &handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_METHOD_LIST);
 		goto end_free;
 	}
 
-	conf.protocol->handshake_handle(ctx, sock, local_addr, remote_addr, peer, &handshake, method);
+	conf.protocol->handshake_handle(sock, local_addr, remote_addr, peer, &handshake, method);
 
  end_free:
 	free(peer_version);

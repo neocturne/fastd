@@ -34,14 +34,14 @@ static inline void print_hexdump(const char *desc, unsigned char d[32]) {
 	printf("%s%s\n", desc, buf);
 }
 
-void fastd_protocol_ec25519_fhmqvc_generate_key(fastd_context_t *ctx) {
+void fastd_protocol_ec25519_fhmqvc_generate_key(void) {
 	ecc_int256_t secret_key;
 	ecc_int256_t public_key;
 
 	if (!conf.machine_readable)
-		pr_info(ctx, "Reading 32 bytes from /dev/random...");
+		pr_info("Reading 32 bytes from /dev/random...");
 
-	fastd_random_bytes(ctx, secret_key.p, 32, true);
+	fastd_random_bytes(secret_key.p, 32, true);
 	ecc_25519_gf_sanitize_secret(&secret_key, &secret_key);
 
 	ecc_25519_work_t work;
@@ -79,7 +79,7 @@ void fastd_protocol_ec25519_fhmqvc_set_shell_env(const fastd_peer_t *peer) {
 	}
 }
 
-bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_context_t *ctx UNUSED, const fastd_peer_t *peer, char *buf, size_t len) {
+bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len) {
 	if (peer && peer->protocol_config) {
 		char dumpbuf[65];
 

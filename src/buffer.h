@@ -38,18 +38,18 @@ struct fastd_buffer {
 };
 
 
-static inline fastd_buffer_t fastd_buffer_alloc(const fastd_context_t *ctx, size_t len, size_t head_space, size_t tail_space) {
+static inline fastd_buffer_t fastd_buffer_alloc(const size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = head_space+len+tail_space;
 	void *ptr;
 	int err = posix_memalign(&ptr, 16, base_len);
 	if (err)
-		exit_error(ctx, "posix_memalign: %s", strerror(err));
+		exit_error("posix_memalign: %s", strerror(err));
 
 	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
 }
 
-static inline fastd_buffer_t fastd_buffer_dup(const fastd_context_t *ctx, fastd_buffer_t buffer, size_t head_space, size_t tail_space) {
-	fastd_buffer_t new_buffer = fastd_buffer_alloc(ctx, buffer.len, head_space, tail_space);
+static inline fastd_buffer_t fastd_buffer_dup(const fastd_buffer_t buffer, size_t head_space, size_t tail_space) {
+	fastd_buffer_t new_buffer = fastd_buffer_alloc(buffer.len, head_space, tail_space);
 	memcpy(new_buffer.data, buffer.data, buffer.len);
 	return new_buffer;
 }
@@ -59,34 +59,34 @@ static inline void fastd_buffer_free(fastd_buffer_t buffer) {
 }
 
 
-static inline void fastd_buffer_pull_head(const fastd_context_t *ctx, fastd_buffer_t *buffer, size_t len) {
+static inline void fastd_buffer_pull_head(fastd_buffer_t *buffer, size_t len) {
 	if (len > (size_t)(buffer->data - buffer->base))
-		exit_bug(ctx, "tried to pull buffer across base");
+		exit_bug("tried to pull buffer across base");
 
 	buffer->data -= len;
 	buffer->len += len;
 }
 
-static inline void fastd_buffer_pull_head_zero(const fastd_context_t *ctx, fastd_buffer_t *buffer, size_t len) {
-	fastd_buffer_pull_head(ctx, buffer, len);
+static inline void fastd_buffer_pull_head_zero(fastd_buffer_t *buffer, size_t len) {
+	fastd_buffer_pull_head(buffer, len);
 	memset(buffer->data, 0, len);
 }
 
-static inline void fastd_buffer_pull_head_from(const fastd_context_t *ctx, fastd_buffer_t *buffer, const void *data, size_t len) {
-	fastd_buffer_pull_head(ctx, buffer, len);
+static inline void fastd_buffer_pull_head_from(fastd_buffer_t *buffer, const void *data, size_t len) {
+	fastd_buffer_pull_head(buffer, len);
 	memcpy(buffer->data, data, len);
 }
 
 
-static inline void fastd_buffer_push_head(const fastd_context_t *ctx, fastd_buffer_t *buffer, size_t len) {
+static inline void fastd_buffer_push_head(fastd_buffer_t *buffer, size_t len) {
 	if (buffer->len < len)
-		exit_bug(ctx, "tried to push buffer across tail");
+		exit_bug("tried to push buffer across tail");
 
 	buffer->data += len;
 	buffer->len -= len;
 }
 
-static inline void fastd_buffer_push_head_to(const fastd_context_t *ctx, fastd_buffer_t *buffer, void *data, size_t len) {
+static inline void fastd_buffer_push_head_to(fastd_buffer_t *buffer, void *data, size_t len) {
 	memcpy(data, buffer->data, len);
-	fastd_buffer_push_head(ctx, buffer, len);
+	fastd_buffer_push_head(buffer, len);
 }

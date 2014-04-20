@@ -28,17 +28,17 @@
 #include "../../crypto.h"
 
 
-static void init_protocol_state(fastd_context_t *ctx) {
-	if (!ctx->protocol_state) {
-		ctx->protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
+static void init_protocol_state(void) {
+	if (!ctx.protocol_state) {
+		ctx.protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
 
-		ctx->protocol_state->prev_handshake_key.preferred_till = ctx->now;
-		ctx->protocol_state->handshake_key.preferred_till = ctx->now;
+		ctx.protocol_state->prev_handshake_key.preferred_till = ctx.now;
+		ctx.protocol_state->handshake_key.preferred_till = ctx.now;
 	}
 }
 
-static void new_handshake_key(fastd_context_t *ctx, keypair_t *key) {
-		fastd_random_bytes(ctx, key->secret.p, 32, false);
+static void new_handshake_key(keypair_t *key) {
+		fastd_random_bytes(key->secret.p, 32, false);
 		ecc_25519_gf_sanitize_secret(&key->secret, &key->secret);
 
 		ecc_25519_work_t work;
@@ -46,51 +46,51 @@ static void new_handshake_key(fastd_context_t *ctx, keypair_t *key) {
 		ecc_25519_store_packed(&key->public.int256, &work);
 }
 
-void fastd_protocol_ec25519_fhmqvc_maintenance(fastd_context_t *ctx) {
-	init_protocol_state(ctx);
+void fastd_protocol_ec25519_fhmqvc_maintenance(void) {
+	init_protocol_state();
 
-	if (!is_handshake_key_preferred(ctx, &ctx->protocol_state->handshake_key)) {
-		pr_debug(ctx, "generating new handshake key");
+	if (!is_handshake_key_preferred(&ctx.protocol_state->handshake_key)) {
+		pr_debug("generating new handshake key");
 
-		ctx->protocol_state->prev_handshake_key = ctx->protocol_state->handshake_key;
+		ctx.protocol_state->prev_handshake_key = ctx.protocol_state->handshake_key;
 
-		ctx->protocol_state->handshake_key.serial++;
+		ctx.protocol_state->handshake_key.serial++;
 
-		new_handshake_key(ctx, &ctx->protocol_state->handshake_key.key);
+		new_handshake_key(&ctx.protocol_state->handshake_key.key);
 
-		ctx->protocol_state->handshake_key.preferred_till = fastd_in_seconds(ctx, 15);
-		ctx->protocol_state->handshake_key.valid_till = fastd_in_seconds(ctx, 30);
+		ctx.protocol_state->handshake_key.preferred_till = fastd_in_seconds(15);
+		ctx.protocol_state->handshake_key.valid_till = fastd_in_seconds(30);
 	}
 }
 
-void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
-	init_protocol_state(ctx);
+void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_peer_t *peer) {
+	init_protocol_state();
 
 	if (peer->protocol_state)
-		exit_bug(ctx, "tried to reinit peer state");
+		exit_bug("tried to reinit peer state");
 
 	peer->protocol_state = calloc(1, sizeof(fastd_protocol_peer_state_t));
-	peer->protocol_state->last_serial = ctx->protocol_state->handshake_key.serial;
+	peer->protocol_state->last_serial = ctx.protocol_state->handshake_key.serial;
 }
 
-static void reset_session(fastd_context_t *ctx, protocol_session_t *session) {
+static void reset_session(protocol_session_t *session) {
 	if (session->method)
-		session->method->provider->session_free(ctx, session->method_state);
+		session->method->provider->session_free(session->method_state);
 	secure_memzero(session, sizeof(protocol_session_t));
 }
 
-void fastd_protocol_ec25519_fhmqvc_reset_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
+void fastd_protocol_ec25519_fhmqvc_reset_peer_state(fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		return;
 
-	reset_session(ctx, &peer->protocol_state->old_session);
-	reset_session(ctx, &peer->protocol_state->session);
+	reset_session(&peer->protocol_state->old_session);
+	reset_session(&peer->protocol_state->session);
 }
 
-void fastd_protocol_ec25519_fhmqvc_free_peer_state(fastd_context_t *ctx, fastd_peer_t *peer) {
+void fastd_protocol_ec25519_fhmqvc_free_peer_state(fastd_peer_t *peer) {
 	if (peer->protocol_state) {
-		reset_session(ctx, &peer->protocol_state->old_session);
-		reset_session(ctx, &peer->protocol_state->session);
+		reset_session(&peer->protocol_state->old_session);
+		reset_session(&peer->protocol_state->session);
 
 		free(peer->protocol_state);
 	}

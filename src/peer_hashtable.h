@@ -30,9 +30,9 @@
 #include "types.h"
 
 
-void fastd_peer_hashtable_init(fastd_context_t *ctx);
-void fastd_peer_hashtable_free(fastd_context_t *ctx);
+void fastd_peer_hashtable_init(void);
+void fastd_peer_hashtable_free(void);
 
-void fastd_peer_hashtable_insert(fastd_context_t *ctx, fastd_peer_t *peer);
-void fastd_peer_hashtable_remove(fastd_context_t *ctx, fastd_peer_t *peer);
-fastd_peer_t *fastd_peer_hashtable_lookup(fastd_context_t *ctx, const fastd_peer_address_t *addr);
+void fastd_peer_hashtable_insert(fastd_peer_t *peer);
+void fastd_peer_hashtable_remove(fastd_peer_t *peer);
+fastd_peer_t *fastd_peer_hashtable_lookup(const fastd_peer_address_t *addr);

@@ -29,21 +29,21 @@
 #include "fastd.h"
 
 
-void fastd_config_protocol(fastd_context_t *ctx, const char *name);
-void fastd_config_method(fastd_context_t *ctx, const char *name);
-void fastd_config_cipher(fastd_context_t *ctx, const char *name, const char *impl);
-void fastd_config_mac(fastd_context_t *ctx, const char *name, const char *impl);
-void fastd_config_add_log_file(fastd_context_t *ctx, const char *name, fastd_loglevel_t level);
-void fastd_config_bind_address(fastd_context_t *ctx, const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);
-void fastd_config_peer_group_push(fastd_context_t *ctx, const char *name);
-void fastd_config_peer_group_pop(fastd_context_t *ctx);
-void fastd_config_release(fastd_context_t *ctx);
-void fastd_config_handle_options(fastd_context_t *ctx, int argc, char *const argv[]);
-void fastd_config_verify(fastd_context_t *ctx);
+void fastd_config_protocol(const char *name);
+void fastd_config_method(const char *name);
+void fastd_config_cipher(const char *name, const char *impl);
+void fastd_config_mac(const char *name, const char *impl);
+void fastd_config_add_log_file(const char *name, fastd_loglevel_t level);
+void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);
+void fastd_config_peer_group_push(const char *name);
+void fastd_config_peer_group_pop(void);
+void fastd_config_release(void);
+void fastd_config_handle_options(int argc, char *const argv[]);
+void fastd_config_verify(void);
 
-void fastd_configure(fastd_context_t *ctx, int argc, char *const argv[]);
-void fastd_config_check(fastd_context_t *ctx);
-void fastd_config_load_peer_dirs(fastd_context_t *ctx);
+void fastd_configure(int argc, char *const argv[]);
+void fastd_config_check(void);
+void fastd_config_load_peer_dirs(void);
 
-void fastd_add_peer_dir(fastd_context_t *ctx, const char *dir);
-bool fastd_read_config(fastd_context_t *ctx, const char *filename, bool peer_config, int depth);
+void fastd_add_peer_dir(const char *dir);
+bool fastd_read_config(const char *filename, bool peer_config, int depth);
