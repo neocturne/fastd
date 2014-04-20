@@ -40,7 +40,6 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-
 #ifndef ETH_ALEN
 #define ETH_ALEN 6
 #endif
@@ -57,6 +56,9 @@ struct ethhdr {
 } __attribute__((packed));
 #endif
 
+#if defined(USE_FREEBIND) && !defined(IP_FREEBIND)
+#define IP_FREEBIND 15
+#endif
 
 #ifndef HAVE_GET_CURRENT_DIR_NAME
 
