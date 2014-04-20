@@ -48,16 +48,19 @@ static inline void free_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 
 			fastd_socket_close(ctx, peer->sock);
 			free(peer->sock);
+			peer->sock = NULL;
 
 			size_t i;
 			for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
 				if (VECTOR_INDEX(ctx->peers, i) == peer) {
-					fastd_poll_set_fd_peer(ctx, -1, i);
+					fastd_poll_set_fd_peer(ctx, i);
 					break;
 				}
 			}
 		}
-		peer->sock = NULL;
+		else {
+			peer->sock = NULL;
+		}
 	}
 }
 
@@ -104,7 +107,7 @@ void fastd_peer_reset_socket(fastd_context_t *ctx, fastd_peer_t *peer) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx->peers); i++) {
 		if (VECTOR_INDEX(ctx->peers, i) == peer) {
-			fastd_poll_set_fd_peer(ctx, peer->sock->fd, i);
+			fastd_poll_set_fd_peer(ctx, i);
 			break;
 		}
 	}

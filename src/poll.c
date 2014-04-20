@@ -59,16 +59,21 @@ void fastd_poll_free(fastd_context_t *ctx) {
 }
 
 
-void fastd_poll_set_fd_tuntap(fastd_context_t *ctx, int fd) {
-	VECTOR_INDEX(ctx->pollfds, 0).fd = fd;
+void fastd_poll_set_fd_tuntap(fastd_context_t *ctx) {
+	VECTOR_INDEX(ctx->pollfds, 0).fd = ctx->tunfd;
 }
 
-void fastd_poll_set_fd_sock(fastd_context_t *ctx, int fd, size_t i) {
-	VECTOR_INDEX(ctx->pollfds, 2+i).fd = fd;
+void fastd_poll_set_fd_sock(fastd_context_t *ctx, size_t i) {
+	VECTOR_INDEX(ctx->pollfds, 2+i).fd = ctx->socks[i].fd;
 }
 
-void fastd_poll_set_fd_peer(fastd_context_t *ctx, int fd, size_t i) {
-	VECTOR_INDEX(ctx->pollfds, 2+ctx->n_socks+i).fd = fd;
+void fastd_poll_set_fd_peer(fastd_context_t *ctx, size_t i) {
+	fastd_peer_t *peer = VECTOR_INDEX(ctx->peers, i);
+
+	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
+		VECTOR_INDEX(ctx->pollfds, 2+ctx->n_socks+i).fd = -1;
+	else
+		VECTOR_INDEX(ctx->pollfds, 2+ctx->n_socks+i).fd = peer->sock->fd;
 }
 
 void fastd_poll_add_peer(fastd_context_t *ctx) {

@@ -33,9 +33,9 @@
 void fastd_poll_init(fastd_context_t *ctx);
 void fastd_poll_free(fastd_context_t *ctx);
 
-void fastd_poll_set_fd_tuntap(fastd_context_t *ctx, int fd);
-void fastd_poll_set_fd_sock(fastd_context_t *ctx, int fd, size_t i);
-void fastd_poll_set_fd_peer(fastd_context_t *ctx, int fd, size_t i);
+void fastd_poll_set_fd_tuntap(fastd_context_t *ctx);
+void fastd_poll_set_fd_sock(fastd_context_t *ctx, size_t i);
+void fastd_poll_set_fd_peer(fastd_context_t *ctx, size_t i);
 
 void fastd_poll_add_peer(fastd_context_t *ctx);
 void fastd_poll_delete_peer(fastd_context_t *ctx, size_t i);
