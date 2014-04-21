@@ -269,6 +269,9 @@ void fastd_poll_handle(void) {
 	if (timeout < 0 || timeout > maintenance_timeout)
 		timeout = maintenance_timeout;
 
+	if (VECTOR_LEN(ctx.pollfds) != 2 + ctx.n_socks + VECTOR_LEN(ctx.peers))
+		exit_bug("fd count mismatch");
+
 	int ret = poll(VECTOR_DATA(ctx.pollfds), VECTOR_LEN(ctx.pollfds), timeout);
 	if (ret < 0) {
 		if (errno == EINTR)
@@ -305,6 +308,9 @@ void fastd_poll_handle(void) {
 			fastd_receive(peer->sock);
 		}
 	}
+
+	if (VECTOR_LEN(ctx.pollfds) != 2 + ctx.n_socks + VECTOR_LEN(ctx.peers))
+		exit_bug("fd count mismatch");
 }
 
 #endif
