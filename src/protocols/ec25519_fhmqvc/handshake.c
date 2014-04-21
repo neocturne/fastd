@@ -499,7 +499,7 @@ static inline fastd_peer_t* add_temporary(const fastd_peer_address_t *addr, cons
 		return NULL;
 	}
 
-	fastd_peer_t *peer = fastd_peer_add_temporary();
+	fastd_peer_t *peer = fastd_peer_add(NULL);
 
 	peer->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
 	memcpy(&peer->protocol_config->public_key, key, PUBLICKEYBYTES);

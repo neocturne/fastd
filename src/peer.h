@@ -131,7 +131,6 @@ bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_
 void fastd_peer_reset(fastd_peer_t *peer);
 void fastd_peer_delete(fastd_peer_t *peer);
 fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf);
-fastd_peer_t* fastd_peer_add_temporary(void);
 bool fastd_peer_verify_temporary(fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
 void fastd_peer_enable_temporary(fastd_peer_t *peer);
 void fastd_peer_set_established(fastd_peer_t *peer);

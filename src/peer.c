@@ -267,15 +267,6 @@ static void delete_peer(fastd_peer_t *peer) {
 		}
 	}
 
-	if (i == VECTOR_LEN(ctx.peers)) {
-		for (i = 0; i < VECTOR_LEN(ctx.peers_temp); i++) {
-			if (VECTOR_INDEX(ctx.peers_temp, i) == peer) {
-				VECTOR_DELETE(ctx.peers_temp, i);
-				break;
-			}
-		}
-	}
-
 	fastd_peer_hashtable_remove(peer);
 
 	conf.protocol->free_peer_state(peer);
@@ -557,52 +548,46 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
 
-	peer->config = peer_conf;
-	peer->group = find_peer_group(ctx.peer_group, peer_conf->group);
-	peer->protocol_config = peer_conf->protocol_config;
+	if (peer_conf) {
+		peer->config = peer_conf;
+		peer->group = find_peer_group(ctx.peer_group, peer_conf->group);
+		peer->protocol_config = peer_conf->protocol_config;
 
-	fastd_remote_t **remote = &peer->remotes;
-	fastd_remote_config_t *remote_config = peer_conf->remotes;
+		fastd_remote_t **remote = &peer->remotes;
+		fastd_remote_config_t *remote_config = peer_conf->remotes;
 
-	while (remote_config) {
-		*remote = calloc(1, sizeof(fastd_remote_t));
-		(*remote)->ref = 1;
-		(*remote)->config = remote_config;
+		while (remote_config) {
+			*remote = calloc(1, sizeof(fastd_remote_t));
+			(*remote)->ref = 1;
+			(*remote)->config = remote_config;
 
-		if (!remote_config->hostname) {
-			(*remote)->n_addresses = 1;
-			(*remote)->addresses = malloc(sizeof(fastd_peer_address_t));
-			(*remote)->addresses[0] = remote_config->address;
+			if (!remote_config->hostname) {
+				(*remote)->n_addresses = 1;
+				(*remote)->addresses = malloc(sizeof(fastd_peer_address_t));
+				(*remote)->addresses[0] = remote_config->address;
+			}
+
+			remote = &(*remote)->next;
+			remote_config = remote_config->next;
 		}
 
-		remote = &(*remote)->next;
-		remote_config = remote_config->next;
+		pr_verbose("adding peer %P (group `%s')", peer, peer->group->conf->name);
 	}
+	else {
+		if (!fastd_shell_command_isset(&conf.on_verify))
+			exit_bug("tried to add temporary peer without on-verify command");
 
-	pr_verbose("adding peer %P (group `%s')", peer, peer->group->conf->name);
+		peer->group = ctx.peer_group;
+
+		fastd_peer_seen(peer);
+
+		pr_debug("adding temporary peer");
+	}
 
 	setup_peer(peer);
 
 	VECTOR_ADD(ctx.peers, peer);
 	fastd_poll_add_peer();
-
-	return peer;
-}
-
-fastd_peer_t* fastd_peer_add_temporary(void) {
-	if (!fastd_shell_command_isset(&conf.on_verify))
-		exit_bug("tried to add temporary peer without on-verify command");
-
-	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
-
-	peer->group = ctx.peer_group;
-	fastd_peer_seen(peer);
-
-	pr_debug("adding temporary peer");
-
-	setup_peer(peer);
-
-	VECTOR_ADD(ctx.peers_temp, peer);
 
 	return peer;
 }

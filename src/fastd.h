@@ -239,7 +239,6 @@ struct fastd_context {
 	fastd_peer_group_t *peer_group;
 
 	VECTOR(fastd_peer_t*) peers;
-	VECTOR(fastd_peer_t*) peers_temp;
 
 #ifdef USE_EPOLL
 	int epoll_fd;

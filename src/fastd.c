@@ -476,14 +476,6 @@ static void handle_handshake_queue(void) {
 		fastd_resolve_peer(peer, peer->next_remote);
 }
 
-static void enable_temporaries(void) {
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers_temp); i++)
-		fastd_peer_enable_temporary(VECTOR_INDEX(ctx.peers_temp, i));
-
-	VECTOR_RESIZE(ctx.peers_temp, 0);
-}
-
 static bool maintain_peer(fastd_peer_t *peer) {
 	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
 		/* check for peer timeout */
@@ -854,7 +846,6 @@ int main(int argc, char *argv[]) {
 
 	VECTOR_ALLOC(ctx.eth_addrs, 0);
 	VECTOR_ALLOC(ctx.peers, 0);
-	VECTOR_ALLOC(ctx.peers_temp, 0);
 
 	fastd_peer_hashtable_init();
 
@@ -864,8 +855,6 @@ int main(int argc, char *argv[]) {
 		handle_handshake_queue();
 
 		fastd_poll_handle();
-
-		enable_temporaries();
 
 		if (fastd_timed_out(&ctx.next_maintenance))
 			maintenance();
@@ -907,7 +896,6 @@ int main(int argc, char *argv[]) {
 
 	fastd_peer_hashtable_free();
 
-	VECTOR_FREE(ctx.peers_temp);
 	VECTOR_FREE(ctx.peers);
 	VECTOR_FREE(ctx.eth_addrs);
 
