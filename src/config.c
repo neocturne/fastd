@@ -593,11 +593,13 @@ void fastd_config_verify(void) {
 static void peer_dirs_read_peer_group(void) {
 	read_peer_dirs();
 
-	fastd_peer_group_config_t *group;
+	fastd_peer_group_config_t *base = conf.peer_group, *group;
 	for (group = conf.peer_group->children; group; group = group->next) {
 		conf.peer_group = group;
 		peer_dirs_read_peer_group();
 	}
+
+	conf.peer_group = base;
 }
 
 static void peer_dirs_handle_old_peers(fastd_peer_config_t **old_peers, fastd_peer_config_t **new_peers) {
