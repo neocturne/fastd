@@ -27,23 +27,22 @@
 #include "async.h"
 #include "fastd.h"
 
+#include <fcntl.h>
+
+
+typedef struct fastd_async_hdr {
+	fastd_async_type_t type;
+	size_t len;
+} fastd_async_hdr_t;
+
 
 void fastd_async_init(void) {
 	fastd_open_pipe(&ctx.async_rfd, &ctx.async_wfd);
+	fastd_setfl(ctx.async_wfd, O_NONBLOCK, 0);
 }
 
-static void handle_resolve_return(void) {
-	fastd_async_resolve_return_t resolve_return;
-	while (read(ctx.async_rfd, &resolve_return, sizeof(resolve_return)) < 0) {
-		if (errno != EINTR)
-			exit_errno("handle_resolve_return: read");
-	}
-
-	fastd_peer_address_t addresses[resolve_return.n_addr];
-	while (read(ctx.async_rfd, &addresses, sizeof(addresses)) < 0) {
-		if (errno != EINTR)
-			exit_errno("handle_resolve_return: read");
-	}
+static void handle_resolve_return(const void *buf) {
+	const fastd_async_resolve_return_t *resolve_return = buf;
 
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
@@ -54,32 +53,49 @@ static void handle_resolve_return(void) {
 
 		fastd_remote_t *remote;
 		for (remote = peer->remotes; remote; remote = remote->next) {
-			if (remote == resolve_return.remote)
+			if (remote == resolve_return->remote)
 				break;
 		}
 
 		if (!remote)
 			continue;
 
-		fastd_peer_handle_resolve(peer, remote, resolve_return.n_addr, addresses);
+		fastd_peer_handle_resolve(peer, remote, resolve_return->n_addr, resolve_return->addr);
 
 		break;
 	}
 
-	fastd_remote_unref(resolve_return.remote);
+	fastd_remote_unref(resolve_return->remote);
 }
 
 void fastd_async_handle(void) {
-	fastd_async_type_t type;
+	fastd_async_hdr_t header;
+	struct iovec vec[2] = {
+		{ .iov_base = &header, .iov_len = sizeof(header) },
+	};
+	struct msghdr msg = {
+		.msg_iov = vec,
+		.msg_iovlen = 1,
+	};
 
-	while (read(ctx.async_rfd, &type, sizeof(type)) < 0) {
+	while (recvmsg(ctx.async_rfd, &msg, MSG_PEEK) < 0) {
 		if (errno != EINTR)
-			exit_errno("fastd_async_handle: read");
+			exit_errno("fastd_async_handle: recvmsg");
 	}
 
-	switch (type) {
+	uint8_t buf[header.len];
+	vec[1].iov_base = buf;
+	vec[1].iov_len = sizeof(buf);
+	msg.msg_iovlen = 2;
+
+	while (recvmsg(ctx.async_rfd, &msg, 0) < 0) {
+		if (errno != EINTR)
+			exit_errno("fastd_async_handle: recvmsg");
+	}
+
+	switch (header.type) {
 	case ASYNC_TYPE_RESOLVE_RETURN:
-		handle_resolve_return();
+		handle_resolve_return(buf);
 		break;
 
 	default:
@@ -88,11 +104,21 @@ void fastd_async_handle(void) {
 }
 
 void fastd_async_enqueue(fastd_async_type_t type, const void *data, size_t len) {
+	fastd_async_hdr_t header;
+	/* use memset to zero the holes in the struct to make valgrind happy */
+	memset(&header, 0, sizeof(header));
+	header.type = type;
+	header.len = len;
+
 	struct iovec vec[2] = {
-		{ .iov_base = &type, .iov_len = sizeof(type) },
+		{ .iov_base = &header, .iov_len = sizeof(header) },
 		{ .iov_base = (void *)data, .iov_len = len },
 	};
+	struct msghdr msg = {
+		.msg_iov = vec,
+		.msg_iovlen = 2,
+	};
 
-	if (writev(ctx.async_wfd, vec, 2) < 0)
-		pr_error_errno("fastd_async_enqueue");
+	if (sendmsg(ctx.async_wfd, &msg, 0) < 0)
+		pr_warn_errno("fastd_async_enqueue: sendmsg");
 }
