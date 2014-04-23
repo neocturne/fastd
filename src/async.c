@@ -83,7 +83,7 @@ void fastd_async_handle(void) {
 			exit_errno("fastd_async_handle: recvmsg");
 	}
 
-	uint8_t buf[header.len];
+	uint8_t buf[header.len] __attribute__((aligned(8)));
 	vec[1].iov_base = buf;
 	vec[1].iov_len = sizeof(buf);
 	msg.msg_iovlen = 2;
