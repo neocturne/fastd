@@ -31,7 +31,9 @@
 
 
 struct fastd_async_resolve_return {
-	fastd_remote_t *remote;
+	uint64_t peer_id;
+	size_t remote;
+
 	size_t n_addr;
 	fastd_peer_address_t addr[];
 };

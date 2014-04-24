@@ -405,14 +405,14 @@ static inline void no_valid_address_debug(const fastd_peer_t *peer) {
 	pr_debug("not sending a handshake to %P (no valid address resolved)", peer);
 }
 
-static void send_handshake(fastd_peer_t *peer) {
+static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 	if (!fastd_peer_is_established(peer)) {
-		if (!peer->next_remote->n_addresses) {
+		if (!next_remote->n_addresses) {
 			no_valid_address_debug(peer);
 			return;
 		}
 
-		fastd_peer_claim_address(peer, NULL, NULL, &peer->next_remote->addresses[peer->next_remote->current_address], false);
+		fastd_peer_claim_address(peer, NULL, NULL, &next_remote->addresses[next_remote->current_address], false);
 		fastd_peer_reset_socket(peer);
 	}
 
@@ -447,33 +447,36 @@ static void handle_handshake_queue(void) {
 	fastd_peer_schedule_handshake_default(peer);
 
 	if (!fastd_peer_may_connect(peer)) {
-		if (peer->next_remote != NULL) {
+		if (peer->next_remote != -1) {
 			pr_debug("temporarily disabling handshakes with %P", peer);
-			peer->next_remote = NULL;
+			peer->next_remote = -1;
 		}
 
 		return;
 	}
 
-	if (peer->next_remote || fastd_peer_is_established(peer)) {
-		send_handshake(peer);
+	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
+
+	if (next_remote || fastd_peer_is_established(peer)) {
+		send_handshake(peer, next_remote);
 
 		if (fastd_peer_is_established(peer))
 			return;
 
-		if (++peer->next_remote->current_address < peer->next_remote->n_addresses)
+		if (++next_remote->current_address < next_remote->n_addresses)
 			return;
 
-		peer->next_remote = peer->next_remote->next;
+		peer->next_remote++;
 	}
 
-	if (!peer->next_remote)
-		peer->next_remote = peer->remotes;
+	if (peer->next_remote < 0 || (size_t)peer->next_remote >= VECTOR_LEN(peer->remotes))
+		peer->next_remote = 0;
 
-	peer->next_remote->current_address = 0;
+	next_remote = fastd_peer_get_next_remote(peer);
+	next_remote->current_address = 0;
 
-	if (fastd_remote_is_dynamic(peer->next_remote))
-		fastd_resolve_peer(peer, peer->next_remote);
+	if (fastd_remote_is_dynamic(next_remote))
+		fastd_resolve_peer(peer, next_remote);
 }
 
 static bool maintain_peer(fastd_peer_t *peer) {

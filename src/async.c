@@ -44,28 +44,15 @@ void fastd_async_init(void) {
 static void handle_resolve_return(const void *buf) {
 	const fastd_async_resolve_return_t *resolve_return = buf;
 
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
+	fastd_peer_t *peer = fastd_peer_find_by_id(resolve_return->peer_id);
+	if (!peer)
+		return;
 
-		if (!peer->config)
-			continue;
+	if (!peer->config)
+		exit_bug("resolve return for temporary peer");
 
-		fastd_remote_t *remote;
-		for (remote = peer->remotes; remote; remote = remote->next) {
-			if (remote == resolve_return->remote)
-				break;
-		}
-
-		if (!remote)
-			continue;
-
-		fastd_peer_handle_resolve(peer, remote, resolve_return->n_addr, resolve_return->addr);
-
-		break;
-	}
-
-	fastd_remote_unref(resolve_return->remote);
+	fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, resolve_return->remote);
+	fastd_peer_handle_resolve(peer, remote, resolve_return->n_addr, resolve_return->addr);
 }
 
 void fastd_async_handle(void) {

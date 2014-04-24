@@ -226,8 +226,6 @@ static void init_handshake(fastd_peer_t *peer) {
 }
 
 void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses) {
-	remote->resolving = false;
-
 	free(remote->addresses);
 	remote->addresses = malloc(n_addresses*sizeof(fastd_peer_address_t));
 	memcpy(remote->addresses, addresses, n_addresses*sizeof(fastd_peer_address_t));
@@ -245,13 +243,16 @@ static void setup_peer(fastd_peer_t *peer) {
 
 	peer->state = STATE_INIT;
 
-	fastd_remote_t *remote;
-	for (remote = peer->remotes; remote; remote = remote->next) {
-		remote->last_resolve_timeout = ctx.now;
-		remote->resolving = false;
+	if (VECTOR_LEN(peer->remotes) == 0) {
+		peer->next_remote = -1;
 	}
+	else {
+		size_t i;
+		for (i = 0; i < VECTOR_LEN(peer->remotes); i++)
+			VECTOR_INDEX(peer->remotes, i).last_resolve_timeout = ctx.now;
 
-	peer->next_remote = peer->remotes;
+		peer->next_remote = 0;
+	}
 
 	peer->last_handshake_timeout = ctx.now;
 	peer->last_handshake_address.sa.sa_family = AF_UNSPEC;
@@ -264,12 +265,13 @@ static void setup_peer(fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		conf.protocol->init_peer_state(peer);
 
-	if (peer->next_remote) {
-		peer->next_remote->current_address = 0;
+	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
+	if (next_remote) {
+		next_remote->current_address = 0;
 
-		if (fastd_remote_is_dynamic(peer->next_remote)) {
+		if (fastd_remote_is_dynamic(next_remote)) {
 			peer->state = STATE_RESOLVING;
-			fastd_resolve_peer(peer, peer->next_remote);
+			fastd_resolve_peer(peer, next_remote);
 		}
 		else  {
 			init_handshake(peer);
@@ -296,12 +298,10 @@ static void delete_peer(fastd_peer_t *peer) {
 	if (!peer->config)
 		free(peer->protocol_config);
 
-	while (peer->remotes) {
-		fastd_remote_t *remote = peer->remotes;
-		peer->remotes = remote->next;
+	for (i = 0; i < VECTOR_LEN(peer->remotes); i++)
+		free(VECTOR_INDEX(peer->remotes, i).addresses);
 
-		fastd_remote_unref(remote);
-	}
+	VECTOR_FREE(peer->remotes);
 
 	free(peer);
 }
@@ -435,11 +435,12 @@ bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_addre
 	if (fastd_peer_is_floating(peer))
 		return true;
 
-	fastd_remote_t *remote;
-	for (remote = peer->remotes; remote; remote = remote->next) {
-		size_t i;
-		for (i = 0; i < remote->n_addresses; i++) {
-			if (fastd_peer_address_equal(&remote->addresses[i], addr))
+	size_t i, j;
+	for (i = 0; i < VECTOR_LEN(peer->remotes); i++) {
+		fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, i);
+
+		for (j = 0; j < remote->n_addresses; j++) {
+			if (fastd_peer_address_equal(&remote->addresses[j], addr))
 				return true;
 		}
 	}
@@ -578,22 +579,19 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 		peer->group = find_peer_group(ctx.peer_group, peer_conf->group);
 		peer->protocol_config = peer_conf->protocol_config;
 
-		fastd_remote_t **remote = &peer->remotes;
-		fastd_remote_config_t *remote_config = peer_conf->remotes;
+		VECTOR_ALLOC(peer->remotes, 0);
 
-		while (remote_config) {
-			*remote = calloc(1, sizeof(fastd_remote_t));
-			(*remote)->ref = 1;
-			(*remote)->config = remote_config;
+		fastd_remote_config_t *remote_config;
+		for (remote_config = peer_conf->remotes; remote_config; remote_config = remote_config->next) {
+			fastd_remote_t remote = {.config = remote_config};
 
 			if (!remote_config->hostname) {
-				(*remote)->n_addresses = 1;
-				(*remote)->addresses = malloc(sizeof(fastd_peer_address_t));
-				(*remote)->addresses[0] = remote_config->address;
+				remote.n_addresses = 1;
+				remote.addresses = malloc(sizeof(fastd_peer_address_t));
+				remote.addresses[0] = remote_config->address;
 			}
 
-			remote = &(*remote)->next;
-			remote_config = remote_config->next;
+			VECTOR_ADD(peer->remotes, remote);
 		}
 
 		pr_verbose("adding peer %P (group `%s')", peer, peer->group->conf->name);

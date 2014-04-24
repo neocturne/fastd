@@ -43,8 +43,8 @@ struct fastd_peer {
 	struct timespec timeout;
 	struct timespec keepalive_timeout;
 
-	fastd_remote_t *remotes;
-	fastd_remote_t *next_remote;
+	VECTOR(fastd_remote_t) remotes;
+	ssize_t next_remote;
 
 	struct timespec next_handshake;
 	fastd_dlist_head_t handshake_entry;
@@ -84,10 +84,6 @@ struct fastd_peer_eth_addr {
 };
 
 struct fastd_remote {
-	fastd_remote_t *next;
-
-	size_t ref;
-
 	fastd_remote_config_t *config;
 
 	size_t n_addresses;
@@ -95,7 +91,6 @@ struct fastd_remote {
 	fastd_peer_address_t *addresses;
 
 	struct timespec last_resolve_timeout;
-	bool resolving;
 };
 
 struct fastd_remote_config {
@@ -173,6 +168,13 @@ static inline bool fastd_peer_is_temporary(const fastd_peer_t *peer) {
 	return (!peer->config);
 }
 
+static inline fastd_remote_t * fastd_peer_get_next_remote(fastd_peer_t *peer) {
+	if (peer->next_remote < 0)
+	     return NULL;
+
+	return &VECTOR_INDEX(peer->remotes, peer->next_remote);
+}
+
 static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 	switch(peer->state) {
 	case STATE_ESTABLISHED:
@@ -180,17 +182,6 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 
 	default:
 		return false;
-	}
-}
-
-static inline void fastd_remote_ref(fastd_remote_t *remote) {
-	remote->ref++;
-}
-
-static inline void fastd_remote_unref(fastd_remote_t *remote) {
-	if(!--remote->ref) {
-		free(remote->addresses);
-		free(remote);
 	}
 }
 

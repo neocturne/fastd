@@ -33,7 +33,8 @@
 
 
 typedef struct resolv_arg {
-	fastd_remote_t *remote;
+	uint64_t peer_id;
+	size_t remote;
 	char *hostname;
 	fastd_peer_address_t constraints;
 } resolv_arg_t;
@@ -71,6 +72,7 @@ static void* resolve_peer(void *varg) {
 
 	uint8_t retbuf[sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)] __attribute__((aligned(8)));
 	fastd_async_resolve_return_t *ret = (fastd_async_resolve_return_t*)retbuf;
+	ret->peer_id = arg->peer_id;
 	ret->remote = arg->remote;
 
 	if (n_addr) {
@@ -107,11 +109,6 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 	if (!peer->config)
 		exit_bug("trying to resolve temporary peer");
 
-	if (remote->resolving) {
-		pr_debug("not resolving %P as there is already a resolve running", peer);
-		return;
-	}
-
 	if (!fastd_timed_out(&remote->last_resolve_timeout)) {
 		/* last resolve was just a few seconds ago */
 		return;
@@ -119,13 +116,12 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 
 	pr_verbose("resolving host `%s' for peer %P...", remote->config->hostname, peer);
 
-	fastd_remote_ref(remote);
 	remote->last_resolve_timeout = fastd_in_seconds(conf.min_resolve_interval);
-	remote->resolving = true;
 
 	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
 
-	arg->remote = remote;
+	arg->peer_id = peer->id;
+	arg->remote = remote - VECTOR_DATA(peer->remotes);
 	arg->hostname = strdup(remote->config->hostname);
 	arg->constraints = remote->config->address;
 
