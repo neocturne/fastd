@@ -30,6 +30,8 @@
 
 
 struct fastd_peer {
+	uint64_t id;
+
 	const fastd_peer_config_t *config;
 	fastd_peer_group_t *group;
 
@@ -140,6 +142,7 @@ bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_addre
 bool fastd_peer_claim_address(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
 void fastd_peer_reset_socket(fastd_peer_t *peer);
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay);
+fastd_peer_t* fastd_peer_find_by_id(uint64_t id);
 
 static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
 	fastd_peer_schedule_handshake(peer, fastd_rand(17500, 22500));

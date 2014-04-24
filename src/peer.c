@@ -137,6 +137,29 @@ void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
 	fastd_dlist_insert(list, &peer->handshake_entry);
 }
 
+static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
+	if ((*a)->id == (*b)->id)
+		return 0;
+	else if ((*a)->id < (*b)->id)
+		return -1;
+	else
+		return 1;
+}
+
+fastd_peer_t* fastd_peer_find_by_id(uint64_t id) {
+	fastd_peer_t tmp = {.id = id};
+	const fastd_peer_t *tmpp = &tmp;
+
+	fastd_peer_t **ret = bsearch(&tmpp, VECTOR_DATA(ctx.peers), VECTOR_LEN(ctx.peers), sizeof(fastd_peer_t*),
+				    (int (*)(const void *, const void *))peer_id_cmp);
+
+	if (ret)
+		return *ret;
+	else
+		return NULL;
+
+}
+
 static inline fastd_peer_group_t* find_peer_group(fastd_peer_group_t *group, const fastd_peer_group_config_t *config) {
 	if (group->conf == config)
 		return group;
@@ -546,6 +569,8 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 
 fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
+
+	peer->id = ctx.next_peer_id++;
 
 	if (peer_conf) {
 		peer->config = peer_conf;

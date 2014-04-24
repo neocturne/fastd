@@ -236,6 +236,7 @@ struct fastd_context {
 
 	fastd_peer_group_t *peer_group;
 
+	uint64_t next_peer_id;
 	VECTOR(fastd_peer_t*) peers;
 
 #ifdef USE_EPOLL
