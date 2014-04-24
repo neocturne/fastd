@@ -29,8 +29,6 @@
 #include "../../hkdf_sha256.h"
 
 
-#define PUBLICKEYBYTES 32
-#define SECRETKEYBYTES 32
 #define HASHBYTES FASTD_SHA256_HASH_BYTES
 
 
@@ -391,7 +389,7 @@ static void handle_finish_handshake(fastd_socket_t *sock, const fastd_peer_addre
 	clear_shared_handshake_key(peer);
 }
 
-static fastd_peer_t* find_sender_key(const fastd_peer_address_t *address, const unsigned char key[32]) {
+static fastd_peer_t* find_sender_key(const fastd_peer_address_t *address, const unsigned char key[PUBLICKEYBYTES]) {
 	errno = 0;
 
 	fastd_peer_t *ret = NULL;
@@ -422,7 +420,7 @@ static fastd_peer_t* find_sender_key(const fastd_peer_address_t *address, const 
 	return ret;
 }
 
-static fastd_peer_t* match_sender_key(const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const unsigned char key[32]) {
+static fastd_peer_t* match_sender_key(const fastd_socket_t *sock, const fastd_peer_address_t *address, fastd_peer_t *peer, const unsigned char key[PUBLICKEYBYTES]) {
 	errno = 0;
 
 	if (sock->peer && peer != sock->peer)
@@ -441,7 +439,7 @@ static fastd_peer_t* match_sender_key(const fastd_socket_t *sock, const fastd_pe
 	return find_sender_key(address, key);
 }
 
-static size_t key_count(const unsigned char key[32]) {
+static size_t key_count(const unsigned char key[PUBLICKEYBYTES]) {
 	size_t ret = 0;
 
 	fastd_peer_config_t *p;
@@ -449,7 +447,7 @@ static size_t key_count(const unsigned char key[32]) {
 		if (!p->protocol_config)
 			continue;
 
-		if (memcmp(&p->protocol_config->public_key, key, 32) == 0)
+		if (memcmp(&p->protocol_config->public_key, key, PUBLICKEYBYTES) == 0)
 			ret++;
 	}
 
@@ -460,7 +458,7 @@ bool fastd_protocol_ec25519_fhmqvc_peer_check(fastd_peer_config_t *peer_conf) {
 	if (!peer_conf->protocol_config)
 		return false;
 
-	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, 32) == 0)
+	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, PUBLICKEYBYTES) == 0)
 		return false;
 
 	if (key_count(peer_conf->protocol_config->public_key.u8) > 1) {
@@ -488,7 +486,7 @@ static inline bool allow_unknown(void) {
 	return fastd_shell_command_isset(&conf.on_verify);
 }
 
-static inline fastd_peer_t* add_temporary(const fastd_peer_address_t *addr, const unsigned char key[32]) {
+static inline fastd_peer_t* add_temporary(const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
 	if (!allow_unknown()) {
 		pr_debug("ignoring handshake from %I (unknown key)", addr);
 		return NULL;

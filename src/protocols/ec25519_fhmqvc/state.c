@@ -38,7 +38,7 @@ static void init_protocol_state(void) {
 }
 
 static void new_handshake_key(keypair_t *key) {
-		fastd_random_bytes(key->secret.p, 32, false);
+		fastd_random_bytes(key->secret.p, SECRETKEYBYTES, false);
 		ecc_25519_gf_sanitize_secret(&key->secret, &key->secret);
 
 		ecc_25519_work_t work;

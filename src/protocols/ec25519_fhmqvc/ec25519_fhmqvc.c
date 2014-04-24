@@ -31,7 +31,7 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 	if ((strlen(hexkey) != 64) || (strspn(hexkey, "0123456789abcdefABCDEF") != 64))
 		return false;
 
-	int i;
+	size_t i;
 	for (i = 0; i < 32; i++)
 		sscanf(&hexkey[2*i], "%02hhx", &key[i]);
 
@@ -92,7 +92,7 @@ static void protocol_peer_configure(fastd_peer_config_t *peer_conf) {
 	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
 	peer_conf->protocol_config->public_key = key;
 
-	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, 32) == 0)
+	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, PUBLICKEYBYTES) == 0)
 		pr_debug("found own key as `%s', ignoring peer", peer_conf->name);
 }
 

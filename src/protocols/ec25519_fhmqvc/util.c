@@ -41,7 +41,7 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(void) {
 	if (!conf.machine_readable)
 		pr_info("Reading 32 bytes from /dev/random...");
 
-	fastd_random_bytes(secret_key.p, 32, true);
+	fastd_random_bytes(secret_key.p, SECRETKEYBYTES, true);
 	ecc_25519_gf_sanitize_secret(&secret_key, &secret_key);
 
 	ecc_25519_work_t work;

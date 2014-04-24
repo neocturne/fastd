@@ -34,6 +34,10 @@
 #include <libuecc/ecc.h>
 
 
+#define PUBLICKEYBYTES 32
+#define SECRETKEYBYTES 32
+
+
 typedef union aligned_int256 {
 	ecc_int256_t int256;
 	uint32_t u32[8];
@@ -96,7 +100,7 @@ bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char 
 
 
 static inline void hexdump(char out[65], const unsigned char d[32]) {
-	int i;
+	size_t i;
 	for (i = 0; i < 32; i++)
 		snprintf(out+2*i, 3, "%02x", d[i]);
 }
