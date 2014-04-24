@@ -147,11 +147,10 @@ static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
 }
 
 fastd_peer_t* fastd_peer_find_by_id(uint64_t id) {
-	fastd_peer_t tmp = {.id = id};
-	const fastd_peer_t *tmpp = &tmp;
+	fastd_peer_t key = {.id = id};
+	fastd_peer_t *const keyp = &key;
 
-	fastd_peer_t **ret = bsearch(&tmpp, VECTOR_DATA(ctx.peers), VECTOR_LEN(ctx.peers), sizeof(fastd_peer_t*),
-				    (int (*)(const void *, const void *))peer_id_cmp);
+	fastd_peer_t **ret = VECTOR_BSEARCH(&keyp, ctx.peers, peer_id_cmp);
 
 	if (ret)
 		return *ret;
@@ -698,18 +697,12 @@ bool fastd_remote_matches_dynamic(const fastd_remote_config_t *remote, const fas
 	return true;
 }
 
-static inline int fastd_eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_eth_addr_t *addr2) {
+static inline int eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_eth_addr_t *addr2) {
 	return memcmp(addr1->data, addr2->data, ETH_ALEN);
 }
 
-static inline fastd_peer_eth_addr_t* peer_get_by_addr(fastd_eth_addr_t addr) {
-	fastd_eth_addr_t *ret = bsearch(&addr, &VECTOR_INDEX(ctx.eth_addrs, 0).addr, VECTOR_LEN(ctx.eth_addrs), sizeof(fastd_peer_eth_addr_t),
-					(int (*)(const void *, const void *))fastd_eth_addr_cmp);
-
-	if (ret)
-		return container_of(ret, fastd_peer_eth_addr_t, addr);
-	else
-		return NULL;
+static int peer_eth_addr_cmp(const fastd_peer_eth_addr_t *addr1, const fastd_peer_eth_addr_t *addr2) {
+	return eth_addr_cmp(&addr1->addr, &addr2->addr);
 }
 
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
@@ -720,7 +713,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 
 	while (max > min) {
 		int cur = (min+max)/2;
-		int cmp = fastd_eth_addr_cmp(&addr, &VECTOR_INDEX(ctx.eth_addrs, cur).addr);
+		int cmp = eth_addr_cmp(&addr, &VECTOR_INDEX(ctx.eth_addrs, cur).addr);
 
 		if (cmp == 0) {
 			VECTOR_INDEX(ctx.eth_addrs, cur).peer = peer;
@@ -758,7 +751,8 @@ void fastd_peer_eth_addr_cleanup(void) {
 }
 
 fastd_peer_t* fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
-	fastd_peer_eth_addr_t *peer_eth_addr = peer_get_by_addr(addr);
+	const fastd_peer_eth_addr_t key = {.addr = addr};
+	fastd_peer_eth_addr_t *peer_eth_addr = VECTOR_BSEARCH(&key, ctx.eth_addrs, peer_eth_addr_cmp);
 
 	if (peer_eth_addr)
 		return peer_eth_addr->peer;
