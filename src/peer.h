@@ -70,7 +70,6 @@ struct fastd_peer_config {
 	fastd_remote_config_t *remotes;
 	char *key;
 	bool floating;
-	bool dynamic_float_deprecated;
 	const fastd_peer_group_config_t *group;
 
 	fastd_protocol_peer_config_t *protocol_config;

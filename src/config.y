@@ -149,7 +149,6 @@
 %type <uint64> maybe_port
 %type <str> maybe_as
 %type <uint64> maybe_af
-%type <boolean> maybe_float
 %type <addr> bind_address
 %type <str> maybe_bind_interface
 %type <int64> maybe_bind_default
@@ -478,7 +477,7 @@ peer_remote:	TOK_ADDR4 port {
 			(*remote)->address.sa.sa_family = AF_INET6;
 			(*remote)->address.in.sin_port = htons($2);
 		}
-	|	maybe_af TOK_STRING port maybe_float {
+	|	maybe_af TOK_STRING port {
 			fastd_remote_config_t **remote = &conf.peers->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
@@ -488,11 +487,6 @@ peer_remote:	TOK_ADDR4 port {
 			(*remote)->hostname = strdup($2->str);
 			(*remote)->address.sa.sa_family = $1;
 			(*remote)->address.in.sin_port = htons($3);
-
-			if ($4) {
-				conf.peers->floating = true;
-				conf.peers->dynamic_float_deprecated = true;
-			}
 		}
 	;
 
@@ -569,10 +563,6 @@ maybe_as:	TOK_AS TOK_STRING {
 maybe_af:	TOK_IPV4	{ $$ = AF_INET; }
 	|	TOK_IPV6	{ $$ = AF_INET6; }
 	|			{ $$ = AF_UNSPEC; }
-	;
-
-maybe_float:	TOK_FLOAT	{ $$ = true; }
-	|			{ $$ = false; }
 	;
 
 sync_def_sync:	sync		{ $$ = $1; }

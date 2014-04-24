@@ -410,9 +410,6 @@ static void assess_peers(void) {
 	for (peer = conf.peers; peer; peer = peer->next) {
 		if (fastd_peer_config_is_floating(peer))
 			conf.has_floating = true;
-
-		if (peer->dynamic_float_deprecated)
-			pr_warn("peer `%s' uses deprecated float syntax, please update your configuration", peer->name);
 	}
 }
 
