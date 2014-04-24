@@ -85,7 +85,7 @@ struct fastd_peer_eth_addr {
 struct fastd_remote {
 	fastd_remote_t *next;
 
-	unsigned ref;
+	size_t ref;
 
 	fastd_remote_config_t *config;
 

@@ -185,7 +185,7 @@ static void close_log(void) {
 static void init_sockets(void) {
 	ctx.socks = malloc(conf.n_bind_addrs * sizeof(fastd_socket_t));
 
-	unsigned i;
+	size_t i;
 	fastd_bind_address_t *addr = conf.bind_addrs;
 	for (i = 0; i < conf.n_bind_addrs; i++) {
 		ctx.socks[i] = (fastd_socket_t){ .fd = -2, .addr = addr };
@@ -222,7 +222,7 @@ void fastd_setfl(const int fd, int set, int unset) {
 }
 
 static void close_sockets(void) {
-	unsigned i;
+	size_t i;
 	for (i = 0; i < ctx.n_socks; i++)
 		fastd_socket_close(&ctx.socks[i]);
 
@@ -385,8 +385,7 @@ static void dump_state(void) {
 		}
 
 		if (conf.mode == MODE_TAP) {
-			unsigned int eth_addresses = 0;
-			size_t i;
+			size_t i, eth_addresses = 0;
 			for (i = 0; i < VECTOR_LEN(ctx.eth_addrs); i++) {
 				if (VECTOR_INDEX(ctx.eth_addrs, i).peer == peer)
 					eth_addresses++;

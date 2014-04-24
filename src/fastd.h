@@ -125,8 +125,6 @@ struct fastd_peer_group {
 	fastd_peer_group_t *children;
 
 	const fastd_peer_group_config_t *conf;
-
-	unsigned n_connections;
 };
 
 struct fastd_stats {
@@ -157,7 +155,7 @@ struct fastd_config {
 
 	char *ifname;
 
-	unsigned n_bind_addrs;
+	size_t n_bind_addrs;
 	fastd_bind_address_t *bind_addrs;
 
 	fastd_bind_address_t *bind_addr_default_v4;
@@ -257,7 +255,7 @@ struct fastd_context {
 
 	int tunfd;
 
-	unsigned n_socks;
+	size_t n_socks;
 	fastd_socket_t *socks;
 
 	fastd_socket_t *sock_default_v4;

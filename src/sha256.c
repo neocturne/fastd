@@ -37,7 +37,7 @@ static inline uint32_t rotr(uint32_t x, int r) {
 }
 
 static inline void copy_words(uint32_t w[8], const uint32_t *in, ssize_t *left) {
-	unsigned i;
+	size_t i;
 	for (i = 0; i < 8; i++) {
 		if (*left >= 4) {
 			w[i] = ntohl(in[i]);
@@ -81,7 +81,7 @@ static void sha256_list(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t *c
 		0x5be0cd19
 	};
 	ssize_t left = len;
-	unsigned i;
+	size_t i;
 
 	while (left >= -8) {
 		uint32_t w[64], v[8];
@@ -154,9 +154,8 @@ void fastd_sha256_blocks(fastd_sha256_t *out, ...) {
 }
 
 void fastd_sha256(fastd_sha256_t *out, const uint32_t *in, size_t len) {
-	size_t count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
+	size_t i, count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
 	const uint32_t *blocks[count];
-	unsigned i;
 
 	for (i = 0; i < count; i++)
 		blocks[i] = in + i*FASTD_SHA256_BLOCK_WORDS;
@@ -186,10 +185,9 @@ static void hmacsha256_list(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSH
 		0x5c5c5c5c,
 	};
 
-	size_t count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
+	size_t i, count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
 	const uint32_t *blocks[count+2];
 	uint32_t ipad[8], opad[8];
-	unsigned i;
 
 	for (i = 0; i < 8; i++) {
 		ipad[i] = key[i] ^ 0x36363636;
@@ -246,9 +244,8 @@ bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], 
 }
 
 void fastd_hmacsha256(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], const uint32_t *in, size_t len) {
-	size_t count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
+	size_t i, count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
 	const uint32_t *blocks[count];
-	unsigned i;
 
 	for (i = 0; i < count; i++)
 		blocks[i] = in + i*FASTD_SHA256_BLOCK_WORDS;

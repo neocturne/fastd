@@ -515,9 +515,8 @@ void fastd_peer_delete(fastd_peer_t *peer) {
 	delete_peer(peer);
 }
 
-static inline unsigned count_established_group_peers(fastd_peer_group_t *group) {
-	unsigned ret = 0;
-	size_t i;
+static inline size_t count_established_group_peers(fastd_peer_group_t *group) {
+	size_t i, ret = 0;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
@@ -538,7 +537,7 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 		if (group->conf->max_connections < 0)
 			continue;
 
-		if (count_established_group_peers(group) >= (unsigned)group->conf->max_connections)
+		if (count_established_group_peers(group) >= (size_t)group->conf->max_connections)
 			return false;
 	}
 

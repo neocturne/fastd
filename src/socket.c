@@ -182,7 +182,7 @@ static bool set_bound_address(fastd_socket_t *sock) {
 }
 
 bool fastd_socket_handle_binds(void) {
-	unsigned i;
+	size_t i;
 
 	for (i = 0; i < ctx.n_socks; i++) {
 		if (ctx.socks[i].fd >= 0)
