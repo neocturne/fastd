@@ -51,7 +51,7 @@ static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int
 static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) {
 	fastd_block128_t out = {};
 
-	int i;
+	size_t i;
 	for (i = 0; i < 16; i++) {
 		xor_a(&out, &cstate->H[2*i][x->b[i]>>4]);
 		xor_a(&out, &cstate->H[2*i+1][x->b[i]&0xf]);
@@ -72,7 +72,7 @@ static fastd_mac_state_t* ghash_init(const uint8_t *key) {
 	memcpy(&Hbase[0], key, sizeof(fastd_block128_t));
 	Rbase[0] = r;
 
-	int i;
+	size_t i;
 	for (i = 1; i < 4; i++) {
 		uint8_t carry = shr(&Hbase[i], &Hbase[i-1], 1);
 		if (carry)
