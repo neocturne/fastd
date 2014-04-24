@@ -447,7 +447,7 @@ bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_addre
 	return false;
 }
 
-bool fastd_peer_claim_address(fastd_peer_t *new_peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr) {
+bool fastd_peer_claim_address(fastd_peer_t *new_peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool force) {
 	if (remote_addr->sa.sa_family == AF_UNSPEC) {
 		if (fastd_peer_is_established(new_peer))
 			fastd_peer_reset(new_peer);
@@ -466,6 +466,11 @@ bool fastd_peer_claim_address(fastd_peer_t *new_peer, fastd_socket_t *sock, cons
 			}
 
 			if (fastd_peer_address_equal(&peer->address, remote_addr)) {
+				if (!force && fastd_peer_is_established(peer)) {
+					reset_peer_address(new_peer);
+					return false;
+				}
+
 				reset_peer_address(peer);
 				break;
 			}

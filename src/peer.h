@@ -139,7 +139,7 @@ bool fastd_peer_may_connect(fastd_peer_t *peer);
 void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);
 bool fastd_peer_owns_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr);
 bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr);
-bool fastd_peer_claim_address(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr);
+bool fastd_peer_claim_address(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool force);
 void fastd_peer_reset_socket(fastd_peer_t *peer);
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay);
 fastd_peer_t* fastd_peer_find_by_id(uint64_t id);

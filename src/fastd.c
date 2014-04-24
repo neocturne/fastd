@@ -412,7 +412,7 @@ static void send_handshake(fastd_peer_t *peer) {
 			return;
 		}
 
-		fastd_peer_claim_address(peer, NULL, NULL, &peer->next_remote->addresses[peer->next_remote->current_address]);
+		fastd_peer_claim_address(peer, NULL, NULL, &peer->next_remote->addresses[peer->next_remote->current_address], false);
 		fastd_peer_reset_socket(peer);
 	}
 
