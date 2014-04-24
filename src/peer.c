@@ -466,9 +466,6 @@ bool fastd_peer_claim_address(fastd_peer_t *new_peer, fastd_socket_t *sock, cons
 			}
 
 			if (fastd_peer_address_equal(&peer->address, remote_addr)) {
-				if (fastd_peer_is_established(peer))
-					return false;
-
 				reset_peer_address(peer);
 				break;
 			}

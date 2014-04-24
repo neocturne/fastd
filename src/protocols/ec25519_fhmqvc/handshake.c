@@ -136,7 +136,7 @@ static bool establish(fastd_peer_t *peer, const fastd_method_info_t *method, fas
 	pr_verbose("%I authorized as %P", remote_addr, peer);
 
 	if (!fastd_peer_claim_address(peer, sock, local_addr, remote_addr)) {
-		pr_warn("can't set address %I which is used by a fixed peer", remote_addr);
+		pr_warn("can't establish session with %P[%I] as the address is used by another peer", peer, remote_addr);
 		fastd_peer_reset(peer);
 		return false;
 	}
