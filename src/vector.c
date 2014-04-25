@@ -29,8 +29,11 @@
 #include <string.h>
 
 
+#define MIN_VECTOR_ALLOC 4
+
+
 void _fastd_vector_alloc(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize) {
-	desc->allocated = 16;
+	desc->allocated = MIN_VECTOR_ALLOC;
 
 	while (desc->allocated < n*3/2)
 		desc->allocated <<= 1;
@@ -47,7 +50,7 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 
 	while (alloc < n)
 		alloc <<= 1;
-	while (alloc > n*3 && alloc > 16)
+	while (alloc > n*3 && alloc > MIN_VECTOR_ALLOC)
 		alloc >>= 1;
 
 	if (alloc != desc->allocated) {
