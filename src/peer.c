@@ -40,28 +40,69 @@ static inline void on_disestablish(const fastd_peer_t *peer) {
 	fastd_shell_command_exec(&conf.on_disestablish, peer, &peer->local_address, &peer->address);
 }
 
-static inline void free_socket(fastd_peer_t *peer) {
-	if (peer->sock) {
-		if (fastd_peer_is_socket_dynamic(peer)) {
-			if (peer->sock->peer != peer)
-				exit_bug("dynamic peer socket mismatch");
+static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
+	if ((*a)->id == (*b)->id)
+		return 0;
+	else if ((*a)->id < (*b)->id)
+		return -1;
+	else
+		return 1;
+}
 
-			fastd_socket_close(peer->sock);
-			free(peer->sock);
-			peer->sock = NULL;
+static fastd_peer_t** peer_p_find_by_id(uint64_t id) {
+	fastd_peer_t key = {.id = id};
+	fastd_peer_t *const keyp = &key;
 
-			size_t i;
-			for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-				if (VECTOR_INDEX(ctx.peers, i) == peer) {
-					fastd_poll_set_fd_peer(i);
-					break;
-				}
-			}
-		}
-		else {
-			peer->sock = NULL;
-		}
+	return VECTOR_BSEARCH(&keyp, ctx.peers, peer_id_cmp);
+}
+
+static size_t peer_index_find_by_id(uint64_t id) {
+	fastd_peer_t **ret = peer_p_find_by_id(id);
+
+	if (!ret)
+		exit_bug("peer_index_find_by_id: not found");
+
+	return ret - VECTOR_DATA(ctx.peers);
+
+}
+
+static inline size_t peer_index(fastd_peer_t *peer) {
+	return peer_index_find_by_id(peer->id);
+}
+
+fastd_peer_t* fastd_peer_find_by_id(uint64_t id) {
+	fastd_peer_t **ret = peer_p_find_by_id(id);
+
+	if (ret)
+		return *ret;
+	else
+		return NULL;
+
+}
+
+static void free_socket_by_id(size_t i) {
+	fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
+
+	if (!peer->sock)
+		return;
+
+	if (fastd_peer_is_socket_dynamic(peer)) {
+		if (peer->sock->peer != peer)
+			exit_bug("dynamic peer socket mismatch");
+
+		fastd_socket_close(peer->sock);
+		free(peer->sock);
+
+		peer->sock = NULL;
+		fastd_poll_set_fd_peer(i);
 	}
+	else {
+		peer->sock = NULL;
+	}
+}
+
+static inline void free_socket(fastd_peer_t *peer) {
+	free_socket_by_id(peer_index(peer));
 }
 
 static inline bool has_group_config_constraints(const fastd_peer_group_config_t *group) {
@@ -74,8 +115,10 @@ static inline bool has_group_config_constraints(const fastd_peer_group_config_t 
 }
 
 void fastd_peer_reset_socket(fastd_peer_t *peer) {
+	size_t i = peer_index(peer);
+
 	if (peer->address.sa.sa_family == AF_UNSPEC) {
-		free_socket(peer);
+		free_socket_by_id(i);
 		return;
 	}
 
@@ -84,7 +127,7 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 
 	pr_debug("resetting socket for peer %P", peer);
 
-	free_socket(peer);
+	free_socket_by_id(i);
 
 	switch (peer->address.sa.sa_family) {
 	case AF_INET:
@@ -104,13 +147,7 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
 		return;
 
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-		if (VECTOR_INDEX(ctx.peers, i) == peer) {
-			fastd_poll_set_fd_peer(i);
-			break;
-		}
-	}
+	fastd_poll_set_fd_peer(i);
 }
 
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
@@ -135,28 +172,6 @@ void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
 	}
 
 	fastd_dlist_insert(list, &peer->handshake_entry);
-}
-
-static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
-	if ((*a)->id == (*b)->id)
-		return 0;
-	else if ((*a)->id < (*b)->id)
-		return -1;
-	else
-		return 1;
-}
-
-fastd_peer_t* fastd_peer_find_by_id(uint64_t id) {
-	fastd_peer_t key = {.id = id};
-	fastd_peer_t *const keyp = &key;
-
-	fastd_peer_t **ret = VECTOR_BSEARCH(&keyp, ctx.peers, peer_id_cmp);
-
-	if (ret)
-		return *ret;
-	else
-		return NULL;
-
 }
 
 static inline fastd_peer_group_t* find_peer_group(fastd_peer_group_t *group, const fastd_peer_group_config_t *config) {
@@ -282,14 +297,9 @@ static void setup_peer(fastd_peer_t *peer) {
 static void delete_peer(fastd_peer_t *peer) {
 	pr_debug("deleting peer %P", peer);
 
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-		if (VECTOR_INDEX(ctx.peers, i) == peer) {
-			VECTOR_DELETE(ctx.peers, i);
-			fastd_poll_delete_peer(i);
-			break;
-		}
-	}
+	size_t i = peer_index(peer);
+	VECTOR_DELETE(ctx.peers, i);
+	fastd_poll_delete_peer(i);
 
 	fastd_peer_hashtable_remove(peer);
 
