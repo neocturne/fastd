@@ -76,6 +76,9 @@ static void default_config(void) {
 	conf.key_refresh = 3300;	/* 55 minutes */
 	conf.key_refresh_splay = 300;	/* 5 minutes */
 
+	conf.min_verify_interval = 10;
+	conf.verify_valid_time = 60;	/* 1 minute */
+
 	conf.peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
 	conf.peer_group->name = strdup("default");
 	conf.peer_group->max_connections = -1;

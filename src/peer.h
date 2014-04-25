@@ -57,6 +57,9 @@ struct fastd_peer {
 
 	struct timespec establish_handshake_timeout;
 
+	struct timespec verify_timeout;
+	struct timespec verify_valid_timeout;
+
 	fastd_protocol_peer_config_t *protocol_config;
 	fastd_protocol_peer_state_t *protocol_state;
 };
@@ -127,8 +130,6 @@ bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_
 void fastd_peer_reset(fastd_peer_t *peer);
 void fastd_peer_delete(fastd_peer_t *peer);
 fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf);
-bool fastd_peer_verify_temporary(fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
-void fastd_peer_enable_temporary(fastd_peer_t *peer);
 void fastd_peer_set_established(fastd_peer_t *peer);
 bool fastd_peer_may_connect(fastd_peer_t *peer);
 void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);
@@ -148,6 +149,17 @@ static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
 
 static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 	fastd_dlist_remove(&peer->handshake_entry);
+}
+
+static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
+	peer->verify_timeout = fastd_in_seconds(conf.min_verify_interval);
+}
+
+static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
+	if (ok)
+		peer->verify_valid_timeout = fastd_in_seconds(conf.verify_valid_time);
+	else
+		peer->verify_valid_timeout = ctx.now;
 }
 
 static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {

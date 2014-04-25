@@ -27,6 +27,7 @@
 #include "handshake.h"
 #include "../../handshake.h"
 #include "../../hkdf_sha256.h"
+#include "../../verify.h"
 
 
 #define HASHBYTES FASTD_SHA256_HASH_BYTES
@@ -268,8 +269,10 @@ static void clear_shared_handshake_key(const fastd_peer_t *peer) {
 }
 
 static void respond_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer,
-			      const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key, const fastd_method_info_t *method) {
+			      const aligned_int256_t *peer_handshake_key, const fastd_method_info_t *method) {
 	pr_debug("responding handshake with %P[%I]...", peer, remote_addr);
+
+	const handshake_key_t *handshake_key = &ctx.protocol_state->handshake_key;
 
 	if (!update_shared_handshake_key(peer, handshake_key, peer_handshake_key))
 		return;
@@ -486,9 +489,15 @@ static inline bool allow_unknown(void) {
 	return fastd_shell_command_isset(&conf.on_verify);
 }
 
-static inline fastd_peer_t* add_temporary(const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
+static fastd_peer_t * add_temporary(fastd_socket_t *sock, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
 	if (!allow_unknown()) {
 		pr_debug("ignoring handshake from %I (unknown key)", addr);
+		return NULL;
+	}
+
+	if (sock->peer) {
+		/* WTF? */
+		pr_debug("ignoring handshake from %I (received on another peer's socket)", addr);
 		return NULL;
 	}
 
@@ -509,7 +518,7 @@ static inline fastd_peer_t* add_temporary(const fastd_peer_address_t *addr, cons
 }
 
 
-void fastd_protocol_ec25519_fhmqvc_handshake_init(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
+void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
 	fastd_protocol_ec25519_fhmqvc_maintenance();
 
 	fastd_buffer_t buffer = fastd_handshake_new_init(3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
@@ -529,6 +538,34 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(const fastd_socket_t *sock, co
 	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
 }
 
+typedef struct verify_data {
+	aligned_int256_t peer_handshake_key;
+} verify_data_t;
+
+static bool handle_temporary(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+			     fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
+	if (handshake->type != 1 || !fastd_timed_out(&peer->verify_timeout))
+		return !fastd_timed_out(&peer->verify_valid_timeout);
+
+	verify_data_t verify_data;
+	memset(&verify_data, 0, sizeof(verify_data));
+	memcpy(&verify_data.peer_handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
+
+	fastd_tristate_t verified = fastd_verify_peer(peer, sock, local_addr, remote_addr, method, &verify_data, sizeof(verify_data));
+
+	if (!verified.set)
+		/* async verify */
+		return false;
+
+	if (!verified.state) {
+		pr_debug("ignoring handshake from %P[%I] (verification failed)", peer, remote_addr);
+		fastd_peer_delete(peer);
+		return false;
+	}
+
+	return true;
+}
+
 void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 						    fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	fastd_protocol_ec25519_fhmqvc_maintenance();
@@ -546,7 +583,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 			return;
 
 		case ENOENT:
-			peer = add_temporary(remote_addr, handshake->records[RECORD_SENDER_KEY].data);
+			peer = add_temporary(sock, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
 			if (peer)
 				break;
 
@@ -557,9 +594,8 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		}
 	}
 
-	if (fastd_peer_is_temporary(peer) && !fastd_peer_verify_temporary(peer, local_addr, remote_addr)) {
-		pr_debug("ignoring handshake from %P[%I] (verification failed)", peer, remote_addr);
-		fastd_peer_delete(peer);
+	if (!has_field(handshake, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
+		pr_debug("received handshake without sender handshake key from %P[%I]", peer, remote_addr);
 		return;
 	}
 
@@ -580,9 +616,9 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		}
 	}
 
-	if (!has_field(handshake, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
-		pr_debug("received handshake without sender handshake key from %P[%I]", peer, remote_addr);
-		return;
+	if (fastd_peer_is_temporary(peer)) {
+		if (!handle_temporary(sock, local_addr, remote_addr, peer, handshake, method))
+			return;
 	}
 
 	aligned_int256_t peer_handshake_key;
@@ -599,7 +635,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 
 		peer->last_handshake_response_timeout = fastd_in_seconds(conf.min_handshake_interval);
 		peer->last_handshake_response_address = *remote_addr;
-		respond_handshake(sock, local_addr, remote_addr, peer, &ctx.protocol_state->handshake_key, &peer_handshake_key, method);
+		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key, method);
 		return;
 	}
 
@@ -650,4 +686,16 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 	default:
 		pr_debug("received handshake reply with unknown type %u from %P[%I]", handshake->type, peer, remote_addr);
 	}
+}
+
+void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+							const fastd_method_info_t *method, const void *protocol_data, bool ok) {
+	if (!ok)
+		return;
+
+	const verify_data_t *data = protocol_data;
+
+	peer->last_handshake_response_timeout = fastd_in_seconds(conf.min_handshake_interval);
+	peer->last_handshake_response_address = *remote_addr;
+	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, method);
 }

@@ -41,9 +41,7 @@ void fastd_async_init(void) {
 	fastd_setfl(ctx.async_wfd, O_NONBLOCK, 0);
 }
 
-static void handle_resolve_return(const void *buf) {
-	const fastd_async_resolve_return_t *resolve_return = buf;
-
+static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_return) {
 	fastd_peer_t *peer = fastd_peer_find_by_id(resolve_return->peer_id);
 	if (!peer)
 		return;
@@ -53,6 +51,20 @@ static void handle_resolve_return(const void *buf) {
 
 	fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, resolve_return->remote);
 	fastd_peer_handle_resolve(peer, remote, resolve_return->n_addr, resolve_return->addr);
+}
+
+static void handle_verify_return(const fastd_async_verify_return_t *verify_return) {
+	fastd_peer_t *peer = fastd_peer_find_by_id(verify_return->peer_id);
+	if (!peer)
+		return;
+
+	if (peer->config)
+		exit_bug("verify return for permanent peer");
+
+	fastd_peer_set_verified(peer, verify_return->ok);
+
+	conf.protocol->handle_verify_return(peer, verify_return->sock, &verify_return->local_addr, &verify_return->remote_addr,
+					    verify_return->method, verify_return->protocol_data, verify_return->ok);
 }
 
 void fastd_async_handle(void) {
@@ -82,7 +94,11 @@ void fastd_async_handle(void) {
 
 	switch (header.type) {
 	case ASYNC_TYPE_RESOLVE_RETURN:
-		handle_resolve_return(buf);
+		handle_resolve_return((const fastd_async_resolve_return_t *)buf);
+		break;
+
+	case ASYNC_TYPE_VERIFY_RETURN:
+		handle_verify_return((const fastd_async_verify_return_t *)buf);
 		break;
 
 	default:

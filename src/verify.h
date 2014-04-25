@@ -26,39 +26,8 @@
 
 #pragma once
 
+
 #include "types.h"
-#include "peer.h"
 
 
-typedef enum fastd_async_type {
-	ASYNC_TYPE_RESOLVE_RETURN,
-	ASYNC_TYPE_VERIFY_RETURN,
-} fastd_async_type_t;
-
-
-typedef struct fastd_async_resolve_return {
-	uint64_t peer_id;
-	size_t remote;
-
-	size_t n_addr;
-	fastd_peer_address_t addr[];
-} fastd_async_resolve_return_t;
-
-typedef struct fastd_async_verify_return {
-	bool ok;
-
-	uint64_t peer_id;
-
-	const fastd_method_info_t *method;
-	fastd_socket_t *sock;
-
-	fastd_peer_address_t local_addr;
-	fastd_peer_address_t remote_addr;
-
-	uint8_t protocol_data[] __attribute__((aligned(8)));
-} fastd_async_verify_return_t;
-
-
-void fastd_async_init(void);
-void fastd_async_handle(void);
-void fastd_async_enqueue(fastd_async_type_t type, const void *data, size_t len);
+fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *data, size_t data_len);

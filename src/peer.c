@@ -688,7 +688,8 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 
 		peer->group = ctx.peer_group;
 
-		fastd_peer_seen(peer);
+		peer->verify_timeout = ctx.now;
+		peer->verify_valid_timeout = ctx.now;
 
 		pr_debug("adding temporary peer");
 	}
@@ -699,35 +700,6 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 	fastd_poll_add_peer();
 
 	return peer;
-}
-
-bool fastd_peer_verify_temporary(fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
-	if (!fastd_shell_command_isset(&conf.on_verify))
-		exit_bug("tried to verify temporary peer without on-verify command");
-
-	/* TODO: async not supported yet */
-
-	fastd_shell_env_t *env = fastd_shell_env_alloc();
-	fastd_peer_set_shell_env(env, peer, local_addr, peer_addr);
-
-	int ret;
-	bool ok = fastd_shell_command_exec_sync(&conf.on_verify, env, &ret);
-
-	fastd_shell_env_free(env);
-
-	if (!ok)
-		return false;
-
-	if (WIFSIGNALED(ret)) {
-		pr_error("verify command exited with signal %i", WTERMSIG(ret));
-		return false;
-	}
-	else if (WEXITSTATUS(ret)) {
-		pr_debug("verify command exited with status %i", WEXITSTATUS(ret));
-		return false;
-	}
-
-	return true;
 }
 
 static inline void no_valid_address_debug(const fastd_peer_t *peer) {
@@ -895,14 +867,16 @@ static bool maintain_peer(fastd_peer_t *peer) {
 	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
 		/* check for peer timeout */
 		if (fastd_timed_out(&peer->timeout)) {
-			if (fastd_peer_is_temporary(peer)) {
+			if (fastd_peer_is_temporary(peer) &&
+			    fastd_timed_out(&peer->verify_timeout) &&
+			    fastd_timed_out(&peer->verify_valid_timeout)) {
 				fastd_peer_delete(peer);
 				return false;
 			}
-			else {
+
+			if (fastd_peer_is_established(peer))
 				fastd_peer_reset(peer);
-				return true;
-			}
+			return true;
 		}
 
 		/* check for keepalive timeout */

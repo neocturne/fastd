@@ -58,8 +58,9 @@ struct fastd_protocol {
 	bool (*peer_check)(fastd_peer_config_t *peer_conf);
 	bool (*peer_check_temporary)(fastd_peer_t *peer);
 
-	void (*handshake_init)(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
+	void (*handshake_init)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
 	void (*handshake_handle)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
+	void (*handle_verify_return)(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *protocol_data, bool ok);
 
 	void (*handle_recv)(fastd_peer_t *peer, fastd_buffer_t buffer);
 	void (*send)(fastd_peer_t *peer, fastd_buffer_t buffer);
@@ -152,6 +153,9 @@ struct fastd_config {
 
 	unsigned min_handshake_interval;
 	unsigned min_resolve_interval;
+
+	unsigned min_verify_interval;
+	unsigned verify_valid_time;
 
 	char *ifname;
 
