@@ -143,8 +143,8 @@ fastd_buffer_t fastd_handshake_new_init(size_t tail_space) {
 	return new_handshake(1, NULL, !conf.secure_handshakes, tail_space);
 }
 
-fastd_buffer_t fastd_handshake_new_reply(const fastd_handshake_t *handshake, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
-	fastd_buffer_t buffer = new_handshake(handshake->type+1, method, with_method_list, tail_space);
+fastd_buffer_t fastd_handshake_new_reply(uint8_t type, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
+	fastd_buffer_t buffer = new_handshake(type, method, with_method_list, tail_space);
 	fastd_handshake_add_uint8(&buffer, RECORD_REPLY_CODE, 0);
 	return buffer;
 }
