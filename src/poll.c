@@ -158,8 +158,6 @@ void fastd_poll_handle(void) {
 	if (timeout < 0 || timeout > maintenance_timeout)
 		timeout = maintenance_timeout;
 
-	fastd_update_time();
-
 	struct epoll_event events[16];
 	int ret = epoll_wait(ctx.epoll_fd, events, 16, timeout);
 	if (ret < 0) {
@@ -168,6 +166,8 @@ void fastd_poll_handle(void) {
 
 		exit_errno("epoll_wait");
 	}
+
+	fastd_update_time();
 
 	size_t i;
 	for (i = 0; i < (size_t)ret; i++) {
