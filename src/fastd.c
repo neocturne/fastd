@@ -401,124 +401,12 @@ static void dump_state(void) {
 	pr_info("dump finished.");
 }
 
-static inline void no_valid_address_debug(const fastd_peer_t *peer) {
-	pr_debug("not sending a handshake to %P (no valid address resolved)", peer);
-}
-
-static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
-	if (!fastd_peer_is_established(peer)) {
-		if (!next_remote->n_addresses) {
-			no_valid_address_debug(peer);
-			return;
-		}
-
-		fastd_peer_claim_address(peer, NULL, NULL, &next_remote->addresses[next_remote->current_address], false);
-		fastd_peer_reset_socket(peer);
-	}
-
-	if (!peer->sock)
+static inline void maintenance(void) {
+	if (!fastd_timed_out(&ctx.next_maintenance))
 		return;
 
-	if (peer->address.sa.sa_family == AF_UNSPEC) {
-		no_valid_address_debug(peer);
-		return;
-	}
-
-	if (!fastd_timed_out(&peer->last_handshake_timeout)
-	    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
-		pr_debug("not sending a handshake to %P as we sent one a short time ago", peer);
-		return;
-	}
-
-	pr_debug("sending handshake to %P[%I]...", peer, &peer->address);
-	peer->last_handshake_timeout = fastd_in_seconds(conf.min_handshake_interval);
-	peer->last_handshake_address = peer->address;
-	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);
-}
-
-static void handle_handshake_queue(void) {
-	if (!ctx.handshake_queue.next)
-		return;
-
-	fastd_peer_t *peer = container_of(ctx.handshake_queue.next, fastd_peer_t, handshake_entry);
-	if (!fastd_timed_out(&peer->next_handshake))
-		return;
-
-	fastd_peer_schedule_handshake_default(peer);
-
-	if (!fastd_peer_may_connect(peer)) {
-		if (peer->next_remote != -1) {
-			pr_debug("temporarily disabling handshakes with %P", peer);
-			peer->next_remote = -1;
-		}
-
-		return;
-	}
-
-	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
-
-	if (next_remote || fastd_peer_is_established(peer)) {
-		send_handshake(peer, next_remote);
-
-		if (fastd_peer_is_established(peer))
-			return;
-
-		if (++next_remote->current_address < next_remote->n_addresses)
-			return;
-
-		peer->next_remote++;
-	}
-
-	if (peer->next_remote < 0 || (size_t)peer->next_remote >= VECTOR_LEN(peer->remotes))
-		peer->next_remote = 0;
-
-	next_remote = fastd_peer_get_next_remote(peer);
-	next_remote->current_address = 0;
-
-	if (fastd_remote_is_dynamic(next_remote))
-		fastd_resolve_peer(peer, next_remote);
-}
-
-static bool maintain_peer(fastd_peer_t *peer) {
-	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
-		/* check for peer timeout */
-		if (fastd_timed_out(&peer->timeout)) {
-			if (fastd_peer_is_temporary(peer)) {
-				fastd_peer_delete(peer);
-				return false;
-			}
-			else {
-				fastd_peer_reset(peer);
-				return true;
-			}
-		}
-
-		/* check for keepalive timeout */
-		if (!fastd_peer_is_established(peer))
-			return true;
-
-		if (!fastd_timed_out(&peer->keepalive_timeout))
-			return true;
-
-		pr_debug2("sending keepalive to %P", peer);
-		conf.protocol->send(peer, fastd_buffer_alloc(0, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
-	}
-
-	return true;
-}
-
-static void maintenance(void) {
 	fastd_socket_handle_binds();
-
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
-		if (maintain_peer(peer))
-			i++;
-	}
-
-	fastd_peer_eth_addr_cleanup();
+	fastd_peer_maintenance();
 
 	ctx.next_maintenance.tv_sec += conf.maintenance_interval;
 }
@@ -855,12 +743,11 @@ int main(int argc, char *argv[]) {
 	init_peers();
 
 	while (!terminate) {
-		handle_handshake_queue();
+		fastd_peer_handle_handshake_queue();
 
 		fastd_poll_handle();
 
-		if (fastd_timed_out(&ctx.next_maintenance))
-			maintenance();
+		maintenance();
 
 		sigset_t set, oldset;
 		sigemptyset(&set);

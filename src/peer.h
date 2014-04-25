@@ -151,9 +151,6 @@ static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
 	return fastd_dlist_linked(&peer->handshake_entry);
 }
 
-fastd_eth_addr_t fastd_get_source_address(const fastd_buffer_t buffer);
-fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffer);
-
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *config) {
 	return (!config->remotes || config->floating);
 }
@@ -202,5 +199,7 @@ static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 }
 
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
-void fastd_peer_eth_addr_cleanup(void);
 fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_eth_addr_t addr);
+
+void fastd_peer_handle_handshake_queue(void);
+void fastd_peer_maintenance(void);

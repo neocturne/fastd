@@ -647,6 +647,84 @@ bool fastd_peer_verify_temporary(fastd_peer_t *peer, const fastd_peer_address_t 
 	return true;
 }
 
+static inline void no_valid_address_debug(const fastd_peer_t *peer) {
+	pr_debug("not sending a handshake to %P (no valid address resolved)", peer);
+}
+
+static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
+	if (!fastd_peer_is_established(peer)) {
+		if (!next_remote->n_addresses) {
+			no_valid_address_debug(peer);
+			return;
+		}
+
+		fastd_peer_claim_address(peer, NULL, NULL, &next_remote->addresses[next_remote->current_address], false);
+		fastd_peer_reset_socket(peer);
+	}
+
+	if (!peer->sock)
+		return;
+
+	if (peer->address.sa.sa_family == AF_UNSPEC) {
+		no_valid_address_debug(peer);
+		return;
+	}
+
+	if (!fastd_timed_out(&peer->last_handshake_timeout)
+	    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
+		pr_debug("not sending a handshake to %P as we sent one a short time ago", peer);
+		return;
+	}
+
+	pr_debug("sending handshake to %P[%I]...", peer, &peer->address);
+	peer->last_handshake_timeout = fastd_in_seconds(conf.min_handshake_interval);
+	peer->last_handshake_address = peer->address;
+	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);
+}
+
+void fastd_peer_handle_handshake_queue(void) {
+	if (!ctx.handshake_queue.next)
+		return;
+
+	fastd_peer_t *peer = container_of(ctx.handshake_queue.next, fastd_peer_t, handshake_entry);
+	if (!fastd_timed_out(&peer->next_handshake))
+		return;
+
+	fastd_peer_schedule_handshake_default(peer);
+
+	if (!fastd_peer_may_connect(peer)) {
+		if (peer->next_remote != -1) {
+			pr_debug("temporarily disabling handshakes with %P", peer);
+			peer->next_remote = -1;
+		}
+
+		return;
+	}
+
+	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
+
+	if (next_remote || fastd_peer_is_established(peer)) {
+		send_handshake(peer, next_remote);
+
+		if (fastd_peer_is_established(peer))
+			return;
+
+		if (++next_remote->current_address < next_remote->n_addresses)
+			return;
+
+		peer->next_remote++;
+	}
+
+	if (peer->next_remote < 0 || (size_t)peer->next_remote >= VECTOR_LEN(peer->remotes))
+		peer->next_remote = 0;
+
+	next_remote = fastd_peer_get_next_remote(peer);
+	next_remote->current_address = 0;
+
+	if (fastd_remote_is_dynamic(next_remote))
+		fastd_resolve_peer(peer, next_remote);
+}
+
 void fastd_peer_enable_temporary(fastd_peer_t *peer) {
 	if (peer->config)
 		exit_bug("trying to re-enable non-temporary peer");
@@ -662,29 +740,6 @@ void fastd_peer_set_established(fastd_peer_t *peer) {
 	peer->state = STATE_ESTABLISHED;
 	on_establish(peer);
 	pr_info("connection with %P established.", peer);
-}
-
-fastd_eth_addr_t fastd_get_source_address(const fastd_buffer_t buffer) {
-	fastd_eth_addr_t ret;
-
-	switch (conf.mode) {
-	case MODE_TAP:
-		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
-		return ret;
-	default:
-		exit_bug("invalid mode");
-	}
-}
-
-fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffer) {
-	fastd_eth_addr_t ret;
-	switch (conf.mode) {
-	case MODE_TAP:
-		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
-		return ret;
-	default:
-		exit_bug("invalid mode");
-	}
 }
 
 bool fastd_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr) {
@@ -743,7 +798,45 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 	pr_debug("learned new MAC address %E on peer %P", &addr, peer);
 }
 
-void fastd_peer_eth_addr_cleanup(void) {
+fastd_peer_t* fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
+	const fastd_peer_eth_addr_t key = {.addr = addr};
+	fastd_peer_eth_addr_t *peer_eth_addr = VECTOR_BSEARCH(&key, ctx.eth_addrs, peer_eth_addr_cmp);
+
+	if (peer_eth_addr)
+		return peer_eth_addr->peer;
+	else
+		return NULL;
+}
+
+static bool maintain_peer(fastd_peer_t *peer) {
+	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
+		/* check for peer timeout */
+		if (fastd_timed_out(&peer->timeout)) {
+			if (fastd_peer_is_temporary(peer)) {
+				fastd_peer_delete(peer);
+				return false;
+			}
+			else {
+				fastd_peer_reset(peer);
+				return true;
+			}
+		}
+
+		/* check for keepalive timeout */
+		if (!fastd_peer_is_established(peer))
+			return true;
+
+		if (!fastd_timed_out(&peer->keepalive_timeout))
+			return true;
+
+		pr_debug2("sending keepalive to %P", peer);
+		conf.protocol->send(peer, fastd_buffer_alloc(0, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
+	}
+
+	return true;
+}
+
+static void eth_addr_cleanup(void) {
 	size_t i, deleted = 0;
 
 	for (i = 0; i < VECTOR_LEN(ctx.eth_addrs); i++) {
@@ -760,12 +853,14 @@ void fastd_peer_eth_addr_cleanup(void) {
 	VECTOR_RESIZE(ctx.eth_addrs, VECTOR_LEN(ctx.eth_addrs)-deleted);
 }
 
-fastd_peer_t* fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
-	const fastd_peer_eth_addr_t key = {.addr = addr};
-	fastd_peer_eth_addr_t *peer_eth_addr = VECTOR_BSEARCH(&key, ctx.eth_addrs, peer_eth_addr_cmp);
+void fastd_peer_maintenance(void) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
-	if (peer_eth_addr)
-		return peer_eth_addr->peer;
-	else
-		return NULL;
+		if (maintain_peer(peer))
+			i++;
+	}
+
+	eth_addr_cleanup();
 }

@@ -349,6 +349,29 @@ static inline size_t fastd_max_inner_packet(void) {
 	}
 }
 
+static inline fastd_eth_addr_t fastd_get_source_address(const fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
+
+	switch (conf.mode) {
+	case MODE_TAP:
+		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
+		return ret;
+	default:
+		exit_bug("invalid mode");
+	}
+}
+
+static inline fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
+	switch (conf.mode) {
+	case MODE_TAP:
+		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
+		return ret;
+	default:
+		exit_bug("invalid mode");
+	}
+}
+
 static inline size_t fastd_max_outer_packet(void) {
 	return PACKET_TYPE_LEN + fastd_max_inner_packet() + conf.max_overhead;
 }
