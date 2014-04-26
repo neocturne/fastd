@@ -126,7 +126,7 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 	arg->constraints = remote->config->address;
 
 	pthread_t thread;
-	if (pthread_create(&thread, NULL, resolve_peer, arg) != 0) {
+	if ((errno = pthread_create(&thread, NULL, resolve_peer, arg)) != 0) {
 		pr_error_errno("unable to create resolver thread");
 
 		free(arg->hostname);
