@@ -60,7 +60,9 @@ struct fastd_protocol {
 
 	void (*handshake_init)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
 	void (*handshake_handle)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
+#ifdef WITH_VERIFY
 	void (*handle_verify_return)(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *protocol_data, bool ok);
+#endif
 
 	void (*handle_recv)(fastd_peer_t *peer, fastd_buffer_t buffer);
 	void (*send)(fastd_peer_t *peer, fastd_buffer_t buffer);
@@ -154,8 +156,10 @@ struct fastd_config {
 	unsigned min_handshake_interval;
 	unsigned min_resolve_interval;
 
+#ifdef WITH_VERIFY
 	unsigned min_verify_interval;
 	unsigned verify_valid_time;
+#endif
 
 	char *ifname;
 
@@ -216,7 +220,9 @@ struct fastd_config {
 	fastd_shell_command_t on_connect;
 	fastd_shell_command_t on_establish;
 	fastd_shell_command_t on_disestablish;
+#ifdef WITH_VERIFY
 	fastd_shell_command_t on_verify;
+#endif
 
 	bool daemon;
 	char *pid_file;
@@ -411,7 +417,7 @@ static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t
 }
 
 static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
-	while(str) {
+	while (str) {
 		fastd_string_stack_t *next = str->next;
 		free(str);
 		str = next;
@@ -440,6 +446,14 @@ static inline struct timespec fastd_in_seconds(const int seconds) {
 
 static inline void fastd_update_time(void) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx.now);
+}
+
+static inline bool fastd_allow_verify(void) {
+#ifdef WITH_VERIFY
+	return fastd_shell_command_isset(&conf.on_verify);
+#else
+	return false;
+#endif
 }
 
 static inline bool strequal(const char *str1, const char *str2) {

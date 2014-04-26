@@ -25,6 +25,10 @@
 
 
 #include "verify.h"
+
+
+#ifdef WITH_VERIFY
+
 #include "async.h"
 #include "shell.h"
 
@@ -109,3 +113,5 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 		return (fastd_tristate_t){.set = false};
 	}
 }
+
+#endif /* WITH_VERIFY */

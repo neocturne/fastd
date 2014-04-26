@@ -53,6 +53,8 @@ static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_re
 	fastd_peer_handle_resolve(peer, remote, resolve_return->n_addr, resolve_return->addr);
 }
 
+#ifdef WITH_VERIFY
+
 static void handle_verify_return(const fastd_async_verify_return_t *verify_return) {
 	fastd_peer_t *peer = fastd_peer_find_by_id(verify_return->peer_id);
 	if (!peer)
@@ -66,6 +68,9 @@ static void handle_verify_return(const fastd_async_verify_return_t *verify_retur
 	conf.protocol->handle_verify_return(peer, verify_return->sock, &verify_return->local_addr, &verify_return->remote_addr,
 					    verify_return->method, verify_return->protocol_data, verify_return->ok);
 }
+
+#endif
+
 
 void fastd_async_handle(void) {
 	fastd_async_hdr_t header;
@@ -97,9 +102,11 @@ void fastd_async_handle(void) {
 		handle_resolve_return((const fastd_async_resolve_return_t *)buf);
 		break;
 
+#ifdef WITH_VERIFY
 	case ASYNC_TYPE_VERIFY_RETURN:
 		handle_verify_return((const fastd_async_verify_return_t *)buf);
 		break;
+#endif
 
 	default:
 		exit_bug("fastd_async_handle: unknown type");

@@ -47,6 +47,7 @@
 #cmakedefine WITH_CMDLINE_OPERATION
 #cmakedefine WITH_CMDLINE_COMMANDS
 
+#cmakedefine WITH_VERIFY
 
 #cmakedefine HAVE_LIBSODIUM
 #cmakedefine ENABLE_OPENSSL

@@ -132,7 +132,7 @@ static inline void handle_socket_receive_known(fastd_socket_t *sock, const fastd
 }
 
 static inline bool allow_unknown_peers(void) {
-	return conf.has_floating || fastd_shell_command_isset(&conf.on_verify);
+	return conf.has_floating || fastd_allow_verify();
 }
 
 static inline void handle_socket_receive_unknown(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {

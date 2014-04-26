@@ -683,6 +683,7 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 		pr_verbose("adding peer %P (group `%s')", peer, peer->group->conf->name);
 	}
 	else {
+#ifdef WITH_VERIFY
 		if (!fastd_shell_command_isset(&conf.on_verify))
 			exit_bug("tried to add temporary peer without on-verify command");
 
@@ -692,6 +693,9 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 		peer->verify_valid_timeout = ctx.now;
 
 		pr_debug("adding temporary peer");
+#else
+		exit_bug("temporary peers not supported");
+#endif
 	}
 
 	setup_peer(peer);
@@ -867,12 +871,14 @@ static bool maintain_peer(fastd_peer_t *peer) {
 	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
 		/* check for peer timeout */
 		if (fastd_timed_out(&peer->timeout)) {
+#ifdef WITH_VERIFY
 			if (fastd_peer_is_temporary(peer) &&
 			    fastd_timed_out(&peer->verify_timeout) &&
 			    fastd_timed_out(&peer->verify_valid_timeout)) {
 				fastd_peer_delete(peer);
 				return false;
 			}
+#endif
 
 			if (fastd_peer_is_established(peer))
 				fastd_peer_reset(peer);

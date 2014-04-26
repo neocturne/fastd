@@ -76,8 +76,10 @@ static void default_config(void) {
 	conf.key_refresh = 3300;	/* 55 minutes */
 	conf.key_refresh_splay = 300;	/* 5 minutes */
 
+#ifdef WITH_VERIFY
 	conf.min_verify_interval = 10;
 	conf.verify_valid_time = 60;	/* 1 minute */
+#endif
 
 	conf.peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
 	conf.peer_group->name = strdup("default");
@@ -706,7 +708,9 @@ void fastd_config_release(void) {
 	fastd_shell_command_unset(&conf.on_connect);
 	fastd_shell_command_unset(&conf.on_establish);
 	fastd_shell_command_unset(&conf.on_disestablish);
+#ifdef WITH_VERIFY
 	fastd_shell_command_unset(&conf.on_verify);
+#endif
 
 	free(conf.user);
 	free(conf.group);

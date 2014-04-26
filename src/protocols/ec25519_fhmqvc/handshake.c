@@ -474,6 +474,26 @@ bool fastd_protocol_ec25519_fhmqvc_peer_check(fastd_peer_config_t *peer_conf) {
 	return true;
 }
 
+void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
+	fastd_protocol_ec25519_fhmqvc_maintenance();
+
+	fastd_buffer_t buffer = fastd_handshake_new_init(3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
+
+	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
+
+	if (peer)
+		fastd_handshake_add(&buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, &peer->protocol_config->public_key);
+	else
+		pr_debug("sending handshake to unknown peer %I", remote_addr);
+
+	fastd_handshake_add(&buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx.protocol_state->handshake_key.key.public);
+
+	if (!peer || !fastd_peer_is_established(peer))
+		fastd_peer_exec_shell_command(&conf.on_connect, peer, (local_addr && local_addr->sa.sa_family) ? local_addr : sock->bound_addr, remote_addr);
+
+	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
+}
+
 bool fastd_protocol_ec25519_fhmqvc_peer_check_temporary(fastd_peer_t *peer) {
 	if (key_count(peer->protocol_config->public_key.u8)) {
 		char buf[65];
@@ -485,12 +505,15 @@ bool fastd_protocol_ec25519_fhmqvc_peer_check_temporary(fastd_peer_t *peer) {
 	return true;
 }
 
-static inline bool allow_unknown(void) {
-	return fastd_shell_command_isset(&conf.on_verify);
-}
+
+#ifdef WITH_VERIFY
+
+typedef struct verify_data {
+	aligned_int256_t peer_handshake_key;
+} verify_data_t;
 
 static fastd_peer_t * add_temporary(fastd_socket_t *sock, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
-	if (!allow_unknown()) {
+	if (!fastd_allow_verify()) {
 		pr_debug("ignoring handshake from %I (unknown key)", addr);
 		return NULL;
 	}
@@ -517,31 +540,6 @@ static fastd_peer_t * add_temporary(fastd_socket_t *sock, const fastd_peer_addre
 	return peer;
 }
 
-
-void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
-	fastd_protocol_ec25519_fhmqvc_maintenance();
-
-	fastd_buffer_t buffer = fastd_handshake_new_init(3*(4+PUBLICKEYBYTES) /* sender key, receipient key, handshake key */);
-
-	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
-
-	if (peer)
-		fastd_handshake_add(&buffer, RECORD_RECEIPIENT_KEY, PUBLICKEYBYTES, &peer->protocol_config->public_key);
-	else
-		pr_debug("sending handshake to unknown peer %I", remote_addr);
-
-	fastd_handshake_add(&buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx.protocol_state->handshake_key.key.public);
-
-	if (!peer || !fastd_peer_is_established(peer))
-		fastd_peer_exec_shell_command(&conf.on_connect, peer, (local_addr && local_addr->sa.sa_family) ? local_addr : sock->bound_addr, remote_addr);
-
-	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
-}
-
-typedef struct verify_data {
-	aligned_int256_t peer_handshake_key;
-} verify_data_t;
-
 static bool handle_temporary(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 			     fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	if (handshake->type != 1 || !fastd_timed_out(&peer->verify_timeout))
@@ -565,6 +563,28 @@ static bool handle_temporary(fastd_socket_t *sock, const fastd_peer_address_t *l
 
 	return true;
 }
+
+void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+							const fastd_method_info_t *method, const void *protocol_data, bool ok) {
+	if (!ok)
+		return;
+
+	const verify_data_t *data = protocol_data;
+
+	peer->last_handshake_response_timeout = fastd_in_seconds(conf.min_handshake_interval);
+	peer->last_handshake_response_address = *remote_addr;
+	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, method);
+}
+
+#else
+
+static inline fastd_peer_t * add_temporary(fastd_socket_t *sock UNUSED, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES] UNUSED) {
+	pr_debug("ignoring handshake from %I (unknown key)", addr);
+	return NULL;
+}
+
+#endif /* WITH_VERIFY */
+
 
 void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 						    fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
@@ -616,10 +636,12 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		}
 	}
 
+#ifdef WITH_VERIFY
 	if (fastd_peer_is_temporary(peer)) {
 		if (!handle_temporary(sock, local_addr, remote_addr, peer, handshake, method))
 			return;
 	}
+#endif
 
 	aligned_int256_t peer_handshake_key;
 	memcpy(&peer_handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
@@ -686,16 +708,4 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 	default:
 		pr_debug("received handshake reply with unknown type %u from %P[%I]", handshake->type, peer, remote_addr);
 	}
-}
-
-void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-							const fastd_method_info_t *method, const void *protocol_data, bool ok) {
-	if (!ok)
-		return;
-
-	const verify_data_t *data = protocol_data;
-
-	peer->last_handshake_response_timeout = fastd_in_seconds(conf.min_handshake_interval);
-	peer->last_handshake_response_address = *remote_addr;
-	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, method);
 }

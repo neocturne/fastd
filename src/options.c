@@ -297,9 +297,13 @@ static void option_on_disestablish(const char *arg) {
 	fastd_shell_command_set(&conf.on_disestablish, arg, false);
 }
 
+#ifdef WITH_VERIFY
+
 static void option_on_verify(const char *arg) {
 	fastd_shell_command_set(&conf.on_verify, arg, false);
 }
+
+#endif
 
 #endif
 

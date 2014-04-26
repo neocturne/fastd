@@ -413,7 +413,12 @@ on_disestablish: sync_def_async TOK_STRING {
 	;
 
 on_verify:	sync_def_async TOK_STRING {
+#ifdef WITH_VERIFY
 			fastd_shell_command_set(&conf.on_verify, $2->str, $1);
+#else
+				fastd_config_error(&@$, filename, depth, "`on verify' is not supported by this version of fastd");
+				YYERROR;
+#endif
 		}
 	;
 

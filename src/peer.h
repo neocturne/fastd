@@ -57,8 +57,10 @@ struct fastd_peer {
 
 	struct timespec establish_handshake_timeout;
 
+#ifdef WITH_VERIFY
 	struct timespec verify_timeout;
 	struct timespec verify_valid_timeout;
+#endif
 
 	fastd_protocol_peer_config_t *protocol_config;
 	fastd_protocol_peer_state_t *protocol_state;
@@ -151,6 +153,7 @@ static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 	fastd_dlist_remove(&peer->handshake_entry);
 }
 
+#ifdef WITH_VERIFY
 static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
 	peer->verify_timeout = fastd_in_seconds(conf.min_verify_interval);
 }
@@ -161,6 +164,7 @@ static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 	else
 		peer->verify_valid_timeout = ctx.now;
 }
+#endif
 
 static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
 	return fastd_dlist_linked(&peer->handshake_entry);
