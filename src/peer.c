@@ -32,12 +32,88 @@
 #include <sys/wait.h>
 
 
+void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+	/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
+	char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
+
+	fastd_shell_env_set(env, "PEER_NAME", (peer && peer->config) ? peer->config->name : NULL);
+
+	switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
+	case AF_INET:
+		inet_ntop(AF_INET, &local_addr->in.sin_addr, buf, sizeof(buf));
+		fastd_shell_env_set(env, "LOCAL_ADDRESS", buf);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in.sin_port));
+		fastd_shell_env_set(env, "LOCAL_PORT", buf);
+
+		break;
+
+	case AF_INET6:
+		inet_ntop(AF_INET6, &local_addr->in6.sin6_addr, buf, sizeof(buf));
+
+		if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr)) {
+			if (if_indextoname(local_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
+				buf[strlen(buf)] = '%';
+		}
+
+		fastd_shell_env_set(env, "LOCAL_ADDRESS", buf);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in6.sin6_port));
+		fastd_shell_env_set(env, "LOCAL_PORT", buf);
+
+		break;
+
+	default:
+		fastd_shell_env_set(env, "LOCAL_ADDRESS", NULL);
+		fastd_shell_env_set(env, "LOCAL_PORT", NULL);
+	}
+
+	switch(peer_addr ? peer_addr->sa.sa_family : AF_UNSPEC) {
+	case AF_INET:
+		inet_ntop(AF_INET, &peer_addr->in.sin_addr, buf, sizeof(buf));
+		fastd_shell_env_set(env, "PEER_ADDRESS", buf);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in.sin_port));
+		fastd_shell_env_set(env, "PEER_PORT", buf);
+
+		break;
+
+	case AF_INET6:
+		inet_ntop(AF_INET6, &peer_addr->in6.sin6_addr, buf, sizeof(buf));
+
+		if (IN6_IS_ADDR_LINKLOCAL(&peer_addr->in6.sin6_addr)) {
+			if (if_indextoname(peer_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
+				buf[strlen(buf)] = '%';
+		}
+
+		fastd_shell_env_set(env, "PEER_ADDRESS", buf);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in6.sin6_port));
+		fastd_shell_env_set(env, "PEER_PORT", buf);
+
+		break;
+
+	default:
+		fastd_shell_env_set(env, "PEER_ADDRESS", NULL);
+		fastd_shell_env_set(env, "PEER_PORT", NULL);
+	}
+
+	conf.protocol->set_shell_env(env, peer);
+}
+
+void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+	fastd_shell_env_t *env = fastd_shell_env_alloc();
+	fastd_peer_set_shell_env(env, peer, local_addr, peer_addr);
+	fastd_shell_command_exec(command, env);
+	fastd_shell_env_free(env);
+}
+
 static inline void on_establish(const fastd_peer_t *peer) {
-	fastd_shell_command_exec(&conf.on_establish, peer, &peer->local_address, &peer->address);
+	fastd_peer_exec_shell_command(&conf.on_establish, peer, &peer->local_address, &peer->address);
 }
 
 static inline void on_disestablish(const fastd_peer_t *peer) {
-	fastd_shell_command_exec(&conf.on_disestablish, peer, &peer->local_address, &peer->address);
+	fastd_peer_exec_shell_command(&conf.on_disestablish, peer, &peer->local_address, &peer->address);
 }
 
 static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
@@ -631,8 +707,15 @@ bool fastd_peer_verify_temporary(fastd_peer_t *peer, const fastd_peer_address_t 
 
 	/* TODO: async not supported yet */
 
+	fastd_shell_env_t *env = fastd_shell_env_alloc();
+	fastd_peer_set_shell_env(env, peer, local_addr, peer_addr);
+
 	int ret;
-	if (!fastd_shell_command_exec_sync(&conf.on_verify, peer, local_addr, peer_addr, &ret))
+	bool ok = fastd_shell_command_exec_sync(&conf.on_verify, env, &ret);
+
+	fastd_shell_env_free(env);
+
+	if (!ok)
 		return false;
 
 	if (WIFSIGNALED(ret)) {

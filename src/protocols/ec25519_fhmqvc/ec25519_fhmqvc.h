@@ -95,7 +95,7 @@ void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_sessi
 
 void fastd_protocol_ec25519_fhmqvc_generate_key(void);
 void fastd_protocol_ec25519_fhmqvc_show_key(void);
-void fastd_protocol_ec25519_fhmqvc_set_shell_env(const fastd_peer_t *peer);
+void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer);
 bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len);
 
 

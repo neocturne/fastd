@@ -139,6 +139,9 @@ void fastd_peer_reset_socket(fastd_peer_t *peer);
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay);
 fastd_peer_t* fastd_peer_find_by_id(uint64_t id);
 
+void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
+void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
+
 static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
 	fastd_peer_schedule_handshake(peer, fastd_rand(17500, 22500));
 }

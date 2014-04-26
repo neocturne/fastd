@@ -38,6 +38,7 @@ struct fastd_shell_command {
 	bool sync;
 };
 
+
 static inline void fastd_shell_command_unset(fastd_shell_command_t *command) {
 	free(command->command);
 	command->command = NULL;
@@ -58,5 +59,9 @@ static inline bool fastd_shell_command_isset(const fastd_shell_command_t *comman
 	return command->command;
 }
 
-bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret);
-void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
+fastd_shell_env_t * fastd_shell_env_alloc(void);
+void fastd_shell_env_set(fastd_shell_env_t *env, const char *key, const char *value);
+void fastd_shell_env_free(fastd_shell_env_t *env);
+
+bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_shell_env_t *env, int *ret);
+void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env);

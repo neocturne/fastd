@@ -132,6 +132,7 @@ typedef struct fastd_lex fastd_lex_t;
 typedef struct fastd_string_stack fastd_string_stack_t;
 
 typedef struct fastd_shell_command fastd_shell_command_t;
+typedef struct fastd_shell_env fastd_shell_env_t;
 
 typedef struct fastd_async_resolve_return fastd_async_resolve_return_t;
 

@@ -70,7 +70,7 @@ struct fastd_protocol {
 
 	void (*generate_key)(void);
 	void (*show_key)(void);
-	void (*set_shell_env)(const fastd_peer_t *peer);
+	void (*set_shell_env)(fastd_shell_env_t *env, const fastd_peer_t *peer);
 	bool (*describe_peer)(const fastd_peer_t *peer, char *buf, size_t len);
 };
 

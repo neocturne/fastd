@@ -25,16 +25,48 @@
 
 
 #include "shell.h"
-#include "peer.h"
+#include "fastd.h"
 
-#include <arpa/inet.h>
 #include <net/if.h>
 #include <sys/wait.h>
 
 
-static void shell_command_setenv(pid_t pid, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
-	/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
-	char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
+typedef struct shell_env_entry {
+	const char *key;
+	char *value;
+} shell_env_entry_t;
+
+
+struct fastd_shell_env {
+	VECTOR(shell_env_entry_t) entries;
+};
+
+
+fastd_shell_env_t * fastd_shell_env_alloc(void) {
+	fastd_shell_env_t *env = malloc(sizeof(fastd_shell_env_t));
+	VECTOR_ALLOC(env->entries, 0);
+
+	return env;
+}
+
+void fastd_shell_env_set(fastd_shell_env_t *env, const char *key, const char *value) {
+	shell_env_entry_t entry = {.key = key, .value = value ? strdup(value) : NULL};
+	VECTOR_ADD(env->entries, entry);
+}
+
+void fastd_shell_env_free(fastd_shell_env_t *env) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(env->entries); i++) {
+		shell_env_entry_t *entry = &VECTOR_INDEX(env->entries, i);
+		free(entry->value);
+	}
+
+	VECTOR_FREE(env->entries);
+	free(env);
+}
+
+static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
+	char buf[20];
 
 	snprintf(buf, sizeof(buf), "%u", (unsigned)pid);
 	setenv("FASTD_PID", buf, 1);
@@ -57,75 +89,21 @@ static void shell_command_setenv(pid_t pid, const fastd_peer_t *peer, const fast
 	snprintf(buf, sizeof(buf), "%u", conf.mtu);
 	setenv("INTERFACE_MTU", buf, 1);
 
-	if (peer && peer->config && peer->config->name)
-		setenv("PEER_NAME", peer->config->name, 1);
-	else
-		unsetenv("PEER_NAME");
+	if (!env)
+		return;
 
-	switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
-	case AF_INET:
-		inet_ntop(AF_INET, &local_addr->in.sin_addr, buf, sizeof(buf));
-		setenv("LOCAL_ADDRESS", buf, 1);
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(env->entries); i++) {
+		shell_env_entry_t *entry = &VECTOR_INDEX(env->entries, i);
 
-		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in.sin_port));
-		setenv("LOCAL_PORT", buf, 1);
-
-		break;
-
-	case AF_INET6:
-		inet_ntop(AF_INET6, &local_addr->in6.sin6_addr, buf, sizeof(buf));
-
-		if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr)) {
-			if (if_indextoname(local_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
-				buf[strlen(buf)] = '%';
-		}
-
-		setenv("LOCAL_ADDRESS", buf, 1);
-
-		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in6.sin6_port));
-		setenv("LOCAL_PORT", buf, 1);
-
-		break;
-
-	default:
-		unsetenv("LOCAL_ADDRESS");
-		unsetenv("LOCAL_PORT");
+		if (entry->value)
+			setenv(entry->key, entry->value, 1);
+		else
+			unsetenv(entry->key);
 	}
-
-	switch(peer_addr ? peer_addr->sa.sa_family : AF_UNSPEC) {
-	case AF_INET:
-		inet_ntop(AF_INET, &peer_addr->in.sin_addr, buf, sizeof(buf));
-		setenv("PEER_ADDRESS", buf, 1);
-
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in.sin_port));
-		setenv("PEER_PORT", buf, 1);
-
-		break;
-
-	case AF_INET6:
-		inet_ntop(AF_INET6, &peer_addr->in6.sin6_addr, buf, sizeof(buf));
-
-		if (IN6_IS_ADDR_LINKLOCAL(&peer_addr->in6.sin6_addr)) {
-			if (if_indextoname(peer_addr->in6.sin6_scope_id, buf+strlen(buf)+1))
-				buf[strlen(buf)] = '%';
-		}
-
-		setenv("PEER_ADDRESS", buf, 1);
-
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in6.sin6_port));
-		setenv("PEER_PORT", buf, 1);
-
-		break;
-
-	default:
-		unsetenv("PEER_ADDRESS");
-		unsetenv("PEER_PORT");
-	}
-
-	conf.protocol->set_shell_env(peer);
 }
 
-static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, pid_t *pid_ret) {
+static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env, pid_t *pid_ret) {
 	pid_t parent = getpid();
 
 	pid_t pid = fork();
@@ -145,7 +123,7 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 	if (chdir(command->dir))
 		_exit(126);
 
-	shell_command_setenv(parent, peer, local_addr, peer_addr);
+	shell_command_setenv(parent, env);
 
 	/* unblock SIGCHLD */
 	sigset_t set;
@@ -157,7 +135,7 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 	_exit(127);
 }
 
-bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, int *ret) {
+bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_shell_env_t *env, int *ret) {
 	if (!fastd_shell_command_isset(command))
 		return true;
 
@@ -168,7 +146,7 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
 	pid_t pid;
-	if (!shell_command_do_exec(command, peer, local_addr, peer_addr, &pid))
+	if (!shell_command_do_exec(command, env, &pid))
 		return false;
 
 	int status;
@@ -195,12 +173,12 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 }
 
 
-void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
 	if (!fastd_shell_command_isset(command))
 		return;
 
 	if (command->sync)
-		fastd_shell_command_exec_sync(command, peer, local_addr, peer_addr, NULL);
+		fastd_shell_command_exec_sync(command, env, NULL);
 	else
-		shell_command_do_exec(command, peer, local_addr, peer_addr, NULL);
+		shell_command_do_exec(command, env, NULL);
 }

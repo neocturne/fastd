@@ -64,18 +64,18 @@ void fastd_protocol_ec25519_fhmqvc_show_key(void) {
 		print_hexdump("Public: ", conf.protocol_config->key.public.u8);
 }
 
-void fastd_protocol_ec25519_fhmqvc_set_shell_env(const fastd_peer_t *peer) {
+void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer) {
 	char buf[65];
 
 	hexdump(buf, conf.protocol_config->key.public.u8);
-	setenv("LOCAL_KEY", buf, 1);
+	fastd_shell_env_set(env, "LOCAL_KEY", buf);
 
 	if (peer && peer->protocol_config) {
 		hexdump(buf, peer->protocol_config->public_key.u8);
-		setenv("PEER_KEY", buf, 1);
+		fastd_shell_env_set(env, "PEER_KEY", buf);
 	}
 	else {
-		unsetenv("PEER_KEY");
+		fastd_shell_env_set(env, "PEER_KEY", NULL);
 	}
 }
 

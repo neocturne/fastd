@@ -276,19 +276,19 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
 }
 
 static inline void on_pre_up(void) {
-	fastd_shell_command_exec(&conf.on_pre_up, NULL, NULL, NULL);
+	fastd_shell_command_exec(&conf.on_pre_up, NULL);
 }
 
 static inline void on_up(void) {
-	fastd_shell_command_exec(&conf.on_up, NULL, NULL, NULL);
+	fastd_shell_command_exec(&conf.on_up, NULL);
 }
 
 static inline void on_down(void) {
-	fastd_shell_command_exec(&conf.on_down, NULL, NULL, NULL);
+	fastd_shell_command_exec(&conf.on_down, NULL);
 }
 
 static inline void on_post_down(void) {
-	fastd_shell_command_exec(&conf.on_post_down, NULL, NULL, NULL);
+	fastd_shell_command_exec(&conf.on_post_down, NULL);
 }
 
 static fastd_peer_group_t* init_peer_group(const fastd_peer_group_config_t *config, fastd_peer_group_t *parent) {
