@@ -501,92 +501,55 @@ static void drop_caps(void) {
 
 /* will double fork and forward potential exit codes from the child to the parent */
 static int daemonize(void) {
-	static const uint8_t ERROR_STATUS = 1;
-
 	uint8_t status = 1;
-	int parent_rpipe, parent_wpipe;
-	fastd_open_pipe(&parent_rpipe, &parent_wpipe);
+	int pipefd[2];
+
+	if (pipe(pipefd))
+		exit_errno("pipe");
+
+	fastd_setfd(pipefd[0], FD_CLOEXEC, 0);
+	fastd_setfd(pipefd[1], FD_CLOEXEC, 0);
 
 	pid_t fork1 = fork();
 
 	if (fork1 < 0) {
 		exit_errno("fork");
 	}
-	else if (fork1 == 0) {
+	else if (fork1 > 0) {
+		/* parent */
+		if (close(pipefd[1]) < 0)
+			exit_errno("close");
+
+		if (waitpid(fork1, NULL, 0) < 0)
+			exit_errno("waitpid");
+
+		if (read(pipefd[0], &status, 1) < 0)
+			exit_errno("read");
+
+		exit(status);
+	}
+	else {
 		/* child 1 */
-		if (close(parent_rpipe) < 0)
+		if (close(pipefd[0]) < 0)
 			pr_error_errno("close");
 
 		if (setsid() < 0)
 			pr_error_errno("setsid");
 
-		int child_rpipe, child_wpipe;
-		fastd_open_pipe(&child_rpipe, &child_wpipe);
-
 		pid_t fork2 = fork();
 
 		if (fork2 < 0) {
-			write(parent_wpipe, &ERROR_STATUS, 1);
 			exit_errno("fork");
 		}
-		else if (fork2 == 0) {
-			/* child 2 */
-
-			if (close(child_rpipe) < 0 || close(parent_wpipe) < 0) {
-				write(child_wpipe, &ERROR_STATUS, 1);
-				pr_error_errno("close");
-			}
-
-			return child_wpipe;
+		else if (fork2 > 0) {
+			/* still child 1 */
+			_exit(0);
 		}
 		else {
-			/* still child 1 */
-			int child_status;
-			pid_t ret;
-			do {
-				if (read(child_rpipe, &status, 1) > 0) {
-					write(parent_wpipe, &status, 1);
-					exit(0);
-				}
-
-				ret = waitpid(fork2, &child_status, WNOHANG);
-			} while (!ret);
-
-			if (ret < 0) {
-				write(child_wpipe, &ERROR_STATUS, 1);
-				pr_error_errno("waitpid");
-			}
-
-			if (WIFEXITED(child_status)) {
-				status = WEXITSTATUS(child_status);
-				write(parent_wpipe, &status, 1);
-				exit(status);
-			}
-			else {
-				write(parent_wpipe, &ERROR_STATUS, 1);
-				if (WIFSIGNALED(child_status))
-					exit_error("child exited with signal %i", WTERMSIG(child_status));
-				exit(1);
-			}
+			/* child 2 */
+			return pipefd[1];
 		}
 	}
-	else {
-		/* parent */
-		struct sigaction action;
-		action.sa_flags = 0;
-		sigemptyset(&action.sa_mask);
-		action.sa_handler = SIG_IGN;
-
-		if (sigaction(SIGCHLD, &action, NULL))
-			exit_errno("sigaction");
-
-		if (read(parent_rpipe, &status, 1) < 0)
-			exit_errno("read");
-
-		exit(status);
-	}
-
-	return -1;
 }
 
 #ifdef USE_SYSTEMD
