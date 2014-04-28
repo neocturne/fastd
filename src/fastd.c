@@ -507,9 +507,6 @@ static int daemonize(void) {
 	if (pipe(pipefd))
 		exit_errno("pipe");
 
-	fastd_setfd(pipefd[0], FD_CLOEXEC, 0);
-	fastd_setfd(pipefd[1], FD_CLOEXEC, 0);
-
 	pid_t fork1 = fork();
 
 	if (fork1 < 0) {
@@ -547,6 +544,7 @@ static int daemonize(void) {
 		}
 		else {
 			/* child 2 */
+			fastd_setfd(pipefd[1], FD_CLOEXEC, 0);
 			return pipefd[1];
 		}
 	}
