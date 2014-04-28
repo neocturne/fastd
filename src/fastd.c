@@ -126,7 +126,7 @@ void fastd_open_pipe(int *readfd, int *writefd) {
 
 	/* use socketpair with SOCK_DGRAM instead of pipe2 with O_DIRECT to keep this portable */
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, pipefd))
-		exit_errno("pipe");
+		exit_errno("socketpair");
 
 	fastd_setfd(pipefd[0], FD_CLOEXEC, 0);
 	fastd_setfd(pipefd[1], FD_CLOEXEC, 0);
