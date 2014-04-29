@@ -34,7 +34,6 @@
 #include "poll.h"
 #include <fastd_version.h>
 
-#include <fcntl.h>
 #include <grp.h>
 #include <pthread.h>
 #include <signal.h>
@@ -121,20 +120,6 @@ static void init_signals(void) {
 
 }
 
-void fastd_open_pipe(int *readfd, int *writefd) {
-	int pipefd[2];
-
-	/* use socketpair with SOCK_DGRAM instead of pipe2 with O_DIRECT to keep this portable */
-	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, pipefd))
-		exit_errno("socketpair");
-
-	fastd_setfd(pipefd[0], FD_CLOEXEC, 0);
-	fastd_setfd(pipefd[1], FD_CLOEXEC, 0);
-
-	*readfd = pipefd[0];
-	*writefd = pipefd[1];
-}
-
 static void init_log(void) {
 	uid_t uid = geteuid();
 	gid_t gid = getegid();
@@ -200,25 +185,6 @@ static void init_sockets(void) {
 	}
 
 	ctx.n_socks = conf.n_bind_addrs;
-}
-
-
-void fastd_setfd(const int fd, int set, int unset) {
-	int flags = fcntl(fd, F_GETFD);
-	if (flags < 0)
-		exit_errno("Getting file descriptor flags failed: fcntl");
-
-	if (fcntl(fd, F_SETFD, (flags|set) & (~unset)) < 0)
-		exit_errno("Setting file descriptor flags failed: fcntl");
-}
-
-void fastd_setfl(const int fd, int set, int unset) {
-	int flags = fcntl(fd, F_GETFL);
-	if (flags < 0)
-		exit_errno("Getting file status flags failed: fcntl");
-
-	if (fcntl(fd, F_SETFL, (flags|set) & (~unset)) < 0)
-		exit_errno("Setting file status flags failed: fcntl");
 }
 
 static void close_sockets(void) {
@@ -544,7 +510,7 @@ static int daemonize(void) {
 		}
 		else {
 			/* child 2 */
-			fastd_setfd(pipefd[1], FD_CLOEXEC, 0);
+			fastd_setfd(pipefd[1], FD_CLOEXEC);
 			return pipefd[1];
 		}
 	}

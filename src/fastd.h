@@ -34,6 +34,7 @@
 #include "vector.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -310,10 +311,6 @@ fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af);
 void fastd_socket_close(fastd_socket_t *sock);
 void fastd_socket_error(fastd_socket_t *sock);
 
-void fastd_open_pipe(int *readfd, int *writefd);
-void fastd_setfd(const int fd, int set, int unset);
-void fastd_setfl(const int fd, int set, int unset);
-
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
 void fastd_tuntap_open(void);
@@ -329,6 +326,25 @@ void fastd_random_bytes(void *buffer, size_t len, bool secure);
 static inline int fastd_rand(int min, int max) {
 	unsigned int r = (unsigned int)rand_r(&ctx.randseed);
 	return (r%(max-min) + min);
+}
+
+
+static inline void fastd_setfd(const int fd, int set) {
+	int flags = fcntl(fd, F_GETFD);
+	if (flags < 0)
+		exit_errno("Getting file descriptor flags failed: fcntl");
+
+	if (fcntl(fd, F_SETFD, flags|set) < 0)
+		exit_errno("Setting file descriptor flags failed: fcntl");
+}
+
+static inline void fastd_setfl(const int fd, int set) {
+	int flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		exit_errno("Getting file status flags failed: fcntl");
+
+	if (fcntl(fd, F_SETFL, flags|set) < 0)
+		exit_errno("Setting file status flags failed: fcntl");
 }
 
 

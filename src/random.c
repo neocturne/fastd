@@ -26,7 +26,6 @@
 
 #include "fastd.h"
 
-#include <fcntl.h>
 #include <sys/stat.h>
 
 

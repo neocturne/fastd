@@ -27,8 +27,6 @@
 #include "async.h"
 #include "fastd.h"
 
-#include <fcntl.h>
-
 
 typedef struct fastd_async_hdr {
 	fastd_async_type_t type;
@@ -37,8 +35,18 @@ typedef struct fastd_async_hdr {
 
 
 void fastd_async_init(void) {
-	fastd_open_pipe(&ctx.async_rfd, &ctx.async_wfd);
-	fastd_setfl(ctx.async_wfd, O_NONBLOCK, 0);
+	int fds[2];
+
+	/* use socketpair with SOCK_DGRAM instead of pipe2 with O_DIRECT to keep this portable */
+	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, fds))
+		exit_errno("socketpair");
+
+	fastd_setfd(fds[0], FD_CLOEXEC);
+	fastd_setfd(fds[1], FD_CLOEXEC);
+	fastd_setfl(fds[1], O_NONBLOCK);
+
+	ctx.async_rfd = fds[0];
+	ctx.async_wfd = fds[1];
 }
 
 static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_return) {

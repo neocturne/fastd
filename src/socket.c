@@ -27,8 +27,6 @@
 #include "fastd.h"
 #include "poll.h"
 
-#include <fcntl.h>
-
 
 static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 	int fd = -1;
@@ -58,8 +56,8 @@ static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 	if (fd < 0)
 		goto error;
 
-	fastd_setfd(fd, FD_CLOEXEC, 0);
-	fastd_setfl(fd, O_NONBLOCK, 0);
+	fastd_setfd(fd, FD_CLOEXEC);
+	fastd_setfl(fd, O_NONBLOCK);
 
 	int one = 1;
 
