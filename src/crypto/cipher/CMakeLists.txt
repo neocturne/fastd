@@ -23,15 +23,30 @@ macro(fastd_cipher_impl cipher name)
 endmacro(fastd_cipher_impl)
 
 macro(fastd_cipher_impl_include_directories cipher name)
-  fastd_module_include_directories(cipher "${cipher} ${name}" ${ARGN})
+  string(REPLACE - _ cipher_ "${cipher}")
+  string(TOUPPER "${cipher_}" CIPHER)
+
+  if(WITH_CIPHER_${CIPHER})
+    fastd_module_include_directories(cipher "${cipher} ${name}" ${ARGN})
+  endif(WITH_CIPHER_${CIPHER})
 endmacro(fastd_cipher_impl_include_directories)
 
 macro(fastd_cipher_impl_link_libraries cipher name)
-  fastd_module_link_libraries(cipher "${cipher} ${name}" ${ARGN})
+  string(REPLACE - _ cipher_ "${cipher}")
+  string(TOUPPER "${cipher_}" CIPHER)
+
+  if(WITH_CIPHER_${CIPHER})
+    fastd_module_link_libraries(cipher "${cipher} ${name}" ${ARGN})
+  endif(WITH_CIPHER_${CIPHER})
 endmacro(fastd_cipher_impl_link_libraries)
 
 macro(fastd_cipher_impl_require cipher name)
-  fastd_module_require(cipher "${cipher} ${name}" ${ARGN})
+  string(REPLACE - _ cipher_ "${cipher}")
+  string(TOUPPER "${cipher_}" CIPHER)
+
+  if(WITH_CIPHER_${CIPHER})
+    fastd_module_require(cipher "${cipher} ${name}" ${ARGN})
+  endif(WITH_CIPHER_${CIPHER})
 endmacro(fastd_cipher_impl_require)
 
 
