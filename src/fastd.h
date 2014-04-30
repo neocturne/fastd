@@ -306,6 +306,8 @@ void fastd_receive(fastd_socket_t *sock);
 
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer);
 
+void fastd_close_all_fds(void);
+
 bool fastd_socket_handle_binds(void);
 fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af);
 void fastd_socket_close(fastd_socket_t *sock);

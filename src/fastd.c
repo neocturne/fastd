@@ -378,7 +378,7 @@ static inline void maintenance(void) {
 }
 
 
-static void close_fds(void) {
+void fastd_close_all_fds(void) {
 	struct rlimit rl;
 	int fd, maxfd;
 
@@ -465,7 +465,7 @@ static void drop_caps(void) {
 	fastd_cap_drop();
 }
 
-/* will double fork and forward potential exit codes from the child to the parent */
+/* will double fork and wait for a status notification from the child */
 static int daemonize(void) {
 	uint8_t status = 1;
 	int pipefd[2];
@@ -562,7 +562,7 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 
-	close_fds();
+	fastd_close_all_fds();
 
 	fastd_random_bytes(&ctx.randseed, sizeof(ctx.randseed), false);
 

@@ -120,6 +120,8 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 
 	/* child process */
 
+	fastd_close_all_fds();
+
 	if (chdir(command->dir))
 		_exit(126);
 
