@@ -38,10 +38,13 @@ void fastd_async_init(void) {
 	int fds[2];
 
 	/* use socketpair with SOCK_DGRAM instead of pipe2 with O_DIRECT to keep this portable */
-	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, fds))
+	if (socketpair(AF_UNIX, SOCK_DGRAM|SOCK_NONBLOCK, 0, fds))
 		exit_errno("socketpair");
 
-	fastd_setfl(fds[1], O_NONBLOCK);
+#ifdef NO_HAVE_SOCK_NONBLOCK
+	fastd_setnonblock(fds[0]);
+	fastd_setnonblock(fds[1]);
+#endif
 
 	ctx.async_rfd = fds[0];
 	ctx.async_wfd = fds[1];

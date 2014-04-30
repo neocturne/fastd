@@ -331,12 +331,12 @@ static inline int fastd_rand(int min, int max) {
 }
 
 
-static inline void fastd_setfl(const int fd, int set) {
+static inline void fastd_setnonblock(int fd) {
 	int flags = fcntl(fd, F_GETFL);
 	if (flags < 0)
 		exit_errno("Getting file status flags failed: fcntl");
 
-	if (fcntl(fd, F_SETFL, flags|set) < 0)
+	if (fcntl(fd, F_SETFL, flags|O_NONBLOCK) < 0)
 		exit_errno("Setting file status flags failed: fcntl");
 }
 

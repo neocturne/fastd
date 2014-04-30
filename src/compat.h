@@ -60,6 +60,13 @@ struct ethhdr {
 #define IP_FREEBIND 15
 #endif
 
+
+#ifndef SOCK_NONBLOCK
+#define NO_HAVE_SOCK_NONBLOCK
+#define SOCK_NONBLOCK 0
+#endif
+
+
 #ifndef HAVE_GET_CURRENT_DIR_NAME
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)

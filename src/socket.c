@@ -33,7 +33,7 @@ static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 	int af = AF_UNSPEC;
 
 	if (addr->addr.sa.sa_family != AF_INET) {
-		fd = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+		fd = socket(PF_INET6, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd >= 0) {
 			af = AF_INET6;
 
@@ -46,7 +46,7 @@ static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 		}
 	}
 	if (fd < 0 && addr->addr.sa.sa_family != AF_INET6) {
-		fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+		fd = socket(PF_INET, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd < 0)
 			exit_errno("unable to create socket");
 		else
@@ -56,7 +56,9 @@ static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 	if (fd < 0)
 		goto error;
 
-	fastd_setfl(fd, O_NONBLOCK);
+#ifdef NO_HAVE_SOCK_NONBLOCK
+	fastd_setnonblock(fd);
+#endif
 
 	int one = 1;
 
