@@ -91,7 +91,7 @@ static inline int handshake_timeout(void) {
 
 
 void fastd_poll_init(void) {
-	ctx.epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+	ctx.epoll_fd = epoll_create1(0);
 	if (ctx.epoll_fd < 0)
 		exit_errno("epoll_create1");
 

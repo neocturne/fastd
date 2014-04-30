@@ -331,15 +331,6 @@ static inline int fastd_rand(int min, int max) {
 }
 
 
-static inline void fastd_setfd(const int fd, int set) {
-	int flags = fcntl(fd, F_GETFD);
-	if (flags < 0)
-		exit_errno("Getting file descriptor flags failed: fcntl");
-
-	if (fcntl(fd, F_SETFD, flags|set) < 0)
-		exit_errno("Setting file descriptor flags failed: fcntl");
-}
-
 static inline void fastd_setfl(const int fd, int set) {
 	int flags = fcntl(fd, F_GETFL);
 	if (flags < 0)

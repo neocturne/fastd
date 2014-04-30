@@ -41,8 +41,6 @@ void fastd_async_init(void) {
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, fds))
 		exit_errno("socketpair");
 
-	fastd_setfd(fds[0], FD_CLOEXEC);
-	fastd_setfd(fds[1], FD_CLOEXEC);
 	fastd_setfl(fds[1], O_NONBLOCK);
 
 	ctx.async_rfd = fds[0];

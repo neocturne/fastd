@@ -510,7 +510,6 @@ static int daemonize(void) {
 		}
 		else {
 			/* child 2 */
-			fastd_setfd(pipefd[1], FD_CLOEXEC);
 			return pipefd[1];
 		}
 	}
@@ -524,7 +523,7 @@ static void notify_systemd(const char *notify_socket) {
 	if ((notify_socket[0] != '@' && notify_socket[0] != '/') || notify_socket[1] == 0)
 		return;
 
-	fd = socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0);
+	fd = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (fd < 0)
 		return;
 

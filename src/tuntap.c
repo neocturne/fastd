@@ -60,7 +60,7 @@ void fastd_tuntap_open(void) {
 
 	pr_debug("initializing tun/tap device...");
 
-	if ((ctx.tunfd = open("/dev/net/tun", O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+	if ((ctx.tunfd = open("/dev/net/tun", O_RDWR|O_NONBLOCK)) < 0)
 		exit_errno("could not open tun/tap device file");
 
 	if (conf.ifname)
@@ -184,7 +184,7 @@ void fastd_tuntap_open(void) {
 		strncat(ifname, type, IFNAMSIZ-1);
 	}
 
-	if ((ctx.tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
 		exit_errno("could not open tun/tap device file");
 
 	if (!(ctx.ifname = fdevname_r(ctx.tunfd, malloc(IFNAMSIZ), IFNAMSIZ)))
@@ -254,7 +254,7 @@ void fastd_tuntap_open(void) {
 
 	pr_debug("initializing tun device...");
 
-	if ((ctx.tunfd = open(ifname, O_RDWR|O_CLOEXEC|O_NONBLOCK)) < 0)
+	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
 		exit_errno("could not open tun device file");
 
 	ctx.ifname = strndup(conf.ifname, IFNAMSIZ-1);
