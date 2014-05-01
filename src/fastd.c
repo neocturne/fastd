@@ -120,49 +120,14 @@ static void init_signals(void) {
 
 }
 
-static void init_log(void) {
-	uid_t uid = geteuid();
-	gid_t gid = getegid();
-
-	if (conf.user || conf.group) {
-		if (setegid(conf.gid) < 0)
-			pr_debug_errno("setegid");
-		if (seteuid(conf.uid) < 0)
-			pr_debug_errno("seteuid");
-	}
-
+static inline void init_log(void) {
 	if (conf.log_syslog_level > LL_UNSPEC)
 		openlog(conf.log_syslog_ident, LOG_PID, LOG_DAEMON);
 
-	fastd_log_file_t *config;
-	for (config = conf.log_files; config; config = config->next) {
-		fastd_log_fd_t *file = malloc(sizeof(fastd_log_fd_t));
-
-		file->config = config;
-		file->fd = open(config->filename, O_WRONLY|O_APPEND|O_CREAT, 0600);
-
-		file->next = ctx.log_files;
-		ctx.log_files = file;
-	}
-
 	ctx.log_initialized = true;
-
-	if (seteuid(uid) < 0)
-		pr_debug_errno("seteuid");
-	if (setegid(gid) < 0)
-		pr_debug_errno("setegid");
 }
 
-static void close_log(void) {
-	while (ctx.log_files) {
-		fastd_log_fd_t *next = ctx.log_files->next;
-
-		close(ctx.log_files->fd);
-		free(ctx.log_files);
-
-		ctx.log_files = next;
-	}
-
+static inline void close_log(void) {
 	closelog();
 }
 
@@ -683,9 +648,6 @@ int main(int argc, char *argv[]) {
 			sighup = false;
 
 			pr_info("reconfigure triggered");
-
-			close_log();
-			init_log();
 
 			fastd_config_load_peer_dirs();
 			init_peers();

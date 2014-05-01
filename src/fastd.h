@@ -84,20 +84,6 @@ union fastd_peer_address {
 	struct sockaddr_in6 in6;
 };
 
-struct fastd_log_file {
-	fastd_log_file_t *next;
-
-	fastd_loglevel_t level;
-	char *filename;
-};
-
-struct fastd_log_fd {
-	fastd_log_fd_t *next;
-
-	fastd_log_file_t *config;
-	int fd;
-};
-
 struct fastd_bind_address {
 	fastd_bind_address_t *next;
 	fastd_peer_address_t addr;
@@ -145,7 +131,6 @@ struct fastd_config {
 	fastd_loglevel_t log_stderr_level;
 	fastd_loglevel_t log_syslog_level;
 	char *log_syslog_ident;
-	fastd_log_file_t *log_files;
 
 	unsigned maintenance_interval;
 	unsigned keepalive_timeout;
@@ -239,7 +224,6 @@ struct fastd_config {
 
 struct fastd_context {
 	bool log_initialized;
-	fastd_log_fd_t *log_files;
 
 	char *ifname;
 

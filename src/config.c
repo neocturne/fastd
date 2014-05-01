@@ -195,44 +195,6 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_config_t *group) {
 	return false;
 }
 
-void fastd_config_add_log_file(const char *name, fastd_loglevel_t level) {
-	char *name2 = strdup(name);
-	char *name3 = strdup(name);
-
-	char *dir = dirname(name2);
-	char *base = basename(name3);
-
-	char *oldcwd = get_current_dir_name();
-
-	if (!chdir(dir)) {
-		char *logdir = get_current_dir_name();
-
-		fastd_log_file_t *file = malloc(sizeof(fastd_log_file_t));
-		file->filename = malloc(strlen(logdir) + 1 + strlen(base) + 1);
-
-		strcpy(file->filename, logdir);
-		strcat(file->filename, "/");
-		strcat(file->filename, base);
-
-		file->level = level;
-
-		file->next = conf.log_files;
-		conf.log_files = file;
-
-		if(chdir(oldcwd))
-			pr_error("can't chdir to `%s': %s", oldcwd, strerror(errno));
-
-		free(logdir);
-	}
-	else {
-		pr_error("change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
-	}
-
-	free(oldcwd);
-	free(name2);
-	free(name3);
-}
-
 static void read_peer_dir(const char *dir) {
 	DIR *dirh = opendir(".");
 
@@ -533,7 +495,7 @@ void fastd_configure(int argc, char *const argv[]) {
 
 	fastd_config_handle_options(argc, argv);
 
-	if (!conf.log_stderr_level && !conf.log_syslog_level && !conf.log_files)
+	if (!conf.log_stderr_level && !conf.log_syslog_level)
 		conf.log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
 }
 
@@ -678,13 +640,6 @@ void fastd_config_load_peer_dirs(void) {
 void fastd_config_release(void) {
 	while (conf.peers)
 		fastd_peer_config_delete();
-
-	while (conf.log_files) {
-		fastd_log_file_t *next = conf.log_files->next;
-		free(conf.log_files->filename);
-		free(conf.log_files);
-		conf.log_files = next;
-	}
 
 	while (conf.bind_addrs) {
 		fastd_bind_address_t *next = conf.bind_addrs->next;

@@ -239,7 +239,7 @@ void fastd_logf(fastd_loglevel_t level, const char *format, ...) {
 
 	buffer[sizeof(buffer)-1] = 0;
 
-	if (!ctx.log_initialized || level <= conf.log_stderr_level || conf.log_files) {
+	if (!ctx.log_initialized || level <= conf.log_stderr_level) {
 		time_t t;
 		struct tm tm;
 
@@ -256,11 +256,5 @@ void fastd_logf(fastd_loglevel_t level, const char *format, ...) {
 	if (ctx.log_initialized) {
 		if (level <= conf.log_syslog_level)
 			syslog(get_syslog_level(level), "%s", buffer);
-
-		fastd_log_fd_t *file;
-		for (file = ctx.log_files; file; file = file->next) {
-			if (level <= file->config->level)
-				dprintf(file->fd, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
-		}
 	}
 }

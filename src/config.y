@@ -248,7 +248,10 @@ mac:		TOK_STRING TOK_USE TOK_STRING {
 		}
 
 log:		TOK_LEVEL log_level {
-			conf.log_stderr_level = $2;
+			if (conf.log_syslog_level)
+				conf.log_syslog_level = $2;
+			if (conf.log_stderr_level || !conf.log_syslog_level)
+				conf.log_stderr_level = $2;
 		}
 	|	TOK_TO TOK_STDERR maybe_log_level {
 			conf.log_stderr_level = $3;
@@ -261,9 +264,6 @@ log:		TOK_LEVEL log_level {
 			conf.log_syslog_ident = strdup($4->str);
 
 			conf.log_syslog_level = $5;
-		}
-	|	TOK_TO TOK_STRING maybe_log_level {
-			fastd_config_add_log_file($2->str, $3);
 		}
 	;
 
