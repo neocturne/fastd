@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=notify
-ExecStart=/usr/bin/fastd -c /etc/fastd/%i/fastd.conf
+ExecStart=/usr/bin/fastd --syslog-level info --syslog-ident fastd@%i -c /etc/fastd/%i/fastd.conf
 ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
