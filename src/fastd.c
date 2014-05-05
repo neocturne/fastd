@@ -52,7 +52,7 @@
 #include <openssl/err.h>
 #endif
 
-#ifdef USE_SYSTEMD
+#ifdef ENABLE_SYSTEMD
 #include <sys/un.h>
 #endif
 
@@ -480,7 +480,7 @@ static int daemonize(void) {
 	}
 }
 
-#ifdef USE_SYSTEMD
+#ifdef ENABLE_SYSTEMD
 static void notify_systemd(const char *notify_socket) {
 	int fd;
 	struct sockaddr_un sa = {};
@@ -515,7 +515,7 @@ int main(int argc, char *argv[]) {
 	memset(&ctx, 0, sizeof(ctx));
 	int status_fd = -1;
 
-#ifdef USE_SYSTEMD
+#ifdef ENABLE_SYSTEMD
 	char *notify_socket = getenv("NOTIFY_SOCKET");
 
 	if (notify_socket) {
@@ -599,7 +599,7 @@ int main(int argc, char *argv[]) {
 
 	write_pid(getpid());
 
-#ifdef USE_SYSTEMD
+#ifdef ENABLE_SYSTEMD
 	if (notify_socket) {
 		notify_systemd(notify_socket);
 		free(notify_socket);
