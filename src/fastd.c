@@ -159,52 +159,6 @@ static void close_sockets(void) {
 	free(ctx.socks);
 }
 
-static inline void handle_forward(fastd_peer_t *source_peer, fastd_buffer_t buffer) {
-	fastd_eth_addr_t dest_addr = fastd_get_dest_address(buffer);
-
-	if (fastd_eth_addr_is_unicast(dest_addr)) {
-		fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(dest_addr);
-
-		if (dest_peer) {
-			if (dest_peer != source_peer)
-				conf.protocol->send(dest_peer, buffer);
-			else
-				fastd_buffer_free(buffer);
-
-			return;
-		}
-	}
-
-	fastd_send_all(source_peer, buffer);
-}
-
-void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
-	if (conf.mode == MODE_TAP) {
-		if (buffer.len < ETH_HLEN) {
-			pr_debug("received truncated packet");
-			fastd_buffer_free(buffer);
-			return;
-		}
-
-		fastd_eth_addr_t src_addr = fastd_get_source_address(buffer);
-
-		if (fastd_eth_addr_is_unicast(src_addr))
-			fastd_peer_eth_addr_add(peer, src_addr);
-	}
-
-	ctx.rx.packets++;
-	ctx.rx.bytes += buffer.len;
-
-	fastd_tuntap_write(buffer);
-
-	if (conf.mode == MODE_TAP && conf.forward) {
-		handle_forward(peer, buffer);
-		return;
-	}
-
-	fastd_buffer_free(buffer);
-}
-
 static inline void on_pre_up(void) {
 	fastd_shell_command_exec(&conf.on_pre_up, NULL);
 }
