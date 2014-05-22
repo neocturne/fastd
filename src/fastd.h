@@ -376,7 +376,7 @@ static inline fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffe
 }
 
 static inline size_t fastd_max_outer_packet(void) {
-	return PACKET_TYPE_LEN + fastd_max_inner_packet() + conf.max_overhead;
+	return 1 + fastd_max_inner_packet() + conf.max_overhead;
 }
 
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
