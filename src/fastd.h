@@ -97,26 +97,6 @@ struct fastd_socket {
 	fastd_peer_t *peer;
 };
 
-struct fastd_peer_group_config {
-	fastd_peer_group_config_t *next;
-	fastd_peer_group_config_t *parent;
-	fastd_peer_group_config_t *children;
-
-	char *name;
-	fastd_string_stack_t *peer_dirs;
-
-	/* constraints */
-	int max_connections;
-};
-
-struct fastd_peer_group {
-	fastd_peer_group_t *next;
-	fastd_peer_group_t *parent;
-	fastd_peer_group_t *children;
-
-	const fastd_peer_group_config_t *conf;
-};
-
 struct fastd_stats {
 	uint64_t packets;
 	uint64_t bytes;

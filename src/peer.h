@@ -89,6 +89,26 @@ struct fastd_peer_config {
 	fastd_protocol_peer_config_t *protocol_config;
 };
 
+struct fastd_peer_group {
+	fastd_peer_group_t *next;
+	fastd_peer_group_t *parent;
+	fastd_peer_group_t *children;
+
+	const fastd_peer_group_config_t *conf;
+};
+
+struct fastd_peer_group_config {
+	fastd_peer_group_config_t *next;
+	fastd_peer_group_config_t *parent;
+	fastd_peer_group_config_t *children;
+
+	char *name;
+	fastd_string_stack_t *peer_dirs;
+
+	/* constraints */
+	int max_connections;
+};
+
 struct fastd_peer_eth_addr {
 	fastd_eth_addr_t addr;
 	fastd_peer_t *peer;
