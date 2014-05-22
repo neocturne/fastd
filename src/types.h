@@ -68,13 +68,6 @@ typedef enum fastd_drop_caps {
 	DROP_CAPS_EARLY,
 } fastd_drop_caps_t;
 
-typedef enum fastd_peer_state {
-	STATE_INIT = 0,
-	STATE_RESOLVING,
-	STATE_HANDSHAKE,
-	STATE_ESTABLISHED,
-} fastd_peer_state_t;
-
 typedef enum fastd_loglevel {
 	LL_UNSPEC = 0,
 	LL_FATAL,

@@ -29,6 +29,13 @@
 #include "fastd.h"
 
 
+typedef enum fastd_peer_state {
+	STATE_INIT = 0,
+	STATE_RESOLVING,
+	STATE_HANDSHAKE,
+	STATE_ESTABLISHED,
+} fastd_peer_state_t;
+
 struct fastd_peer {
 	uint64_t id;
 
