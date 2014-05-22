@@ -84,7 +84,7 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 		bool ret = do_verify(env);
 		fastd_shell_env_free(env);
 		fastd_peer_set_verified(peer, ret);
-		return (fastd_tristate_t){.set = true, .state = ret};
+		return ret ? fastd_tristate_true : fastd_tristate_false;
 	}
 	else {
 		verify_arg_t *arg = calloc(1, sizeof(verify_arg_t) + data_len);
@@ -106,11 +106,11 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 			fastd_shell_env_free(env);
 			free(arg);
 
-			return (fastd_tristate_t){.set = true, .state = false};
+			return fastd_tristate_false;
 		}
 
 		pthread_detach(thread);
-		return (fastd_tristate_t){.set = false};
+		return fastd_tristate_undef;
 	}
 }
 
