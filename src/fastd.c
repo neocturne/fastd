@@ -27,8 +27,6 @@
 #include "fastd.h"
 #include "async.h"
 #include "config.h"
-#include "crypto.h"
-#include "handshake.h"
 #include "peer.h"
 #include "peer_hashtable.h"
 #include "poll.h"
@@ -37,7 +35,6 @@
 #include <grp.h>
 #include <pthread.h>
 #include <signal.h>
-#include <string.h>
 #include <syslog.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
@@ -534,7 +531,7 @@ int main(int argc, char *argv[]) {
 
 	fastd_cap_init();
 
-	/* change groups early as the can be relevant for file access (for PID file & log files) */
+	/* change groups early as the can be relevant for file access (for the PID file) */
 	set_groups();
 
 	init_sockets();
