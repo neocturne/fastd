@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file fastd.h
+
+   \em fastd main header file defining most data structures
+ */
+
 
 #pragma once
 
@@ -46,10 +52,17 @@
 #include <sys/uio.h>
 
 
+/** An ethernet address */
 struct __attribute__((__packed__)) fastd_eth_addr {
-	uint8_t data[ETH_ALEN];
+	uint8_t data[ETH_ALEN];		/**< The bytes of the address */
 };
 
+
+/**
+   A structure describing callbacks that define a handshake protocol
+
+   Currently, only one such protocol, \em ec25519-fhmqvc, is defined.
+*/
 struct fastd_protocol {
 	const char *name;
 
@@ -78,18 +91,21 @@ struct fastd_protocol {
 	bool (*describe_peer)(const fastd_peer_t *peer, char *buf, size_t len);
 };
 
+/** An union storing an IPv4 or IPv6 address */
 union fastd_peer_address {
 	struct sockaddr sa;
 	struct sockaddr_in in;
 	struct sockaddr_in6 in6;
 };
 
+/** A linked list of addresses to bind to */
 struct fastd_bind_address {
 	fastd_bind_address_t *next;
 	fastd_peer_address_t addr;
 	char *bindtodev;
 };
 
+/** A socket descriptor */
 struct fastd_socket {
 	int fd;
 	const fastd_bind_address_t *addr;
@@ -97,16 +113,19 @@ struct fastd_socket {
 	fastd_peer_t *peer;
 };
 
+/** Some kind of network transfer stratistics */
 struct fastd_stats {
 	uint64_t packets;
 	uint64_t bytes;
 };
 
+/** A data structure keeping track of an unknown addresses that a handshakes was received from recently */
 struct fastd_handshake_timeout {
 	fastd_peer_address_t address;
 	struct timespec timeout;
 };
 
+/** The static configuration of \em fastd */
 struct fastd_config {
 	fastd_loglevel_t log_stderr_level;
 	fastd_loglevel_t log_syslog_level;
@@ -202,6 +221,7 @@ struct fastd_config {
 	bool verify_config;
 };
 
+/** The dynamic state of \em fastd */
 struct fastd_context {
 	bool log_initialized;
 
@@ -253,14 +273,15 @@ struct fastd_context {
 	fastd_protocol_state_t *protocol_state;
 };
 
+/** A stack of strings */
 struct fastd_string_stack {
 	fastd_string_stack_t *next;
 	char str[];
 };
 
 
-extern fastd_context_t ctx;
-extern fastd_config_t conf;
+extern fastd_context_t ctx;	/**< The global context */
+extern fastd_config_t conf;	/**< The global configuration */
 
 
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
@@ -289,12 +310,13 @@ void fastd_cap_drop(void);
 
 void fastd_random_bytes(void *buffer, size_t len, bool secure);
 
+/** Returns a random number between \a min (inclusively) and \a max (exclusively) */
 static inline int fastd_rand(int min, int max) {
 	unsigned int r = (unsigned int)rand_r(&ctx.randseed);
 	return (r%(max-min) + min);
 }
 
-
+/** Sets the O_NONBLOCK flag on a file descriptor */
 static inline void fastd_setnonblock(int fd) {
 	int flags = fcntl(fd, F_GETFL);
 	if (flags < 0)
@@ -305,22 +327,38 @@ static inline void fastd_setnonblock(int fd) {
 }
 
 
+/**
+   Returns a pointer to a data structure, given the address of a member contained in the structure
+
+   \hideinitializer
+ */
 #define container_of(ptr, type, member) ({				\
 			const __typeof__(((type *)0)->member) *_mptr = (ptr); \
 			(type*)((char*)_mptr - offsetof(type, member)); \
 		})
 
+/**
+   Returns the number of elements of an array
+
+   \hideinitializer
+ */
 #define array_size(array) (sizeof(array)/sizeof((array)[0]))
 
+/**
+   Determines how many blocks of a given size \a a are needed to contain some length \a l
+ */
 static inline size_t block_count(size_t l, size_t a) {
 	return (l+a-1)/a;
 }
 
+/**
+   Rounds up a length \a l to the next multiple of a block size \a a
+ */
 static inline size_t alignto(size_t l, size_t a) {
 	return block_count(l, a)*a;
 }
 
-
+/** Returns the maximum payload size \em fastd is configured to transport */
 static inline size_t fastd_max_inner_packet(void) {
 	switch (conf.mode) {
 	case MODE_TAP:
@@ -332,6 +370,7 @@ static inline size_t fastd_max_inner_packet(void) {
 	}
 }
 
+/** Returns the source address of an ethernet packet */
 static inline fastd_eth_addr_t fastd_get_source_address(const fastd_buffer_t buffer) {
 	fastd_eth_addr_t ret;
 
@@ -344,6 +383,7 @@ static inline fastd_eth_addr_t fastd_get_source_address(const fastd_buffer_t buf
 	}
 }
 
+/** Returns the destination address of an ethernet packet */
 static inline fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffer) {
 	fastd_eth_addr_t ret;
 	switch (conf.mode) {
@@ -355,14 +395,17 @@ static inline fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffe
 	}
 }
 
+/** Returns the packet size (payload + overhead) \em fastd is configured to transport */
 static inline size_t fastd_max_outer_packet(void) {
 	return 1 + fastd_max_inner_packet() + conf.max_overhead;
 }
 
+/** Checks if a fastd_peer_address is an IPv6 link-local address */
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
 	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));
 }
 
+/** Duplicates a string, creating a one-element string stack */
 static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
 	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = NULL;
@@ -371,6 +414,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
 	return ret;
 }
 
+/** Duplicates a string of a given maximum length, creating a one-element string stack */
 static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, size_t len) {
 	size_t str_len = strnlen(str, len);
 	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
@@ -381,6 +425,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, siz
 	return ret;
 }
 
+/** Pushes the copy of a string onto the top of a string stack */
 static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
 	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = stack;
@@ -389,6 +434,7 @@ static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t
 	return ret;
 }
 
+/** Frees a whole string stack */
 static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 	while (str) {
 		fastd_string_stack_t *next = str->next;
@@ -397,30 +443,39 @@ static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 	}
 }
 
+/** Compares two timespecs and returns \em true if \p tp1 is after \p tp2 */
 static inline bool timespec_after(const struct timespec *tp1, const struct timespec *tp2) {
 	return (tp1->tv_sec > tp2->tv_sec ||
 		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
 }
 
-/* returns (tp1 - tp2) in milliseconds  */
+/** Returns (\a tp1 - \a tp2) in milliseconds  */
 static inline int timespec_diff(const struct timespec *tp1, const struct timespec *tp2) {
 	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
 }
 
+/**
+   Returns true if the given timespec is before or equal to the current time
+
+   \note The current time is updated only once per main loop iteration, after waiting for input.
+*/
 static inline bool fastd_timed_out(const struct timespec *timeout) {
 	return !timespec_after(timeout, &ctx.now);
 }
 
+/** Returns a timespec that lies a given number of seconds in the future */
 static inline struct timespec fastd_in_seconds(const int seconds) {
 	struct timespec ret = ctx.now;
 	ret.tv_sec += seconds;
 	return ret;
 }
 
+/** Updates the current time */
 static inline void fastd_update_time(void) {
 	clock_gettime(CLOCK_MONOTONIC, &ctx.now);
 }
 
+/** Checks if a on-verify command is set */
 static inline bool fastd_allow_verify(void) {
 #ifdef WITH_VERIFY
 	return fastd_shell_command_isset(&conf.on_verify);
@@ -429,6 +484,11 @@ static inline bool fastd_allow_verify(void) {
 #endif
 }
 
+/**
+   Checks if two strings are equal
+
+   The strings may be NULL.
+*/
 static inline bool strequal(const char *str1, const char *str2) {
 	if (str1 && str2)
 		return (!strcmp(str1, str2));
@@ -436,10 +496,12 @@ static inline bool strequal(const char *str1, const char *str2) {
 		return (str1 == str2);
 }
 
+/** Returns the maximum of two size_t values */
 static inline size_t max_size_t(size_t a, size_t b) {
 	return (a > b) ? a : b;
 }
 
+/** Returns the minimum of two size_t values */
 static inline size_t min_size_t(size_t a, size_t b) {
 	return (a < b) ? a : b;
 }

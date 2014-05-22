@@ -23,6 +23,11 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file resolve.c
+
+   DNS resolver functions
+ */
 
 #include "fastd.h"
 #include "peer.h"
@@ -32,14 +37,16 @@
 #include <pthread.h>
 
 
+/** The argument given to the resolver thread */
 typedef struct resolv_arg {
-	uint64_t peer_id;
-	size_t remote;
-	char *hostname;
-	fastd_peer_address_t constraints;
+	uint64_t peer_id;	/**< The ID of the peer the remote being resolved belongs to */
+	size_t remote;		/**< The number of the remote to resolve */
+	char *hostname;		/**< The hostname to resolve */
+	fastd_peer_address_t constraints; /**< Contains address family and port of the remote entry to resolve */
 } resolv_arg_t;
 
 
+/** The resolver thread main routine */
 static void* resolve_peer(void *varg) {
 	resolv_arg_t *arg = varg;
 
@@ -105,6 +112,7 @@ static void* resolve_peer(void *varg) {
 	return NULL;
 }
 
+/** Starts to resolve a given dynamic remote of a peer to an IP address asynchronously */
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 	if (!peer->config)
 		exit_bug("trying to resolve temporary peer");
