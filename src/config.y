@@ -277,7 +277,7 @@ hide:		TOK_IP TOK_ADDRESSES boolean {
 
 maybe_log_level:
 		TOK_LEVEL log_level	{ $$ = $2; }
-	|				{ $$ = FASTD_DEFAULT_LOG_LEVEL; }
+	|				{ $$ = LL_DEFAULT; }
 	;
 
 log_level:	TOK_FATAL	{ $$ = LL_FATAL; }

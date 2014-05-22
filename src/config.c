@@ -496,7 +496,7 @@ void fastd_configure(int argc, char *const argv[]) {
 	fastd_config_handle_options(argc, argv);
 
 	if (!conf.log_stderr_level && !conf.log_syslog_level)
-		conf.log_stderr_level = FASTD_DEFAULT_LOG_LEVEL;
+		conf.log_stderr_level = LL_DEFAULT;
 }
 
 static void config_check_base(void) {

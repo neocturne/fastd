@@ -32,7 +32,17 @@
 #include <string.h>
 
 
-#define FASTD_DEFAULT_LOG_LEVEL LL_VERBOSE
+typedef enum fastd_loglevel {
+	LL_UNSPEC = 0,
+	LL_FATAL,
+	LL_ERROR,
+	LL_WARN,
+	LL_INFO,
+	LL_VERBOSE,
+	LL_DEBUG,
+	LL_DEBUG2,
+	LL_DEFAULT = LL_VERBOSE,
+} fastd_loglevel_t;
 
 
 void fastd_logf(const fastd_loglevel_t level, const char *format, ...);
