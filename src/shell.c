@@ -145,8 +145,10 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 	pthread_sigmask(SIG_BLOCK, &set, &oldset);
 
 	pid_t pid;
-	if (!shell_command_do_exec(command, env, &pid))
+	if (!shell_command_do_exec(command, env, &pid)) {
+		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 		return false;
+	}
 
 	int status;
 	pid_t err = waitpid(pid, &status, 0);
