@@ -330,6 +330,10 @@ static inline void fastd_setnonblock(int fd) {
 /**
    Returns a pointer to a data structure, given the address of a member contained in the structure
 
+   @param ptr		the address of the member
+   @param type		the type of the container
+   @param member	the name of the member
+
    \hideinitializer
  */
 #define container_of(ptr, type, member) ({				\
