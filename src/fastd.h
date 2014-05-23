@@ -246,6 +246,7 @@ struct fastd_context {
 	fastd_dlist_head_t handshake_queue;
 	struct timespec next_maintenance;
 
+	VECTOR(pid_t) async_pids;
 	int async_rfd;
 	int async_wfd;
 

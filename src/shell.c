@@ -103,18 +103,15 @@ static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
 	}
 }
 
-static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env, pid_t *pid_ret) {
+static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env, pid_t *pid) {
 	pid_t parent = getpid();
 
-	pid_t pid = fork();
-	if (pid < 0) {
+	*pid = fork();
+	if (*pid < 0) {
 		pr_error_errno("shell_command_do_exec: fork");
 		return false;
 	}
-	else if (pid > 0) {
-		if (pid_ret)
-			*pid_ret = pid;
-
+	else if (*pid > 0) {
 		return true;
 	}
 
@@ -174,6 +171,19 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 	return true;
 }
 
+static void shell_command_exec_async(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
+	/* block SIGCHLD */
+	sigset_t set, oldset;
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	pthread_sigmask(SIG_BLOCK, &set, &oldset);
+
+	pid_t pid;
+	if (shell_command_do_exec(command, env, &pid))
+		VECTOR_ADD(ctx.async_pids, pid);
+
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+}
 
 void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
 	if (!fastd_shell_command_isset(command))
@@ -182,5 +192,5 @@ void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_
 	if (command->sync)
 		fastd_shell_command_exec_sync(command, env, NULL);
 	else
-		shell_command_do_exec(command, env, NULL);
+		shell_command_exec_async(command, env);
 }

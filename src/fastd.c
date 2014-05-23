@@ -75,7 +75,24 @@ static void on_sigusr1(int signo UNUSED) {
 }
 
 static void on_sigchld(int signo UNUSED) {
-	while (waitpid(-1, NULL, WNOHANG) > 0) {}
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx.async_pids);) {
+		pid_t pid = VECTOR_INDEX(ctx.async_pids, i);
+		if (waitpid(pid, NULL, WNOHANG) > 0) {
+			pr_debug("child process %u finished", (unsigned)pid);
+		}
+		else {
+			if (errno == ECHILD) {
+				i++;
+				continue;
+			}
+			else {
+				pr_error_errno("waitpid");
+			}
+		}
+
+		VECTOR_DELETE(ctx.async_pids, i);
+	}
 }
 
 static void init_signals(void) {
@@ -579,6 +596,7 @@ int main(int argc, char *argv[]) {
 
 	VECTOR_ALLOC(ctx.eth_addrs, 0);
 	VECTOR_ALLOC(ctx.peers, 0);
+	VECTOR_ALLOC(ctx.async_pids, 0);
 
 	fastd_peer_hashtable_init();
 
@@ -625,6 +643,7 @@ int main(int argc, char *argv[]) {
 
 	fastd_peer_hashtable_free();
 
+	VECTOR_FREE(ctx.async_pids);
 	VECTOR_FREE(ctx.peers);
 	VECTOR_FREE(ctx.eth_addrs);
 
