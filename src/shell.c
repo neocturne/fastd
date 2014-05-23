@@ -29,7 +29,6 @@
 
 #include <net/if.h>
 #include <sys/wait.h>
-#include <pthread.h>
 
 
 typedef struct shell_env_entry {
@@ -104,15 +103,18 @@ static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
 	}
 }
 
-static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env, pid_t *pid) {
+static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env, pid_t *pid_ret) {
 	pid_t parent = getpid();
 
-	*pid = fork();
-	if (*pid < 0) {
+	pid_t pid = fork();
+	if (pid < 0) {
 		pr_error_errno("shell_command_do_exec: fork");
 		return false;
 	}
-	else if (*pid > 0) {
+	else if (pid > 0) {
+		if (pid_ret)
+			*pid_ret = pid;
+
 		return true;
 	}
 
@@ -125,6 +127,12 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 
 	shell_command_setenv(parent, env);
 
+	/* unblock SIGCHLD */
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	pthread_sigmask(SIG_UNBLOCK, &set, NULL);
+
 	execl("/bin/sh", "sh", "-c", command->command, (char*)NULL);
 	_exit(127);
 }
@@ -133,12 +141,20 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 	if (!fastd_shell_command_isset(command))
 		return true;
 
+	/* block SIGCHLD */
+	sigset_t set, oldset;
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	pthread_sigmask(SIG_BLOCK, &set, &oldset);
+
 	pid_t pid;
 	if (!shell_command_do_exec(command, env, &pid))
 		return false;
 
 	int status;
 	pid_t err = waitpid(pid, &status, 0);
+
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
 	if (err <= 0) {
 		pr_error_errno("fastd_shell_command_exec_sync: waitpid");
@@ -158,35 +174,6 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 	return true;
 }
 
-static void * reap_child(void *arg) {
-	pid_t *pid = arg;
-
-	pid_t err = waitpid(*pid, NULL, 0);
-
-	pr_debug("child process %u finished", (unsigned)*pid);
-
-	if (err <= 0)
-		pr_error_errno("reap_child: waitpid");
-
-	free(pid);
-
-	return NULL;
-}
-
-static void shell_command_exec_async(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
-	pid_t *pid = malloc(sizeof(*pid));
-	if (!shell_command_do_exec(command, env, pid))
-		return;
-
-	pthread_t thread;
-	if ((errno = pthread_create(&thread, NULL, reap_child, pid)) != 0) {
-		pr_error_errno("unable to create reaper thread");
-		free(pid);
-		return;
-	}
-
-	pthread_detach(thread);
-}
 
 void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
 	if (!fastd_shell_command_isset(command))
@@ -195,5 +182,5 @@ void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_
 	if (command->sync)
 		fastd_shell_command_exec_sync(command, env, NULL);
 	else
-		shell_command_exec_async(command, env);
+		shell_command_do_exec(command, env, NULL);
 }
