@@ -159,26 +159,12 @@ struct fastd_handshake_timeout {
 	struct timespec timeout;		/**< Timeout until handshakes from this address are ignored */
 };
 
+
 /** The static configuration of \em fastd */
 struct fastd_config {
 	fastd_loglevel_t log_stderr_level;	/**< The minimum loglevel of messages to print to stderr (or -1 to not print any messages on stderr) */
 	fastd_loglevel_t log_syslog_level;	/**< The minimum loglevel of messages to print to syslog (or -1 to not print any messages on syslog) */
 	char *log_syslog_ident;			/**< The identification string for messages sent to syslog (default: "fastd") */
-
-	unsigned maintenance_interval;
-	unsigned keepalive_timeout;
-	unsigned peer_stale_time;
-	unsigned eth_addr_stale_time;
-
-	unsigned reorder_time;
-
-	unsigned min_handshake_interval;
-	unsigned min_resolve_interval;
-
-#ifdef WITH_VERIFY
-	unsigned min_verify_interval;
-	unsigned verify_valid_time;
-#endif
 
 	char *ifname;
 
@@ -217,10 +203,6 @@ struct fastd_config {
 	size_t min_decrypt_tail_space;
 
 	char *secret;
-	unsigned key_valid;
-	unsigned key_valid_old;
-	unsigned key_refresh;
-	unsigned key_refresh_splay;
 
 	const fastd_cipher_t **ciphers;
 	const fastd_mac_t **macs;

@@ -99,7 +99,7 @@ static bool backoff_unknown(const fastd_peer_address_t *addr) {
 	fastd_handshake_timeout_t *t = &ctx.unknown_handshakes[ctx.unknown_handshake_pos];
 
 	t->address = *addr;
-	t->timeout = fastd_in_seconds(conf.min_handshake_interval);
+	t->timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
 
 	return false;
 }

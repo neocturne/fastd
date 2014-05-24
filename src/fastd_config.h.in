@@ -53,3 +53,22 @@
 #cmakedefine ENABLE_SYSTEMD
 
 #define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
+
+
+#define MAINTENANCE_INTERVAL 10
+#define KEEPALIVE_TIMEOUT 15
+#define PEER_STALE_TIME 90
+#define ETH_ADDR_STALE_TIME 300
+
+#define REORDER_TIME 10
+
+#define MIN_VERIFY_INTERVAL 10
+#define VERIFY_VALID_TIME 60	/* 1 minute */
+
+#define MIN_HANDSHAKE_INTERVAL 15
+#define MIN_RESOLVE_INTERVAL 15
+
+#define KEY_VALID 3600		/* 60 minutes */
+#define KEY_VALID_OLD 60	/* 1 minute */
+#define KEY_REFRESH 3300	/* 55 minutes */
+#define KEY_REFRESH_SPLAY 300	/* 5 minutes */

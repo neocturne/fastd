@@ -182,12 +182,12 @@ static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 
 #ifdef WITH_VERIFY
 static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
-	peer->verify_timeout = fastd_in_seconds(conf.min_verify_interval);
+	peer->verify_timeout = fastd_in_seconds(MIN_VERIFY_INTERVAL);
 }
 
 static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 	if (ok)
-		peer->verify_valid_timeout = fastd_in_seconds(conf.verify_valid_time);
+		peer->verify_valid_timeout = fastd_in_seconds(VERIFY_VALID_TIME);
 	else
 		peer->verify_valid_timeout = ctx.now;
 }
@@ -233,7 +233,7 @@ static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {
 }
 
 static inline void fastd_peer_seen(fastd_peer_t *peer) {
-	peer->timeout = fastd_in_seconds(conf.peer_stale_time);
+	peer->timeout = fastd_in_seconds(PEER_STALE_TIME);
 }
 
 static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {

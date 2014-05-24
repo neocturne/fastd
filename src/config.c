@@ -54,16 +54,6 @@ static void default_config(void) {
 
 	conf.log_syslog_ident = strdup("fastd");
 
-	conf.maintenance_interval = 10;
-	conf.keepalive_timeout = 15;
-	conf.peer_stale_time = 90;
-	conf.eth_addr_stale_time = 300;
-
-	conf.reorder_time = 10;
-
-	conf.min_handshake_interval = 15;
-	conf.min_resolve_interval = 15;
-
 	conf.mtu = 1500;
 	conf.mode = MODE_TAP;
 
@@ -71,15 +61,6 @@ static void default_config(void) {
 	conf.drop_caps = DROP_CAPS_ON;
 
 	conf.protocol = &fastd_protocol_ec25519_fhmqvc;
-	conf.key_valid = 3600;		/* 60 minutes */
-	conf.key_valid_old = 60;	/* 1 minute */
-	conf.key_refresh = 3300;	/* 55 minutes */
-	conf.key_refresh_splay = 300;	/* 5 minutes */
-
-#ifdef WITH_VERIFY
-	conf.min_verify_interval = 10;
-	conf.verify_valid_time = 60;	/* 1 minute */
-#endif
 
 	conf.peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
 	conf.peer_group->name = strdup("default");

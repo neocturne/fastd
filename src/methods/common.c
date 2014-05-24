@@ -30,8 +30,8 @@
 void fastd_method_common_init(fastd_method_common_t *session, bool initiator) {
 	memset(session, 0, sizeof(*session));
 
-	session->valid_till = fastd_in_seconds(conf.key_valid);
-	session->refresh_after = fastd_in_seconds(conf.key_refresh - fastd_rand(0, conf.key_refresh_splay));
+	session->valid_till = fastd_in_seconds(KEY_VALID);
+	session->refresh_after = fastd_in_seconds(KEY_REFRESH - fastd_rand(0, KEY_REFRESH_SPLAY));
 
 	if (initiator) {
 		session->send_nonce[COMMON_NONCEBYTES-1] = 3;
@@ -79,7 +79,7 @@ bool fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *sessi
 		session->receive_reorder_seen |= (1 << (shift-1));
 
 		memcpy(session->receive_nonce, nonce, COMMON_NONCEBYTES);
-		session->reorder_timeout = fastd_in_seconds(conf.reorder_time);
+		session->reorder_timeout = fastd_in_seconds(REORDER_TIME);
 		return true;
 	}
 	else if (age == 0 || session->receive_reorder_seen & (1 << (age-1))) {

@@ -736,7 +736,7 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 	}
 
 	pr_debug("sending handshake to %P[%I]...", peer, &peer->address);
-	peer->last_handshake_timeout = fastd_in_seconds(conf.min_handshake_interval);
+	peer->last_handshake_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
 	peer->last_handshake_address = peer->address;
 	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);
 }
@@ -841,7 +841,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 
 		if (cmp == 0) {
 			VECTOR_INDEX(ctx.eth_addrs, cur).peer = peer;
-			VECTOR_INDEX(ctx.eth_addrs, cur).timeout = fastd_in_seconds(conf.eth_addr_stale_time);
+			VECTOR_INDEX(ctx.eth_addrs, cur).timeout = fastd_in_seconds(ETH_ADDR_STALE_TIME);
 			return; /* We're done here. */
 		}
 		else if (cmp < 0) {
@@ -852,7 +852,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 		}
 	}
 
-	VECTOR_INSERT(ctx.eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, fastd_in_seconds(conf.eth_addr_stale_time)}), min);
+	VECTOR_INSERT(ctx.eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, fastd_in_seconds(ETH_ADDR_STALE_TIME)}), min);
 
 	pr_debug("learned new MAC address %E on peer %P", &addr, peer);
 }
@@ -906,7 +906,7 @@ static void eth_addr_cleanup(void) {
 		if (fastd_timed_out(&VECTOR_INDEX(ctx.eth_addrs, i).timeout)) {
 			deleted++;
 			pr_debug("MAC address %E not seen for more than %u seconds, removing",
-				 &VECTOR_INDEX(ctx.eth_addrs, i).addr, conf.eth_addr_stale_time);
+				 &VECTOR_INDEX(ctx.eth_addrs, i).addr, ETH_ADDR_STALE_TIME);
 		}
 		else if (deleted) {
 			VECTOR_INDEX(ctx.eth_addrs, i-deleted) = VECTOR_INDEX(ctx.eth_addrs, i);

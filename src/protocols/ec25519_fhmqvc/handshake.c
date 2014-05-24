@@ -148,7 +148,7 @@ static bool establish(fastd_peer_t *peer, const fastd_method_info_t *method, fas
 		return false;
 	}
 
-	peer->establish_handshake_timeout = fastd_in_seconds(conf.min_handshake_interval);
+	peer->establish_handshake_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
 	fastd_peer_seen(peer);
 	fastd_peer_set_established(peer);
 
@@ -571,7 +571,7 @@ void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fast
 
 	const verify_data_t *data = protocol_data;
 
-	peer->last_handshake_response_timeout = fastd_in_seconds(conf.min_handshake_interval);
+	peer->last_handshake_response_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
 	peer->last_handshake_response_address = *remote_addr;
 	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, method);
 }
@@ -655,7 +655,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 
 		pr_verbose("received handshake from %P[%I]%s%s", peer, remote_addr, handshake->peer_version ? " using fastd " : "", handshake->peer_version ?: "");
 
-		peer->last_handshake_response_timeout = fastd_in_seconds(conf.min_handshake_interval);
+		peer->last_handshake_response_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
 		peer->last_handshake_response_address = *remote_addr;
 		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key, method);
 		return;

@@ -307,7 +307,7 @@ static inline void maintenance(void) {
 	fastd_socket_handle_binds();
 	fastd_peer_maintenance();
 
-	ctx.next_maintenance.tv_sec += conf.maintenance_interval;
+	ctx.next_maintenance.tv_sec += MAINTENANCE_INTERVAL;
 }
 
 
@@ -541,7 +541,7 @@ int main(int argc, char *argv[]) {
 
 	fastd_update_time();
 
-	ctx.next_maintenance = fastd_in_seconds(conf.maintenance_interval);
+	ctx.next_maintenance = fastd_in_seconds(MAINTENANCE_INTERVAL);
 
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 
