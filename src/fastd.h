@@ -64,72 +64,106 @@ struct __attribute__((__packed__)) fastd_eth_addr {
    Currently, only one such protocol, \em ec25519-fhmqvc, is defined.
 */
 struct fastd_protocol {
+	/** The name of the procotol */
 	const char *name;
 
+	/** Performs one-time initialization tasks for the protocol */
 	fastd_protocol_config_t* (*init)(void);
+
+	/** Does some basic checks for the validity of a peer configuration */
 	void (*peer_verify)(fastd_peer_config_t *peer_conf);
+
+	/** Initializes protocol-specific parts of a peer configuration */
 	void (*peer_configure)(fastd_peer_config_t *peer_conf);
+
+	/** Checks if a peer configuration is valid and a connection may be established */
 	bool (*peer_check)(fastd_peer_config_t *peer_conf);
+
+	/** Checks if a temporary peer is valid and a connection may be established */
 	bool (*peer_check_temporary)(fastd_peer_t *peer);
 
+
+	/** Sends a handshake to the given peer */
 	void (*handshake_init)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
+
+	/** Handles a handshake for the given peer */
 	void (*handshake_handle)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
+
 #ifdef WITH_VERIFY
+	/** Handles an asynchrounous on-verify command return */
 	void (*handle_verify_return)(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *protocol_data, bool ok);
 #endif
 
+
+	/** Handles a received payload packet (performs decryption and validity check, etc.) */
 	void (*handle_recv)(fastd_peer_t *peer, fastd_buffer_t buffer);
+
+	/** Sends a payload data packet to the given peer */
 	void (*send)(fastd_peer_t *peer, fastd_buffer_t buffer);
 
+	/** Initializes the protocol state for a peer */
 	void (*init_peer_state)(fastd_peer_t *peer);
+
+	/** Resets the protocol state for a peer (resets active sessions etc.) */
 	void (*reset_peer_state)(fastd_peer_t *peer);
+
+
+	/** Frees the protocol state for a peer */
 	void (*free_peer_state)(fastd_peer_t *peer);
 
+	/** Generates a new keypair and outputs it */
 	void (*generate_key)(void);
+
+	/** Outputs the public key for the configured secret */
 	void (*show_key)(void);
+
+
+	/** Adds peer-specific environment variables to env */
 	void (*set_shell_env)(fastd_shell_env_t *env, const fastd_peer_t *peer);
+
+	/** Creates a human-readable representation of the peer */
 	bool (*describe_peer)(const fastd_peer_t *peer, char *buf, size_t len);
 };
 
 /** An union storing an IPv4 or IPv6 address */
 union fastd_peer_address {
-	struct sockaddr sa;
-	struct sockaddr_in in;
-	struct sockaddr_in6 in6;
+	struct sockaddr sa;		/**< A generic sockaddr union field of the address (for access to sa_family) */
+	struct sockaddr_in in;		/**< An IPv4 address */
+	struct sockaddr_in6 in6;	/**< An IPv6 address */
 };
 
 /** A linked list of addresses to bind to */
 struct fastd_bind_address {
-	fastd_bind_address_t *next;
-	fastd_peer_address_t addr;
-	char *bindtodev;
+	fastd_bind_address_t *next;		/**< The next address in the list */
+	fastd_peer_address_t addr;		/**< The address to bind to */
+	char *bindtodev;			/**< May contain an interface name to limit the bind to */
 };
 
 /** A socket descriptor */
 struct fastd_socket {
-	int fd;
-	const fastd_bind_address_t *addr;
-	fastd_peer_address_t *bound_addr;
-	fastd_peer_t *peer;
+	int fd;					/**< The file descriptor for the socket */
+	const fastd_bind_address_t *addr;	/**< The address this socket is supposed to be bound to (or NULL) */
+	fastd_peer_address_t *bound_addr;	/**< The actual address that was bound to (may differ from addr when addr has a random port) */
+	fastd_peer_t *peer;			/**< If the socket belongs to a single peer (as it was create dynamically when sending a handshake), contains that peer */
 };
 
 /** Some kind of network transfer stratistics */
 struct fastd_stats {
-	uint64_t packets;
-	uint64_t bytes;
+	uint64_t packets;			/**< The number of packets transferred */
+	uint64_t bytes;				/**< The number of bytes transferred */
 };
 
 /** A data structure keeping track of an unknown addresses that a handshakes was received from recently */
 struct fastd_handshake_timeout {
-	fastd_peer_address_t address;
-	struct timespec timeout;
+	fastd_peer_address_t address;		/**< An address a handshake was received from */
+	struct timespec timeout;		/**< Timeout until handshakes from this address are ignored */
 };
 
 /** The static configuration of \em fastd */
 struct fastd_config {
-	fastd_loglevel_t log_stderr_level;
-	fastd_loglevel_t log_syslog_level;
-	char *log_syslog_ident;
+	fastd_loglevel_t log_stderr_level;	/**< The minimum loglevel of messages to print to stderr (or -1 to not print any messages on stderr) */
+	fastd_loglevel_t log_syslog_level;	/**< The minimum loglevel of messages to print to syslog (or -1 to not print any messages on syslog) */
+	char *log_syslog_ident;			/**< The identification string for messages sent to syslog (default: "fastd") */
 
 	unsigned maintenance_interval;
 	unsigned keepalive_timeout;
@@ -405,7 +439,7 @@ static inline size_t fastd_max_outer_packet(void) {
 	return 1 + fastd_max_inner_packet() + conf.max_overhead;
 }
 
-/** Checks if a fastd_peer_address is an IPv6 link-local address */
+/** Checks if a fastd_peer_address_t is an IPv6 link-local address */
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
 	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));
 }
