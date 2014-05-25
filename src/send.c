@@ -168,14 +168,17 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 	fastd_buffer_free(buffer);
 }
 
+/** Sends a payload packet to a peer */
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
 	send_type(sock, local_addr, remote_addr, peer, PACKET_DATA, buffer, stat_size);
 }
 
+/** Sends a handshake packet to a peer */
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	send_type(sock, local_addr, remote_addr, peer, PACKET_HANDSHAKE, buffer, 0);
 }
 
+/** Encrypts and sends a payload packet to all peers */
 void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {

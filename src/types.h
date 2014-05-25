@@ -45,7 +45,7 @@
 /** A tri-state with the values \em true, \em false and \em undefined */
 typedef struct fastd_tristate {
 	bool set : 1;		/**< Specifies if the tri-state is set (\em true or \em false) or not (\em undefined) */
-	bool state : 1;		/**< Speficies if the tri-state is \em true or \em false */
+	bool state : 1;		/**< Specifies if the tri-state is \em true or \em false */
 } fastd_tristate_t;
 
 /** A fastd_tristate_t instance representing the value \em true */

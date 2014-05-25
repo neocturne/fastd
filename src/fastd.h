@@ -166,134 +166,134 @@ struct fastd_config {
 	fastd_loglevel_t log_syslog_level;	/**< The minimum loglevel of messages to print to syslog (or -1 to not print any messages on syslog) */
 	char *log_syslog_ident;			/**< The identification string for messages sent to syslog (default: "fastd") */
 
-	char *ifname;
+	char *ifname;				/**< The configured interface name */
 
-	size_t n_bind_addrs;
-	fastd_bind_address_t *bind_addrs;
+	size_t n_bind_addrs;			/**< Number of elements in bind_addrs */
+	fastd_bind_address_t *bind_addrs;	/**< Configured bind addresses */
 
-	fastd_bind_address_t *bind_addr_default_v4;
-	fastd_bind_address_t *bind_addr_default_v6;
+	fastd_bind_address_t *bind_addr_default_v4; /**< Pointer to the bind address to be used for IPv4 connections by default */
+	fastd_bind_address_t *bind_addr_default_v6; /**< Pointer to the bind address to be used for IPv6 connections by default */
 
-	uint16_t mtu;
-	fastd_mode_t mode;
+	uint16_t mtu;				/**< The configured MTU */
+	fastd_mode_t mode;			/**< The configured mode of operation */
 
-	uint32_t packet_mark;
-	bool forward;
-	fastd_tristate_t pmtu;
-	bool secure_handshakes;
+	uint32_t packet_mark;			/**< The configured packet mark (or 0) */
+	bool forward;				/**< Specifies if packet forwarding is enable */
+	fastd_tristate_t pmtu;			/**< Can be set to explicitly enable or disable PMTU detection */
+	bool secure_handshakes;			/**< Can be set to false to support connections with fastd versions before v11 */
 
-	fastd_drop_caps_t drop_caps;
+	fastd_drop_caps_t drop_caps;		/**< Specifies if and when to drop capabilities */
 
-	char *user;
-	char *group;
+	char *user;				/**< Specifies which user to switch to after initialization */
+	char *group;				/**< Can specify an alternative group to switch to */
 
-	uid_t uid;
-	gid_t gid;
-	size_t n_groups;
-	gid_t *groups;
+	uid_t uid;				/**< The UID of the configured user */
+	gid_t gid;				/**< The GID of the configured group */
+	size_t n_groups;			/**< The number of supplementary groups of the user */
+	gid_t *groups;				/**< The supplementary groups of the configured user */
 
-	const fastd_protocol_t *protocol;
-	fastd_string_stack_t *method_list;
-	fastd_method_info_t *methods;
+	const fastd_protocol_t *protocol;	/**< The handshake protocol */
+	fastd_string_stack_t *method_list;	/**< The list of configured method names */
+	fastd_method_info_t *methods;		/**< The list of configured methods */
 
-	size_t max_overhead;
-	size_t min_encrypt_head_space;
-	size_t min_decrypt_head_space;
-	size_t min_encrypt_tail_space;
-	size_t min_decrypt_tail_space;
+	size_t max_overhead;			/**< The maximum overhead of all configured methods */
+	size_t min_encrypt_head_space;		/**< The minimum space a configured methods needs a the beginning of a buffer to encrypt */
+	size_t min_decrypt_head_space;		/**< The minimum space a configured methods needs a the beginning of a buffer to decrypt */
+	size_t min_encrypt_tail_space;		/**< The minimum space a configured methods needs a the end of a buffer to encrypt */
+	size_t min_decrypt_tail_space;		/**< The minimum space a configured methods needs a the end of a buffer to decrypt */
 
-	char *secret;
+	char *secret;				/**< The configured secret key */
 
-	const fastd_cipher_t **ciphers;
-	const fastd_mac_t **macs;
+	const fastd_cipher_t **ciphers;		/**< All supported ciphers */
+	const fastd_mac_t **macs;		/**< All supported message authentication codes */
 
-	fastd_peer_group_config_t *peer_group;
-	fastd_peer_config_t *peers;
+	fastd_peer_group_config_t *peer_group;	/**< The root peer group configuration */
+	fastd_peer_config_t *peers;		/**< The configured peers */
 
-	bool has_floating;
+	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
 
-	fastd_protocol_config_t *protocol_config;
+	fastd_protocol_config_t *protocol_config; /**< The protocol-specific configuration */
 
-	fastd_shell_command_t on_pre_up;
-	fastd_shell_command_t on_up;
-	fastd_shell_command_t on_down;
-	fastd_shell_command_t on_post_down;
-	fastd_shell_command_t on_connect;
-	fastd_shell_command_t on_establish;
-	fastd_shell_command_t on_disestablish;
+	fastd_shell_command_t on_pre_up;	/**< The command to execute before the initialization of the tunnel interface */
+	fastd_shell_command_t on_up;		/**< The command to execute after the initialization of the tunnel interface */
+	fastd_shell_command_t on_down;		/**< The command to execute before the destruction of the tunnel interface */
+	fastd_shell_command_t on_post_down;	/**< The command to execute after the destruction of the tunnel interface */
+	fastd_shell_command_t on_connect;	/**< The command to execute before a handshake is sent to establish a new connection */
+	fastd_shell_command_t on_establish;	/**< The command to execute when a new connection has been established */
+	fastd_shell_command_t on_disestablish;	/**< The command to execute when a connection has been disestablished */
 #ifdef WITH_VERIFY
-	fastd_shell_command_t on_verify;
+	fastd_shell_command_t on_verify;	/**< The command to execute to check if a connection from an unknown peer should be allowed */
 #endif
 
-	bool daemon;
-	char *pid_file;
+	bool daemon;				/**< Set to make fastd fork to the background after initialization */
+	char *pid_file;				/**< A filename to write fastd's PID to */
 
-	bool hide_ip_addresses;
-	bool hide_mac_addresses;
+	bool hide_ip_addresses;			/**< Tells fastd to hide peers' IP address in the log output */
+	bool hide_mac_addresses;		/**< Tells fastd to hide peers' MAC address in the log output */
 
-	bool machine_readable;
-	bool generate_key;
-	bool show_key;
-	bool verify_config;
+	bool machine_readable;			/**< Supresses explanatory messages in the generate_key and show_key commands */
+	bool generate_key;			/**< Makes fastd generate a new keypair and exit */
+	bool show_key;				/**< Makes fastd output the public key for the configured secret and exit */
+	bool verify_config;			/**< Does basic verification of the configuration and exits */
 };
 
 /** The dynamic state of \em fastd */
 struct fastd_context {
-	bool log_initialized;
+	bool log_initialized;			/**< true if the logging facilities have been properly initialized */
 
-	char *ifname;
+	char *ifname;				/**< The actual interface name */
 
-	struct timespec now;
+	struct timespec now;			/**< The current monotonous timestamp */
 
-	fastd_peer_group_t *peer_group;
+	fastd_peer_group_t *peer_group;		/**< The root peer group */
 
-	uint64_t next_peer_id;
-	VECTOR(fastd_peer_t*) peers;
+	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
+	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
 
 #ifdef USE_EPOLL
-	int epoll_fd;
+	int epoll_fd;				/**< The file descriptor for the epoll facility */
 #else
-	VECTOR(struct pollfd) pollfds;
+	VECTOR(struct pollfd) pollfds;		/**< The vector of pollfds for all file descriptors */
 #endif
 
-	uint32_t peer_addr_ht_seed;
-	VECTOR(fastd_peer_t*) *peer_addr_ht;
+	uint32_t peer_addr_ht_seed;		/**< The hash seed used for peer_addr_ht */
+	VECTOR(fastd_peer_t*) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
 
-	fastd_dlist_head_t handshake_queue;
-	struct timespec next_maintenance;
+	fastd_dlist_head_t handshake_queue;	/**< A doubly linked list of the peers currently queued for handshakes (ordered by the time of the next handshake) */
+	struct timespec next_maintenance;	/**< The time of the next maintenance call */
 
-	VECTOR(pid_t) async_pids;
-	int async_rfd;
-	int async_wfd;
+	VECTOR(pid_t) async_pids;		/**< PIDs of asynchronously executed commands which still have to be reaped */
+	int async_rfd;				/**< The read side of the pipe used to send data from other thread to the main thread */
+	int async_wfd;				/**< The write side of the pipe used to send data from other thread to the main thread */
 
-	int tunfd;
+	int tunfd;				/**< The file descriptor of the tunnel interface */
 
-	size_t n_socks;
-	fastd_socket_t *socks;
+	size_t n_socks;				/**< The number of sockets in socks */
+	fastd_socket_t *socks;			/**< Array of all sockets */
 
-	fastd_socket_t *sock_default_v4;
-	fastd_socket_t *sock_default_v6;
+	fastd_socket_t *sock_default_v4;	/**< Points to the socket that is used for new outgoing IPv4 connections */
+	fastd_socket_t *sock_default_v6;	/**< Points to the socket that is used for new outgoing IPv6 connections */
 
-	fastd_stats_t rx;
+	fastd_stats_t rx;			/**< Reception statistics */
 
-	fastd_stats_t tx;
-	fastd_stats_t tx_dropped;
-	fastd_stats_t tx_error;
+	fastd_stats_t tx;			/**< Transmission statistics (OK) */
+	fastd_stats_t tx_dropped;		/**< Transmission statistics (dropped because of full queues) */
+	fastd_stats_t tx_error;			/**< Transmission statistics (other errors) */
 
-	VECTOR(fastd_peer_eth_addr_t) eth_addrs;
+	VECTOR(fastd_peer_eth_addr_t) eth_addrs; /**< Sorted vector of all known ethernet addresses with associated peers and timeouts */
 
-	unsigned int randseed;
+	unsigned int randseed;			/**< Random seed for non-cryptographic random numbers */
 
-	size_t unknown_handshake_pos;
-	fastd_handshake_timeout_t unknown_handshakes[8];
+	size_t unknown_handshake_pos;		/**< Current start position in the ring buffer unknown_handshakes */
+	fastd_handshake_timeout_t unknown_handshakes[8]; /**< Ring buffer of unknown addresses handshakes have been received from */
 
-	fastd_protocol_state_t *protocol_state;
+	fastd_protocol_state_t *protocol_state;	/**< Protocol-specific state */
 };
 
 /** A stack of strings */
 struct fastd_string_stack {
-	fastd_string_stack_t *next;
-	char str[];
+	fastd_string_stack_t *next;		/**< The next element of the stack */
+	char str[];				/**< Zero-terminated character data */
 };
 
 
@@ -302,10 +302,10 @@ extern fastd_config_t conf;	/**< The global configuration */
 
 
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
-void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer);
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
-void fastd_receive(fastd_socket_t *sock);
+void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer);
 
+void fastd_receive(fastd_socket_t *sock);
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer);
 
 void fastd_close_all_fds(void);
@@ -476,7 +476,11 @@ static inline int timespec_diff(const struct timespec *tp1, const struct timespe
 }
 
 /**
-   Returns true if the given timespec is before or equal to the current time
+   Checks if a timeout has occured
+
+   @param timeout the time the timeout should occur
+
+   @return true if the given timeout is before or equal to the current time
 
    \note The current time is updated only once per main loop iteration, after waiting for input.
 */
@@ -508,7 +512,10 @@ static inline bool fastd_allow_verify(void) {
 /**
    Checks if two strings are equal
 
-   The strings may be NULL.
+   @param str1 The first string (may be NULL)
+   @param str2 The second string (may be NULL)
+
+   @return True if both strings are NULL or both strings are not NULL and equal
 */
 static inline bool strequal(const char *str1, const char *str2) {
 	if (str1 && str2)

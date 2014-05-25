@@ -311,6 +311,7 @@ static inline void maintenance(void) {
 }
 
 
+/** Closes all open FDs except stdin, stdout and stderr */
 void fastd_close_all_fds(void) {
 	struct rlimit rl;
 	int fd, maxfd;

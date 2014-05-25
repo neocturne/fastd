@@ -68,6 +68,7 @@ static void try_cap(cap_value_t cap) {
 	cap_free(name);
 }
 
+/** Tries to acquire the capabilities needed to perform initialization without root privileges */
 void fastd_cap_init(void) {
 	/* interface creation */
 	try_cap(CAP_NET_ADMIN);
@@ -79,6 +80,7 @@ void fastd_cap_init(void) {
 	try_cap(CAP_NET_RAW);
 }
 
+/** Drops all capabilities */
 void fastd_cap_drop(void) {
 	cap_t caps = cap_init();
 

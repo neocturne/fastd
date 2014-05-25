@@ -179,6 +179,7 @@ static inline void handle_socket_receive(fastd_socket_t *sock, const fastd_peer_
 	}
 }
 
+/** Reads a packet from a socket */
 void fastd_receive(fastd_socket_t *sock) {
 	size_t max_len = fastd_max_outer_packet();
 	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, conf.min_decrypt_head_space, conf.min_decrypt_tail_space);
@@ -241,6 +242,7 @@ static inline void handle_forward(fastd_peer_t *source_peer, fastd_buffer_t buff
 	fastd_send_all(source_peer, buffer);
 }
 
+/** Handles a received and decrypted payload packet */
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (conf.mode == MODE_TAP) {
 		if (buffer.len < ETH_HLEN) {

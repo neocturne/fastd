@@ -55,6 +55,7 @@ static const bool multiaf_tun = true;
 
 #if defined(__linux__)
 
+/** Opens the TUN/TAP device */
 void fastd_tuntap_open(void) {
 	struct ifreq ifr = {};
 
@@ -108,6 +109,7 @@ void fastd_tuntap_open(void) {
 
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
 
+/** Sets the MTU of the TUN/TAP device */
 static void set_tun_mtu(void) {
 	struct tuninfo tuninfo;
 
@@ -123,6 +125,7 @@ static void set_tun_mtu(void) {
 
 #ifdef __FreeBSD__
 
+/** Sets the MTU of the TAP device */
 static void set_tap_mtu(void) {
 	struct tapinfo tapinfo;
 
@@ -135,6 +138,7 @@ static void set_tap_mtu(void) {
 		exit_errno("TAPSIFINFO ioctl failed");
 }
 
+/** Sets up the TUN device */
 static void setup_tun(void) {
 	int one = 1;
 	if (ioctl(ctx.tunfd, TUNSIFHEAD, &one) < 0)
@@ -143,6 +147,7 @@ static void setup_tun(void) {
 	set_tun_mtu();
 }
 
+/** Sets up the TAP device */
 static void setup_tap(void) {
 	struct ifreq ifr = {};
 
@@ -155,6 +160,7 @@ static void setup_tap(void) {
 	set_tap_mtu();
 }
 
+/** Opens the TUN/TAP device */
 void fastd_tuntap_open(void) {
 	pr_debug("initializing tun/tap device...");
 
@@ -233,16 +239,19 @@ static void set_link0(bool set) {
 		pr_error_errno("close");
 }
 
+/** Sets up the TUN device */
 static void setup_tun(void) {
 	set_link0(false);
 	set_tun_mtu();
 }
 
+/** Sets up the TAP device */
 static void setup_tap(void) {
 	set_link0(true);
 	set_tun_mtu();
 }
 
+/** Opens the TUN/TAP device */
 void fastd_tuntap_open(void) {
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	if (!conf.ifname)
@@ -286,6 +295,7 @@ void fastd_tuntap_open(void) {
 #endif
 
 
+/** Reads a packet from the TUN/TAP device */
 fastd_buffer_t fastd_tuntap_read(void) {
 	size_t max_len = fastd_max_inner_packet();
 
@@ -313,6 +323,7 @@ fastd_buffer_t fastd_tuntap_read(void) {
 	return buffer;
 }
 
+/** Writes a packet to the TUN/TAP device */
 void fastd_tuntap_write(fastd_buffer_t buffer) {
 	if (multiaf_tun && conf.mode == MODE_TUN) {
 		uint8_t version = *((uint8_t*)buffer.data) >> 4;
@@ -340,6 +351,7 @@ void fastd_tuntap_write(fastd_buffer_t buffer) {
 		pr_warn_errno("write");
 }
 
+/** Closes the TUN/TAP device */
 void fastd_tuntap_close(void) {
 	if (close(ctx.tunfd))
 		pr_warn_errno("closing tun/tap: close");

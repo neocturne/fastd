@@ -180,6 +180,7 @@ static bool set_bound_address(fastd_socket_t *sock) {
 	return true;
 }
 
+/** Tries to initialize sockets for all configured bind addresses */
 bool fastd_socket_handle_binds(void) {
 	size_t i;
 
@@ -214,6 +215,7 @@ bool fastd_socket_handle_binds(void) {
 	return true;
 }
 
+/** Opens a single unbound socket for the given address family */
 fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af) {
 	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
 
@@ -237,6 +239,7 @@ fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af) {
 	return sock;
 }
 
+/** Closes a socket */
 void fastd_socket_close(fastd_socket_t *sock) {
 	if (sock->fd >= 0) {
 		if(close(sock->fd))
@@ -251,6 +254,7 @@ void fastd_socket_close(fastd_socket_t *sock) {
 	}
 }
 
+/** Handles an error that occured on a socket */
 void fastd_socket_error(fastd_socket_t *sock) {
 	if (sock->addr->bindtodev)
 		pr_warn("socket bind %I on `%s' lost", &sock->addr->addr, sock->addr->bindtodev);
