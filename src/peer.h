@@ -23,70 +23,85 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file peer.h
+
+   Structures and functions for peer management
+*/
+
 
 #pragma once
 
 #include "fastd.h"
 
 
+/** The state of a peer */
 typedef enum fastd_peer_state {
-	STATE_INIT = 0,
-	STATE_RESOLVING,
-	STATE_HANDSHAKE,
-	STATE_ESTABLISHED,
+	STATE_INIT = 0,					/**< The peer peer was just created */
+	STATE_RESOLVING,				/**< The peer is currently resolving its first remote */
+	STATE_HANDSHAKE,				/**< The peer has tried to perform a handshake */
+	STATE_ESTABLISHED,				/**< The peer has established a connection */
 } fastd_peer_state_t;
 
+/** Dynamic state of a peer */
 struct fastd_peer {
-	uint64_t id;
+	uint64_t id;					/**< A unique ID assigned to each peer */
 
-	const fastd_peer_config_t *config;
-	fastd_peer_group_t *group;
+	const fastd_peer_config_t *config;		/**< The peer's fastd_peer_config_t */
+	fastd_peer_group_t *group;			/**< The peer's peer group */
 
+	/** The socket used by the peer. This can either be a common bound socket or a
+	    dynamic, unbound socket that is used exclusively by this peer */
 	fastd_socket_t *sock;
-	fastd_peer_address_t local_address;
-	fastd_peer_address_t address;
+	fastd_peer_address_t local_address;		/**< The local address used to communicate with this peer */
+	fastd_peer_address_t address;			/**< The peers current address */
 
-	fastd_peer_state_t state;
-	struct timespec timeout;
-	struct timespec keepalive_timeout;
+	fastd_peer_state_t state;			/**< The peer's state */
+	struct timespec timeout;			/**< The timeout after which the peer is reset */
+	struct timespec keepalive_timeout;		/**< The timeout after which a keepalive is sent to the peer */
 
-	VECTOR(fastd_remote_t) remotes;
-	ssize_t next_remote;
+	VECTOR(fastd_remote_t) remotes;			/**< The vector of the peer's remotes */
+	ssize_t next_remote;				/**< An index into the field remotes or -1 */
 
-	struct timespec next_handshake;
-	fastd_dlist_head_t handshake_entry;
+	struct timespec next_handshake;			/**< The time of the next handshake */
+	fastd_dlist_head_t handshake_entry;		/**< Entry in the handshake queue */
 
-	struct timespec last_handshake_timeout;
-	fastd_peer_address_t last_handshake_address;
+	struct timespec last_handshake_timeout;		/**< No handshakes are sent to the peer until this timeout has occured to avoid flooding the peer */
+	fastd_peer_address_t last_handshake_address;	/**< The address the last handshake was sent to */
 
-	struct timespec last_handshake_response_timeout;
-	fastd_peer_address_t last_handshake_response_address;
+	struct timespec last_handshake_response_timeout; /**< All handshakes from last_handshake_address will be ignored until this timeout has occured */
+	fastd_peer_address_t last_handshake_response_address; /**< The address the last handshake was received from */
 
-	struct timespec establish_handshake_timeout;
+	struct timespec establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
 
 #ifdef WITH_VERIFY
-	struct timespec verify_timeout;
-	struct timespec verify_valid_timeout;
+	struct timespec verify_timeout;			/**< Specifies the minimum time after which on-verify may be run again */
+	struct timespec verify_valid_timeout;		/**< Specifies how long a peer stays valid after a successful on-verify run */
 #endif
 
-	fastd_protocol_peer_config_t *protocol_config;
-	fastd_protocol_peer_state_t *protocol_state;
+	fastd_protocol_peer_config_t *protocol_config;	/**< Protocol-specific peer configuration for config-less (on-verify) peers */
+	fastd_protocol_peer_state_t *protocol_state;	/**< Protocol-specific peer state */
 };
 
+/**
+   Static configuration of a peer
+
+   Peer configurations are kept in a linked list.
+*/
 struct fastd_peer_config {
-	fastd_peer_config_t *next;
+	fastd_peer_config_t *next;			/**< The next peer configuration */
 
-	const char *config_source_dir;
+	const char *config_source_dir;			/**< The directory this peer's configuration was loaded from */
 
-	bool enabled;
-	char *name;
+	bool enabled;					/**< Speficies if this peer was disabled because of a configuration error */
+	char *name;					/**< The peer's name */
 
-	fastd_remote_config_t *remotes;
-	char *key;
-	bool floating;
-	const fastd_peer_group_config_t *group;
+	fastd_remote_config_t *remotes;			/**< A linked list of the peer's remote entries */
+	char *key;					/**< The peer's public key */
+	bool floating;					/**< Specifies if the peer has any floating remotes (or no remotes at all) */
+	const fastd_peer_group_config_t *group;		/**< The peer group the peer belongs to */
 
-	fastd_protocol_peer_config_t *protocol_config;
+	fastd_protocol_peer_config_t *protocol_config;	/**< The protocol-specific configuration of the peer */
 };
 
 struct fastd_peer_group {
