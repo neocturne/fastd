@@ -62,7 +62,7 @@ static void default_config(void) {
 
 	conf.protocol = &fastd_protocol_ec25519_fhmqvc;
 
-	conf.peer_group = calloc(1, sizeof(fastd_peer_group_config_t));
+	conf.peer_group = calloc(1, sizeof(fastd_peer_group_t));
 	conf.peer_group->name = strdup("default");
 	conf.peer_group->max_connections = -1;
 
@@ -135,7 +135,7 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 }
 
 void fastd_config_peer_group_push(const char *name) {
-	fastd_peer_group_config_t *group = calloc(1, sizeof(fastd_peer_group_config_t));
+	fastd_peer_group_t *group = calloc(1, sizeof(fastd_peer_group_t));
 	group->name = strdup(name);
 	group->max_connections = -1;
 
@@ -151,9 +151,9 @@ void fastd_config_peer_group_pop(void) {
 	conf.peer_group = conf.peer_group->parent;
 }
 
-static void free_peer_group(fastd_peer_group_config_t *group) {
+static void free_peer_group(fastd_peer_group_t *group) {
 	while (group->children) {
-		fastd_peer_group_config_t *next = group->children->next;
+		fastd_peer_group_t *next = group->children->next;
 		free_peer_group(group->children);
 		group->children = next;
 	}
@@ -163,11 +163,11 @@ static void free_peer_group(fastd_peer_group_config_t *group) {
 	free(group);
 }
 
-static bool has_peer_group_peer_dirs(const fastd_peer_group_config_t *group) {
+static bool has_peer_group_peer_dirs(const fastd_peer_group_t *group) {
 	if (group->peer_dirs)
 		return true;
 
-	const fastd_peer_group_config_t *child;
+	const fastd_peer_group_t *child;
 	for (child = group->children; child; child = child->next) {
 		if (has_peer_group_peer_dirs(child))
 			return true;
@@ -538,7 +538,7 @@ void fastd_config_verify(void) {
 static void peer_dirs_read_peer_group(void) {
 	read_peer_dirs();
 
-	fastd_peer_group_config_t *base = conf.peer_group, *group;
+	fastd_peer_group_t *base = conf.peer_group, *group;
 	for (group = conf.peer_group->children; group; group = group->next) {
 		conf.peer_group = group;
 		peer_dirs_read_peer_group();

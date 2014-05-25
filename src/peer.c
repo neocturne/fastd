@@ -181,7 +181,7 @@ static inline void free_socket(fastd_peer_t *peer) {
 	free_socket_by_id(peer_index(peer));
 }
 
-static inline bool has_group_config_constraints(const fastd_peer_group_config_t *group) {
+static inline bool has_group_config_constraints(const fastd_peer_group_t *group) {
 	for (; group; group = group->parent) {
 		if (group->max_connections >= 0)
 			return true;
@@ -250,22 +250,7 @@ void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
 	fastd_dlist_insert(list, &peer->handshake_entry);
 }
 
-static inline fastd_peer_group_t* find_peer_group(fastd_peer_group_t *group, const fastd_peer_group_config_t *config) {
-	if (group->conf == config)
-		return group;
-
-	fastd_peer_group_t *child;
-	for (child = group->children; child; child = child->next) {
-		fastd_peer_group_t *ret = find_peer_group(child, config);
-
-		if (ret)
-			return ret;
-	}
-
-	return NULL;
-}
-
-static inline bool is_group_in(fastd_peer_group_t *group1, fastd_peer_group_t *group2) {
+static inline bool is_group_in(const fastd_peer_group_t *group1, const fastd_peer_group_t *group2) {
 	while (group1) {
 		if (group1 == group2)
 			return true;
@@ -276,8 +261,8 @@ static inline bool is_group_in(fastd_peer_group_t *group1, fastd_peer_group_t *g
 	return false;
 }
 
-static bool is_peer_in_group(fastd_peer_t *peer, fastd_peer_group_t *group) {
-	return is_group_in(peer->group, group);
+static bool is_peer_in_group(const fastd_peer_t *peer, const fastd_peer_group_t *group) {
+	return is_group_in(fastd_peer_get_group(peer), group);
 }
 
 static void reset_peer(fastd_peer_t *peer) {
@@ -307,7 +292,7 @@ static void reset_peer(fastd_peer_t *peer) {
 
 static void init_handshake(fastd_peer_t *peer) {
 	unsigned delay = 0;
-	if (has_group_config_constraints(peer->group->conf))
+	if (has_group_config_constraints(fastd_peer_get_group(peer)))
 		delay = fastd_rand(0, 3000);
 
 	if (!fastd_peer_is_established(peer))
@@ -626,7 +611,7 @@ void fastd_peer_delete(fastd_peer_t *peer) {
 	delete_peer(peer);
 }
 
-static inline size_t count_established_group_peers(fastd_peer_group_t *group) {
+static inline size_t count_established_group_peers(const fastd_peer_group_t *group) {
 	size_t i, ret = 0;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
@@ -642,13 +627,13 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 	if (fastd_peer_is_established(peer))
 		return true;
 
-	fastd_peer_group_t *group;
+	const fastd_peer_group_t *group;
 
-	for (group = peer->group; group; group = group->parent) {
-		if (group->conf->max_connections < 0)
+	for (group = fastd_peer_get_group(peer); group; group = group->parent) {
+		if (group->max_connections < 0)
 			continue;
 
-		if (count_established_group_peers(group) >= (size_t)group->conf->max_connections)
+		if (count_established_group_peers(group) >= (size_t)group->max_connections)
 			return false;
 	}
 
@@ -662,7 +647,6 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 
 	if (peer_conf) {
 		peer->config = peer_conf;
-		peer->group = find_peer_group(ctx.peer_group, peer_conf->group);
 		peer->protocol_config = peer_conf->protocol_config;
 
 		VECTOR_ALLOC(peer->remotes, 0);
@@ -680,14 +664,12 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 			VECTOR_ADD(peer->remotes, remote);
 		}
 
-		pr_verbose("adding peer %P (group `%s')", peer, peer->group->conf->name);
+		pr_verbose("adding peer %P (group `%s')", peer, fastd_peer_get_group(peer)->name);
 	}
 	else {
 #ifdef WITH_VERIFY
 		if (!fastd_shell_command_isset(&conf.on_verify))
 			exit_bug("tried to add temporary peer without on-verify command");
-
-		peer->group = ctx.peer_group;
 
 		peer->verify_timeout = ctx.now;
 		peer->verify_valid_timeout = ctx.now;

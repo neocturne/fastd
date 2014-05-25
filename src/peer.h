@@ -48,7 +48,6 @@ struct fastd_peer {
 	uint64_t id;					/**< A unique ID assigned to each peer */
 
 	const fastd_peer_config_t *config;		/**< The peer's fastd_peer_config_t */
-	fastd_peer_group_t *group;			/**< The peer's peer group */
 
 	/** The socket used by the peer. This can either be a common bound socket or a
 	    dynamic, unbound socket that is used exclusively by this peer */
@@ -99,7 +98,7 @@ struct fastd_peer_config {
 	fastd_remote_config_t *remotes;			/**< A linked list of the peer's remote entries */
 	char *key;					/**< The peer's public key */
 	bool floating;					/**< Specifies if the peer has any floating remotes (or no remotes at all) */
-	const fastd_peer_group_config_t *group;		/**< The peer group the peer belongs to */
+	const fastd_peer_group_t *group;		/**< The peer group the peer belongs to */
 
 	fastd_protocol_peer_config_t *protocol_config;	/**< The protocol-specific configuration of the peer */
 };
@@ -108,14 +107,6 @@ struct fastd_peer_group {
 	fastd_peer_group_t *next;
 	fastd_peer_group_t *parent;
 	fastd_peer_group_t *children;
-
-	const fastd_peer_group_config_t *conf;
-};
-
-struct fastd_peer_group_config {
-	fastd_peer_group_config_t *next;
-	fastd_peer_group_config_t *parent;
-	fastd_peer_group_config_t *children;
 
 	char *name;
 	fastd_string_stack_t *peer_dirs;
@@ -241,6 +232,13 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 	default:
 		return false;
 	}
+}
+
+static inline const fastd_peer_group_t * fastd_peer_get_group(const fastd_peer_t *peer) {
+	if (peer->config)
+		return peer->config->group;
+	else
+		return conf.peer_group;
 }
 
 static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {

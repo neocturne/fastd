@@ -207,7 +207,7 @@ struct fastd_config {
 	const fastd_cipher_t **ciphers;		/**< All supported ciphers */
 	const fastd_mac_t **macs;		/**< All supported message authentication codes */
 
-	fastd_peer_group_config_t *peer_group;	/**< The root peer group configuration */
+	fastd_peer_group_t *peer_group;	/**< The root peer group configuration */
 	fastd_peer_config_t *peers;		/**< The configured peers */
 
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
@@ -244,8 +244,6 @@ struct fastd_context {
 	char *ifname;				/**< The actual interface name */
 
 	struct timespec now;			/**< The current monotonous timestamp */
-
-	fastd_peer_group_t *peer_group;		/**< The root peer group */
 
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */

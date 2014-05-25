@@ -190,42 +190,6 @@ static inline void on_post_down(void) {
 	fastd_shell_command_exec(&conf.on_post_down, NULL);
 }
 
-static fastd_peer_group_t* init_peer_group(const fastd_peer_group_config_t *config, fastd_peer_group_t *parent) {
-	fastd_peer_group_t *ret = calloc(1, sizeof(fastd_peer_group_t));
-
-	ret->conf = config;
-	ret->parent = parent;
-
-	fastd_peer_group_t **children = &ret->children;
-	fastd_peer_group_config_t *child_config;
-
-	for (child_config = config->children; child_config; child_config = child_config->next) {
-		*children = init_peer_group(child_config, ret);
-		children = &(*children)->next;
-	}
-
-	return ret;
-}
-
-static void init_peer_groups(void) {
-	ctx.peer_group = init_peer_group(conf.peer_group, NULL);
-}
-
-static void free_peer_group(fastd_peer_group_t *group) {
-	while (group->children) {
-		fastd_peer_group_t *child = group->children;
-		group->children = group->children->next;
-
-		free_peer_group(child);
-	}
-
-	free(group);
-}
-
-static void delete_peer_groups(void) {
-	free_peer_group(ctx.peer_group);
-}
-
 static void init_peers(void) {
 	fastd_peer_config_t *peer_conf;
 	for (peer_conf = conf.peers; peer_conf; peer_conf = peer_conf->next)
@@ -564,8 +528,6 @@ int main(int argc, char *argv[]) {
 
 	fastd_tuntap_open();
 
-	init_peer_groups();
-
 	write_pid(getpid());
 
 #ifdef ENABLE_SYSTEMD
@@ -634,7 +596,6 @@ int main(int argc, char *argv[]) {
 	on_down();
 
 	delete_peers();
-	delete_peer_groups();
 
 	fastd_tuntap_close();
 	close_sockets();
