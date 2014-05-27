@@ -93,7 +93,3 @@ static inline void xor(fastd_block128_t *x, const fastd_block128_t *a, const fas
 static inline void xor_a(fastd_block128_t *x, const fastd_block128_t *a) {
 	xor(x, x, a);
 }
-
-static inline bool fastd_true(void) {
-	return true;
-}

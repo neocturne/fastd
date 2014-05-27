@@ -47,13 +47,17 @@ static const cipher_entry_t ciphers[] = { @CIPHER_LIST@
 };
 
 
+static inline bool cipher_available(const fastd_cipher_t *cipher) {
+	return (!cipher->available) || cipher->available();
+}
+
 const fastd_cipher_t** fastd_cipher_config_alloc(void) {
 	const fastd_cipher_t **cipher_conf = calloc(array_size(ciphers), sizeof(const fastd_cipher_t*));
 
 	size_t i, j;
 	for (i = 0; i < array_size(ciphers); i++) {
 		for (j = 0; ciphers[i].impls[j].impl; j++) {
-			if (ciphers[i].impls[j].impl->available())
+			if (cipher_available(ciphers[i].impls[j].impl))
 				break;
 		}
 
@@ -74,7 +78,7 @@ bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, c
 			size_t j;
 			for (j = 0; ciphers[i].impls[j].impl; j++) {
 				if (!strcmp(ciphers[i].impls[j].name, impl)) {
-					if (!ciphers[i].impls[j].impl->available())
+					if (!cipher_available(ciphers[i].impls[j].impl))
 						return false;
 
 					cipher_conf[i] = ciphers[i].impls[j].impl;
@@ -96,7 +100,7 @@ const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
 			continue;
 
 		for (j = 0; ciphers[i].impls[j].impl; j++) {
-			if (ciphers[i].impls[j].impl->available())
+			if (cipher_available(ciphers[i].impls[j].impl))
 				return ciphers[i].info;
 		}
 

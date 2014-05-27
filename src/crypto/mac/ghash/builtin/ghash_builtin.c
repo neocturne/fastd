@@ -127,8 +127,6 @@ static void ghash_free(fastd_mac_state_t *state) {
 }
 
 const fastd_mac_t fastd_mac_ghash_builtin = {
-	.available = fastd_true,
-
 	.init = ghash_init,
 	.hash = ghash_hash,
 	.free = ghash_free,

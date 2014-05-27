@@ -40,8 +40,6 @@ static void null_free(fastd_cipher_state_t *state UNUSED) {
 }
 
 const fastd_cipher_t fastd_cipher_null_memcpy = {
-	.available = fastd_true,
-
 	.init = null_init,
 	.crypt = null_memcpy,
 	.free = null_free,

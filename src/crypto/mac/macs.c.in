@@ -47,13 +47,17 @@ static const mac_entry_t macs[] = { @MAC_LIST@
 };
 
 
+static inline bool mac_available(const fastd_mac_t *mac) {
+	return (!mac->available) || mac->available();
+}
+
 const fastd_mac_t** fastd_mac_config_alloc(void) {
 	const fastd_mac_t **mac_conf = calloc(array_size(macs), sizeof(const fastd_mac_t*));
 
 	size_t i, j;
 	for (i = 0; i < array_size(macs); i++) {
 		for (j = 0; macs[i].impls[j].impl; j++) {
-			if (macs[i].impls[j].impl->available())
+			if (mac_available(macs[i].impls[j].impl))
 				break;
 		}
 
@@ -74,7 +78,7 @@ bool fastd_mac_config(const fastd_mac_t **mac_conf, const char *name, const char
 			size_t j;
 			for (j = 0; macs[i].impls[j].impl; j++) {
 				if (!strcmp(macs[i].impls[j].name, impl)) {
-					if (!macs[i].impls[j].impl->available())
+					if (!mac_available(macs[i].impls[j].impl))
 						return false;
 
 					mac_conf[i] = macs[i].impls[j].impl;
@@ -96,7 +100,7 @@ const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
 			continue;
 
 		for (j = 0; macs[i].impls[j].impl; j++) {
-			if (macs[i].impls[j].impl->available())
+			if (mac_available(macs[i].impls[j].impl))
 				return macs[i].info;
 		}
 

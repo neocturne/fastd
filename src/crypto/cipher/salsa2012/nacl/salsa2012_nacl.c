@@ -54,8 +54,6 @@ static void salsa2012_free(fastd_cipher_state_t *state) {
 }
 
 const fastd_cipher_t fastd_cipher_salsa2012_nacl = {
-	.available = fastd_true,
-
 	.init = salsa2012_init,
 	.crypt = salsa2012_crypt,
 	.free = salsa2012_free,
