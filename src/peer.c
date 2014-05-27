@@ -766,14 +766,6 @@ void fastd_peer_handle_handshake_queue(void) {
 		fastd_resolve_peer(peer, next_remote);
 }
 
-void fastd_peer_enable_temporary(fastd_peer_t *peer) {
-	if (peer->config)
-		exit_bug("trying to re-enable non-temporary peer");
-
-	VECTOR_ADD(ctx.peers, peer);
-	fastd_poll_add_peer();
-}
-
 void fastd_peer_set_established(fastd_peer_t *peer) {
 	if (fastd_peer_is_established(peer))
 		return;
