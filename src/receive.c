@@ -223,23 +223,11 @@ void fastd_receive(fastd_socket_t *sock) {
 	handle_socket_receive(sock, &local_addr, &recvaddr, buffer);
 }
 
-static inline void handle_forward(fastd_peer_t *source_peer, fastd_buffer_t buffer) {
-	fastd_eth_addr_t dest_addr = fastd_get_dest_address(buffer);
-
-	if (fastd_eth_addr_is_unicast(dest_addr)) {
-		fastd_peer_t *dest_peer = fastd_peer_find_by_eth_addr(dest_addr);
-
-		if (dest_peer) {
-			if (dest_peer != source_peer)
-				conf.protocol->send(dest_peer, buffer);
-			else
-				fastd_buffer_free(buffer);
-
-			return;
-		}
-	}
-
-	fastd_send_all(source_peer, buffer);
+/** Returns the source address of an ethernet packet */
+static inline fastd_eth_addr_t get_source_address(const fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
+	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
+	return ret;
 }
 
 /** Handles a received and decrypted payload packet */
@@ -251,7 +239,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
 			return;
 		}
 
-		fastd_eth_addr_t src_addr = fastd_get_source_address(buffer);
+		fastd_eth_addr_t src_addr = get_source_address(buffer);
 
 		if (fastd_eth_addr_is_unicast(src_addr))
 			fastd_peer_eth_addr_add(peer, src_addr);
@@ -263,7 +251,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	fastd_tuntap_write(buffer);
 
 	if (conf.mode == MODE_TAP && conf.forward) {
-		handle_forward(peer, buffer);
+		fastd_send_data(buffer, peer);
 		return;
 	}
 

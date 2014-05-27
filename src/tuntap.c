@@ -320,7 +320,7 @@ void fastd_tuntap_handle(void) {
 	if (multiaf_tun && conf.mode == MODE_TUN)
 		fastd_buffer_push_head(&buffer, 4);
 
-	fastd_send_data(buffer);
+	fastd_send_data(buffer, NULL);
 }
 
 /** Writes a packet to the TUN/TAP device */

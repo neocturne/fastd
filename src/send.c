@@ -179,52 +179,64 @@ void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t
 }
 
 /** Encrypts and sends a payload packet to all peers */
-void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer) {
+static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-		fastd_peer_t *dest_peer = VECTOR_INDEX(ctx.peers, i);
-		if (dest_peer == source_peer || !fastd_peer_is_established(dest_peer))
+		fastd_peer_t *dest = VECTOR_INDEX(ctx.peers, i);
+		if (dest == source || !fastd_peer_is_established(dest))
 			continue;
 
 		/* optimization, primarily for TUN mode: don't duplicate the buffer for the last (or only) peer */
 		if (i == VECTOR_LEN(ctx.peers)-1) {
-			conf.protocol->send(dest_peer, buffer);
+			conf.protocol->send(dest, buffer);
 			return;
 		}
 
-		conf.protocol->send(dest_peer, fastd_buffer_dup(buffer, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
+		conf.protocol->send(dest, fastd_buffer_dup(buffer, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
 	}
 
 	fastd_buffer_free(buffer);
 }
 
-static inline bool send_data_tap_single(fastd_buffer_t buffer) {
+/** Returns the destination address of an ethernet packet */
+static inline fastd_eth_addr_t get_dest_address(const fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
+	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
+	return ret;
+}
+
+static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *source) {
 	if (conf.mode != MODE_TAP)
 		return false;
 
 	if (buffer.len < ETH_HLEN) {
-		pr_debug("truncated packet on tap interface");
+		pr_debug("truncated ethernet packet");
 		fastd_buffer_free(buffer);
 		return true;
 	}
 
-	fastd_eth_addr_t dest_addr = fastd_get_dest_address(buffer);
+	fastd_eth_addr_t dest_addr = get_dest_address(buffer);
 	if (!fastd_eth_addr_is_unicast(dest_addr))
 		return false;
 
-	fastd_peer_t *peer = fastd_peer_find_by_eth_addr(dest_addr);
+	fastd_peer_t *dest = fastd_peer_find_by_eth_addr(dest_addr);
 
-	if (!peer)
+	if (!dest)
 		return false;
 
-	conf.protocol->send(peer, buffer);
+	if (dest == source) {
+		fastd_buffer_free(buffer);
+		return true;
+	}
+
+	conf.protocol->send(dest, buffer);
 	return true;
 }
 
-void fastd_send_data(fastd_buffer_t buffer) {
-	if (send_data_tap_single(buffer))
+void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source) {
+	if (send_data_tap_single(buffer, source))
 		return;
 
 	/* TUN mode or multicast packet */
-	fastd_send_all(NULL, buffer);
+	send_all(buffer, source);
 }

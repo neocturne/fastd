@@ -301,8 +301,7 @@ extern fastd_config_t conf;	/**< The global configuration */
 
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
-void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer);
-void fastd_send_data(fastd_buffer_t buffer);
+void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source);
 
 void fastd_receive(fastd_socket_t *sock);
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer);
@@ -385,31 +384,6 @@ static inline size_t fastd_max_inner_packet(void) {
 		return conf.mtu+ETH_HLEN;
 	case MODE_TUN:
 		return conf.mtu;
-	default:
-		exit_bug("invalid mode");
-	}
-}
-
-/** Returns the source address of an ethernet packet */
-static inline fastd_eth_addr_t fastd_get_source_address(const fastd_buffer_t buffer) {
-	fastd_eth_addr_t ret;
-
-	switch (conf.mode) {
-	case MODE_TAP:
-		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
-		return ret;
-	default:
-		exit_bug("invalid mode");
-	}
-}
-
-/** Returns the destination address of an ethernet packet */
-static inline fastd_eth_addr_t fastd_get_dest_address(const fastd_buffer_t buffer) {
-	fastd_eth_addr_t ret;
-	switch (conf.mode) {
-	case MODE_TAP:
-		memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
-		return ret;
 	default:
 		exit_bug("invalid mode");
 	}
