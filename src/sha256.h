@@ -23,6 +23,13 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file sha256.h
+
+   Small SHA256 and HMAC-SHA256 implementation
+*/
+
+
 
 #pragma once
 
@@ -31,20 +38,27 @@
 #include <stdint.h>
 
 
+/** 32bit words per SHA256 hash */
 #define FASTD_SHA256_HASH_WORDS 8
+/** 32bit words per input block */
 #define FASTD_SHA256_BLOCK_WORDS 8
 
+/** 32bit words per HMAC-SHA256 key */
 #define FASTD_HMACSHA256_KEY_WORDS 8
 
+/** bytes per SHA256 hash */
 #define FASTD_SHA256_HASH_BYTES (4*FASTD_SHA256_HASH_WORDS)
+/** bytes per input block */
 #define FASTD_SHA256_BLOCK_BYTES (4*FASTD_SHA256_BLOCK_WORDS)
 
+/** bytes per HMAC-SHA256 key */
 #define FASTD_HMACSHA256_KEY_BYTES (4*FASTD_HMACSHA256_KEY_WORDS)
 
 
+/** A SHA256 hash output */
 typedef union fastd_sha256 {
-	uint32_t w[FASTD_SHA256_HASH_WORDS];
-	uint8_t b[FASTD_SHA256_HASH_BYTES];
+	uint32_t w[FASTD_SHA256_HASH_WORDS];		/**< 32bit-word-wise access */
+	uint8_t b[FASTD_SHA256_HASH_BYTES];		/**< bytewise access */
 } fastd_sha256_t;
 
 

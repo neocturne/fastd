@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file sha256.c
+
+   Small SHA256 and HMAC-SHA256 implementation
+*/
+
 
 #include "sha256.h"
 
@@ -32,10 +38,16 @@
 #include <arpa/inet.h>
 
 
+/** right-rotation of a 32bit value */
 static inline uint32_t rotr(uint32_t x, int r) {
 	return (x >> r) | (x << (32-r));
 }
 
+/**
+   Copies a (potentially incomplete) input block, while switching from big endian to CPU byte order
+
+   After the last byte, a one-bit is added, as SHA256 defines.
+*/
 static inline void copy_words(uint32_t w[8], const uint32_t *in, ssize_t *left) {
 	size_t i;
 	for (i = 0; i < 8; i++) {
@@ -58,6 +70,7 @@ static inline void copy_words(uint32_t w[8], const uint32_t *in, ssize_t *left) 
 	}
 }
 
+/** Hashes a list of input blocks */
 static void sha256_list(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t *const *in, size_t len) {
 	static const uint32_t k[64] = {
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -126,6 +139,7 @@ static void sha256_list(uint32_t out[FASTD_SHA256_HASH_WORDS], const uint32_t *c
 		out[i] = htonl(h[i]);
 }
 
+/** Hashes a NULL-terminated va_list of complete input blocks */
 static void sha256_blocks_va(uint32_t out[FASTD_SHA256_HASH_WORDS], va_list ap) {
 	size_t count = 0;
 	va_list ap2;
@@ -145,6 +159,7 @@ static void sha256_blocks_va(uint32_t out[FASTD_SHA256_HASH_WORDS], va_list ap) 
 	sha256_list(out, blocks, count*FASTD_SHA256_BLOCK_BYTES);
 }
 
+/** Hashes complete input blocks (argument list must by NULL-terminated) */
 void fastd_sha256_blocks(fastd_sha256_t *out, ...) {
 	va_list ap;
 
@@ -153,6 +168,7 @@ void fastd_sha256_blocks(fastd_sha256_t *out, ...) {
 	va_end(ap);
 }
 
+/** Hashes a buffer of arbitraty length (must by 32bit-aligned) */
 void fastd_sha256(fastd_sha256_t *out, const uint32_t *in, size_t len) {
 	size_t i, count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
 	const uint32_t *blocks[count];
@@ -163,6 +179,7 @@ void fastd_sha256(fastd_sha256_t *out, const uint32_t *in, size_t len) {
 	sha256_list(out->w, blocks, len);
 }
 
+/** Computes the HMAC-SHA256 of a list of (potentially incomplete) input blocks */
 static void hmacsha256_list(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], const uint32_t *const *in, size_t len) {
 	static const uint32_t ipad2[8] = {
 		0x36363636,
@@ -205,6 +222,7 @@ static void hmacsha256_list(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSH
 	fastd_sha256_blocks(out, opad, opad2, temp, NULL);
 }
 
+/** Computes the HMAC-SHA256 of a list of NULL-terminated va_list of input blocks */
 static void hmacsha256_blocks_va(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], va_list ap) {
 	size_t count = 0;
 	va_list ap2;
@@ -224,6 +242,8 @@ static void hmacsha256_blocks_va(fastd_sha256_t *out, const uint32_t key[FASTD_H
 	hmacsha256_list(out, key, blocks, count*FASTD_SHA256_BLOCK_BYTES);
 }
 
+
+/** Computes the HMAC-SHA256 of the complete blocks given as arguments (the argument list must be NULL-terminated) */
 void fastd_hmacsha256_blocks(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...) {
 	va_list ap;
 
@@ -232,6 +252,7 @@ void fastd_hmacsha256_blocks(fastd_sha256_t *out, const uint32_t key[FASTD_HMACS
 	va_end(ap);
 }
 
+/** Verifies the HMAC-SHA256 of the complete blocks given as arguments (the argument list must be NULL-terminated) */
 bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], ...) {
 	va_list ap;
 	fastd_sha256_t out;
@@ -243,6 +264,7 @@ bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], 
 	return !memcmp(out.b, mac, FASTD_SHA256_HASH_BYTES);
 }
 
+/** Computes the HMAC-SHA256 of an arbitraty input buffer */
 void fastd_hmacsha256(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], const uint32_t *in, size_t len) {
 	size_t i, count = (len+FASTD_SHA256_BLOCK_BYTES-1) / FASTD_SHA256_BLOCK_BYTES;
 	const uint32_t *blocks[count];
@@ -253,6 +275,7 @@ void fastd_hmacsha256(fastd_sha256_t *out, const uint32_t key[FASTD_HMACSHA256_K
 	hmacsha256_list(out, key, blocks, len);
 }
 
+/** Verifies the HMAC-SHA256 of an arbitraty input buffer */
 bool fastd_hmacsha256_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const uint32_t key[FASTD_HMACSHA256_KEY_WORDS], const uint32_t *in, size_t len) {
 	fastd_sha256_t out;
 
