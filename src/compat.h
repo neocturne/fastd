@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file compat.h
+
+   Portablity definitions
+*/
+
 
 #pragma once
 
@@ -41,35 +47,37 @@
 #include <netinet/if_ether.h>
 
 #ifndef ETH_ALEN
-#define ETH_ALEN 6
+#define ETH_ALEN 6		/**< The length of a MAC address */
 #endif
 
 #ifndef ETH_HLEN
-#define ETH_HLEN 14
+#define ETH_HLEN 14		/**< The length of the standard ethernet header */
 #endif
 
 #ifndef HAVE_ETHHDR
+/** An ethernet header */
 struct ethhdr {
-	uint8_t h_dest[ETH_ALEN];
-	uint8_t h_source[ETH_ALEN];
-	uint16_t h_proto;
+	uint8_t h_dest[ETH_ALEN];			/**< The destination MAC address field */
+	uint8_t h_source[ETH_ALEN];			/**< The source MAC address field */
+	uint16_t h_proto;				/**< The EtherType/length field */
 } __attribute__((packed));
 #endif
 
 #if defined(USE_FREEBIND) && !defined(IP_FREEBIND)
-#define IP_FREEBIND 15
+#define IP_FREEBIND 15		/**< Compatiblity define for systems supporting, but not defining IP_FREEBIND */
 #endif
 
 
 #ifndef SOCK_NONBLOCK
-#define NO_HAVE_SOCK_NONBLOCK
-#define SOCK_NONBLOCK 0
+#define NO_HAVE_SOCK_NONBLOCK	/**< Defined if SOCK_NONBLOCK doesn't have an effect */
+#define SOCK_NONBLOCK 0		/**< Compatiblity define for systems not supporting SOCK_NONBLOCK */
 #endif
 
 
 #ifndef HAVE_GET_CURRENT_DIR_NAME
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+/**< Replacement function for *BSD systems not supporting get_current_dir_name() */
 static inline char *get_current_dir_name(void) {
 	return getcwd(NULL, 0);
 }

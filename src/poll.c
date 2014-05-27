@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file poll.h
+
+   Portable polling API implementations
+*/
+
 
 #include "poll.h"
 #include "async.h"
@@ -90,6 +96,7 @@ static inline int handshake_timeout(void) {
 #include <sys/epoll.h>
 
 
+/** Initializes the poll interface */
 void fastd_poll_init(void) {
 	ctx.epoll_fd = epoll_create1(0);
 	if (ctx.epoll_fd < 0)
@@ -103,6 +110,7 @@ void fastd_poll_init(void) {
 		exit_errno("epoll_ctl");
 }
 
+/** Frees the poll interface */
 void fastd_poll_free(void) {
 	if (close(ctx.epoll_fd))
 		pr_warn_errno("closing EPOLL: close");
