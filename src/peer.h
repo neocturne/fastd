@@ -97,45 +97,53 @@ struct fastd_peer_config {
 
 	fastd_remote_config_t *remotes;			/**< A linked list of the peer's remote entries */
 	char *key;					/**< The peer's public key */
-	bool floating;					/**< Specifies if the peer has any floating remotes (or no remotes at all) */
+	bool floating;					/**< Specifies if the peer has any floating remotes */
 	const fastd_peer_group_t *group;		/**< The peer group the peer belongs to */
 
 	fastd_protocol_peer_config_t *protocol_config;	/**< The protocol-specific configuration of the peer */
 };
 
-struct fastd_peer_group {
-	fastd_peer_group_t *next;
-	fastd_peer_group_t *parent;
-	fastd_peer_group_t *children;
+/**
+   A group of peers
 
-	char *name;
-	fastd_string_stack_t *peer_dirs;
+   Peer groups may be nested and form a tree
+*/
+struct fastd_peer_group {
+	fastd_peer_group_t *next;			/**< The next sibling in the group tree */
+	fastd_peer_group_t *parent;			/**< The group's parent group */
+	fastd_peer_group_t *children;			/**< The group's first child */
+
+	char *name;					/**< The group's name; NULL for the root group */
+	fastd_string_stack_t *peer_dirs;		/**< List of peer directories which belong to this group */
 
 	/* constraints */
-	int max_connections;
+	int max_connections;				/**< The maximum number of connections to allow in this group; -1 for no limit */
 };
 
+/** An entry for a MAC address seen at another peer */
 struct fastd_peer_eth_addr {
-	fastd_eth_addr_t addr;
-	fastd_peer_t *peer;
-	struct timespec timeout;
+	fastd_eth_addr_t addr;				/**< The MAC address */
+	fastd_peer_t *peer;				/**< The corresponding peer */
+	struct timespec timeout;			/**< Timeout after which the address entry will be purged */
 };
 
+/** A resolved remote entry */
 struct fastd_remote {
-	fastd_remote_config_t *config;
+	fastd_remote_config_t *config;			/**< The remote's configuration */
 
-	size_t n_addresses;
-	size_t current_address;
-	fastd_peer_address_t *addresses;
+	size_t n_addresses;				/**< The size of the \e addresses array */
+	size_t current_address;				/**< The index of the remote the next handshake will be sent to */
+	fastd_peer_address_t *addresses;		/**< The IP addresses the remote was resolved to */
 
-	struct timespec last_resolve_timeout;
+	struct timespec last_resolve_timeout;		/**< Timeout before the remote must not be resolved again */
 };
 
+/** An address or hostname entry associated with a peer */
 struct fastd_remote_config {
-	fastd_remote_config_t *next;
+	fastd_remote_config_t *next;			/**< The next remote for the peer */
 
-	char *hostname;
-	fastd_peer_address_t address;
+	char *hostname;					/**< The hostname or NULL */
+	fastd_peer_address_t address;			/**< The address; if hostname is set only sin.sin_port is used */
 };
 
 
@@ -143,6 +151,7 @@ bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_pee
 void fastd_peer_address_simplify(fastd_peer_address_t *addr);
 void fastd_peer_address_widen(fastd_peer_address_t *addr);
 
+/** Returns the port of a fastd_peer_address_t (in network byte order) */
 static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *addr) {
 	switch (addr->sa.sa_family) {
 	case AF_INET:
@@ -178,45 +187,55 @@ fastd_peer_t* fastd_peer_find_by_id(uint64_t id);
 void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
 void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
 
+/**
+   Schedules a handshake with the default delay and jitter
+
+   The default relay is between 17.5 and 22.5 seconds
+*/
 static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
 	fastd_peer_schedule_handshake(peer, fastd_rand(17500, 22500));
 }
 
+/** Cancels a scheduled handshake */
 static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 	fastd_dlist_remove(&peer->handshake_entry);
 }
 
 #ifdef WITH_VERIFY
+/** Call to signal that there is currently an asychronous on-verify command running for the peer */
 static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
 	peer->verify_timeout = fastd_in_seconds(MIN_VERIFY_INTERVAL);
 }
 
+/** Marks the peer verification as successful or failed */
 static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
-	if (ok)
-		peer->verify_valid_timeout = fastd_in_seconds(VERIFY_VALID_TIME);
-	else
-		peer->verify_valid_timeout = ctx.now;
+	peer->verify_valid_timeout = ok ? fastd_in_seconds(VERIFY_VALID_TIME) : ctx.now;
 }
 #endif
 
+/** Checks if there's a handshake queued for the peer */
 static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
 	return fastd_dlist_linked(&peer->handshake_entry);
 }
 
+/** Checks if a peer config has floating remotes (or no remotes at all) */
 static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *config) {
 	return (!config->remotes || config->floating);
 }
 
 bool fastd_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr);
 
+/** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */
 static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 	return peer->config ? fastd_peer_config_is_floating(peer->config) : true;
 }
 
+/** Checks if a peer is not statically configured, but added after a on-verify run */
 static inline bool fastd_peer_is_temporary(const fastd_peer_t *peer) {
 	return (!peer->config);
 }
 
+/** Returns the currently active remote entry */
 static inline fastd_remote_t * fastd_peer_get_next_remote(fastd_peer_t *peer) {
 	if (peer->next_remote < 0)
 	     return NULL;
@@ -224,6 +243,7 @@ static inline fastd_remote_t * fastd_peer_get_next_remote(fastd_peer_t *peer) {
 	return &VECTOR_INDEX(peer->remotes, peer->next_remote);
 }
 
+/** Checks if the peer currently has an established connection */
 static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 	switch(peer->state) {
 	case STATE_ESTABLISHED:
@@ -234,6 +254,7 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 	}
 }
 
+/** Returns the peer's peer group */
 static inline const fastd_peer_group_t * fastd_peer_get_group(const fastd_peer_t *peer) {
 	if (peer->config)
 		return peer->config->group;
@@ -241,18 +262,22 @@ static inline const fastd_peer_group_t * fastd_peer_get_group(const fastd_peer_t
 		return conf.peer_group;
 }
 
+/** Checks if a remote is dynamic (is contains a hostname instead of a static IP address) */
 static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {
 	return remote->config->hostname;
 }
 
+/** Signals that a valid packet was received from the peer */
 static inline void fastd_peer_seen(fastd_peer_t *peer) {
 	peer->timeout = fastd_in_seconds(PEER_STALE_TIME);
 }
 
+/** Checks if a peer uses dynamic sockets (which means that each connection attempt uses a new socket) */
 static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {
 	return (!peer->sock || !peer->sock->addr);
 }
 
+/** Checks if a MAC address is a normal unicast address */
 static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 	return ((addr.data[0] & 1) == 0);
 }
