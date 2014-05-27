@@ -297,7 +297,7 @@ void fastd_tuntap_open(void) {
 
 /** Reads a packet from the TUN/TAP device */
 void fastd_tuntap_handle(void) {
-	size_t max_len = fastd_max_inner_packet();
+	size_t max_len = fastd_max_payload();
 
 	fastd_buffer_t buffer;
 	if (multiaf_tun && conf.mode == MODE_TUN)

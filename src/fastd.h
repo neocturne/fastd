@@ -43,13 +43,10 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <stdarg.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#include <sys/uio.h>
 
 
 /** An ethernet address */
@@ -378,7 +375,7 @@ static inline size_t alignto(size_t l, size_t a) {
 }
 
 /** Returns the maximum payload size \em fastd is configured to transport */
-static inline size_t fastd_max_inner_packet(void) {
+static inline size_t fastd_max_payload(void) {
 	switch (conf.mode) {
 	case MODE_TAP:
 		return conf.mtu+ETH_HLEN;
@@ -387,11 +384,6 @@ static inline size_t fastd_max_inner_packet(void) {
 	default:
 		exit_bug("invalid mode");
 	}
-}
-
-/** Returns the packet size (payload + overhead) \em fastd is configured to transport */
-static inline size_t fastd_max_outer_packet(void) {
-	return 1 + fastd_max_inner_packet() + conf.max_overhead;
 }
 
 /** Checks if a fastd_peer_address_t is an IPv6 link-local address */

@@ -181,7 +181,7 @@ static inline void handle_socket_receive(fastd_socket_t *sock, const fastd_peer_
 
 /** Reads a packet from a socket */
 void fastd_receive(fastd_socket_t *sock) {
-	size_t max_len = fastd_max_outer_packet();
+	size_t max_len = 1 + fastd_max_payload() + conf.max_overhead;
 	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, conf.min_decrypt_head_space, conf.min_decrypt_tail_space);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
