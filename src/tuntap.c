@@ -296,7 +296,7 @@ void fastd_tuntap_open(void) {
 
 
 /** Reads a packet from the TUN/TAP device */
-fastd_buffer_t fastd_tuntap_read(void) {
+void fastd_tuntap_handle(void) {
 	size_t max_len = fastd_max_inner_packet();
 
 	fastd_buffer_t buffer;
@@ -309,7 +309,7 @@ fastd_buffer_t fastd_tuntap_read(void) {
 	if (len < 0) {
 		if (errno == EINTR) {
 			fastd_buffer_free(buffer);
-			return (fastd_buffer_t){};
+			return;
 		}
 
 		exit_errno("read");
@@ -320,7 +320,7 @@ fastd_buffer_t fastd_tuntap_read(void) {
 	if (multiaf_tun && conf.mode == MODE_TUN)
 		fastd_buffer_push_head(&buffer, 4);
 
-	return buffer;
+	fastd_send_data(buffer);
 }
 
 /** Writes a packet to the TUN/TAP device */

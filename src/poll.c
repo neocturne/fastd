@@ -41,41 +41,6 @@
 #endif
 
 
-static inline bool handle_tap(fastd_buffer_t buffer) {
-	if (conf.mode != MODE_TAP)
-		return false;
-
-	if (buffer.len < ETH_HLEN) {
-		pr_debug("truncated packet on tap interface");
-		fastd_buffer_free(buffer);
-		return true;
-	}
-
-	fastd_eth_addr_t dest_addr = fastd_get_dest_address(buffer);
-	if (!fastd_eth_addr_is_unicast(dest_addr))
-		return false;
-
-	fastd_peer_t *peer = fastd_peer_find_by_eth_addr(dest_addr);
-
-	if (!peer)
-		return false;
-
-	conf.protocol->send(peer, buffer);
-	return true;
-}
-
-static void handle_tuntap(void) {
-	fastd_buffer_t buffer = fastd_tuntap_read();
-	if (!buffer.len)
-		return;
-
-	if (handle_tap(buffer))
-		return;
-
-	/* TUN mode or multicast packet */
-	fastd_send_all(NULL, buffer);
-}
-
 static inline int handshake_timeout(void) {
 	if (!ctx.handshake_queue.next)
 		return -1;
@@ -181,7 +146,7 @@ void fastd_poll_handle(void) {
 	for (i = 0; i < (size_t)ret; i++) {
 		if (events[i].data.ptr == &ctx.tunfd) {
 			if (events[i].events & EPOLLIN)
-				handle_tuntap();
+				fastd_tuntap_handle();
 		}
 		else if (events[i].data.ptr == &ctx.async_rfd) {
 			if (events[i].events & EPOLLIN)
@@ -291,7 +256,7 @@ void fastd_poll_handle(void) {
 	fastd_update_time();
 
 	if (VECTOR_INDEX(ctx.pollfds, 0).revents & POLLIN)
-		handle_tuntap();
+		fastd_tuntap_handle();
 	if (VECTOR_INDEX(ctx.pollfds, 1).revents & POLLIN)
 		fastd_async_handle();
 

@@ -197,3 +197,34 @@ void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer) {
 
 	fastd_buffer_free(buffer);
 }
+
+static inline bool send_data_tap_single(fastd_buffer_t buffer) {
+	if (conf.mode != MODE_TAP)
+		return false;
+
+	if (buffer.len < ETH_HLEN) {
+		pr_debug("truncated packet on tap interface");
+		fastd_buffer_free(buffer);
+		return true;
+	}
+
+	fastd_eth_addr_t dest_addr = fastd_get_dest_address(buffer);
+	if (!fastd_eth_addr_is_unicast(dest_addr))
+		return false;
+
+	fastd_peer_t *peer = fastd_peer_find_by_eth_addr(dest_addr);
+
+	if (!peer)
+		return false;
+
+	conf.protocol->send(peer, buffer);
+	return true;
+}
+
+void fastd_send_data(fastd_buffer_t buffer) {
+	if (send_data_tap_single(buffer))
+		return;
+
+	/* TUN mode or multicast packet */
+	fastd_send_all(NULL, buffer);
+}

@@ -302,6 +302,7 @@ extern fastd_config_t conf;	/**< The global configuration */
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
 void fastd_send_all(fastd_peer_t *source_peer, fastd_buffer_t buffer);
+void fastd_send_data(fastd_buffer_t buffer);
 
 void fastd_receive(fastd_socket_t *sock);
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer);
@@ -316,7 +317,7 @@ void fastd_socket_error(fastd_socket_t *sock);
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
 void fastd_tuntap_open(void);
-fastd_buffer_t fastd_tuntap_read(void);
+void fastd_tuntap_handle(void);
 void fastd_tuntap_write(fastd_buffer_t buffer);
 void fastd_tuntap_close(void);
 
