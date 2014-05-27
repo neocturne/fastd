@@ -36,14 +36,22 @@
 #include "types.h"
 
 
+/** Initializes the poll interface */
 void fastd_poll_init(void);
+/** Frees the poll interface */
 void fastd_poll_free(void);
 
+/** Updates the file descriptor of the TUN/TAP interface from \e ctx.tunfd */
 void fastd_poll_set_fd_tuntap(void);
+/** Updates the file descriptor of the socket \e ctx.socks[i] */
 void fastd_poll_set_fd_sock(size_t i);
+/** Updates the file descriptor of the dynamic socket for the peer with index \e i in \e ctx.peers */
 void fastd_poll_set_fd_peer(size_t i);
 
+/** Must be called when a peer is added at the end of the peer list */
 void fastd_poll_add_peer(void);
+/** Must be called then the peer with the index \e i is deleted */
 void fastd_poll_delete_peer(size_t i);
 
+/** Waits for the next input event */
 void fastd_poll_handle(void);

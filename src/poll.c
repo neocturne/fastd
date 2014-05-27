@@ -24,7 +24,7 @@
 */
 
 /**
-   \file poll.h
+   \file poll.c
 
    Portable polling API implementations
 */
@@ -41,6 +41,7 @@
 #endif
 
 
+/** Returns the time to the next handshake or -1 */
 static inline int handshake_timeout(void) {
 	if (!ctx.handshake_queue.next)
 		return -1;
@@ -61,7 +62,6 @@ static inline int handshake_timeout(void) {
 #include <sys/epoll.h>
 
 
-/** Initializes the poll interface */
 void fastd_poll_init(void) {
 	ctx.epoll_fd = epoll_create1(0);
 	if (ctx.epoll_fd < 0)
@@ -75,12 +75,10 @@ void fastd_poll_init(void) {
 		exit_errno("epoll_ctl");
 }
 
-/** Frees the poll interface */
 void fastd_poll_free(void) {
 	if (close(ctx.epoll_fd))
 		pr_warn_errno("closing EPOLL: close");
 }
-
 
 void fastd_poll_set_fd_tuntap(void) {
 	struct epoll_event event = {
