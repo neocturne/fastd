@@ -24,7 +24,7 @@
 */
 
 /**
-   \file async.h
+   \file src/async.h
 
    Asynchronous notifications
 */
@@ -45,26 +45,26 @@ typedef enum fastd_async_type {
 
 /** A DNS resolver response */
 typedef struct fastd_async_resolve_return {
-	uint64_t peer_id;
-	size_t remote;
+	uint64_t peer_id;			/**< The ID of the peer the resolved remote belongs to */
+	size_t remote;				/**< The index of the resolved remote */
 
-	size_t n_addr;
-	fastd_peer_address_t addr[];
+	size_t n_addr;				/**< The number of addresses returned */
+	fastd_peer_address_t addr[];		/**< The resolved addresses */
 } fastd_async_resolve_return_t;
 
 /** A on-verify response */
 typedef struct fastd_async_verify_return {
-	bool ok;
+	bool ok;				/**< true if the verification was successful */
 
-	uint64_t peer_id;
+	uint64_t peer_id;			/**< The ID of the verified peer */
 
-	const fastd_method_info_t *method;
-	fastd_socket_t *sock;
+	const fastd_method_info_t *method;	/**< The method supplied in the handshake causing the verification */
+	fastd_socket_t *sock;			/**< The socket the handshake causing the verification was received on */
 
-	fastd_peer_address_t local_addr;
-	fastd_peer_address_t remote_addr;
+	fastd_peer_address_t local_addr;	/**< The local address the handshake was received on */
+	fastd_peer_address_t remote_addr;	/**< The address the handshake was received from */
 
-	uint8_t protocol_data[] __attribute__((aligned(8)));
+	uint8_t protocol_data[] __attribute__((aligned(8))); /**< Protocol-specific data */
 } fastd_async_verify_return_t;
 
 

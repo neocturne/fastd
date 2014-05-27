@@ -24,7 +24,7 @@
 */
 
 /**
-   \file peer.h
+   \file src/peer.h
 
    Structures and functions for peer management
 */

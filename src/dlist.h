@@ -24,7 +24,7 @@
 */
 
 /**
-   \file dlist.h
+   \file src/dlist.h
 
    Doubly-linked lists
 */

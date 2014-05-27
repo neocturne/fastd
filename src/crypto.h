@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file src/crypto.h
+
+   Cyptographic algorithm API and utilities
+*/
+
 
 #pragma once
 

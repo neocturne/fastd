@@ -25,7 +25,7 @@
 
 
 /**
-   \file shell.c
+   \file src/shell.c
 
    Execution of shell commands and management of environment variables
 */

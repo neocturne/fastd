@@ -24,7 +24,7 @@
 */
 
 /**
-   \file poll.c
+   \file src/poll.c
 
    Portable polling API implementations
 */

@@ -24,7 +24,7 @@
 */
 
 /**
-   \file vector.h
+   \file src/vector.h
 
    Typesafe dynamically sized arrays
 */

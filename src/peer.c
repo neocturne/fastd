@@ -24,7 +24,7 @@
 */
 
 /**
-   \file peer.c
+   \file src/peer.c
 
    Implementations of functions for peer management
 */

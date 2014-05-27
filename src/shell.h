@@ -24,7 +24,7 @@
 */
 
 /**
-   \file shell.h
+   \file src/shell.h
 
    Execution of shell commands and management of environment variables
 */

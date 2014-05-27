@@ -24,7 +24,7 @@
 */
 
 /**
-   \file log.h
+   \file src/log.h
 
    Logging functions and macros
 */

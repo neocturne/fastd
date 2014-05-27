@@ -24,7 +24,7 @@
 */
 
 /**
-   \file fastd.h
+   \file src/fastd.h
 
    \em fastd main header file defining most data structures
  */

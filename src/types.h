@@ -24,7 +24,7 @@
 */
 
 /**
-  \file types.h
+  \file src/types.h
 
   Basic enums and typedefs for common types
 */
