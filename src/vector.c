@@ -23,15 +23,27 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file vector.c
+
+   Typesafe dynamically sized arrays
+*/
+
 
 #include "vector.h"
 
 #include <string.h>
 
 
+/** The minimum number of elements to allocate even when less elements are used */
 #define MIN_VECTOR_ALLOC 4
 
 
+/**
+   Allocates a new vector
+
+   Internal function, use VECTOR_ALLOC() instead.
+*/
 void _fastd_vector_alloc(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize) {
 	desc->allocated = MIN_VECTOR_ALLOC;
 
@@ -43,6 +55,13 @@ void _fastd_vector_alloc(fastd_vector_desc_t *desc, void **data, size_t n, size_
 	*data = malloc(desc->allocated * elemsize);
 }
 
+/**
+   Resizes a vector
+
+   Vector allocations are always powers of 2.
+
+   Internal function, use VECTOR_RESIZE() instead.
+*/
 void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize) {
 	desc->length = n;
 
@@ -59,6 +78,11 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 	}
 }
 
+/**
+   Inserts an element into a vector
+
+   Internal function, use VECTOR_INSERT() and VECTOR_ADD() instead.
+*/
 void _fastd_vector_insert(fastd_vector_desc_t *desc, void **data, void *element, size_t pos, size_t elemsize) {
 	_fastd_vector_resize(desc, data, desc->length+1, elemsize);
 
@@ -68,6 +92,11 @@ void _fastd_vector_insert(fastd_vector_desc_t *desc, void **data, void *element,
 	memcpy(p, element, elemsize);
 }
 
+/**
+   Deletes an element from a vector
+
+   Internal function, use VECTOR_DELETE() instead.
+*/
 void _fastd_vector_delete(fastd_vector_desc_t *desc, void **data, size_t pos, size_t elemsize) {
 	void *p = *data + pos*elemsize;
 	memmove(p, p+elemsize, (desc->length-pos-1)*elemsize);

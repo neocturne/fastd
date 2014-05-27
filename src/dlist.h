@@ -23,6 +23,11 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file dlist.h
+
+   Doubly-linked lists
+*/
 
 #pragma once
 
@@ -31,16 +36,19 @@
 
 typedef struct fastd_dlist_head fastd_dlist_head_t;
 
+/** Doubly-linked list element */
 struct fastd_dlist_head {
 	fastd_dlist_head_t *prev;
 	fastd_dlist_head_t *next;
 };
 
 
+/** Checks if a fastd_dlist_head_t is currently part of a list */
 static inline bool fastd_dlist_linked(fastd_dlist_head_t *elem) {
 	return elem->prev;
 }
 
+/** Adds the element \e elem after \e list */
 static inline void fastd_dlist_insert(fastd_dlist_head_t *list, fastd_dlist_head_t *elem) {
 	elem->prev = list;
 	elem->next = list->next;
@@ -51,6 +59,7 @@ static inline void fastd_dlist_insert(fastd_dlist_head_t *list, fastd_dlist_head
 		elem->next->prev = elem;
 }
 
+/** Removes \e elem from a list */
 static inline void fastd_dlist_remove(fastd_dlist_head_t *elem) {
 	if (elem->prev)
 		elem->prev->next = elem->next;

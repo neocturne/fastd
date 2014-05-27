@@ -24,6 +24,13 @@
 */
 
 
+/**
+   \file shell.c
+
+   Execution of shell commands and management of environment variables
+*/
+
+
 #include "shell.h"
 #include "fastd.h"
 
@@ -31,17 +38,20 @@
 #include <sys/wait.h>
 
 
+/** An environment variable */
 typedef struct shell_env_entry {
 	const char *key;
 	char *value;
 } shell_env_entry_t;
 
 
+/** A shell environment */
 struct fastd_shell_env {
 	VECTOR(shell_env_entry_t) entries;
 };
 
 
+/** Allocated a new shell environment */
 fastd_shell_env_t * fastd_shell_env_alloc(void) {
 	fastd_shell_env_t *env = malloc(sizeof(fastd_shell_env_t));
 	VECTOR_ALLOC(env->entries, 0);
@@ -49,11 +59,13 @@ fastd_shell_env_t * fastd_shell_env_alloc(void) {
 	return env;
 }
 
+/** Sets a variable in a shell environment */
 void fastd_shell_env_set(fastd_shell_env_t *env, const char *key, const char *value) {
 	shell_env_entry_t entry = {.key = key, .value = value ? strdup(value) : NULL};
 	VECTOR_ADD(env->entries, entry);
 }
 
+/** Frees a variable in a shell environment */
 void fastd_shell_env_free(fastd_shell_env_t *env) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(env->entries); i++) {
@@ -65,6 +77,7 @@ void fastd_shell_env_free(fastd_shell_env_t *env) {
 	free(env);
 }
 
+/** Applies a shell environment to the current process */
 static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
 	char buf[20];
 
@@ -103,6 +116,7 @@ static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
 	}
 }
 
+/** Tries to fork and execute the given command with some environment */
 static bool shell_command_do_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env, pid_t *pid) {
 	pid_t parent = getpid();
 
@@ -134,6 +148,11 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 	_exit(127);
 }
 
+/**
+   Executes a shell command synchronously, regardless of the value of the \e sync field
+
+   May be called from secondary threads.
+*/
 bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_shell_env_t *env, int *ret) {
 	if (!fastd_shell_command_isset(command))
 		return true;
@@ -173,6 +192,12 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 	return true;
 }
 
+/**
+   Executes a shell command asynchronously
+
+   The new process's pid is added to \e ctx.async_pids so it can be reaped later
+   on SIGCHLD.
+*/
 static void shell_command_exec_async(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
 	/* block SIGCHLD */
 	sigset_t set, oldset;
@@ -187,6 +212,7 @@ static void shell_command_exec_async(const fastd_shell_command_t *command, const
 	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 }
 
+/** Executes a shell command */
 void fastd_shell_command_exec(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
 	if (!fastd_shell_command_isset(command))
 		return;

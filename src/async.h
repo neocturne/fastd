@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file async.h
+
+   Asynchronous notifications
+*/
+
 
 #pragma once
 
@@ -30,12 +36,14 @@
 #include "peer.h"
 
 
+/** A type of asynchronous notification */
 typedef enum fastd_async_type {
-	ASYNC_TYPE_RESOLVE_RETURN,
-	ASYNC_TYPE_VERIFY_RETURN,
+	ASYNC_TYPE_RESOLVE_RETURN,		/**< A DNS resolver response */
+	ASYNC_TYPE_VERIFY_RETURN,		/**< A on-verify return */
 } fastd_async_type_t;
 
 
+/** A DNS resolver response */
 typedef struct fastd_async_resolve_return {
 	uint64_t peer_id;
 	size_t remote;
@@ -44,6 +52,7 @@ typedef struct fastd_async_resolve_return {
 	fastd_peer_address_t addr[];
 } fastd_async_resolve_return_t;
 
+/** A on-verify response */
 typedef struct fastd_async_verify_return {
 	bool ok;
 

@@ -47,11 +47,13 @@
 #include <netinet/if_ether.h>
 
 #ifndef ETH_ALEN
-#define ETH_ALEN 6		/**< The length of a MAC address */
+/** The length of a MAC address */
+#define ETH_ALEN 6
 #endif
 
 #ifndef ETH_HLEN
-#define ETH_HLEN 14		/**< The length of the standard ethernet header */
+/** The length of the standard ethernet header */
+#define ETH_HLEN 14
 #endif
 
 #ifndef HAVE_ETHHDR
@@ -64,27 +66,35 @@ struct ethhdr {
 #endif
 
 #if defined(USE_FREEBIND) && !defined(IP_FREEBIND)
-#define IP_FREEBIND 15		/**< Compatiblity define for systems supporting, but not defining IP_FREEBIND */
+/** Compatiblity define for systems supporting, but not defining IP_FREEBIND */
+#define IP_FREEBIND 15
 #endif
 
 
 #ifndef SOCK_NONBLOCK
-#define NO_HAVE_SOCK_NONBLOCK	/**< Defined if SOCK_NONBLOCK doesn't have an effect */
-#define SOCK_NONBLOCK 0		/**< Compatiblity define for systems not supporting SOCK_NONBLOCK */
+/** Defined if SOCK_NONBLOCK doesn't have an effect */
+#define NO_HAVE_SOCK_NONBLOCK
+
+/** Compatiblity define for systems not supporting SOCK_NONBLOCK */
+#define SOCK_NONBLOCK 0
 #endif
 
 
 #ifndef HAVE_GET_CURRENT_DIR_NAME
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
-/**< Replacement function for *BSD systems not supporting get_current_dir_name() */
+/** Replacement function for *BSD systems not supporting get_current_dir_name() */
 static inline char *get_current_dir_name(void) {
+
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+
 	return getcwd(NULL, 0);
-}
+
 #else
 
 #error unknown system, get_current_dir_name() not implemented
 
 #endif
+
+}
 
 #endif

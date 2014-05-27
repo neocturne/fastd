@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file shell.h
+
+   Execution of shell commands and management of environment variables
+*/
+
 
 #pragma once
 
@@ -32,13 +38,15 @@
 #include <string.h>
 
 
+/** A shell command */
 struct fastd_shell_command {
-	char *command;
-	char *dir;
-	bool sync;
+	char *command;		/**< The command as given to \em /bin/sh */
+	char *dir;		/**< The working directory for the command */
+	bool sync;		/**< If false, the command will be executed in the background by default */
 };
 
 
+/** Frees the resources used by a shell command */
 static inline void fastd_shell_command_unset(fastd_shell_command_t *command) {
 	free(command->command);
 	command->command = NULL;
@@ -47,6 +55,7 @@ static inline void fastd_shell_command_unset(fastd_shell_command_t *command) {
 	command->dir = NULL;
 }
 
+/** Sets a shell command */
 static inline void fastd_shell_command_set(fastd_shell_command_t *command, const char *val, bool sync) {
 	fastd_shell_command_unset(command);
 
@@ -55,6 +64,7 @@ static inline void fastd_shell_command_set(fastd_shell_command_t *command, const
 	command->sync = sync;
 }
 
+/** Checks if a shell command is set */
 static inline bool fastd_shell_command_isset(const fastd_shell_command_t *command) {
 	return command->command;
 }

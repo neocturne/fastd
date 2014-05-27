@@ -23,17 +23,25 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file async.c
+
+   Asynchronous notifications
+*/
+
 
 #include "async.h"
 #include "fastd.h"
 
 
+/** The packet header used on the async notification sockets */
 typedef struct fastd_async_hdr {
 	fastd_async_type_t type;
 	size_t len;
 } fastd_async_hdr_t;
 
 
+/** Initializes the async notification sockets */
 void fastd_async_init(void) {
 	int fds[2];
 
@@ -50,6 +58,7 @@ void fastd_async_init(void) {
 	ctx.async_wfd = fds[1];
 }
 
+/** Handles a DNS resolver response */
 static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_return) {
 	fastd_peer_t *peer = fastd_peer_find_by_id(resolve_return->peer_id);
 	if (!peer)
@@ -64,6 +73,7 @@ static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_re
 
 #ifdef WITH_VERIFY
 
+/** Handles a on-verify response */
 static void handle_verify_return(const fastd_async_verify_return_t *verify_return) {
 	fastd_peer_t *peer = fastd_peer_find_by_id(verify_return->peer_id);
 	if (!peer)
@@ -81,6 +91,7 @@ static void handle_verify_return(const fastd_async_verify_return_t *verify_retur
 #endif
 
 
+/** Reads and handles a single notification from the async notification socket */
 void fastd_async_handle(void) {
 	fastd_async_hdr_t header;
 	struct iovec vec[2] = {
@@ -122,6 +133,7 @@ void fastd_async_handle(void) {
 	}
 }
 
+/** Enqueues a new async notification */
 void fastd_async_enqueue(fastd_async_type_t type, const void *data, size_t len) {
 	fastd_async_hdr_t header;
 	/* use memset to zero the holes in the struct to make valgrind happy */
