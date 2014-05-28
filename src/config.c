@@ -65,9 +65,6 @@ static void default_config(void) {
 	conf.peer_group = calloc(1, sizeof(fastd_peer_group_t));
 	conf.peer_group->name = strdup("default");
 	conf.peer_group->max_connections = -1;
-
-	conf.ciphers = fastd_cipher_config_alloc();
-	conf.macs = fastd_mac_config_alloc();
 }
 
 void fastd_config_protocol(const char *name) {
@@ -91,12 +88,12 @@ void fastd_config_method(const char *name) {
 }
 
 void fastd_config_cipher(const char *name, const char *impl) {
-	if (!fastd_cipher_config(conf.ciphers, name, impl))
+	if (!fastd_cipher_config(name, impl))
 		exit_error("config error: implementation `%s' is not supported for cipher `%s' (or cipher `%s' is not supported)", impl, name, name);
 }
 
 void fastd_config_mac(const char *name, const char *impl) {
-	if (!fastd_mac_config(conf.macs, name, impl))
+	if (!fastd_mac_config(name, impl))
 		exit_error("config error: implementation `%s' is not supported for MAC `%s' (or MAC `%s' is not supported)", impl, name, name);
 }
 
@@ -633,9 +630,6 @@ void fastd_config_release(void) {
 
 	destroy_methods();
 	fastd_string_stack_free(conf.method_list);
-
-	fastd_mac_config_free(conf.macs);
-	fastd_cipher_config_free(conf.ciphers);
 
 	fastd_shell_command_unset(&conf.on_pre_up);
 	fastd_shell_command_unset(&conf.on_up);

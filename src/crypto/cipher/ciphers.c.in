@@ -46,14 +46,15 @@ typedef struct cipher_entry {
 static const cipher_entry_t ciphers[] = { @CIPHER_LIST@
 };
 
+static const fastd_cipher_t *cipher_conf[array_size(ciphers)] = {};
+
 
 static inline bool cipher_available(const fastd_cipher_t *cipher) {
 	return (!cipher->available) || cipher->available();
 }
 
-const fastd_cipher_t** fastd_cipher_config_alloc(void) {
-	const fastd_cipher_t **cipher_conf = calloc(array_size(ciphers), sizeof(const fastd_cipher_t*));
-
+/** Initializes the list of ciphers */
+void fastd_cipher_init(void) {
 	size_t i, j;
 	for (i = 0; i < array_size(ciphers); i++) {
 		for (j = 0; ciphers[i].impls[j].impl; j++) {
@@ -63,15 +64,10 @@ const fastd_cipher_t** fastd_cipher_config_alloc(void) {
 
 		cipher_conf[i] = ciphers[i].impls[j].impl;
 	}
-
-	return cipher_conf;
 }
 
-void fastd_cipher_config_free(const fastd_cipher_t **cipher_conf) {
-	free(cipher_conf);
-}
-
-bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, const char *impl) {
+/** Configures a cipher to use a specific implementation */
+bool fastd_cipher_config(const char *name, const char *impl) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (!strcmp(ciphers[i].name, name)) {
@@ -94,15 +90,13 @@ bool fastd_cipher_config(const fastd_cipher_t **cipher_conf, const char *name, c
 }
 
 const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
-	size_t i, j;
+	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (strcmp(ciphers[i].name, name))
 			continue;
 
-		for (j = 0; ciphers[i].impls[j].impl; j++) {
-			if (cipher_available(ciphers[i].impls[j].impl))
-				return ciphers[i].info;
-		}
+		if (cipher_conf[i])
+			return ciphers[i].info;
 
 		break;
 	}
@@ -114,7 +108,7 @@ const fastd_cipher_t* fastd_cipher_get(const fastd_cipher_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (ciphers[i].info == info)
-			return conf.ciphers[i];
+			return cipher_conf[i];
 	}
 
 	return NULL;

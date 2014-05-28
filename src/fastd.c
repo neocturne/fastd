@@ -27,6 +27,7 @@
 #include "fastd.h"
 #include "async.h"
 #include "config.h"
+#include "crypto.h"
 #include "peer.h"
 #include "peer_hashtable.h"
 #include "poll.h"
@@ -462,6 +463,9 @@ int main(int argc, char *argv[]) {
 	fastd_close_all_fds();
 
 	fastd_random_bytes(&ctx.randseed, sizeof(ctx.randseed), false);
+
+	fastd_cipher_init();
+	fastd_mac_init();
 
 	fastd_configure(argc, argv);
 

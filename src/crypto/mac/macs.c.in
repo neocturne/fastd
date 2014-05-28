@@ -46,14 +46,14 @@ typedef struct mac_entry {
 static const mac_entry_t macs[] = { @MAC_LIST@
 };
 
+static const fastd_mac_t *mac_conf[array_size(macs)] = {};
+
 
 static inline bool mac_available(const fastd_mac_t *mac) {
 	return (!mac->available) || mac->available();
 }
 
-const fastd_mac_t** fastd_mac_config_alloc(void) {
-	const fastd_mac_t **mac_conf = calloc(array_size(macs), sizeof(const fastd_mac_t*));
-
+void fastd_mac_init(void) {
 	size_t i, j;
 	for (i = 0; i < array_size(macs); i++) {
 		for (j = 0; macs[i].impls[j].impl; j++) {
@@ -63,15 +63,9 @@ const fastd_mac_t** fastd_mac_config_alloc(void) {
 
 		mac_conf[i] = macs[i].impls[j].impl;
 	}
-
-	return mac_conf;
 }
 
-void fastd_mac_config_free(const fastd_mac_t **mac_conf) {
-	free(mac_conf);
-}
-
-bool fastd_mac_config(const fastd_mac_t **mac_conf, const char *name, const char *impl) {
+bool fastd_mac_config(const char *name, const char *impl) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
 		if (!strcmp(macs[i].name, name)) {
@@ -99,10 +93,8 @@ const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name) {
 		if (strcmp(macs[i].name, name))
 			continue;
 
-		for (j = 0; macs[i].impls[j].impl; j++) {
-			if (mac_available(macs[i].impls[j].impl))
-				return macs[i].info;
-		}
+		if (mac_conf[i])
+			return macs[i].info;
 
 		break;
 	}
@@ -114,7 +106,7 @@ const fastd_mac_t* fastd_mac_get(const fastd_mac_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
 		if (macs[i].info == info)
-			return conf.macs[i];
+			return mac_conf[i];
 	}
 
 	return NULL;

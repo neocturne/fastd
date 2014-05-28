@@ -201,9 +201,6 @@ struct fastd_config {
 
 	char *secret;				/**< The configured secret key */
 
-	const fastd_cipher_t **ciphers;		/**< All supported ciphers */
-	const fastd_mac_t **macs;		/**< All supported message authentication codes */
-
 	fastd_peer_group_t *peer_group;	/**< The root peer group configuration */
 	fastd_peer_config_t *peers;		/**< The configured peers */
 
