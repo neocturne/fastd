@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/dlist.h
+   \file
 
    Doubly-linked lists
 */
@@ -38,8 +38,8 @@ typedef struct fastd_dlist_head fastd_dlist_head_t;
 
 /** Doubly-linked list element */
 struct fastd_dlist_head {
-	fastd_dlist_head_t *prev;
-	fastd_dlist_head_t *next;
+	fastd_dlist_head_t *prev;		/**< The next element of the list or NULL */
+	fastd_dlist_head_t *next;		/**< The previous element of the list or NULL */
 };
 
 

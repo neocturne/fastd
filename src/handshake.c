@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Functions and structures for composing and decomposing handshake packets
+*/
+
 
 #include "handshake.h"
 #include "method.h"
@@ -30,6 +36,7 @@
 #include <fastd_version.h>
 
 
+/** Human-readable names for the TLV record types */
 static const char *const RECORD_TYPES[RECORD_MAX] = {
 	"handshake type",
 	"reply code",
@@ -50,10 +57,14 @@ static const char *const RECORD_TYPES[RECORD_MAX] = {
 };
 
 
+/** Reads a TLV record as an 8bit integer */
 #define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
+
+/** Reads a TLV record as a 16bit integer (big endian) */
 #define AS_UINT16(ptr) ((*(uint8_t*)(ptr).data) + (*((uint8_t*)(ptr).data+1) << 8))
 
 
+/** Generates a zero-separated list of supported methods */
 static uint8_t* create_method_list(size_t *len) {
 	*len = 0;
 
@@ -72,6 +83,7 @@ static uint8_t* create_method_list(size_t *len) {
 	return ret;
 }
 
+/** Checks if a string is equal to a buffer with a maximum length */
 static inline bool string_equal(const char *str, const char *buf, size_t maxlen) {
 	if (strlen(str) != strnlen(buf, maxlen))
 		return false;
@@ -79,10 +91,12 @@ static inline bool string_equal(const char *str, const char *buf, size_t maxlen)
 	return !strncmp(str, buf, maxlen);
 }
 
+/** Checks if a string is equal to the value of a TLV record */
 static inline bool record_equal(const char *str, const fastd_handshake_record_t *record) {
 	return string_equal(str, (const char*)record->data, record->length);
 }
 
+/** Parses a list of zero-separated strings */
 static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) {
 	const uint8_t *end = data+len;
 	fastd_string_stack_t *ret = NULL;
@@ -97,6 +111,7 @@ static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) 
 	return ret;
 }
 
+/** Allocates and initializes a new handshake packet */
 static fastd_buffer_t new_handshake(uint8_t type, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
 	size_t version_len = strlen(FASTD_VERSION);
 	size_t protocol_len = strlen(conf.protocol->name);
@@ -139,16 +154,19 @@ static fastd_buffer_t new_handshake(uint8_t type, const fastd_method_info_t *met
 	return buffer;
 }
 
+/** Allocates and initializes a new initial handshake packet */
 fastd_buffer_t fastd_handshake_new_init(size_t tail_space) {
 	return new_handshake(1, NULL, !conf.secure_handshakes, tail_space);
 }
 
+/** Allocates and initializes a new reply handshake packet */
 fastd_buffer_t fastd_handshake_new_reply(uint8_t type, const fastd_method_info_t *method, bool with_method_list, size_t tail_space) {
 	fastd_buffer_t buffer = new_handshake(type, method, with_method_list, tail_space);
 	fastd_handshake_add_uint8(&buffer, RECORD_REPLY_CODE, 0);
 	return buffer;
 }
 
+/** Prints the error corresponding to the given reply code and error detail */
 static void print_error(const char *prefix, const fastd_peer_address_t *remote_addr, uint8_t reply_code, uint8_t error_detail) {
 	const char *error_field_str;
 
@@ -174,6 +192,7 @@ static void print_error(const char *prefix, const fastd_peer_address_t *remote_a
 	}
 }
 
+/** Sends an error reply to a peer */
 static void send_error(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint8_t error_detail) {
 	print_error("sending", remote_addr, reply_code, error_detail);
 
@@ -190,6 +209,7 @@ static void send_error(fastd_socket_t *sock, const fastd_peer_address_t *local_a
 	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
 }
 
+/** Parses the TLV records of a handshake */
 static inline fastd_handshake_t parse_tlvs(const fastd_buffer_t *buffer) {
 	fastd_handshake_t handshake = {};
 
@@ -232,6 +252,7 @@ static inline fastd_handshake_t parse_tlvs(const fastd_buffer_t *buffer) {
 	return handshake;
 }
 
+/** Prints the error found in a received handshake */
 static inline void print_error_reply(const fastd_peer_address_t *remote_addr, const fastd_handshake_t *handshake) {
 	uint8_t reply_code = AS_UINT8(handshake->records[RECORD_REPLY_CODE]);
 	uint8_t error_detail = RECORD_MAX;
@@ -242,6 +263,7 @@ static inline void print_error_reply(const fastd_peer_address_t *remote_addr, co
 	print_error("received", remote_addr, reply_code, error_detail);
 }
 
+/** Does some basic validity checks on a received handshake */
 static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake) {
 	if (handshake->records[RECORD_PROTOCOL_NAME].data) {
 		if (!record_equal(conf.protocol->name, &handshake->records[RECORD_PROTOCOL_NAME])) {
@@ -281,6 +303,7 @@ static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_
 	return true;
 }
 
+/** Returns the method info with a specified name and length */
 static inline const fastd_method_info_t* get_method_by_name(const char *name, size_t n) {
 	char name0[n+1];
 	memcpy(name0, name, n);
@@ -289,6 +312,7 @@ static inline const fastd_method_info_t* get_method_by_name(const char *name, si
 	return fastd_method_get_by_name(name0);
 }
 
+/** Returns the most appropriate method to negotiate with a peer a handshake was received from */
 static inline const fastd_method_info_t* get_method(const fastd_handshake_t *handshake) {
 	if (handshake->records[RECORD_METHOD_LIST].data && handshake->records[RECORD_METHOD_LIST].length) {
 		fastd_string_stack_t *method_list = parse_string_list(handshake->records[RECORD_METHOD_LIST].data, handshake->records[RECORD_METHOD_LIST].length);
@@ -314,6 +338,7 @@ static inline const fastd_method_info_t* get_method(const fastd_handshake_t *han
 	return get_method_by_name((const char*)handshake->records[RECORD_METHOD_NAME].data, handshake->records[RECORD_METHOD_NAME].length);
 }
 
+/** Handles a handshake packet */
 void fastd_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	char *peer_version = NULL;
 	const fastd_method_info_t *method = NULL;

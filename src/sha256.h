@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/sha256.h
+   \file
 
    Small SHA256 and HMAC-SHA256 implementation
 */

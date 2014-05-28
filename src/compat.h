@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/compat.h
+   \file
 
    Portablity definitions
 */

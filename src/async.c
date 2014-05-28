@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/async.c
+   \file
 
    Asynchronous notifications
 */

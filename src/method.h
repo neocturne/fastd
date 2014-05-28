@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/method.h
+   \file
 
    Management of encryption methods
 */

@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/vector.h
+   \file
 
    Typesafe dynamically sized arrays
 */
@@ -37,8 +37,8 @@
 
 /** A vector descriptor */
 typedef struct fastd_vector_desc {
-	size_t allocated;
-	size_t length;
+	size_t allocated;		/**< The number of elements currently allocated */
+	size_t length;			/**< The actual number of elements in the vector */
 } fastd_vector_desc_t;
 
 

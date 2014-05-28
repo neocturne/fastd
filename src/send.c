@@ -23,11 +23,18 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Functions for sending packets
+*/
+
 
 #include "fastd.h"
 #include "peer.h"
 
 
+/** Adds packet info to ancillary control messages */
 static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *local_addr) {
 	if (!local_addr)
 		return;
@@ -66,6 +73,7 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 	}
 }
 
+/** Adds statistics for a single packet of a given size */
 static inline void count_stat(fastd_stats_t *stats, size_t stat_size) {
 	if (stat_size) {
 		stats->packets++;
@@ -73,6 +81,7 @@ static inline void count_stat(fastd_stats_t *stats, size_t stat_size) {
 	}
 }
 
+/** Sends a packet of a given type */
 static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
@@ -168,12 +177,12 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 	fastd_buffer_free(buffer);
 }
 
-/** Sends a payload packet to a peer */
+/** Sends a payload packet */
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
 	send_type(sock, local_addr, remote_addr, peer, PACKET_DATA, buffer, stat_size);
 }
 
-/** Sends a handshake packet to a peer */
+/** Sends a handshake packet */
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	send_type(sock, local_addr, remote_addr, peer, PACKET_HANDSHAKE, buffer, 0);
 }
@@ -205,6 +214,7 @@ static inline fastd_eth_addr_t get_dest_address(const fastd_buffer_t buffer) {
 	return ret;
 }
 
+/** Handles sending of a payload packet to a single peer in TAP mode */
 static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *source) {
 	if (conf.mode != MODE_TAP)
 		return false;
@@ -233,6 +243,7 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
 	return true;
 }
 
+/** Sends a buffer of payload data to other peers */
 void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source) {
 	if (send_data_tap_single(buffer, source))
 		return;

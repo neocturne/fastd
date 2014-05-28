@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/buffer.h
+   \file
 
    Buffer management
 */

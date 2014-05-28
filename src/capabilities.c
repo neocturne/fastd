@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Handling of POSIX capabilities
+*/
+
 
 #include "fastd.h"
 
@@ -31,6 +37,7 @@
 #include <sys/capability.h>
 
 
+/** Tries to acquire a capability */
 static void try_cap(cap_value_t cap) {
 	char *name = cap_to_name(cap);
 	if (!name)

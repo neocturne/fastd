@@ -23,6 +23,11 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Management of the TUN/TAP interface
+*/
 
 #include "fastd.h"
 #include "poll.h"
@@ -46,6 +51,7 @@
 #endif
 
 
+/** Defines if the platform uses an address family header on TUN interfaces */
 #ifdef __linux__
 static const bool multiaf_tun = false;
 #else

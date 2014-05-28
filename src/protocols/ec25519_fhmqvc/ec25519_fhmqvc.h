@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   ec25519-fhmqvc protocol: general definitions
+*/
+
 
 #pragma once
 
@@ -34,49 +40,64 @@
 #include <libuecc/ecc.h>
 
 
+/** The length of a \em ec25519-fhmqvc public key */
 #define PUBLICKEYBYTES 32
+
+/** The length of a \em ec25519-fhmqvc private key */
 #define SECRETKEYBYTES 32
 
 
+/** A \e libuecc int256, aligned to 32bit, so it can be used as input to the SHA256 functions */
 typedef union aligned_int256 {
-	ecc_int256_t int256;
-	uint32_t u32[8];
-	uint8_t u8[32];
+	ecc_int256_t int256;			/**< ecc_int256_t access */
+	uint32_t u32[8];			/**< 32bit-wise access */
+	uint8_t u8[32];				/**< byte-wise access */
 } aligned_int256_t;
 
+/** A keypair */
 typedef struct keypair {
-	ecc_int256_t secret;
-	aligned_int256_t public;
+	ecc_int256_t secret;			/**< The section key */
+	aligned_int256_t public;		/**< The public key */
 } keypair_t;
 
+/** The protocol-specific configuration */
 struct fastd_protocol_config {
-	keypair_t key;
+	keypair_t key;				/**< The own keypair */
 };
 
+/** The protocol-specific peer configuration */
 struct fastd_protocol_peer_config {
-	aligned_int256_t public_key;
+	aligned_int256_t public_key;		/**< The peer's public key */
 };
 
+/** Session state */
 typedef struct protocol_session {
-	bool handshakes_cleaned;
-	bool refreshing;
+	/**
+	   Stores if remaining handshakes have been unqueued after session establishment.
 
-	const fastd_method_info_t *method;
-	fastd_method_session_state_t *method_state;
+	   After a session has been established, further scheduled handshakes aren't unqueued
+	   before it has been ensured the other side has established the session as well.
+	*/
+	bool handshakes_cleaned;
+	bool refreshing;			/**< true if a session refresh has been triggered by the local side */
+
+	const fastd_method_info_t *method;	/**< The used crypto method */
+	fastd_method_session_state_t *method_state; /**< The method-specific state */
 } protocol_session_t;
 
+/** Protocol-specific peer state */
 struct fastd_protocol_peer_state {
-	protocol_session_t old_session;
-	protocol_session_t session;
+	protocol_session_t old_session;		/**< An old, not yet invalidated session */
+	protocol_session_t session;		/**< The newest session */
 
-	uint64_t last_serial;
+	uint64_t last_serial;			/**< The serial number of the ephemeral keypair used for the last session establishment */
 
 	/* handshake cache */
-	uint64_t last_handshake_serial;
-	aligned_int256_t peer_handshake_key;
-	aligned_int256_t sigma;
-	fastd_sha256_t shared_handshake_key;
-	fastd_sha256_t shared_handshake_key_compat;
+	uint64_t last_handshake_serial;		/**< The serial number of the ephemeral keypair used in the last handshake */
+	aligned_int256_t peer_handshake_key;	/**< The peer's ephemeral public key used in the last handshake */
+	aligned_int256_t sigma;			/**< The value of sigma used in the last handshake */
+	fastd_sha256_t shared_handshake_key;	/**< The shared handshake key used in the last handshake */
+	fastd_sha256_t shared_handshake_key_compat; /**< The shared handshake key used in the last handshake (pre-v11 compatiblity protocol) */
 };
 
 
@@ -103,13 +124,14 @@ void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const f
 bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len);
 
 
+/** Converts a 32 byte value to a hexadecimal string representation */
 static inline void hexdump(char out[65], const unsigned char d[32]) {
 	size_t i;
 	for (i = 0; i < 32; i++)
 		snprintf(out+2*i, 3, "%02x", d[i]);
 }
 
-
+/** Checks if a session is currently valid */
 static inline bool is_session_valid(const protocol_session_t *session) {
 	return (session->method && session->method->provider->session_is_valid(session->method_state));
 }

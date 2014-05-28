@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/vector.c
+   \file
 
    Typesafe dynamically sized arrays
 */

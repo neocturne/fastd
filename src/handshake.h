@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/handshake.h
+   \file
 
    Functions and structures for composing and decomposing handshake packets
 */

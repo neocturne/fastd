@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Functions for receiving and handling packets
+*/
+
 
 #include "fastd.h"
 #include "handshake.h"
@@ -30,6 +36,7 @@
 #include "peer_hashtable.h"
 
 
+/** Handles the ancillary control messages of received packets */
 static inline void handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
 	memset(local_addr, 0, sizeof(fastd_peer_address_t));
 
@@ -77,6 +84,11 @@ static inline void handle_socket_control(struct msghdr *message, const fastd_soc
 	}
 }
 
+/**
+   Checks if a handshake should be sent after an unexpected payload packet has been received
+
+   backoff_unknown() tries to avoid flooding hosts with handshakes.
+*/
 static bool backoff_unknown(const fastd_peer_address_t *addr) {
 	size_t i;
 	for (i = 0; i < array_size(ctx.unknown_handshakes); i++) {
@@ -104,6 +116,7 @@ static bool backoff_unknown(const fastd_peer_address_t *addr) {
 	return false;
 }
 
+/** Handles a packet received from a known peer address */
 static inline void handle_socket_receive_known(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!fastd_peer_may_connect(peer)) {
 		fastd_buffer_free(buffer);
@@ -131,10 +144,12 @@ static inline void handle_socket_receive_known(fastd_socket_t *sock, const fastd
 	}
 }
 
+/** Determines if packets from known addresses are accepted */
 static inline bool allow_unknown_peers(void) {
 	return conf.has_floating || fastd_allow_verify();
 }
 
+/** Handles a packet received from an unknown address */
 static inline void handle_socket_receive_unknown(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
 	const uint8_t *packet_type = buffer.data;
 	fastd_buffer_push_head(&buffer, 1);
@@ -152,6 +167,7 @@ static inline void handle_socket_receive_unknown(fastd_socket_t *sock, const fas
 	}
 }
 
+/** Handles a packet read from a socket */
 static inline void handle_socket_receive(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
 	fastd_peer_t *peer = NULL;
 

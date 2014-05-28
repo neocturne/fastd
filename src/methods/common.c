@@ -23,10 +23,17 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Definitions for the common packet format used by most methods
+*/
+
 
 #include "common.h"
 
 
+/** Common initialization for a new session */
 void fastd_method_common_init(fastd_method_common_t *session, bool initiator) {
 	memset(session, 0, sizeof(*session));
 
@@ -42,6 +49,7 @@ void fastd_method_common_init(fastd_method_common_t *session, bool initiator) {
 	}
 }
 
+/** Checks if a received nonce is valid */
 bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age) {
 	if ((nonce[0] & 1) != (session->receive_nonce[0] & 1))
 		return false;
@@ -67,6 +75,7 @@ bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uin
 	return true;
 }
 
+/** Checks if a possibly reordered packet should be accepted */
 bool fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age) {
 	if (age < 0) {
 		size_t shift = age < (-64) ? 64 : ((size_t)-age);

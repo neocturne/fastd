@@ -27,6 +27,7 @@
 #include "ec25519_fhmqvc.h"
 
 
+/** Converts a private or public key from a hexadecimal string representation to a uint8 array */
 static inline bool read_key(uint8_t key[32], const char *hexkey) {
 	if ((strlen(hexkey) != 64) || (strspn(hexkey, "0123456789abcdefABCDEF") != 64))
 		return false;
@@ -38,6 +39,7 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 	return true;
 }
 
+/** Checks if the current session with a peers needs refreshing */
 static inline void check_session_refresh(fastd_peer_t *peer) {
 	protocol_session_t *session = &peer->protocol_state->session;
 
@@ -49,6 +51,7 @@ static inline void check_session_refresh(fastd_peer_t *peer) {
 	}
 }
 
+/** Initializes the protocol-specific configuration */
 static fastd_protocol_config_t* protocol_init(void) {
 	fastd_protocol_config_t *protocol_config = malloc(sizeof(fastd_protocol_config_t));
 
@@ -65,6 +68,7 @@ static fastd_protocol_config_t* protocol_init(void) {
 	return protocol_config;
 }
 
+/** Checks if a peer configuration is valid */
 static void protocol_peer_verify(fastd_peer_config_t *peer_conf) {
 	if (!peer_conf->key)
 		exit_error("no key configured for peer `%s'", peer_conf->name);
@@ -74,6 +78,7 @@ static void protocol_peer_verify(fastd_peer_config_t *peer_conf) {
 		exit_error("invalid key configured for peer `%s'", peer_conf->name);
 }
 
+/** Initializes the protocol-specific peer configuration */
 static void protocol_peer_configure(fastd_peer_config_t *peer_conf) {
 	if (peer_conf->protocol_config)
 		return;
@@ -96,6 +101,7 @@ static void protocol_peer_configure(fastd_peer_config_t *peer_conf) {
 		pr_debug("found own key as `%s', ignoring peer", peer_conf->name);
 }
 
+/** Checks if the current session with a peer is valid and resets the connection if not */
 static inline bool check_session(fastd_peer_t *peer) {
 	if (is_session_valid(&peer->protocol_state->session))
 		return true;
@@ -105,6 +111,7 @@ static inline bool check_session(fastd_peer_t *peer) {
 	return false;
 }
 
+/** Handles a payload packet received from a peer */
 static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!peer->protocol_state || !check_session(peer))
 		goto fail;
@@ -158,6 +165,7 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	fastd_buffer_free(buffer);
 }
 
+/** Encrypts and sends a packet to a peer using a specified session */
 static void session_send(fastd_peer_t *peer, fastd_buffer_t buffer, protocol_session_t *session) {
 	size_t stat_size = buffer.len;
 
@@ -172,6 +180,7 @@ static void session_send(fastd_peer_t *peer, fastd_buffer_t buffer, protocol_ses
 	peer->keepalive_timeout = fastd_in_seconds(KEEPALIVE_TIMEOUT);
 }
 
+/** Encrypts and sends a packet to a peer */
 static void protocol_send(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !check_session(peer)) {
 		fastd_buffer_free(buffer);
@@ -189,10 +198,13 @@ static void protocol_send(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	}
 }
 
+/** Sends an empty payload packet (i.e. keepalive) to a peer using a specified session */
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_session_t *session) {
 	session_send(peer, fastd_buffer_alloc(0, alignto(session->method->provider->min_encrypt_head_space, 8), session->method->provider->min_encrypt_tail_space), session);
 }
 
+
+/** The \em ec25519-fhmqvc protocol definition */
 const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.name = "ec25519-fhmqvc",
 

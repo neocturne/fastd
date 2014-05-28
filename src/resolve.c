@@ -24,7 +24,7 @@
 */
 
 /**
-   \file src/resolve.c
+   \file
 
    DNS resolver functions
  */
