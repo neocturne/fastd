@@ -23,27 +23,37 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The null method not providing any encryption or authenticaton
+*/
 
 #include "../../method.h"
 
 
+/** The session state */
 struct fastd_method_session_state {
-	bool valid;
-	bool initiator;
+	bool valid;			/**< true if the session has not been invalidated */
+	bool initiator;			/**< true if this side is the initiator of the session */
 };
 
 
+/** Returns true if the name is "null" */
 static bool method_create_by_name(const char *name, fastd_method_t **method UNUSED) {
 	return !strcmp(name, "null");
 }
 
+/** Does nothing as the null provider provides only a single method */
 static void method_destroy(fastd_method_t *method UNUSED) {
 }
 
+/** Returns 0 */
 static size_t method_key_length(const fastd_method_t *method UNUSED) {
 	return 0;
 }
 
+/** Initiates a new null session */
 static fastd_method_session_state_t* method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret UNUSED, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
@@ -53,35 +63,49 @@ static fastd_method_session_state_t* method_session_init(const fastd_method_t *m
 	return session;
 }
 
+/** Initiates a new null session (pre-v11 compat handshake) */
 static fastd_method_session_state_t* method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length UNUSED, bool initiator) {
 	return method_session_init(method, secret, initiator);
 }
 
+/** Checks if the session is valid */
 static bool method_session_is_valid(fastd_method_session_state_t *session) {
 	return (session && session->valid);
 }
 
+/** Checks if this side is the initiator of the session */
 static bool method_session_is_initiator(fastd_method_session_state_t *session) {
 	return (session->initiator);
 }
 
+/** Returns false */
 static bool method_session_want_refresh(fastd_method_session_state_t *session UNUSED) {
 	return false;
 }
 
+/**
+   Marks the session as invalid
+
+   The session in invalidated without any delay to prevent packets of the new session being
+   mistaken to be valid for the old session
+*/
 static void method_session_superseded(fastd_method_session_state_t *session) {
 	session->valid = false;
 }
 
+/** Frees the session state */
 static void method_session_free(fastd_method_session_state_t *session) {
 	free(session);
 }
 
+/** Just returns the input buffer as the output */
 static bool method_passthrough(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session UNUSED, fastd_buffer_t *out, fastd_buffer_t in) {
 	*out = in;
 	return true;
 }
 
+
+/** The null method provider */
 const fastd_method_provider_t fastd_method_null = {
 	.max_overhead = 0,
 	.min_encrypt_head_space = 0,

@@ -23,11 +23,21 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Socket handling
+*/
 
 #include "fastd.h"
 #include "poll.h"
 
 
+/**
+   Creates a new socket bound to a specific address
+
+   \return The new socket's file descriptor
+*/
 static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 	int fd = -1;
 	int af = AF_UNSPEC;
@@ -160,6 +170,7 @@ static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 	return -1;
 }
 
+/** Gets the address a socket is bound to and sets it in the socket structure */
 static bool set_bound_address(fastd_socket_t *sock) {
 	fastd_peer_address_t addr = {};
 	socklen_t len = sizeof(addr);

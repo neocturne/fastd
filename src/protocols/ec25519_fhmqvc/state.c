@@ -23,11 +23,18 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   ec25519-fhmqvc protocol: state handling
+*/
+
 
 #include "handshake.h"
 #include "../../crypto.h"
 
 
+/** Allocates the protocol-specific state */
 static void init_protocol_state(void) {
 	if (!ctx.protocol_state) {
 		ctx.protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
@@ -37,6 +44,7 @@ static void init_protocol_state(void) {
 	}
 }
 
+/** Generates a new ephemeral keypair */
 static void new_handshake_key(keypair_t *key) {
 		fastd_random_bytes(key->secret.p, SECRETKEYBYTES, false);
 		ecc_25519_gf_sanitize_secret(&key->secret, &key->secret);
@@ -46,6 +54,12 @@ static void new_handshake_key(keypair_t *key) {
 		ecc_25519_store_packed(&key->public.int256, &work);
 }
 
+/**
+   Performs maintenance tasks on the protocol state
+
+   If there is currently no preferred ephemeral keypair, a new one
+   will be generated.
+*/
 void fastd_protocol_ec25519_fhmqvc_maintenance(void) {
 	init_protocol_state();
 
@@ -63,6 +77,7 @@ void fastd_protocol_ec25519_fhmqvc_maintenance(void) {
 	}
 }
 
+/** Allocated protocol-specific peer state */
 void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_peer_t *peer) {
 	init_protocol_state();
 
@@ -73,12 +88,14 @@ void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_peer_t *peer) {
 	peer->protocol_state->last_serial = ctx.protocol_state->handshake_key.serial;
 }
 
+/** Resets a the state of a session, freeing method-specific state */
 static void reset_session(protocol_session_t *session) {
 	if (session->method)
 		session->method->provider->session_free(session->method_state);
 	secure_memzero(session, sizeof(protocol_session_t));
 }
 
+/** Resets all protocol-specific state of a peer */
 void fastd_protocol_ec25519_fhmqvc_reset_peer_state(fastd_peer_t *peer) {
 	if (!peer->protocol_state)
 		return;
@@ -87,6 +104,7 @@ void fastd_protocol_ec25519_fhmqvc_reset_peer_state(fastd_peer_t *peer) {
 	reset_session(&peer->protocol_state->session);
 }
 
+/** Frees the protocol-specific state */
 void fastd_protocol_ec25519_fhmqvc_free_peer_state(fastd_peer_t *peer) {
 	if (peer->protocol_state) {
 		reset_session(&peer->protocol_state->old_session);

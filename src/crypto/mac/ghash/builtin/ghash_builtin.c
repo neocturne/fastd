@@ -23,18 +23,27 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Portable, table-based GHASH implementation
+*/
+
 
 #include "../../../../crypto.h"
 
 
+/** MAC state used by this GHASH implmentation */
 struct fastd_mac_state {
-	fastd_block128_t H[32][16];
+	fastd_block128_t H[32][16];		/**< Lookup table unpacked from the hash key */
 };
 
 
+/** Lower 128 bit of the modulus \f$ x^{128} + x^7 + x^2 + x + 1 \f$ */
 static const fastd_block128_t r = { .b = {0xe1} };
 
 
+/** Right shift of a 128bit integer by up to 8 bytes */
 static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int n) {
 	size_t i;
 	uint8_t c = 0;
@@ -48,6 +57,7 @@ static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int
 	return (c >> (8-n));
 }
 
+/** Galois field multiplication of a 128bit integer with H */
 static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) {
 	fastd_block128_t out = {};
 
@@ -61,6 +71,7 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 }
 
 
+/** Initializes the MAC state with the unpacked key data */
 static fastd_mac_state_t* ghash_init(const uint8_t *key) {
 	fastd_mac_state_t *state;
 	if (posix_memalign((void**)&state, 16, sizeof(fastd_mac_state_t)))
@@ -107,6 +118,7 @@ static fastd_mac_state_t* ghash_init(const uint8_t *key) {
 	return state;
 }
 
+/** Calculates the GHASH of the supplied blocks */
 static bool ghash_hash(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
 	memset(out, 0, sizeof(fastd_block128_t));
 
@@ -119,6 +131,7 @@ static bool ghash_hash(const fastd_mac_state_t *state, fastd_block128_t *out, co
 	return true;
 }
 
+/** Frees the MAC state */
 static void ghash_free(fastd_mac_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
@@ -126,6 +139,7 @@ static void ghash_free(fastd_mac_state_t *state) {
 	}
 }
 
+/** The builtin GHASH implementation */
 const fastd_mac_t fastd_mac_ghash_builtin = {
 	.init = ghash_init,
 	.hash = ghash_hash,

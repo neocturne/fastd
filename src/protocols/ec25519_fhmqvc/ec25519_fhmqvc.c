@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   ec25519-fhmqvc protocol: basic functions
+*/
+
 
 #include "ec25519_fhmqvc.h"
 

@@ -36,8 +36,8 @@
 
 /** The packet header used on the async notification sockets */
 typedef struct fastd_async_hdr {
-	fastd_async_type_t type;
-	size_t len;
+	fastd_async_type_t type;	/**< The type of the notification */
+	size_t len;			/**< The length of the notification payload */
 } fastd_async_hdr_t;
 
 

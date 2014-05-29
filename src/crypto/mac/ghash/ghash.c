@@ -23,10 +23,18 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   General information about the GHASH algorithm
+
+   \sa http://en.wikipedia.org/wiki/Galois/Counter_Mode
+*/
 
 #include "../../../crypto.h"
 
 
+/** MAC info about the GHASH algorithm */
 const fastd_mac_info_t fastd_mac_info_ghash = {
 	.key_length = 16,
 };

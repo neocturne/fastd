@@ -124,9 +124,9 @@ struct fastd_protocol {
 
 /** An union storing an IPv4 or IPv6 address */
 union fastd_peer_address {
-	struct sockaddr sa;		/**< A generic sockaddr union field of the address (for access to sa_family) */
-	struct sockaddr_in in;		/**< An IPv4 address */
-	struct sockaddr_in6 in6;	/**< An IPv6 address */
+	struct sockaddr sa;			/**< A sockaddr field (for access to sa_family) */
+	struct sockaddr_in in;			/**< An IPv4 address */
+	struct sockaddr_in6 in6;		/**< An IPv6 address */
 };
 
 /** A linked list of addresses to bind to */
@@ -201,7 +201,7 @@ struct fastd_config {
 
 	char *secret;				/**< The configured secret key */
 
-	fastd_peer_group_t *peer_group;	/**< The root peer group configuration */
+	fastd_peer_group_t *peer_group;		/**< The root peer group configuration */
 	fastd_peer_config_t *peers;		/**< The configured peers */
 
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
@@ -289,8 +289,8 @@ struct fastd_string_stack {
 };
 
 
-extern fastd_context_t ctx;	/**< The global context */
-extern fastd_config_t conf;	/**< The global configuration */
+extern fastd_context_t ctx;
+extern fastd_config_t conf;
 
 
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);

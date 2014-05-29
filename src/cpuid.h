@@ -23,17 +23,30 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   CPUID function for x86-based platforms
+*/
 
 #pragma once
 
 #include <stdint.h>
 
+/** The FXSR bit in the CPUID return value */
 #define CPUID_FXSR	((uint64_t)1 << 24)
+
+/** The SSE2 bit in the CPUID return value */
 #define CPUID_SSE2	((uint64_t)1 << 26)
+
+/** The PCLMULQDQ bit in the CPUID return value */
 #define CPUID_PCLMULQDQ	((uint64_t)1 << 33)
+
+/** The SSSE3 bit in the CPUID return value */
 #define CPUID_SSSE3	((uint64_t)1 << 41)
 
 
+/** Returns the ECX and EDX return values of CPUID function 1 as a single uint64 */
 static inline uint64_t fastd_cpuid(void) {
 	unsigned eax, ebx, ecx, edx;
 

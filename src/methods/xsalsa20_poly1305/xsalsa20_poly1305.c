@@ -23,6 +23,16 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The xsalsa20-poly1305 method provider (deprecated)
+
+   This provider is included for compatiblity reasons as pre-v11
+   xsalsa20-poly1305 was the recommended method. In new setups salsa20+poly1305
+   provided by the generic-poly1305 provider should be used as a replacement.
+*/
+
 
 #include "../../crypto.h"
 #include "../../method.h"
@@ -31,24 +41,29 @@
 #include <crypto_secretbox_xsalsa20poly1305.h>
 
 
+/** The session state */
 struct fastd_method_session_state {
-	fastd_method_common_t common;
+	fastd_method_common_t common;		/**< The common method state */
 
-	uint8_t key[crypto_secretbox_xsalsa20poly1305_KEYBYTES] __attribute__((aligned(8)));
+	uint8_t key[crypto_secretbox_xsalsa20poly1305_KEYBYTES] __attribute__((aligned(8))); /**< The encryption key */
 };
 
 
+/** Matches the method name "xsalsa20-poly1305" */
 static bool method_create_by_name(const char *name, fastd_method_t **method UNUSED) {
 	return !strcmp(name, "xsalsa20-poly1305");
 }
 
+/** Does nothing as this provider has only a single method */
 static void method_destroy(fastd_method_t *method UNUSED) {
 }
 
+/** Returns the key length used by xsalsa20-poly1305 */
 static size_t method_key_length(const fastd_method_t *method UNUSED) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
 }
 
+/** Initializes the session state */
 static fastd_method_session_state_t* method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
@@ -59,6 +74,7 @@ static fastd_method_session_state_t* method_session_init(const fastd_method_t *m
 	return session;
 }
 
+/** Initializes the session state (pre-v11 compat handshake) */
 static fastd_method_session_state_t* method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug("xsalsa20-poly1305: tried to init with short secret");
@@ -66,22 +82,27 @@ static fastd_method_session_state_t* method_session_init_compat(const fastd_meth
 	return method_session_init(method, secret, initiator);
 }
 
+/** Checks if a session is currently valid */
 static bool method_session_is_valid(fastd_method_session_state_t *session) {
 	return (session && fastd_method_session_common_is_valid(&session->common));
 }
 
+/** Checks if this side is the initiator of the session */
 static bool method_session_is_initiator(fastd_method_session_state_t *session) {
 	return fastd_method_session_common_is_initiator(&session->common);
 }
 
+/** Checks if the session should be refreshed */
 static bool method_session_want_refresh(fastd_method_session_state_t *session) {
 	return fastd_method_session_common_want_refresh(&session->common);
 }
 
+/** Marks the session as superseded */
 static void method_session_superseded(fastd_method_session_state_t *session) {
 	fastd_method_session_common_superseded(&session->common);
 }
 
+/** Frees the session state */
 static void method_session_free(fastd_method_session_state_t *session) {
 	if(session) {
 		secure_memzero(session, sizeof(fastd_method_session_state_t));
@@ -90,12 +111,19 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 
+/**
+   Copies a nonce of length COMMON_NONCEBYTES to a buffer, reversing its byte order
+
+   To maintain compability with pre-v11 versions, which used a little-endian nonce,
+   the xsalsa20-poly1305 keeps using the old nonce format.
+*/
 static inline void memcpy_nonce(uint8_t *dst, const uint8_t *src) {
 	size_t i;
 	for (i = 0; i < COMMON_NONCEBYTES; i++)
 		dst[i] = src[COMMON_NONCEBYTES-i-1];
 }
 
+/** Adds the xsalsa20-poly1305 header to the head of a packet */
 static inline void put_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
 	fastd_buffer_pull_head_from(buffer, &flags, 1);
 
@@ -103,19 +131,22 @@ static inline void put_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMON
 	memcpy_nonce(buffer->data, nonce);
 }
 
+/** Removes the xsalsa20-poly1305 header from the head of a packet */
 static inline void take_header(fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
-	memcpy_nonce(nonce, buffer->data  );
+	memcpy_nonce(nonce, buffer->data);
 	fastd_buffer_push_head(buffer, COMMON_NONCEBYTES);
 
 	fastd_buffer_push_head_to(buffer, flags, 1);
 }
 
+/** Removes and handles the xsalsa20-poly1305 header from the head of a packet */
 static inline bool handle_header(const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
 	take_header(buffer, nonce, flags);
 	return fastd_method_is_nonce_valid(session, nonce, age);
 }
 
 
+/** Performs encryption and authentication of a packet */
 static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_pull_head_zero(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
@@ -135,6 +166,7 @@ static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state
 	return true;
 }
 
+/** Performs validation and decryption of a packet */
 static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	if (in.len < COMMON_HEADBYTES)
 		return false;
@@ -180,6 +212,7 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 }
 
 
+/** The xsalsa20-poly1305 method provider */
 const fastd_method_provider_t fastd_method_xsalsa20_poly1305 = {
 
 	.max_overhead = COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES,

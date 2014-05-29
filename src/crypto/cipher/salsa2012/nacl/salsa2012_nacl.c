@@ -23,17 +23,25 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The Salsa20/12 implementation from NaCl
+*/
+
 
 #include "../../../../crypto.h"
 
 #include <crypto_stream_salsa2012.h>
 
 
+/** The cipher state */
 struct fastd_cipher_state {
-	uint8_t key[crypto_stream_salsa2012_KEYBYTES];
+	uint8_t key[crypto_stream_salsa2012_KEYBYTES];	/**< The encryption key */
 };
 
 
+/** Initializes the cipher state */
 static fastd_cipher_state_t* salsa2012_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 	memcpy(state->key, key, crypto_stream_salsa2012_KEYBYTES);
@@ -41,11 +49,13 @@ static fastd_cipher_state_t* salsa2012_init(const uint8_t *key) {
 	return state;
 }
 
+/** XORs data with the Salsa20/12 cipher stream */
 static bool salsa2012_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	crypto_stream_salsa2012_xor(out->b, in->b, len, iv, state->key);
 	return true;
 }
 
+/** Frees the cipher state */
 static void salsa2012_free(fastd_cipher_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
@@ -53,6 +63,8 @@ static void salsa2012_free(fastd_cipher_state_t *state) {
 	}
 }
 
+
+/** The nacl salsa2012 implementation */
 const fastd_cipher_t fastd_cipher_salsa2012_nacl = {
 	.init = salsa2012_init,
 	.crypt = salsa2012_crypt,

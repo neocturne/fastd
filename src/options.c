@@ -23,6 +23,25 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Handling of command line options
+
+
+   \def OPTION
+   Defines a command line option without argument
+
+   \def OPTION_ARG
+   Defines a command line option with an argument
+
+   \def OR
+   Separates multiple alternative options with the same meaning
+
+   \def SEPARATOR
+   Separates groups of related options
+*/
+
 
 #include "fastd.h"
 #include "config.h"
@@ -32,6 +51,7 @@
 #include <arpa/inet.h>
 
 
+/** Prints the usage message for a single command line option */
 static void print_usage(const char *options, const char *message) {
 	/* 28 spaces */
 	static const char spaces[] = {[0 ... 27] = ' ', [28] = 0};
@@ -48,6 +68,8 @@ static void print_usage(const char *options, const char *message) {
 	puts(message);
 }
 
+
+/** Prints the usage message and exits */
 static void usage(void) {
 	puts("fastd (Fast and Secure Tunnelling Daemon) " FASTD_VERSION " usage:\n");
 
@@ -64,21 +86,27 @@ static void usage(void) {
 	exit(0);
 }
 
+
+
+/** Prints fastd's version and exits */
 static void version(void) {
 	puts("fastd " FASTD_VERSION);
 	exit(0);
 }
 
+/** Handles the --daemon option */
 static void option_daemon(void) {
 	conf.daemon = true;
 }
 
+/** Handles the --pid-file option */
 static void option_pid_file(const char *arg) {
 	free(conf.pid_file);
 	conf.pid_file = strdup(arg);
 }
 
 
+/** Handles the --config option */
 static void option_config(const char *arg) {
 	if (!strcmp(arg, "-"))
 		arg = NULL;
@@ -87,6 +115,7 @@ static void option_config(const char *arg) {
 		exit(1);
 }
 
+/** Handles the --config-peer option */
 static void option_config_peer(const char *arg) {
 	fastd_peer_config_new();
 
@@ -94,6 +123,7 @@ static void option_config_peer(const char *arg) {
 		exit(1);
 }
 
+/** Handles the --config-peer-dir option */
 static void option_config_peer_dir(const char *arg) {
 	fastd_add_peer_dir(arg);
 }
@@ -101,11 +131,13 @@ static void option_config_peer_dir(const char *arg) {
 
 #ifdef WITH_CMDLINE_USER
 
+/** Handles the --config-user option */
 static void option_user(const char *arg) {
 	free(conf.user);
 	conf.user = strdup(arg);
 }
 
+/** Handles the --config-group option */
 static void option_group(const char *arg) {
 	free(conf.group);
 	conf.group = strdup(arg);
@@ -115,6 +147,7 @@ static void option_group(const char *arg) {
 
 #ifdef WITH_CMDLINE_LOGGING
 
+/** Parses a log level argument */
 static int parse_log_level(const char *arg) {
 	if (!strcmp(arg, "fatal"))
 		return LL_FATAL;
@@ -134,23 +167,28 @@ static int parse_log_level(const char *arg) {
 		exit_error("invalid log level `%s'", arg);
 }
 
+/** Handles the --log-level option */
 static void option_log_level(const char *arg) {
 	conf.log_stderr_level = parse_log_level(arg);
 }
 
+/** Handles the --syslog-level option */
 static void option_syslog_level(const char *arg) {
 	conf.log_syslog_level = parse_log_level(arg);
 }
 
+/** Handles the --syslog-ident option */
 static void option_syslog_ident(const char *arg) {
 	free(conf.log_syslog_ident);
 	conf.log_syslog_ident = strdup(arg);
 }
 
+/** Handles the --hide-ip-addresses option */
 static void option_hide_ip_addresses(void) {
 	conf.hide_ip_addresses = true;
 }
 
+/** Handles the --hide-mac-addresses option */
 static void option_hide_mac_addresses(void) {
 	conf.hide_mac_addresses = true;
 }
@@ -159,6 +197,7 @@ static void option_hide_mac_addresses(void) {
 
 #ifdef WITH_CMDLINE_OPERATION
 
+/** Handles the --mode option */
 static void option_mode(const char *arg) {
 	if (!strcmp(arg, "tap"))
 		conf.mode = MODE_TAP;
@@ -168,11 +207,13 @@ static void option_mode(const char *arg) {
 		exit_error("invalid mode `%s'", arg);
 }
 
+/** Handles the --interface option */
 static void option_interface(const char *arg) {
 	free(conf.ifname);
 	conf.ifname = strdup(arg);
 }
 
+/** Handles the --mtu option */
 static void option_mtu(const char *arg) {
 	char *endptr;
 	long mtu = strtol(arg, &endptr, 10);
@@ -183,6 +224,7 @@ static void option_mtu(const char *arg) {
 	conf.mtu = mtu;
 }
 
+/** Handles the --bind option */
 static void option_bind(const char *arg) {
 	long l;
 	char *charptr;
@@ -253,14 +295,17 @@ static void option_bind(const char *arg) {
 	fastd_config_bind_address(&addr, ifname, false, false);
 }
 
+/** Handles the --protocol option */
 static void option_protocol(const char *arg) {
 	fastd_config_protocol(arg);
 }
 
+/** Handles the --method option */
 static void option_method(const char *arg) {
 	fastd_config_method(arg);
 }
 
+/** Handles the --forward option */
 static void option_forward(void) {
 	conf.forward = true;
 }
@@ -269,36 +314,44 @@ static void option_forward(void) {
 
 #ifdef WITH_CMDLINE_COMMANDS
 
+/** Handles the --on-pre-up option */
 static void option_on_pre_up(const char *arg) {
 	fastd_shell_command_set(&conf.on_pre_up, arg, true);
 }
 
+/** Handles the --on-up option */
 static void option_on_up(const char *arg) {
 	fastd_shell_command_set(&conf.on_up, arg, true);
 }
 
+/** Handles the --on-down option */
 static void option_on_down(const char *arg) {
 	fastd_shell_command_set(&conf.on_down, arg, true);
 }
 
+/** Handles the --on-post-down option */
 static void option_on_post_down(const char *arg) {
 	fastd_shell_command_set(&conf.on_post_down, arg, true);
 }
 
+/** Handles the --on-connect option */
 static void option_on_connect(const char *arg) {
 	fastd_shell_command_set(&conf.on_connect, arg, false);
 }
 
+/** Handles the --on-establish option */
 static void option_on_establish(const char *arg) {
 	fastd_shell_command_set(&conf.on_establish, arg, false);
 }
 
+/** Handles the --on-disestablish option */
 static void option_on_disestablish(const char *arg) {
 	fastd_shell_command_set(&conf.on_disestablish, arg, false);
 }
 
 #ifdef WITH_VERIFY
 
+/** Handles the --on-verify option */
 static void option_on_verify(const char *arg) {
 	fastd_shell_command_set(&conf.on_verify, arg, false);
 }
@@ -307,25 +360,30 @@ static void option_on_verify(const char *arg) {
 
 #endif
 
+/** Handles the --verify-config option */
 static void option_verify_config(void) {
 	conf.verify_config = true;
 }
 
+/** Handles the --generate-key option */
 static void option_generate_key(void) {
 	conf.generate_key = true;
 	conf.show_key = false;
 }
 
+/** Handles the --show-key option */
 static void option_show_key(void) {
 	conf.generate_key = false;
 	conf.show_key = true;
 }
 
+/** Handles the --machine-readable option */
 static void option_machine_readable(void) {
 	conf.machine_readable = true;
 }
 
 
+/** Matches a command line options agains a NULL-terminated list of arguments */
 static bool config_match(const char *opt, ...) {
 	va_list ap;
 	bool match = false;
@@ -345,6 +403,7 @@ static bool config_match(const char *opt, ...) {
 	return match;
 }
 
+/** Parses and handles the supplied command line options */
 void fastd_config_handle_options(int argc, char *const argv[]) {
 	int i = 1;
 

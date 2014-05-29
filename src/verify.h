@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Handling of on-verify commands to add peers not configured statically ("temporary peers")
+*/
+
 
 #pragma once
 

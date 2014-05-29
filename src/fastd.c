@@ -23,6 +23,13 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Initialization, main loop and cleanup
+*/
+
+
 
 #include "fastd.h"
 #include "async.h"
@@ -55,26 +62,35 @@
 #endif
 
 
+/** The global context */
 fastd_context_t ctx;
 
 
-static volatile bool sighup = false;
-static volatile bool terminate = false;
-static volatile bool dump = false;
+static volatile bool sighup = false;		/**< Is set to true when a SIGHUP is received */
+static volatile bool terminate = false;		/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
+static volatile bool dump = false;		/**< Is set to true when a SIGUSR1 is received */
 
 
+/** SIGHUP handler */
 static void on_sighup(int signo UNUSED) {
 	sighup = true;
 }
 
+/** SIGTERM, SIGQUIT and SIGINT handler */
 static void on_terminate(int signo UNUSED) {
 	terminate = true;
 }
 
+/** SIGUSR1 handler */
 static void on_sigusr1(int signo UNUSED) {
 	dump = true;
 }
 
+/**
+   SIGCHLD handler
+
+   Reaps zombies of asynchronous shell commands.
+*/
 static void on_sigchld(int signo UNUSED) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.async_pids);) {
@@ -96,6 +112,7 @@ static void on_sigchld(int signo UNUSED) {
 	}
 }
 
+/** Installs signal handlers */
 static void init_signals(void) {
 	struct sigaction action;
 
@@ -135,6 +152,7 @@ static void init_signals(void) {
 
 }
 
+/** Initializes log destinations */
 static inline void init_log(void) {
 	if (conf.log_syslog_level > LL_UNSPEC)
 		openlog(conf.log_syslog_ident, LOG_PID, LOG_DAEMON);
@@ -142,11 +160,13 @@ static inline void init_log(void) {
 	ctx.log_initialized = true;
 }
 
+/** Cleans up log destinations */
 static inline void close_log(void) {
 	closelog();
 }
 
 
+/** Initializes the configured sockets */
 static void init_sockets(void) {
 	ctx.socks = malloc(conf.n_bind_addrs * sizeof(fastd_socket_t));
 
@@ -167,6 +187,7 @@ static void init_sockets(void) {
 	ctx.n_socks = conf.n_bind_addrs;
 }
 
+/** Closes fastd's sockets */
 static void close_sockets(void) {
 	size_t i;
 	for (i = 0; i < ctx.n_socks; i++)
@@ -175,22 +196,31 @@ static void close_sockets(void) {
 	free(ctx.socks);
 }
 
+/** Calls the on-pre-up command */
 static inline void on_pre_up(void) {
 	fastd_shell_command_exec(&conf.on_pre_up, NULL);
 }
 
+/** Calls the on-up command */
 static inline void on_up(void) {
 	fastd_shell_command_exec(&conf.on_up, NULL);
 }
 
+/** Calls the on-down command */
 static inline void on_down(void) {
 	fastd_shell_command_exec(&conf.on_down, NULL);
 }
 
+/** Calls the on-post-down command */
 static inline void on_post_down(void) {
 	fastd_shell_command_exec(&conf.on_post_down, NULL);
 }
 
+/**
+   Initializes the peers
+
+   Is called after each reconfiguration to remove old peers and add new ones.
+*/
 static void init_peers(void) {
 	fastd_peer_config_t *peer_conf;
 	for (peer_conf = conf.peers; peer_conf; peer_conf = peer_conf->next)
@@ -227,11 +257,13 @@ static void init_peers(void) {
 	}
 }
 
+/** Removes all peers */
 static void delete_peers(void) {
 	while (VECTOR_LEN(ctx.peers))
 		fastd_peer_delete(VECTOR_INDEX(ctx.peers, VECTOR_LEN(ctx.peers)-1));
 }
 
+/** Dumps statistics and the list of known peers to the logs */
 static void dump_state(void) {
 	pr_info("TX stats: %U packet(s), %U byte(s); dropped: %U packet(s), %U byte(s); error: %U packet(s), %U byte(s)",
 		ctx.tx.packets, ctx.tx.bytes, ctx.tx_dropped.packets, ctx.tx_dropped.bytes, ctx.tx_error.packets, ctx.tx_error.bytes);
@@ -265,6 +297,7 @@ static void dump_state(void) {
 	pr_info("dump finished.");
 }
 
+/** Performs periodic maintenance tasks */
 static inline void maintenance(void) {
 	if (!fastd_timed_out(&ctx.next_maintenance))
 		return;
@@ -299,6 +332,7 @@ void fastd_close_all_fds(void) {
 	}
 }
 
+/** Writes the PID file */
 static void write_pid(pid_t pid) {
 	if (!conf.pid_file)
 		return;
@@ -332,6 +366,7 @@ static void write_pid(pid_t pid) {
 		pr_debug_errno("setegid");
 }
 
+/** Switches to the configured user */
 static void set_user(void) {
 	if (conf.user || conf.group) {
 		if (setgid(conf.gid) < 0)
@@ -344,6 +379,7 @@ static void set_user(void) {
 	}
 }
 
+/** Sets the configured user's supplementary groups */
 static void set_groups(void) {
 	if (conf.groups) {
 		if (setgroups(conf.n_groups, conf.groups) < 0) {
@@ -359,12 +395,13 @@ static void set_groups(void) {
 	}
 }
 
+/** Switches the user and drops all capabilities */
 static void drop_caps(void) {
 	set_user();
 	fastd_cap_drop();
 }
 
-/* will double fork and wait for a status notification from the child */
+/** Will double fork and wait for a status notification from the child before exiting in the original parent */
 static int daemonize(void) {
 	uint8_t status = 1;
 	int pipefd[2];
@@ -415,6 +452,7 @@ static int daemonize(void) {
 }
 
 #ifdef ENABLE_SYSTEMD
+/** Sends a readiness notification on a notify socket */
 static void notify_systemd(const char *notify_socket) {
 	int fd;
 	struct sockaddr_un sa = {};
@@ -445,6 +483,7 @@ static void notify_systemd(const char *notify_socket) {
 }
 #endif
 
+/** Main function */
 int main(int argc, char *argv[]) {
 	memset(&ctx, 0, sizeof(ctx));
 	int status_fd = -1;

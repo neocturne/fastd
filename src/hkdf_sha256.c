@@ -23,12 +23,19 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   An implementation of the HMAC-based Key Derivation Function (RFC 5869) using HMAC-SHA256
+*/
+
 
 #include "hkdf_sha256.h"
 
 #include <string.h>
 
 
+/** The HKDF-SHA256 expansion function */
 void fastd_hkdf_sha256_expand(fastd_sha256_t *out, size_t blocks, const fastd_sha256_t *prk, const uint8_t *info, size_t infolen) {
 	if (!blocks)
 		return;

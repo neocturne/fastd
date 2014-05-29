@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   A hashtable allowing fast lookup from an IP address to a peer
+*/
+
 
 #pragma once
 

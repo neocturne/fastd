@@ -40,14 +40,14 @@
 
 /** An environment variable */
 typedef struct shell_env_entry {
-	const char *key;
-	char *value;
+	const char *key;			/**< The name of the enviroment variable */
+	char *value;				/**< The value of the environment variable */
 } shell_env_entry_t;
 
 
 /** A shell environment */
 struct fastd_shell_env {
-	VECTOR(shell_env_entry_t) entries;
+	VECTOR(shell_env_entry_t) entries;	/**< Vector of the entries of the environment */
 };
 
 

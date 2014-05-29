@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   A hashtable allowing fast lookup from an IP address to a peer
+*/
+
 
 #include "peer_hashtable.h"
 #include "fastd.h"
@@ -30,9 +36,11 @@
 #include "peer.h"
 
 
+/** The number of hash buckets used */
 #define PEER_ADDR_HT_SIZE 64
 
 
+/** Initializes the hashtable */
 void fastd_peer_hashtable_init(void) {
 	fastd_random_bytes(&ctx.peer_addr_ht_seed, sizeof(ctx.peer_addr_ht_seed), false);
 
@@ -43,6 +51,7 @@ void fastd_peer_hashtable_init(void) {
 		VECTOR_ALLOC(ctx.peer_addr_ht[i], 0);
 }
 
+/** Frees the resources used by the hashtable */
 void fastd_peer_hashtable_free(void) {
 	size_t i;
 	for (i = 0; i < PEER_ADDR_HT_SIZE; i++)
@@ -51,6 +60,7 @@ void fastd_peer_hashtable_free(void) {
 	free(ctx.peer_addr_ht);
 }
 
+/** Gets the hash bucket used for an address */
 static size_t peer_address_bucket(const fastd_peer_address_t *addr) {
 	uint32_t hash = ctx.peer_addr_ht_seed;
 
@@ -72,11 +82,21 @@ static size_t peer_address_bucket(const fastd_peer_address_t *addr) {
 	return hash % PEER_ADDR_HT_SIZE;
 }
 
+/**
+   Inserts a peer into the hash table
+
+   The peer address must not change while the peer is part of the table.
+*/
 void fastd_peer_hashtable_insert(fastd_peer_t *peer) {
 	size_t b = peer_address_bucket(&peer->address);
 	VECTOR_ADD(ctx.peer_addr_ht[b], peer);
 }
 
+/**
+   Removes a peer from the hash table
+
+   A peer must be removed from the table before it is deleted or its address is changed.
+*/
 void fastd_peer_hashtable_remove(fastd_peer_t *peer) {
 	if (!peer->address.sa.sa_family)
 		return;
@@ -92,6 +112,7 @@ void fastd_peer_hashtable_remove(fastd_peer_t *peer) {
 	}
 }
 
+/** Looks up a peer in the hashtable */
 fastd_peer_t *fastd_peer_hashtable_lookup(const fastd_peer_address_t *addr) {
 	size_t b = peer_address_bucket(addr);
 

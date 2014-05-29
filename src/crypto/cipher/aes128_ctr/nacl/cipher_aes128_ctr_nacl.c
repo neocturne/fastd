@@ -23,17 +23,25 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The aes128-ctr implementation from NaCl
+*/
+
 
 #include "../../../../crypto.h"
 
 #include <crypto_stream_aes128ctr.h>
 
 
+/** The cipher state */
 struct __attribute__((aligned(16))) fastd_cipher_state {
-	uint8_t d[crypto_stream_aes128ctr_BEFORENMBYTES] __attribute__((aligned(16)));
+	uint8_t d[crypto_stream_aes128ctr_BEFORENMBYTES] __attribute__((aligned(16))); /**< The unpacked AES key */
 };
 
 
+/** Initializes the cipher state */
 static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
 	fastd_block128_t k;
 	memcpy(k.b, key, sizeof(fastd_block128_t));
@@ -47,11 +55,13 @@ static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
 	return state;
 }
 
+/** XORs data with the aes128-ctr cipher stream */
 static bool aes128_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	crypto_stream_aes128ctr_xor_afternm(out->b, in->b, len, iv, state->d);
 	return true;
 }
 
+/** Frees the cipher state */
 static void aes128_ctr_free(fastd_cipher_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
@@ -59,6 +69,8 @@ static void aes128_ctr_free(fastd_cipher_state_t *state) {
 	}
 }
 
+
+/** The nacl aes128-ctr implementation */
 const fastd_cipher_t fastd_cipher_aes128_ctr_nacl = {
 	.init = aes128_ctr_init,
 	.crypt = aes128_ctr_crypt,

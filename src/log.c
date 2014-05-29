@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Logging function implementations
+*/
+
 
 #include "fastd.h"
 #include "peer.h"
@@ -32,6 +38,7 @@
 #include <net/if.h>
 
 
+/** snprintf wrapper always returning the number of bytes written */
 static inline size_t snprintf_safe(char *buffer, size_t size, const char *format, ...) {
 	va_list ap;
 	va_start(ap, format);
@@ -44,6 +51,7 @@ static inline size_t snprintf_safe(char *buffer, size_t size, const char *format
 	return min_size_t(ret, size);
 }
 
+/** Creates a string representation of a peer address */
 static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
@@ -83,6 +91,7 @@ static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_a
 	}
 }
 
+/** Creates a string representation of a peer */
 static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *peer) {
 	if (peer->config && peer->config->name) {
 		return snprintf_safe(buffer, size, "<%s>", peer->config->name);
@@ -96,6 +105,7 @@ static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *pe
 	}
 }
 
+/** vsnprintf-like function using different conversion specifiers */
 static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_list ap) {
 	char *buffer_start = buffer;
 	char *buffer_end = buffer+size;
@@ -190,6 +200,7 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 	return buffer-buffer_start;
 }
 
+/** Returns a prefix string to use for log messages of a specified level */
 static inline const char* get_log_prefix(fastd_loglevel_t log_level) {
 	switch(log_level) {
 	case LL_FATAL:
@@ -211,6 +222,7 @@ static inline const char* get_log_prefix(fastd_loglevel_t log_level) {
 	}
 }
 
+/** Converts fastd log levels to syslog levels */
 static inline int get_syslog_level(fastd_loglevel_t log_level) {
 	switch(log_level) {
 	case LL_FATAL:
@@ -228,6 +240,7 @@ static inline int get_syslog_level(fastd_loglevel_t log_level) {
 	}
 }
 
+/** printf-like function handling different conversion specifiers and using the configured log destinations */
 void fastd_logf(fastd_loglevel_t level, const char *format, ...) {
 	char buffer[1024];
 	char timestr[100] = "";

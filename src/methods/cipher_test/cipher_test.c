@@ -23,25 +23,37 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   cipher-test method provider (testing and benchmarking only)
+
+   The cipher-test method provider performs encryption only and can be used to test
+   and benchmark cipher implementations.
+*/
+
 
 #include "../../crypto.h"
 #include "../../method.h"
 #include "../common.h"
 
 
+/** A specific method provided by this provider */
 struct fastd_method {
-	const fastd_cipher_info_t *cipher_info;
+	const fastd_cipher_info_t *cipher_info;		/**< The cipher used */
 };
 
+/** The method-specific session state */
 struct fastd_method_session_state {
-	fastd_method_common_t common;
+	fastd_method_common_t common;			/**< The common method state */
 
-	const fastd_method_t *method;
-	const fastd_cipher_t *cipher;
-	fastd_cipher_state_t *cipher_state;
+	const fastd_method_t *method;			/**< The specific method used */
+	const fastd_cipher_t *cipher;			/**< The cipher implementation used */
+	fastd_cipher_state_t *cipher_state;		/**< The cipher state */
 };
 
 
+/** Instanciates a method using a name of the pattern "<cipher>+cipher-test" */
 static bool method_create_by_name(const char *name, fastd_method_t **method) {
 	fastd_method_t m;
 
@@ -66,14 +78,17 @@ static bool method_create_by_name(const char *name, fastd_method_t **method) {
 	return true;
 }
 
+/** Frees a method */
 static void method_destroy(fastd_method_t *method) {
 	free(method);
 }
 
+/** Returns the key length used by a method */
 static size_t method_key_length(const fastd_method_t *method) {
 	return method->cipher_info->key_length;
 }
 
+/** Initializes a session */
 static fastd_method_session_state_t* method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
 
@@ -87,22 +102,27 @@ static fastd_method_session_state_t* method_session_init(const fastd_method_t *m
 	return session;
 }
 
+/** Checks if the session is currently valid */
 static bool method_session_is_valid(fastd_method_session_state_t *session) {
 	return (session && fastd_method_session_common_is_valid(&session->common));
 }
 
+/** Checks if this side is the initator of the session */
 static bool method_session_is_initiator(fastd_method_session_state_t *session) {
 	return fastd_method_session_common_is_initiator(&session->common);
 }
 
+/** Checks if the session should be refreshed */
 static bool method_session_want_refresh(fastd_method_session_state_t *session) {
 	return fastd_method_session_common_want_refresh(&session->common);
 }
 
+/** Marks the session as superseded */
 static void method_session_superseded(fastd_method_session_state_t *session) {
 	fastd_method_session_common_superseded(&session->common);
 }
 
+/** Frees the session state */
 static void method_session_free(fastd_method_session_state_t *session) {
 	if (session) {
 		session->cipher->free(session->cipher_state);
@@ -110,6 +130,8 @@ static void method_session_free(fastd_method_session_state_t *session) {
 	}
 }
 
+
+/** Encrypts a packet and adds the common method header */
 static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
 	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
@@ -140,6 +162,7 @@ static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state
 	return true;
 }
 
+/** Decrypts a packet */
 static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	if (in.len < COMMON_HEADBYTES)
 		return false;
@@ -184,6 +207,8 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	return true;
 }
 
+
+/** The cipher-test method provider */
 const fastd_method_provider_t fastd_method_cipher_test = {
 	.max_overhead = COMMON_HEADBYTES,
 	.min_encrypt_head_space = 0,

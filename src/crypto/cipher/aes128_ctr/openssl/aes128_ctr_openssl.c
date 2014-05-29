@@ -23,17 +23,25 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The aes128-ctr implementation from OpenSSL
+*/
+
 
 #include "../../../../crypto.h"
 
 #include <openssl/evp.h>
 
 
+/** The cipher state containing the OpenSSL cipher context */
 struct fastd_cipher_state {
-	EVP_CIPHER_CTX *aes;
+	EVP_CIPHER_CTX *aes;		/**< The OpenSSL cipher context */
 };
 
 
+/** Initializes the cipher state */
 static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
 
@@ -43,6 +51,7 @@ static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
 	return state;
 }
 
+/** XORs data with the aes128-ctr cipher stream */
 static bool aes128_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
 	int clen, clen2;
 
@@ -61,6 +70,7 @@ static bool aes128_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t
 	return true;
 }
 
+/** Frees the cipher state */
 static void aes128_ctr_free(fastd_cipher_state_t *state) {
 	if (state) {
 		EVP_CIPHER_CTX_free(state->aes);
@@ -68,6 +78,8 @@ static void aes128_ctr_free(fastd_cipher_state_t *state) {
 	}
 }
 
+
+/** The openssl aes128-ctr implementation */
 const fastd_cipher_t fastd_cipher_aes128_ctr_openssl = {
 	.available = fastd_true,
 

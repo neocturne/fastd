@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   PCLMULQDQ-based GHASH implementation for newer x86 systems
+*/
+
 
 #pragma once
 

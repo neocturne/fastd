@@ -23,6 +23,14 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   An implementation of the Jenkins hash function
+
+   \sa https://en.wikipedia.org/wiki/Jenkins_hash_function
+*/
+
 
 #pragma once
 
@@ -31,6 +39,7 @@
 #include <stdint.h>
 
 
+/** Adds data bytes to the 32bit hash value */
 static inline void fastd_hash(uint32_t *hash, const void *data, size_t len) {
 	size_t i;
 	for (i = 0; i < len; ++i) {
@@ -40,6 +49,7 @@ static inline void fastd_hash(uint32_t *hash, const void *data, size_t len) {
 	}
 }
 
+/** Finalizes a hash value */
 static inline void fastd_hash_final(uint32_t *hash) {
 	*hash += (*hash << 3);
 	*hash ^= (*hash >> 11);

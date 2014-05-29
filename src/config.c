@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Configuration management
+*/
+
 
 #include "fastd.h"
 #include "config.h"
@@ -43,12 +49,14 @@
 #include <sys/types.h>
 
 
+/** The global configuration */
 fastd_config_t conf = {};
 
 
 extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
 
+/** Initializes the global configuration with default values */
 static void default_config(void) {
 	memset(&conf, 0, sizeof(fastd_config_t));
 
@@ -67,6 +75,7 @@ static void default_config(void) {
 	conf.peer_group->max_connections = -1;
 }
 
+/** Handles the configuration of a handshake protocol */
 void fastd_config_protocol(const char *name) {
 	if (!strcmp(name, "ec25519-fhmqvc"))
 		conf.protocol = &fastd_protocol_ec25519_fhmqvc;
@@ -74,6 +83,7 @@ void fastd_config_protocol(const char *name) {
 		exit_error("config error: protocol `%s' not supported", name);
 }
 
+/** Handles the configuration of a crypto method */
 void fastd_config_method(const char *name) {
 	fastd_string_stack_t **method;
 
@@ -87,16 +97,19 @@ void fastd_config_method(const char *name) {
 	*method = fastd_string_stack_dup(name);
 }
 
+/** Handles the configuration of a cipher implementation */
 void fastd_config_cipher(const char *name, const char *impl) {
 	if (!fastd_cipher_config(name, impl))
 		exit_error("config error: implementation `%s' is not supported for cipher `%s' (or cipher `%s' is not supported)", impl, name, name);
 }
 
+/** Handles the configuration of a MAC implementation */
 void fastd_config_mac(const char *name, const char *impl) {
 	if (!fastd_mac_config(name, impl))
 		exit_error("config error: implementation `%s' is not supported for MAC `%s' (or MAC `%s' is not supported)", impl, name, name);
 }
 
+/** Handles the configuration of a bind address */
 void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev && !fastd_peer_address_is_v6_ll(address))
@@ -131,6 +144,7 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 		conf.bind_addr_default_v6 = addr;
 }
 
+/** Handles the start of a peer group configuration */
 void fastd_config_peer_group_push(const char *name) {
 	fastd_peer_group_t *group = calloc(1, sizeof(fastd_peer_group_t));
 	group->name = strdup(name);
@@ -144,10 +158,12 @@ void fastd_config_peer_group_push(const char *name) {
 	conf.peer_group = group;
 }
 
+/** Handles the end of a peer group configuration */
 void fastd_config_peer_group_pop(void) {
 	conf.peer_group = conf.peer_group->parent;
 }
 
+/** Frees a peer group and its children */
 static void free_peer_group(fastd_peer_group_t *group) {
 	while (group->children) {
 		fastd_peer_group_t *next = group->children->next;
@@ -160,6 +176,7 @@ static void free_peer_group(fastd_peer_group_t *group) {
 	free(group);
 }
 
+/** Checks if a peer group has configured any peer dirs */
 static bool has_peer_group_peer_dirs(const fastd_peer_group_t *group) {
 	if (group->peer_dirs)
 		return true;
@@ -173,6 +190,7 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_t *group) {
 	return false;
 }
 
+/** Reads and processes all peer definitions in the current directory (which must also be supplied as the argument) */
 static void read_peer_dir(const char *dir) {
 	DIR *dirh = opendir(".");
 
@@ -224,6 +242,7 @@ static void read_peer_dir(const char *dir) {
 	}
 }
 
+/** Reads all peer configured directories */
 static void read_peer_dirs(void) {
 	char *oldcwd = get_current_dir_name();
 
@@ -241,6 +260,7 @@ static void read_peer_dirs(void) {
 	free(oldcwd);
 }
 
+/** Adds a peer directory to the configuration */
 void fastd_add_peer_dir(const char *dir) {
 	char *oldcwd = get_current_dir_name();
 
@@ -259,6 +279,7 @@ void fastd_add_peer_dir(const char *dir) {
 	free(oldcwd);
 }
 
+/** Reads and processes a configuration file */
 bool fastd_read_config(const char *filename, bool peer_config, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error("maximum config include depth exceeded");
@@ -348,6 +369,7 @@ bool fastd_read_config(const char *filename, bool peer_config, int depth) {
 	return ret;
 }
 
+/** Gathers some information about the configured peers */
 static void assess_peers(void) {
 	conf.has_floating = false;
 
@@ -358,7 +380,7 @@ static void assess_peers(void) {
 	}
 }
 
-
+/** Loads information about the configured user and group */
 static void configure_user(void) {
 	conf.uid = getuid();
 	conf.gid = getgid();
@@ -418,6 +440,7 @@ static void configure_user(void) {
 	}
 }
 
+/** Initializes global configuration that depends on the configured methods */
 static void configure_method_parameters(void) {
 	conf.max_overhead = 0;
 	conf.min_encrypt_head_space = 0;
@@ -442,6 +465,7 @@ static void configure_method_parameters(void) {
 	conf.min_decrypt_head_space = alignto(conf.min_decrypt_head_space, 16) + 8;
 }
 
+/** Handles the initialization of the configured methods */
 static void configure_methods(void) {
 	size_t n_methods = 0, i;
 	fastd_string_stack_t *method_name;
@@ -459,6 +483,7 @@ static void configure_methods(void) {
 	configure_method_parameters();
 }
 
+/** Frees the resources used by the configured methods */
 static void destroy_methods(void) {
 	size_t i;
 	for (i = 0; conf.methods[i].name; i++) {
@@ -468,6 +493,7 @@ static void destroy_methods(void) {
 	free(conf.methods);
 }
 
+/** Loads the configuration */
 void fastd_configure(int argc, char *const argv[]) {
 	default_config();
 
@@ -477,6 +503,7 @@ void fastd_configure(int argc, char *const argv[]) {
 		conf.log_stderr_level = LL_DEFAULT;
 }
 
+/** Performs some basic checks on the configuration */
 static void config_check_base(void) {
 	if (conf.ifname) {
 		if (strchr(conf.ifname, '/'))
@@ -503,6 +530,7 @@ static void config_check_base(void) {
 #endif
 }
 
+/** Performs more checks on the configuration */
 void fastd_config_check(void) {
 	config_check_base();
 
@@ -523,6 +551,7 @@ void fastd_config_check(void) {
 	configure_methods();
 }
 
+/** Performs the verify-config checks */
 void fastd_config_verify(void) {
 	config_check_base();
 	configure_methods();
@@ -532,6 +561,7 @@ void fastd_config_verify(void) {
 		conf.protocol->peer_verify(peer);
 }
 
+/** Reads the peer dirs of the current peer group and its children */
 static void peer_dirs_read_peer_group(void) {
 	read_peer_dirs();
 
@@ -544,6 +574,7 @@ static void peer_dirs_read_peer_group(void) {
 	conf.peer_group = base;
 }
 
+/** Deletes peer configs that have disappeared from a peer dir on reconfiguration */
 static void peer_dirs_handle_old_peers(fastd_peer_config_t **old_peers, fastd_peer_config_t **new_peers) {
 	fastd_peer_config_t **peer, **next, **new_peer, **new_next;
 	for (peer = old_peers; *peer; peer = next) {
@@ -588,6 +619,7 @@ static void peer_dirs_handle_old_peers(fastd_peer_config_t **old_peers, fastd_pe
 	}
 }
 
+/** Adds new peer configs on reconfiguration */
 static void peer_dirs_handle_new_peers(fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
 	fastd_peer_config_t *peer;
 	for (peer = new_peers; peer; peer = peer->next) {
@@ -600,6 +632,7 @@ static void peer_dirs_handle_new_peers(fastd_peer_config_t **peers, fastd_peer_c
 	}
 }
 
+/** Refreshes the peer configurations from the configured peer dirs */
 void fastd_config_load_peer_dirs(void) {
 	fastd_peer_config_t *old_peers = conf.peers;
 	conf.peers = NULL;
@@ -615,6 +648,7 @@ void fastd_config_load_peer_dirs(void) {
 	assess_peers();
 }
 
+/** Frees all resources used by the global configuration */
 void fastd_config_release(void) {
 	while (conf.peers)
 		fastd_peer_config_delete();

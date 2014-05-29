@@ -23,10 +23,17 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The Salsa20 stream cipher
+*/
+
 
 #include "../../../crypto.h"
 
 
+/** Cipher info about Salsa20 */
 const fastd_cipher_info_t fastd_cipher_info_salsa20 = {
 	.key_length = 32,
 	.iv_length = 8,

@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   PCLMULQDQ-based GHASH implementation for newer x86 systems: implementation
+*/
+
 
 #include "ghash_pclmulqdq.h"
 #include <wmmintrin.h>
@@ -30,16 +36,19 @@
 #include <tmmintrin.h>
 
 
+/** An union allowing easy access to a block as a SIMD vector and a fastd_block128_t */
 typedef union vecblock {
-	__m128i v;
-	fastd_block128_t b;
+	__m128i v;			/**< __m128i access */
+	fastd_block128_t b;		/**< fastd_block128_t access */
 } vecblock_t;
 
+/** The MAC state used by this GHASH implementation */
 struct fastd_mac_state {
-	vecblock_t H;
+	vecblock_t H;			/**< The hash key used by GHASH */
 };
 
 
+/** Left shift on a 128bit integer */
 static inline __m128i shl(__m128i v, int a) {
 	__m128i tmpl = _mm_slli_epi64(v, a);
 	__m128i tmpr = _mm_srli_epi64(v, 64-a);
@@ -48,6 +57,7 @@ static inline __m128i shl(__m128i v, int a) {
 	return _mm_xor_si128(tmpl, tmpr);
 }
 
+/** Right shift on a 128bit integer */
 static inline __m128i shr(__m128i v, int a) {
 	__m128i tmpr = _mm_srli_epi64(v, a);
 	__m128i tmpl = _mm_slli_epi64(v, 64-a);
@@ -56,13 +66,16 @@ static inline __m128i shr(__m128i v, int a) {
 	return _mm_xor_si128(tmpr, tmpl);
 }
 
+/** _mm_shuffle_epi8 parameter to reverse the bytes of a __m128i */
 static const __v16qi BYTESWAP_SHUFFLE = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
 
+/** Reverses the order of the bytes of a __m128i */
 static inline __m128i byteswap(__m128i v) {
 	return _mm_shuffle_epi8(v, (__m128i)BYTESWAP_SHUFFLE);
 }
 
 
+/** Initializes the state used by this GHASH implementation */
 fastd_mac_state_t* fastd_ghash_pclmulqdq_init(const uint8_t *key) {
 	fastd_mac_state_t *state;
 	if (posix_memalign((void**)&state, 16, sizeof(fastd_mac_state_t)))
@@ -74,6 +87,7 @@ fastd_mac_state_t* fastd_ghash_pclmulqdq_init(const uint8_t *key) {
 	return state;
 }
 
+/** Frees the state used by this GHASH implementation */
 void fastd_ghash_pclmulqdq_free(fastd_mac_state_t *state) {
 	if (state) {
 		secure_memzero(state, sizeof(*state));
@@ -81,6 +95,7 @@ void fastd_ghash_pclmulqdq_free(fastd_mac_state_t *state) {
 	}
 }
 
+/** Performs a carryless multiplication of two 128bit integers modulo \f$ x^{128} + x^7 + x^2 + x + 1 \f$ */
 static __m128i gmul(__m128i v, __m128i h) {
 	/* multiply */
 	__m128i z0, z1, z2, tmp;
@@ -134,6 +149,7 @@ static __m128i gmul(__m128i v, __m128i h) {
 }
 
 
+/** Calculates the GHASH of the supplied input blocks */
 bool fastd_ghash_pclmulqdq_hash(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
 	vecblock_t v = {.v = _mm_setzero_si128()};
 

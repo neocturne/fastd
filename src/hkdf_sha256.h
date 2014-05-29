@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   An implementation of the HMAC-based Key Derivation Function (RFC 5869) using HMAC-SHA256
+*/
+
 
 #pragma once
 
@@ -30,6 +36,7 @@
 #include "types.h"
 
 
+/** The HKDF-SHA256 extraction function (which is just HMAC-SHA256) */
 static inline void fastd_hkdf_sha256_extract(fastd_sha256_t *out, const uint32_t salt[FASTD_HMACSHA256_KEY_WORDS], const uint32_t *in, size_t len) {
 	fastd_hmacsha256(out, salt, in, len);
 }

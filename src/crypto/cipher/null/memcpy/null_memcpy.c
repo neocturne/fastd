@@ -23,22 +23,32 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The memcpy null implementation
+*/
+
 
 #include "../../../../crypto.h"
 
 
+/** Doesn't do anything as the null cipher doesn't use any state */
 static fastd_cipher_state_t* null_init(const uint8_t *key UNUSED) {
 	return NULL;
 }
 
+/** Just copies the input data to the output */
 static bool null_memcpy(const fastd_cipher_state_t *state UNUSED, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv UNUSED) {
 	memcpy(out, in, len);
 	return true;
 }
 
+/** Doesn't do anything as the null cipher doesn't use any state */
 static void null_free(fastd_cipher_state_t *state UNUSED) {
 }
 
+/** The memcpy null implementation */
 const fastd_cipher_t fastd_cipher_null_memcpy = {
 	.init = null_init,
 	.crypt = null_memcpy,

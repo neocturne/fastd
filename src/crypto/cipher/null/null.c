@@ -23,10 +23,17 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   The null cipher not performing any encryption
+*/
+
 
 #include "../../../crypto.h"
 
 
+/** cipher info about the null cipher */
 const fastd_cipher_info_t fastd_cipher_info_null = {
 	.key_length = 0,
 	.iv_length = 0,

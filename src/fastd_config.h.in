@@ -23,52 +23,118 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Generated configuration
+*/
+
 
 #pragma once
 
+/** Defined if the platform supports the AI_ADDRCONFIG flag to getaddrinfo() */
 #cmakedefine HAVE_AI_ADDRCONFIG
+
+/** Defined if the platform defines the \e ethhdr struct */
 #cmakedefine HAVE_ETHHDR
+
+/** Defined if the platform defines get_current_dir_name() */
 #cmakedefine HAVE_GET_CURRENT_DIR_NAME
 
 
+/** Defined if the platform supports SO_BINDTODEVICE */
 #cmakedefine USE_BINDTODEVICE
+
+/** Defined if the platform supports epoll */
 #cmakedefine USE_EPOLL
+
+/** Defined if the platform supports SO_FREEBIND */
 #cmakedefine USE_FREEBIND
+
+/** Defined if the platform supports IP_MTU_DISCOVER */
 #cmakedefine USE_PMTU
+
+/** Defined if the platform supports IP_PKTINFO */
 #cmakedefine USE_PKTINFO
+
+/** Defined if the platform supports SO_MARK */
 #cmakedefine USE_PACKET_MARK
+
+/** Defined if the platform supports binding on IPv4 and IPv6 with a single socket */
 #cmakedefine USE_MULTIAF_BIND
 
 
+/** Defined if POSIX capability support is enabled */
 #cmakedefine WITH_CAPABILITIES
+
+/** Defined if support for setting user/group related options on the command line is enabled */
 #cmakedefine WITH_CMDLINE_USER
+
+/** Defined if support for setting logging related options on the command line is enabled */
 #cmakedefine WITH_CMDLINE_LOGGING
+
+/** Defined if support for setting related to the VPN operation (like mode, interface, encryption method) on the command line is enabled */
 #cmakedefine WITH_CMDLINE_OPERATION
+
+/** Defined if support for setting handler scripts (e.g. --on-up) on the command line is enabled */
 #cmakedefine WITH_CMDLINE_COMMANDS
 
+/** Defined if on-verify support is enabled */
 #cmakedefine WITH_VERIFY
 
-#cmakedefine HAVE_LIBSODIUM
-#cmakedefine ENABLE_OPENSSL
+/** Defined if systemd support is enabled */
 #cmakedefine ENABLE_SYSTEMD
 
+
+/** Defined if libsodium is used */
+#cmakedefine HAVE_LIBSODIUM
+
+/** Defined if OpenSSL is used */
+#cmakedefine ENABLE_OPENSSL
+
+
+/** The maximum depth of nested includes in config files */
 #define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
 
 
+/** The interval of periodic maintenance tasks */
 #define MAINTENANCE_INTERVAL 10
+
+/** The time after which a keepalive should be sent */
 #define KEEPALIVE_TIMEOUT 15
+
+/** The time after with a peer is reset if no traffic is received from it */
 #define PEER_STALE_TIME 90
+
+/** The time after which a peer's ethernet address is forgotten if it is not seen */
 #define ETH_ADDR_STALE_TIME 300
 
+
+/** The time after a packet is received and no packets with lower sequence numbers are accepted anymore */
 #define REORDER_TIME 10
 
+
+/** The minimum time that must pass between two on-verify calls on the same peer */
 #define MIN_VERIFY_INTERVAL 10
+
+/** How long a peer stays valid after a successful on-verify run */
 #define VERIFY_VALID_TIME 60	/* 1 minute */
 
+/** The minimum interval between two handshakes with a peer */
 #define MIN_HANDSHAKE_INTERVAL 15
+
+/** The minimum interval between two resolves of the same remote */
 #define MIN_RESOLVE_INTERVAL 15
 
+
+/** How long a session stays valid after a key is negotiated */
 #define KEY_VALID 3600		/* 60 minutes */
+
+/** How long an old session stays valid after a new session has been established */
 #define KEY_VALID_OLD 60	/* 1 minute */
+
+/** How many seconds after the establishment of a session we want to refresh the session */
 #define KEY_REFRESH 3300	/* 55 minutes */
+
+/** A random time up to KEY_REFRESH_SPLAY is subtracted from KEY_REFRESH */
 #define KEY_REFRESH_SPLAY 300	/* 5 minutes */

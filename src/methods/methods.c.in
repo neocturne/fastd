@@ -23,16 +23,24 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Generated list of supported method providers
+*/
+
 
 #include <src/method.h>
 
 
 @METHOD_DEFINITIONS@
 
+/** The list of method providers */
 static const fastd_method_provider_t *const providers[] = { @METHOD_LIST@
 };
 
 
+/** Searches for a provider providing a method and instanciates it */
 bool fastd_method_create_by_name(const char *name, const fastd_method_provider_t **provider, fastd_method_t **method) {
 	size_t i;
 	for (i = 0; i < array_size(providers); i++) {

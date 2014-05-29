@@ -23,10 +23,17 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   ec25519-fhmqvc protocol: utilify functions
+*/
+
 
 #include "ec25519_fhmqvc.h"
 
 
+/** Prints a private or public key on stdout with an optional descriptive text */
 static inline void print_hexdump(const char *desc, unsigned char d[32]) {
 	char buf[65];
 	hexdump(buf, d);
@@ -34,6 +41,7 @@ static inline void print_hexdump(const char *desc, unsigned char d[32]) {
 	printf("%s%s\n", desc, buf);
 }
 
+/** Generates a new keypair */
 void fastd_protocol_ec25519_fhmqvc_generate_key(void) {
 	ecc_int256_t secret_key;
 	ecc_int256_t public_key;
@@ -57,6 +65,7 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(void) {
 	}
 }
 
+/** Prints the public key corresponding to the configured private key */
 void fastd_protocol_ec25519_fhmqvc_show_key(void) {
 	if (conf.machine_readable)
 		print_hexdump("", conf.protocol_config->key.public.u8);
@@ -64,6 +73,7 @@ void fastd_protocol_ec25519_fhmqvc_show_key(void) {
 		print_hexdump("Public: ", conf.protocol_config->key.public.u8);
 }
 
+/** Adds protocol- and peer-specific environment variables to an environment */
 void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer) {
 	char buf[65];
 
@@ -79,6 +89,13 @@ void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const f
 	}
 }
 
+/**
+   Generates a protocol-specific string representation of a peer
+
+   This will only be used for peers without names (e.g. temporary peers) and
+   creates a string containing the first 16 hexadecimal digits of the peer's
+   public key.
+*/
 bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len) {
 	if (peer && peer->protocol_config) {
 		char dumpbuf[65];

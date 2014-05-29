@@ -23,6 +23,12 @@
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/**
+   \file
+
+   Generated lists of ciphers and their implementations
+*/
+
 
 #include <src/crypto.h>
 #include <src/fastd.h>
@@ -30,30 +36,35 @@
 
 @CIPHER_DEFINITIONS@
 
+/** A cipher implementation */
 typedef struct fastd_cipher_impl {
-	const char *name;
-	const fastd_cipher_t *impl;
+	const char *name;			/**< The name of the cipher implementation */
+	const fastd_cipher_t *impl;		/**< The cipher implementation */
 } fastd_cipher_impl_t;
 
+/** A cipher */
 typedef struct cipher_entry {
-	const char *name;
-	const fastd_cipher_info_t *info;
-	const fastd_cipher_impl_t *impls;
+	const char *name;			/**< The name of the cipher */
+	const fastd_cipher_info_t *info;	/**< The associated cipher information */
+	const fastd_cipher_impl_t *impls;	/**< NULL-terminated array of cipher implementations */
 } cipher_entry_t;
 
 @CIPHER_IMPLS@
 
+/** The list of supported ciphers */
 static const cipher_entry_t ciphers[] = { @CIPHER_LIST@
 };
 
+/** The list of chosen cipher implementations */
 static const fastd_cipher_t *cipher_conf[array_size(ciphers)] = {};
 
 
+/** Checks if a cipher implementation is available on the runtime platform */
 static inline bool cipher_available(const fastd_cipher_t *cipher) {
 	return (!cipher->available) || cipher->available();
 }
 
-/** Initializes the list of ciphers */
+/** Initializes the list of cipher implementations */
 void fastd_cipher_init(void) {
 	size_t i, j;
 	for (i = 0; i < array_size(ciphers); i++) {
@@ -89,6 +100,7 @@ bool fastd_cipher_config(const char *name, const char *impl) {
 	return false;
 }
 
+/** Returns information about the cipher with the specified name if there is an implementation available */
 const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
@@ -104,6 +116,7 @@ const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
 	return NULL;
 }
 
+/** Returns the chosen cipher implementation for a given cipher */
 const fastd_cipher_t* fastd_cipher_get(const fastd_cipher_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
