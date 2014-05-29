@@ -88,6 +88,9 @@ static size_t peer_address_bucket(const fastd_peer_address_t *addr) {
    The peer address must not change while the peer is part of the table.
 */
 void fastd_peer_hashtable_insert(fastd_peer_t *peer) {
+	if (!peer->address.sa.sa_family)
+		return;
+
 	size_t b = peer_address_bucket(&peer->address);
 	VECTOR_ADD(ctx.peer_addr_ht[b], peer);
 }

@@ -361,7 +361,9 @@ void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_
 
 /** Initializes a peer */
 static void setup_peer(fastd_peer_t *peer) {
+	fastd_peer_hashtable_remove(peer);
 	peer->address.sa.sa_family = AF_UNSPEC;
+
 	peer->local_address.sa.sa_family = AF_UNSPEC;
 
 	peer->state = STATE_INIT;
@@ -535,11 +537,13 @@ void fastd_peer_address_widen(fastd_peer_address_t *addr) {
 
 /** Resets a peer's address to the unspecified address */
 static inline void reset_peer_address(fastd_peer_t *peer) {
-	if (fastd_peer_is_established(peer))
+	if (fastd_peer_is_established(peer)) {
 		fastd_peer_reset(peer);
-
-	fastd_peer_hashtable_remove(peer);
-	memset(&peer->address, 0, sizeof(fastd_peer_address_t));
+	}
+	else {
+		fastd_peer_hashtable_remove(peer);
+		peer->address.sa.sa_family = AF_UNSPEC;
+	}
 }
 
 /** Checks if an address is statically configured for a peer */
@@ -617,11 +621,8 @@ bool fastd_peer_claim_address(fastd_peer_t *new_peer, fastd_socket_t *sock, cons
 	}
 
 	fastd_peer_hashtable_remove(new_peer);
-
 	new_peer->address = *remote_addr;
-
-	if (remote_addr->sa.sa_family != AF_UNSPEC)
-		fastd_peer_hashtable_insert(new_peer);
+	fastd_peer_hashtable_insert(new_peer);
 
 	if (sock && sock->addr && sock != new_peer->sock) {
 		free_socket(new_peer);
