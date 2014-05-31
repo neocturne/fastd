@@ -94,17 +94,14 @@ static void on_sigchld(int signo UNUSED) {
 
 /** Installs signal handlers */
 static void init_signals(void) {
-	struct sigaction action;
-
-	sigset_t set, oldset;
+	sigset_t set;
 	sigfillset(&set);
-	pthread_sigmask(SIG_SETMASK, &set, &oldset);
+	/* block all signals */
+	pthread_sigmask(SIG_SETMASK, &set, NULL);
 
+	struct sigaction action;
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
-
-	/* unblock all signals */
-	sigprocmask(SIG_SETMASK, &action.sa_mask, NULL);
 
 	action.sa_handler = on_sighup;
 	if (sigaction(SIGHUP, &action, NULL))
