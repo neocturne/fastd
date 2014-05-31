@@ -138,11 +138,10 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 
 	shell_command_setenv(parent, env);
 
-	/* unblock SIGCHLD */
+	/* unblock signals */
 	sigset_t set;
 	sigemptyset(&set);
-	sigaddset(&set, SIGCHLD);
-	pthread_sigmask(SIG_UNBLOCK, &set, NULL);
+	pthread_sigmask(SIG_SETMASK, &set, NULL);
 
 	execl("/bin/sh", "sh", "-c", command->command, (char*)NULL);
 	_exit(127);
@@ -157,22 +156,12 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 	if (!fastd_shell_command_isset(command))
 		return true;
 
-	/* block SIGCHLD */
-	sigset_t set, oldset;
-	sigemptyset(&set);
-	sigaddset(&set, SIGCHLD);
-	pthread_sigmask(SIG_BLOCK, &set, &oldset);
-
 	pid_t pid;
-	if (!shell_command_do_exec(command, env, &pid)) {
-		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+	if (!shell_command_do_exec(command, env, &pid))
 		return false;
-	}
 
 	int status;
 	pid_t err = waitpid(pid, &status, 0);
-
-	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
 	if (err <= 0) {
 		pr_error_errno("fastd_shell_command_exec_sync: waitpid");
@@ -199,17 +188,9 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
    on SIGCHLD.
 */
 static void shell_command_exec_async(const fastd_shell_command_t *command, const fastd_shell_env_t *env) {
-	/* block SIGCHLD */
-	sigset_t set, oldset;
-	sigemptyset(&set);
-	sigaddset(&set, SIGCHLD);
-	pthread_sigmask(SIG_BLOCK, &set, &oldset);
-
 	pid_t pid;
 	if (shell_command_do_exec(command, env, &pid))
 		VECTOR_ADD(ctx.async_pids, pid);
-
-	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 }
 
 /** Executes a shell command */

@@ -96,6 +96,10 @@ static void on_sigchld(int signo UNUSED) {
 static void init_signals(void) {
 	struct sigaction action;
 
+	sigset_t set, oldset;
+	sigfillset(&set);
+	pthread_sigmask(SIG_SETMASK, &set, &oldset);
+
 	action.sa_flags = 0;
 	sigemptyset(&action.sa_mask);
 
@@ -629,10 +633,6 @@ static inline void reap_zombies(void) {
 
 /** The \em real signal handlers */
 static inline void handle_signals(void) {
-	sigset_t set, oldset;
-	sigfillset(&set);
-	pthread_sigmask(SIG_SETMASK, &set, &oldset);
-
 	if (sighup) {
 		sighup = false;
 
@@ -651,8 +651,6 @@ static inline void handle_signals(void) {
 		sigchld = false;
 		reap_zombies();
 	}
-
-	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 }
 
 

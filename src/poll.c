@@ -34,6 +34,10 @@
 #include "async.h"
 #include "peer.h"
 
+#include <pthread.h>
+#include <signal.h>
+
+
 #ifdef USE_EPOLL
 
 #include <sys/epoll.h>
@@ -129,6 +133,10 @@ void fastd_poll_handle(void) {
 	if (timeout < 0 || timeout > maintenance_timeout)
 		timeout = maintenance_timeout;
 
+	sigset_t set, oldset;
+	sigemptyset(&set);
+	pthread_sigmask(SIG_SETMASK, &set, &oldset);
+
 	struct epoll_event events[16];
 	int ret = epoll_wait(ctx.epoll_fd, events, 16, timeout);
 	if (ret < 0) {
@@ -137,6 +145,8 @@ void fastd_poll_handle(void) {
 
 		exit_errno("epoll_wait");
 	}
+
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
 	fastd_update_time();
 
@@ -243,6 +253,10 @@ void fastd_poll_handle(void) {
 	if (VECTOR_LEN(ctx.pollfds) != 2 + ctx.n_socks + VECTOR_LEN(ctx.peers))
 		exit_bug("fd count mismatch");
 
+	sigset_t set, oldset;
+	sigemptyset(&set);
+	pthread_sigmask(SIG_SETMASK, &set, &oldset);
+
 	int ret = poll(VECTOR_DATA(ctx.pollfds), VECTOR_LEN(ctx.pollfds), timeout);
 	if (ret < 0) {
 		if (errno == EINTR)
@@ -250,6 +264,8 @@ void fastd_poll_handle(void) {
 
 		exit_errno("poll");
 	}
+
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 
 	fastd_update_time();
 
