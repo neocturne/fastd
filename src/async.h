@@ -38,6 +38,7 @@
 
 /** A type of asynchronous notification */
 typedef enum fastd_async_type {
+	ASYNC_TYPE_NOP,				/**< Does nothing (is used to ensure poll returns quickly after a signal has occurred) */
 	ASYNC_TYPE_RESOLVE_RETURN,		/**< A DNS resolver response */
 	ASYNC_TYPE_VERIFY_RETURN,		/**< A on-verify return */
 } fastd_async_type_t;

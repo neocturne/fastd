@@ -114,6 +114,9 @@ void fastd_async_handle(void) {
 		exit_errno("fastd_async_handle: recvmsg");
 
 	switch (header.type) {
+	case ASYNC_TYPE_NOP:
+		break;
+
 	case ASYNC_TYPE_RESOLVE_RETURN:
 		handle_resolve_return((const fastd_async_resolve_return_t *)buf);
 		break;
@@ -143,7 +146,7 @@ void fastd_async_enqueue(fastd_async_type_t type, const void *data, size_t len) 
 	};
 	struct msghdr msg = {
 		.msg_iov = vec,
-		.msg_iovlen = 2,
+		.msg_iovlen = len ? 2 : 1,
 	};
 
 	if (sendmsg(ctx.async_wfd, &msg, 0) < 0)

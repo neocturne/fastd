@@ -139,7 +139,7 @@ void fastd_poll_handle(void) {
 	struct epoll_event events[16];
 	int ret = epoll_pwait(ctx.epoll_fd, events, 16, timeout, &set);
 	if (ret < 0 && errno != EINTR)
-		exit_errno("epoll_wait");
+		exit_errno("epoll_pwait");
 
 	fastd_update_time();
 
@@ -253,18 +253,9 @@ void fastd_poll_handle(void) {
 	sigemptyset(&set);
 	pthread_sigmask(SIG_SETMASK, &set, &oldset);
 
-	int ret = -1;
-
-	if (!fastd_signalled()) {
-		/*
-		  There is a race condition here: if a signal occurs after the fastd_signalled() check, but before the poll
-		  call, poll() will be called with its normal timeout, potentially delaying the actual signal handling. On
-		  OpenBSD we could use ppoll() to fix this, but on FreeBSD we're out of luck.
-		 */
-		ret = poll(VECTOR_DATA(ctx.pollfds), VECTOR_LEN(ctx.pollfds), timeout);
-		if (ret < 0 && errno != EINTR)
-			exit_errno("poll");
-	}
+	int ret = poll(VECTOR_DATA(ctx.pollfds), VECTOR_LEN(ctx.pollfds), timeout);
+	if (ret < 0 && errno != EINTR)
+		exit_errno("poll");
 
 	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 	fastd_update_time();

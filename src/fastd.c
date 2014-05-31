@@ -30,7 +30,6 @@
 */
 
 
-
 #include "fastd.h"
 #include "async.h"
 #include "config.h"
@@ -66,30 +65,41 @@
 fastd_context_t ctx = {};
 
 
-volatile bool fastd_sig_hup = false;		/**< Is set to true when a SIGHUP is received */
-volatile bool fastd_sig_terminate = false;	/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
-volatile bool fastd_sig_dump = false;		/**< Is set to true when a SIGUSR1 is received */
-volatile bool fastd_sig_chld = false;		/**< Is set to true when a SIGCHLD is received */
+static volatile bool sighup = false;		/**< Is set to true when a SIGHUP is received */
+static volatile bool terminate = false;		/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
+static volatile bool dump = false;		/**< Is set to true when a SIGUSR1 is received */
+static volatile bool sigchld = false;		/**< Is set to true when a SIGCHLD is received */
 
 
-/** SIGHUP handler */
-static void on_sighup(int signo UNUSED) {
-	fastd_sig_hup = true;
-}
+/** Signal handler; just saves the signals to be handled later */
+static void on_signal(int signo) {
+	switch(signo) {
+	case SIGHUP:
+		sighup = true;
+		break;
 
-/** SIGTERM, SIGQUIT and SIGINT handler */
-static void on_terminate(int signo UNUSED) {
-	fastd_sig_terminate = true;
-}
+	case SIGUSR1:
+		dump = true;
+		break;
 
-/** SIGUSR1 handler */
-static void on_sigusr1(int signo UNUSED) {
-	fastd_sig_dump = true;
-}
+	case SIGCHLD:
+		sigchld = true;
+		break;
 
-/** SIGCHLD handler */
-static void on_sigchld(int signo UNUSED) {
-	fastd_sig_chld = true;
+	case SIGTERM:
+	case SIGQUIT:
+	case SIGINT:
+		terminate = true;
+		break;
+
+	default:
+		return;
+	}
+
+#ifndef USE_EPOLL
+	/* Avoids a race condition between pthread_sigmask() and poll() (FreeBSD doesn't have ppoll() ...) */
+	fastd_async_enqueue(ASYNC_TYPE_NOP, NULL, 0);
+#endif
 }
 
 /** Installs signal handlers */
@@ -99,28 +109,21 @@ static void init_signals(void) {
 	/* block all signals */
 	pthread_sigmask(SIG_SETMASK, &set, NULL);
 
-	struct sigaction action;
-	action.sa_flags = 0;
+	struct sigaction action = {};
 	sigemptyset(&action.sa_mask);
 
-	action.sa_handler = on_sighup;
+	action.sa_handler = on_signal;
 	if (sigaction(SIGHUP, &action, NULL))
 		exit_errno("sigaction");
-
-	action.sa_handler = on_terminate;
+	if (sigaction(SIGUSR1, &action, NULL))
+		exit_errno("sigaction");
+	if (sigaction(SIGCHLD, &action, NULL))
+		exit_errno("sigaction");
 	if (sigaction(SIGTERM, &action, NULL))
 		exit_errno("sigaction");
 	if (sigaction(SIGQUIT, &action, NULL))
 		exit_errno("sigaction");
 	if (sigaction(SIGINT, &action, NULL))
-		exit_errno("sigaction");
-
-	action.sa_handler = on_sigusr1;
-	if (sigaction(SIGUSR1, &action, NULL))
-		exit_errno("sigaction");
-
-	action.sa_handler = on_sigchld;
-	if (sigaction(SIGCHLD, &action, NULL))
 		exit_errno("sigaction");
 
 	action.sa_handler = SIG_IGN;
@@ -625,8 +628,8 @@ static inline void reap_zombies(void) {
 
 /** The \em real signal handlers */
 static inline void handle_signals(void) {
-	if (fastd_sig_hup) {
-		fastd_sig_hup = false;
+	if (sighup) {
+		sighup = false;
 
 		pr_info("reconfigure triggered");
 
@@ -634,13 +637,13 @@ static inline void handle_signals(void) {
 		init_peers();
 	}
 
-	if (fastd_sig_dump) {
-		fastd_sig_dump = false;
+	if (dump) {
+		dump = false;
 		dump_state();
 	}
 
-	if (fastd_sig_chld) {
-		fastd_sig_chld = false;
+	if (sigchld) {
+		sigchld = false;
 		reap_zombies();
 	}
 }
@@ -699,7 +702,7 @@ static inline void cleanup(void) {
 int main(int argc, char *argv[]) {
 	init(argc, argv);
 
-	while (!fastd_sig_terminate)
+	while (!terminate)
 		run();
 
 	cleanup();

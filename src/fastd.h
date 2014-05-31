@@ -292,11 +292,6 @@ struct fastd_string_stack {
 extern fastd_context_t ctx;
 extern fastd_config_t conf;
 
-extern volatile bool fastd_sig_hup;
-extern volatile bool fastd_sig_terminate;
-extern volatile bool fastd_sig_dump;
-extern volatile bool fastd_sig_chld;
-
 
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
@@ -374,11 +369,6 @@ static inline size_t block_count(size_t l, size_t a) {
  */
 static inline size_t alignto(size_t l, size_t a) {
 	return block_count(l, a)*a;
-}
-
-/** Returns true if any unhandled signal in currently queued */
-static inline bool fastd_signalled(void) {
-	return (fastd_sig_hup || fastd_sig_terminate || fastd_sig_dump || fastd_sig_chld);
 }
 
 /** Returns the maximum payload size \em fastd is configured to transport */
