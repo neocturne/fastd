@@ -69,6 +69,7 @@ fastd_context_t ctx;
 static volatile bool sighup = false;		/**< Is set to true when a SIGHUP is received */
 static volatile bool terminate = false;		/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
 static volatile bool dump = false;		/**< Is set to true when a SIGUSR1 is received */
+static volatile bool sigchld = false;		/**< Is set to true when a SIGCHLD is received */
 
 
 /** SIGHUP handler */
@@ -86,30 +87,9 @@ static void on_sigusr1(int signo UNUSED) {
 	dump = true;
 }
 
-/**
-   SIGCHLD handler
-
-   Reaps zombies of asynchronous shell commands.
-*/
+/** SIGCHLD handler */
 static void on_sigchld(int signo UNUSED) {
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.async_pids);) {
-		pid_t pid = VECTOR_INDEX(ctx.async_pids, i);
-		if (waitpid(pid, NULL, WNOHANG) > 0) {
-			pr_debug("child process %u finished", (unsigned)pid);
-		}
-		else {
-			if (errno == ECHILD) {
-				i++;
-				continue;
-			}
-			else {
-				pr_error_errno("waitpid");
-			}
-		}
-
-		VECTOR_DELETE(ctx.async_pids, i);
-	}
+	sigchld = true;
 }
 
 /** Installs signal handlers */
@@ -308,6 +288,27 @@ static inline void maintenance(void) {
 	ctx.next_maintenance.tv_sec += MAINTENANCE_INTERVAL;
 }
 
+/** Reaps zombies of asynchronous shell commands. */
+static inline void reap_zombies(void) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx.async_pids);) {
+		pid_t pid = VECTOR_INDEX(ctx.async_pids, i);
+		if (waitpid(pid, NULL, WNOHANG) > 0) {
+			pr_debug("child process %u finished", (unsigned)pid);
+		}
+		else {
+			if (errno == ECHILD) {
+				i++;
+				continue;
+			}
+			else {
+				pr_error_errno("waitpid");
+			}
+		}
+
+		VECTOR_DELETE(ctx.async_pids, i);
+	}
+}
 
 /** Closes all open FDs except stdin, stdout and stderr */
 void fastd_close_all_fds(void) {
@@ -616,7 +617,7 @@ int main(int argc, char *argv[]) {
 		maintenance();
 
 		sigset_t set, oldset;
-		sigemptyset(&set);
+		sigfillset(&set);
 		pthread_sigmask(SIG_SETMASK, &set, &oldset);
 
 		if (sighup) {
@@ -631,6 +632,11 @@ int main(int argc, char *argv[]) {
 		if (dump) {
 			dump = false;
 			dump_state();
+		}
+
+		if (sigchld) {
+			sigchld = false;
+			reap_zombies();
 		}
 
 		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
