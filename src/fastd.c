@@ -345,7 +345,7 @@ static void set_user(void) {
 		if (setuid(conf.uid) < 0)
 			exit_errno("setuid");
 
-		pr_info("Changed to UID %i, GID %i.", conf.uid, conf.gid);
+		pr_info("changed to UID %i, GID %i", (int)conf.uid, (int)conf.gid);
 	}
 }
 
@@ -673,6 +673,8 @@ static inline void run(void) {
    valgrind as easy as possible.
 */
 static inline void cleanup(void) {
+	pr_info("terminating fastd");
+
 	on_down();
 
 	delete_peers();

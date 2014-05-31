@@ -131,8 +131,10 @@ static inline void handle_socket_receive_known(fastd_socket_t *sock, const fastd
 		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
 			fastd_buffer_free(buffer);
 
-			if (!backoff_unknown(remote_addr))
+			if (!backoff_unknown(remote_addr)) {
+				pr_debug("unexpectedly received payload data from %P[%I]", peer, remote_addr);
 				conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
+			}
 			return;
 		}
 
@@ -158,8 +160,10 @@ static inline void handle_socket_receive_unknown(fastd_socket_t *sock, const fas
 	case PACKET_DATA:
 		fastd_buffer_free(buffer);
 
-		if (!backoff_unknown(remote_addr))
+		if (!backoff_unknown(remote_addr)) {
+			pr_debug("unexpectedly received payload data from unknown address %I", remote_addr);
 			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
+		}
 		break;
 
 	case PACKET_HANDSHAKE:

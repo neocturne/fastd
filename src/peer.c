@@ -304,8 +304,10 @@ static bool is_peer_in_group(const fastd_peer_t *peer, const fastd_peer_group_t 
    After a call to reset_peer a peer must be deleted by delete_peer or re-initialized by setup_peer.
 */
 static void reset_peer(fastd_peer_t *peer) {
-	if (fastd_peer_is_established(peer))
+	if (fastd_peer_is_established(peer)) {
 		on_disestablish(peer);
+		pr_info("connection with %P disestablished.", peer);
+	}
 
 	free_socket(peer);
 
@@ -794,7 +796,6 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 		return;
 	}
 
-	pr_debug("sending handshake to %P[%I]...", peer, &peer->address);
 	peer->last_handshake_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
 	peer->last_handshake_address = peer->address;
 	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);

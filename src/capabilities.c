@@ -68,7 +68,7 @@ static void try_cap(cap_value_t cap) {
 		goto end_free;
 	}
 
-	pr_verbose("Acquired capability %s.", name);
+	pr_verbose("acquired capability %s", name);
 
  end_free:
 	cap_free(caps);
@@ -95,7 +95,7 @@ void fastd_cap_drop(void) {
 		pr_debug_errno("cap_set_proc");
 	}
 	else {
-		pr_verbose("Dropped capabilities.");
+		pr_verbose("dropped capabilities");
 	}
 
 	cap_free(caps);

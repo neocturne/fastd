@@ -523,10 +523,14 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fa
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 
-	if (peer)
+	if (peer) {
 		fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->protocol_config->public_key);
-	else
-		pr_debug("sending handshake to unknown peer %I", remote_addr);
+
+		pr_verbose("sending handshake to %P[%I]...", peer, remote_addr);
+	}
+	else {
+		pr_verbose("sending handshake to unknown peer %I", remote_addr);
+	}
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx.protocol_state->handshake_key.key.public);
 
