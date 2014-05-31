@@ -63,7 +63,7 @@
 
 
 /** The global context */
-fastd_context_t ctx;
+fastd_context_t ctx = {};
 
 
 static volatile bool sighup = false;		/**< Is set to true when a SIGHUP is received */
@@ -277,38 +277,6 @@ static void dump_state(void) {
 	pr_info("dump finished.");
 }
 
-/** Performs periodic maintenance tasks */
-static inline void maintenance(void) {
-	if (!fastd_timed_out(&ctx.next_maintenance))
-		return;
-
-	fastd_socket_handle_binds();
-	fastd_peer_maintenance();
-
-	ctx.next_maintenance.tv_sec += MAINTENANCE_INTERVAL;
-}
-
-/** Reaps zombies of asynchronous shell commands. */
-static inline void reap_zombies(void) {
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.async_pids);) {
-		pid_t pid = VECTOR_INDEX(ctx.async_pids, i);
-		if (waitpid(pid, NULL, WNOHANG) > 0) {
-			pr_debug("child process %u finished", (unsigned)pid);
-		}
-		else {
-			if (errno == ECHILD) {
-				i++;
-				continue;
-			}
-			else {
-				pr_error_errno("waitpid");
-			}
-		}
-
-		VECTOR_DELETE(ctx.async_pids, i);
-	}
-}
 
 /** Closes all open FDs except stdin, stdout and stderr */
 void fastd_close_all_fds(void) {
@@ -333,8 +301,9 @@ void fastd_close_all_fds(void) {
 	}
 }
 
+
 /** Writes the PID file */
-static void write_pid(pid_t pid) {
+static inline void write_pid(void) {
 	if (!conf.pid_file)
 		return;
 
@@ -354,7 +323,7 @@ static void write_pid(pid_t pid) {
 		goto end;
 	}
 
-	if (dprintf(fd, "%i", pid) < 0)
+	if (dprintf(fd, "%u", (unsigned)getpid()) < 0)
 		pr_error_errno("can't write PID file: dprintf");
 
 	if (close(fd) < 0)
@@ -484,31 +453,23 @@ static void notify_systemd(const char *notify_socket) {
 }
 #endif
 
-/** Main function */
-int main(int argc, char *argv[]) {
-	memset(&ctx, 0, sizeof(ctx));
-	int status_fd = -1;
 
-#ifdef ENABLE_SYSTEMD
-	char *notify_socket = getenv("NOTIFY_SOCKET");
-
-	if (notify_socket) {
-		notify_socket = strdup(notify_socket);
-
-		/* unset the socket to allow calling on_pre_up safely */
-		unsetenv("NOTIFY_SOCKET");
-	}
-#endif
-
+/** Early initialization before reading the config */
+static inline void init_early(void) {
 	fastd_close_all_fds();
 
 	fastd_random_bytes(&ctx.randseed, sizeof(ctx.randseed), false);
 
 	fastd_cipher_init();
 	fastd_mac_init();
+}
 
-	fastd_configure(argc, argv);
+/**
+   Performs further initialization after the config has been loaded
 
+   This also handles special run modes like \em generate-key and \em verify-config.
+*/
+static inline void init_config(int *status_fd) {
 	if (conf.verify_config) {
 		fastd_config_verify();
 		exit(0);
@@ -529,13 +490,19 @@ int main(int argc, char *argv[]) {
 	init_signals();
 
 	if (conf.daemon)
-		status_fd = daemonize();
+		*status_fd = daemonize();
 
 	if (chdir("/"))
 		pr_error("can't chdir to `/': %s", strerror(errno));
 
+	/*
+	  Initialize log here, as:
+	   - we have already daemonized, so syslog will show the correct PID
+	   - special run modes that should always log to stderr have been handled
+	 */
 	init_log();
 
+	/* Init crypto libs here as fastd_config_check() initializes the methods and might need them */
 #ifdef HAVE_LIBSODIUM
 	sodium_init();
 #endif
@@ -547,19 +514,34 @@ int main(int argc, char *argv[]) {
 #endif
 
 	fastd_config_check();
+}
+
+/** Initializes fastd */
+static inline void init(int argc, char *argv[]) {
+	int status_fd = -1;
+
+#ifdef ENABLE_SYSTEMD
+	char *notify_socket = getenv("NOTIFY_SOCKET");
+
+	if (notify_socket) {
+		notify_socket = strdup(notify_socket);
+
+		/* unset the socket to allow calling on_pre_up safely */
+		unsetenv("NOTIFY_SOCKET");
+	}
+#endif
+
+	init_early();
+	fastd_configure(argc, argv);
+	init_config(&status_fd);
 
 	fastd_update_time();
-
 	ctx.next_maintenance = fastd_in_seconds(MAINTENANCE_INTERVAL);
-
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 
 	pr_info("fastd " FASTD_VERSION " starting");
 
 	fastd_cap_init();
-
-	/* change groups early as the can be relevant for file access (for the PID file) */
-	set_groups();
 
 	init_sockets();
 	fastd_async_init();
@@ -572,7 +554,15 @@ int main(int argc, char *argv[]) {
 
 	fastd_tuntap_open();
 
-	write_pid(getpid());
+	/* change groups before trying to write the PID file as they can be relevant for file access */
+	set_groups();
+	write_pid();
+
+	VECTOR_ALLOC(ctx.eth_addrs, 0);
+	VECTOR_ALLOC(ctx.peers, 0);
+	VECTOR_ALLOC(ctx.async_pids, 0);
+
+	fastd_peer_hashtable_init();
 
 #ifdef ENABLE_SYSTEMD
 	if (notify_socket) {
@@ -600,48 +590,89 @@ int main(int argc, char *argv[]) {
 		set_user();
 
 	fastd_config_load_peer_dirs();
-
-	VECTOR_ALLOC(ctx.eth_addrs, 0);
-	VECTOR_ALLOC(ctx.peers, 0);
-	VECTOR_ALLOC(ctx.async_pids, 0);
-
-	fastd_peer_hashtable_init();
-
 	init_peers();
+}
 
-	while (!terminate) {
-		fastd_peer_handle_handshake_queue();
 
-		fastd_poll_handle();
+/** Performs periodic maintenance tasks */
+static inline void maintenance(void) {
+	if (!fastd_timed_out(&ctx.next_maintenance))
+		return;
 
-		maintenance();
+	fastd_socket_handle_binds();
+	fastd_peer_maintenance();
 
-		sigset_t set, oldset;
-		sigfillset(&set);
-		pthread_sigmask(SIG_SETMASK, &set, &oldset);
+	ctx.next_maintenance.tv_sec += MAINTENANCE_INTERVAL;
+}
 
-		if (sighup) {
-			sighup = false;
-
-			pr_info("reconfigure triggered");
-
-			fastd_config_load_peer_dirs();
-			init_peers();
+/** Reaps zombies of asynchronous shell commands. */
+static inline void reap_zombies(void) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx.async_pids);) {
+		pid_t pid = VECTOR_INDEX(ctx.async_pids, i);
+		if (waitpid(pid, NULL, WNOHANG) > 0) {
+			pr_debug("child process %u finished", (unsigned)pid);
+		}
+		else {
+			if (errno == ECHILD) {
+				i++;
+				continue;
+			}
+			else {
+				pr_error_errno("waitpid");
+			}
 		}
 
-		if (dump) {
-			dump = false;
-			dump_state();
-		}
+		VECTOR_DELETE(ctx.async_pids, i);
+	}
+}
 
-		if (sigchld) {
-			sigchld = false;
-			reap_zombies();
-		}
+/** The \em real signal handlers */
+static inline void handle_signals(void) {
+	sigset_t set, oldset;
+	sigfillset(&set);
+	pthread_sigmask(SIG_SETMASK, &set, &oldset);
 
-		pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+	if (sighup) {
+		sighup = false;
+
+		pr_info("reconfigure triggered");
+
+		fastd_config_load_peer_dirs();
+		init_peers();
 	}
 
+	if (dump) {
+		dump = false;
+		dump_state();
+	}
+
+	if (sigchld) {
+		sigchld = false;
+		reap_zombies();
+	}
+
+	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
+}
+
+
+/** A single iteration of fastd's main loop */
+static inline void run(void) {
+	fastd_peer_handle_handshake_queue();
+	fastd_poll_handle();
+
+	maintenance();
+	handle_signals();
+}
+
+/**
+   Performs cleanup of resources used by fastd
+
+   Besides running the on-down scripts and closing the TUN/TAP interface, this
+   also frees all memory allocatedby fastd to make debugging memory leaks with
+   valgrind as easy as possible.
+*/
+static inline void cleanup(void) {
 	on_down();
 
 	delete_peers();
@@ -669,6 +700,17 @@ int main(int argc, char *argv[]) {
 
 	close_log();
 	fastd_config_release();
+}
+
+
+/** Main function */
+int main(int argc, char *argv[]) {
+	init(argc, argv);
+
+	while (!terminate)
+		run();
+
+	cleanup();
 
 	return 0;
 }

@@ -58,8 +58,6 @@ extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
 /** Initializes the global configuration with default values */
 static void default_config(void) {
-	memset(&conf, 0, sizeof(fastd_config_t));
-
 	conf.log_syslog_ident = strdup("fastd");
 
 	conf.mtu = 1500;
