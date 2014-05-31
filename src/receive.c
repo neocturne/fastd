@@ -219,7 +219,7 @@ void fastd_receive(fastd_socket_t *sock) {
 
 	ssize_t len = recvmsg(sock->fd, &message, 0);
 	if (len <= 0) {
-		if (len < 0 && errno != EINTR)
+		if (len < 0)
 			pr_warn_errno("recvmsg");
 
 		fastd_buffer_free(buffer);

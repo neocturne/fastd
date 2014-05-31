@@ -102,20 +102,16 @@ void fastd_async_handle(void) {
 		.msg_iovlen = 1,
 	};
 
-	while (recvmsg(ctx.async_rfd, &msg, MSG_PEEK) < 0) {
-		if (errno != EINTR)
-			exit_errno("fastd_async_handle: recvmsg");
-	}
+	if (recvmsg(ctx.async_rfd, &msg, MSG_PEEK) < 0)
+		exit_errno("fastd_async_handle: recvmsg");
 
 	uint8_t buf[header.len] __attribute__((aligned(8)));
 	vec[1].iov_base = buf;
 	vec[1].iov_len = sizeof(buf);
 	msg.msg_iovlen = 2;
 
-	while (recvmsg(ctx.async_rfd, &msg, 0) < 0) {
-		if (errno != EINTR)
-			exit_errno("fastd_async_handle: recvmsg");
-	}
+	if (recvmsg(ctx.async_rfd, &msg, 0) < 0)
+		exit_errno("fastd_async_handle: recvmsg");
 
 	switch (header.type) {
 	case ASYNC_TYPE_RESOLVE_RETURN:

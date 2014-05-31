@@ -312,14 +312,8 @@ void fastd_tuntap_handle(void) {
 		buffer = fastd_buffer_alloc(max_len, conf.min_encrypt_head_space, conf.min_encrypt_tail_space);
 
 	ssize_t len = read(ctx.tunfd, buffer.data, max_len);
-	if (len < 0) {
-		if (errno == EINTR) {
-			fastd_buffer_free(buffer);
-			return;
-		}
-
+	if (len < 0)
 		exit_errno("read");
-	}
 
 	buffer.len = len;
 

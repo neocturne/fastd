@@ -294,11 +294,6 @@ void fastd_close_all_fds(void) {
 
 	for (fd = 3; fd < maxfd; fd++) {
 		if (close(fd) < 0) {
-			if (errno == EINTR) {
-				fd--;
-				continue;
-			}
-
 			if (errno != EBADF)
 				pr_error_errno("close");
 		}

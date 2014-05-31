@@ -128,10 +128,7 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 	if (!msg.msg_controllen)
 		msg.msg_control = NULL;
 
-	int ret;
-	do {
-		ret = sendmsg(sock->fd, &msg, 0);
-	} while (ret < 0 && errno == EINTR);
+	int ret = sendmsg(sock->fd, &msg, 0);
 
 	if (ret < 0 && errno == EINVAL && msg.msg_controllen) {
 		pr_debug2("sendmsg failed, trying again without pktinfo");
@@ -142,10 +139,7 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 		msg.msg_control = NULL;
 		msg.msg_controllen = 0;
 
-		do {
-			ret = sendmsg(sock->fd, &msg, 0);
-		} while (ret < 0 && errno == EINTR);
-
+		ret = sendmsg(sock->fd, &msg, 0);
 	}
 
 	if (ret < 0) {
