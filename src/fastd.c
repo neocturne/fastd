@@ -265,7 +265,8 @@ static void dump_state(void) {
 		}
 
 		if (conf.mode == MODE_TAP) {
-			size_t j, eth_addresses = 0;
+			unsigned eth_addresses = 0;
+			size_t j;
 			for (j = 0; j < VECTOR_LEN(ctx.eth_addrs); j++) {
 				if (VECTOR_INDEX(ctx.eth_addrs, j).peer == peer)
 					eth_addresses++;
