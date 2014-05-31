@@ -256,7 +256,7 @@ static void dump_state(void) {
 	pr_info("dumping peers:");
 
 	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
+	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
 		if (!fastd_peer_is_established(peer)) {
@@ -265,9 +265,9 @@ static void dump_state(void) {
 		}
 
 		if (conf.mode == MODE_TAP) {
-			size_t i, eth_addresses = 0;
-			for (i = 0; i < VECTOR_LEN(ctx.eth_addrs); i++) {
-				if (VECTOR_INDEX(ctx.eth_addrs, i).peer == peer)
+			size_t j, eth_addresses = 0;
+			for (j = 0; j < VECTOR_LEN(ctx.eth_addrs); j++) {
+				if (VECTOR_INDEX(ctx.eth_addrs, j).peer == peer)
 					eth_addresses++;
 			}
 
