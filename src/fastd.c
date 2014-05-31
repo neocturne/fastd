@@ -66,30 +66,30 @@
 fastd_context_t ctx = {};
 
 
-static volatile bool sighup = false;		/**< Is set to true when a SIGHUP is received */
-static volatile bool terminate = false;		/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
-static volatile bool dump = false;		/**< Is set to true when a SIGUSR1 is received */
-static volatile bool sigchld = false;		/**< Is set to true when a SIGCHLD is received */
+volatile bool fastd_sig_hup = false;		/**< Is set to true when a SIGHUP is received */
+volatile bool fastd_sig_terminate = false;	/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
+volatile bool fastd_sig_dump = false;		/**< Is set to true when a SIGUSR1 is received */
+volatile bool fastd_sig_chld = false;		/**< Is set to true when a SIGCHLD is received */
 
 
 /** SIGHUP handler */
 static void on_sighup(int signo UNUSED) {
-	sighup = true;
+	fastd_sig_hup = true;
 }
 
 /** SIGTERM, SIGQUIT and SIGINT handler */
 static void on_terminate(int signo UNUSED) {
-	terminate = true;
+	fastd_sig_terminate = true;
 }
 
 /** SIGUSR1 handler */
 static void on_sigusr1(int signo UNUSED) {
-	dump = true;
+	fastd_sig_dump = true;
 }
 
 /** SIGCHLD handler */
 static void on_sigchld(int signo UNUSED) {
-	sigchld = true;
+	fastd_sig_chld = true;
 }
 
 /** Installs signal handlers */
@@ -625,8 +625,8 @@ static inline void reap_zombies(void) {
 
 /** The \em real signal handlers */
 static inline void handle_signals(void) {
-	if (sighup) {
-		sighup = false;
+	if (fastd_sig_hup) {
+		fastd_sig_hup = false;
 
 		pr_info("reconfigure triggered");
 
@@ -634,13 +634,13 @@ static inline void handle_signals(void) {
 		init_peers();
 	}
 
-	if (dump) {
-		dump = false;
+	if (fastd_sig_dump) {
+		fastd_sig_dump = false;
 		dump_state();
 	}
 
-	if (sigchld) {
-		sigchld = false;
+	if (fastd_sig_chld) {
+		fastd_sig_chld = false;
 		reap_zombies();
 	}
 }
@@ -699,7 +699,7 @@ static inline void cleanup(void) {
 int main(int argc, char *argv[]) {
 	init(argc, argv);
 
-	while (!terminate)
+	while (!fastd_sig_terminate)
 		run();
 
 	cleanup();
