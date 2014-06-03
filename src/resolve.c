@@ -34,7 +34,6 @@
 #include "async.h"
 
 #include <netdb.h>
-#include <pthread.h>
 
 
 /** The argument given to the resolver thread */
@@ -134,7 +133,7 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 	arg->constraints = remote->config->address;
 
 	pthread_t thread;
-	if ((errno = pthread_create(&thread, NULL, resolve_peer, arg)) != 0) {
+	if ((errno = pthread_create(&thread, &ctx.detached_thread, resolve_peer, arg)) != 0) {
 		pr_error_errno("unable to create resolver thread");
 
 		free(arg->hostname);
@@ -142,6 +141,4 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 
 		return;
 	}
-
-	pthread_detach(thread);
 }

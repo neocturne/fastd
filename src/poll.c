@@ -34,7 +34,6 @@
 #include "async.h"
 #include "peer.h"
 
-#include <pthread.h>
 #include <signal.h>
 
 

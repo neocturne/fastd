@@ -40,7 +40,6 @@
 #include <fastd_version.h>
 
 #include <grp.h>
-#include <pthread.h>
 #include <signal.h>
 #include <syslog.h>
 #include <sys/resource.h>
@@ -539,6 +538,15 @@ static inline void init(int argc, char *argv[]) {
 	ctx.next_maintenance = fastd_in_seconds(MAINTENANCE_INTERVAL);
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 
+	VECTOR_ALLOC(ctx.eth_addrs, 0);
+	VECTOR_ALLOC(ctx.peers, 0);
+	VECTOR_ALLOC(ctx.async_pids, 0);
+
+	if (pthread_attr_init(&ctx.detached_thread))
+		exit_errno("pthread_attr_init");
+	if (pthread_attr_setdetachstate(&ctx.detached_thread, PTHREAD_CREATE_DETACHED))
+		exit_errno("pthread_attr_setdetachstate");
+
 	pr_info("fastd " FASTD_VERSION " starting");
 
 	fastd_cap_init();
@@ -557,10 +565,6 @@ static inline void init(int argc, char *argv[]) {
 	/* change groups before trying to write the PID file as they can be relevant for file access */
 	set_groups();
 	write_pid();
-
-	VECTOR_ALLOC(ctx.eth_addrs, 0);
-	VECTOR_ALLOC(ctx.peers, 0);
-	VECTOR_ALLOC(ctx.async_pids, 0);
 
 	fastd_peer_hashtable_init();
 
@@ -680,6 +684,8 @@ static inline void cleanup(void) {
 	on_post_down();
 
 	fastd_peer_hashtable_free();
+
+	pthread_attr_destroy(&ctx.detached_thread);
 
 	VECTOR_FREE(ctx.async_pids);
 	VECTOR_FREE(ctx.peers);

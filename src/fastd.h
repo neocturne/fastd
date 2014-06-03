@@ -41,6 +41,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <poll.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -257,6 +258,8 @@ struct fastd_context {
 	VECTOR(pid_t) async_pids;		/**< PIDs of asynchronously executed commands which still have to be reaped */
 	int async_rfd;				/**< The read side of the pipe used to send data from other thread to the main thread */
 	int async_wfd;				/**< The write side of the pipe used to send data from other thread to the main thread */
+
+	pthread_attr_t detached_thread;		/**< pthread_attr_t for creating detached threads */
 
 	int tunfd;				/**< The file descriptor of the tunnel interface */
 

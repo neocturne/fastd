@@ -38,8 +38,6 @@
 #include "async.h"
 #include "shell.h"
 
-#include <pthread.h>
-
 
 /**
    Calls the on-verify command and returns the result
@@ -120,7 +118,7 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 		memcpy(arg->ret.protocol_data, data, data_len);
 
 		pthread_t thread;
-		if ((errno = pthread_create(&thread, NULL, do_verify_thread, arg)) != 0) {
+		if ((errno = pthread_create(&thread, &ctx.detached_thread, do_verify_thread, arg)) != 0) {
 			pr_error_errno("unable to create verify thread");
 
 			fastd_shell_env_free(env);
@@ -129,7 +127,6 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 			return fastd_tristate_false;
 		}
 
-		pthread_detach(thread);
 		return fastd_tristate_undef;
 	}
 }
