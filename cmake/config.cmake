@@ -20,7 +20,7 @@ endif()
 
 set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilities")
 
-set(ENABLE_LIBSODIUM FALSE CACHE BOOL "Use libsodium instead of NaCl")
+set(ENABLE_LIBSODIUM TRUE CACHE BOOL "Use libsodium instead of NaCl")
 set(ENABLE_OPENSSL FALSE CACHE BOOL "Enable crypto implementations using OpenSSL")
 
 if(LINUX)
