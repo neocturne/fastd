@@ -420,11 +420,15 @@ static int daemonize(void) {
 	}
 }
 
-#ifdef ENABLE_SYSTEMD
 /** Sends a readiness notification on a notify socket */
-static void notify_systemd(const char *notify_socket) {
+static inline void notify_systemd(void) {
+#ifdef ENABLE_SYSTEMD
 	int fd;
 	struct sockaddr_un sa = {};
+	const char *notify_socket = getenv("NOTIFY_SOCKET");
+
+	if (!notify_socket)
+		return;
 
 	if ((notify_socket[0] != '@' && notify_socket[0] != '/') || notify_socket[1] == 0)
 		return;
@@ -449,9 +453,8 @@ static void notify_systemd(const char *notify_socket) {
 	pr_debug("sent startup notification to systemd");
 
 	close(fd);
-}
 #endif
-
+}
 
 /** Early initialization before reading the config */
 static inline void init_early(void) {
@@ -519,17 +522,6 @@ static inline void init_config(int *status_fd) {
 static inline void init(int argc, char *argv[]) {
 	int status_fd = -1;
 
-#ifdef ENABLE_SYSTEMD
-	char *notify_socket = getenv("NOTIFY_SOCKET");
-
-	if (notify_socket) {
-		notify_socket = strdup(notify_socket);
-
-		/* unset the socket to allow calling on_pre_up safely */
-		unsetenv("NOTIFY_SOCKET");
-	}
-#endif
-
 	init_early();
 	fastd_configure(argc, argv);
 	init_config(&status_fd);
@@ -568,12 +560,7 @@ static inline void init(int argc, char *argv[]) {
 
 	fastd_peer_hashtable_init();
 
-#ifdef ENABLE_SYSTEMD
-	if (notify_socket) {
-		notify_systemd(notify_socket);
-		free(notify_socket);
-	}
-#endif
+	notify_systemd();
 
 	if (status_fd >= 0) {
 		static const uint8_t STATUS = 0;

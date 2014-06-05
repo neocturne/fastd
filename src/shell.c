@@ -81,6 +81,8 @@ void fastd_shell_env_free(fastd_shell_env_t *env) {
 static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
 	char buf[20];
 
+	unsetenv("NOTIFY_SOCKET");
+
 	snprintf(buf, sizeof(buf), "%u", (unsigned)pid);
 	setenv("FASTD_PID", buf, 1);
 
