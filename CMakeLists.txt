@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(FASTD C ASM)
 
-set(CMAKE_MODULE_PATH ${FASTD_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+cmake_policy(SET CMP0017 OLD) # Prefer modules in our module directory
+
+project(FASTD C ASM)
 set(FASTD_VERSION "v12+")
 
 include(arch)
