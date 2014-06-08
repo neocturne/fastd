@@ -9,6 +9,21 @@ if(ARCH_X86 OR ARCH_X86_64)
   check_c_compiler_flag("-mpclmul" HAVE_PCLMUL)
 endif(ARCH_X86 OR ARCH_X86_64)
 
+
+
+if(ENABLE_LTO)
+  set(CFLAGS_LTO "-flto")
+  set(CFLAGS_NO_LTO "-fno-lto")
+
+  check_c_compiler_flag("-fwhole-program" HAVE_FLAG_WHOLE_PROGRAM)
+  if(HAVE_FLAG_WHOLE_PROGRAM)
+    set(LDFLAGS_LTO "-flto -fwhole-program")
+  else(HAVE_FLAG_WHOLE_PROGRAM)
+    set(LDFLAGS_LTO "-flto")
+  endif(HAVE_FLAG_WHOLE_PROGRAM)
+endif(ENABLE_LTO)
+
+
 check_c_source_compiles("
 #include <sys/types.h>
 #include <sys/socket.h>

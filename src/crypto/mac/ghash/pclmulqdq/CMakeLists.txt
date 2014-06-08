@@ -3,7 +3,7 @@ if(ARCH_X86 OR ARCH_X86_64)
     ghash_pclmulqdq.c
     ghash_pclmulqdq_impl.c
     )
-  fastd_mac_impl_compile_flags(ghash pclmulqdq ghash_pclmulqdq_impl.c "-mssse3 -mpclmul")
+  fastd_mac_impl_compile_flags(ghash pclmulqdq ghash_pclmulqdq_impl.c "-mssse3 -mpclmul ${CFLAGS_NO_LTO}")
 
   if(WITH_MAC_GHASH_PCLMULQDQ AND NOT HAVE_PCLMUL)
     message(FATAL_ERROR "WITH_MAC_GHASH_PCLMULQDQ enabled, but there is no compiler support for -mpclmul")

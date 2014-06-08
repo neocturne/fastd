@@ -23,6 +23,8 @@ set(WITH_CAPABILITIES ${LINUX} CACHE BOOL "Include support for POSIX capabilitie
 set(ENABLE_LIBSODIUM TRUE CACHE BOOL "Use libsodium instead of NaCl")
 set(ENABLE_OPENSSL FALSE CACHE BOOL "Enable crypto implementations using OpenSSL")
 
+set(ENABLE_LTO FALSE CACHE BOOL "Enable link-time optimization")
+
 if(LINUX)
   set(ENABLE_SYSTEMD TRUE CACHE BOOL "Enable systemd support")
 endif(LINUX)
