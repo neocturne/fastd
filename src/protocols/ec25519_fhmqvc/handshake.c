@@ -592,7 +592,7 @@ static fastd_peer_t * add_temporary(fastd_socket_t *sock, const fastd_peer_addre
 /** Is called when a handshake from a temporary peer is received */
 static bool handle_temporary(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 			     fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
-	if (handshake->type != 1 || !fastd_timed_out(&peer->verify_timeout))
+	if (handshake->type > 2 || !fastd_timed_out(&peer->verify_timeout))
 		return !fastd_timed_out(&peer->verify_valid_timeout);
 
 	verify_data_t verify_data;
