@@ -431,13 +431,9 @@ static void delete_peer(fastd_peer_t *peer) {
 
 
 /** Allocates a new peer config */
-fastd_peer_config_t* fastd_peer_config_new(void) {
+fastd_peer_config_t* fastd_peer_config_new(fastd_peer_group_t *group) {
 	fastd_peer_config_t *peer = calloc(1, sizeof(fastd_peer_config_t));
-
-	peer->group = conf.peer_group;
-
-	peer->next = conf.peers;
-	conf.peers = peer;
+	peer->group = group;
 
 	return peer;
 }
@@ -456,13 +452,6 @@ void fastd_peer_config_free(fastd_peer_config_t *peer) {
 	free(peer->key);
 	free(peer->protocol_config);
 	free(peer);
-}
-
-/** Deletes the peer config created last */
-void fastd_peer_config_delete(void) {
-	fastd_peer_config_t *peer = conf.peers, *next = peer->next;
-	fastd_peer_config_free(peer);
-	conf.peers = next;
 }
 
 /** Deletes a peer config, and removes the peer assiciated with the peer config */

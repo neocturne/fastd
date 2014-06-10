@@ -165,9 +165,8 @@ static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *a
 	}
 }
 
-fastd_peer_config_t* fastd_peer_config_new(void);
+fastd_peer_config_t* fastd_peer_config_new(fastd_peer_group_t *group);
 void fastd_peer_config_free(fastd_peer_config_t *peer);
-void fastd_peer_config_delete(void);
 void fastd_peer_config_purge(fastd_peer_config_t *config);
 bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2);
 

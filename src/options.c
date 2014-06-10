@@ -111,21 +111,25 @@ static void option_config(const char *arg) {
 	if (!strcmp(arg, "-"))
 		arg = NULL;
 
-	if (!fastd_read_config(arg, false, 0))
+	if (!fastd_config_read(arg, conf.peer_group, NULL, 0))
 		exit(1);
 }
 
 /** Handles the --config-peer option */
 static void option_config_peer(const char *arg) {
-	fastd_peer_config_new();
+	fastd_peer_config_t *peer = fastd_peer_config_new(conf.peer_group);
 
-	if(!fastd_read_config(arg, true, 0))
+	if(!fastd_config_read(arg, conf.peer_group, peer, 0))
 		exit(1);
+
+	peer->next = conf.peers;
+	conf.peers = peer;
+
 }
 
 /** Handles the --config-peer-dir option */
 static void option_config_peer_dir(const char *arg) {
-	fastd_add_peer_dir(arg);
+	fastd_config_add_peer_dir(conf.peer_group, arg);
 }
 
 

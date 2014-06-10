@@ -28,8 +28,7 @@
 %define api.push-pull push
 %name-prefix "fastd_config_"
 %locations
-%parse-param {const char *filename}
-%parse-param {int depth}
+%parse-param {fastd_parser_state_t *state}
 
 %code requires {
 	#include <src/fastd.h>
@@ -138,7 +137,7 @@
 
 	#include <limits.h>
 
-	void fastd_config_error(YYLTYPE *loc, const char *filename, int depth, const char *s);
+	void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s);
 }
 
 
@@ -349,7 +348,7 @@ packet_mark:	TOK_UINT {
 
 mtu:		TOK_UINT {
 			if ($1 < 576 || $1 > 65535) {
-				fastd_config_error(&@$, filename, depth, "invalid MTU");
+				fastd_config_error(&@$, state, "invalid MTU");
 				YYERROR;
 			}
 
@@ -416,15 +415,19 @@ on_verify:	sync_def_async TOK_STRING {
 #ifdef WITH_VERIFY
 			fastd_shell_command_set(&conf.on_verify, $2->str, $1);
 #else
-				fastd_config_error(&@$, filename, depth, "`on verify' is not supported by this version of fastd");
+				fastd_config_error(&@$, state, "`on verify' is not supported by this version of fastd");
 				YYERROR;
 #endif
 		}
 	;
 
 peer:		TOK_STRING {
-			fastd_peer_config_new();
-			conf.peers->name = strdup($1->str);
+			fastd_peer_config_t *peer = fastd_peer_config_new(state->peer_group);
+			peer->name = strdup($1->str);
+			peer->next = conf.peers;
+
+			conf.peers = peer;
+			state->peer = peer;
 		}
 	;
 
@@ -439,7 +442,7 @@ peer_statement: TOK_REMOTE peer_remote ';'
 	;
 
 peer_remote:	TOK_ADDR4 port {
-			fastd_remote_config_t **remote = &conf.peers->remotes;
+			fastd_remote_config_t **remote = &state->peer->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -451,7 +454,7 @@ peer_remote:	TOK_ADDR4 port {
 			fastd_peer_address_simplify(&(*remote)->address);
 		}
 	|	TOK_ADDR6 port {
-			fastd_remote_config_t **remote = &conf.peers->remotes;
+			fastd_remote_config_t **remote = &state->peer->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -465,7 +468,7 @@ peer_remote:	TOK_ADDR4 port {
 	|	TOK_ADDR6_SCOPED port {
 			char addrbuf[INET6_ADDRSTRLEN];
 			size_t addrlen;
-			fastd_remote_config_t **remote = &conf.peers->remotes;
+			fastd_remote_config_t **remote = &state->peer->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -483,7 +486,7 @@ peer_remote:	TOK_ADDR4 port {
 			(*remote)->address.in.sin_port = htons($2);
 		}
 	|	maybe_af TOK_STRING port {
-			fastd_remote_config_t **remote = &conf.peers->remotes;
+			fastd_remote_config_t **remote = &state->peer->remotes;
 			while (*remote)
 				remote = &(*remote)->next;
 
@@ -496,40 +499,40 @@ peer_remote:	TOK_ADDR4 port {
 	;
 
 peer_float:	boolean {
-			conf.peers->floating = $1;
+			state->peer->floating = $1;
 		}
 	;
 
 peer_key:	TOK_STRING {
-			free(conf.peers->key); conf.peers->key = strdup($1->str);
+			free(state->peer->key); state->peer->key = strdup($1->str);
 		}
 	;
 
 peer_include:	TOK_STRING {
-			if (!fastd_read_config($1->str, true, depth))
+			if (!fastd_config_read($1->str, state->peer_group, state->peer, state->depth))
 				YYERROR;
 		}
 	;
 
 
 peer_group:	TOK_STRING {
-			fastd_config_peer_group_push($1->str);
+			fastd_config_peer_group_push(state, $1->str);
 		}
 	;
 
 peer_group_after:
 		{
-			fastd_config_peer_group_pop();
+			fastd_config_peer_group_pop(state);
 		}
 	;
 
 peer_limit:	TOK_UINT {
 			if ($1 > INT_MAX) {
-				fastd_config_error(&@$, filename, depth, "invalid peer limit");
+				fastd_config_error(&@$, state, "invalid peer limit");
 				YYERROR;
 			}
 
-			conf.peer_group->max_connections = $1;
+			state->peer_group->max_connections = $1;
 		}
 	;
 
@@ -538,18 +541,20 @@ forward:	boolean		{ conf.forward = $1; }
 
 
 include:	TOK_PEER TOK_STRING maybe_as {
-			fastd_peer_config_new();
+			fastd_peer_config_t *peer = fastd_peer_config_new(state->peer_group);
 			if ($3)
-				conf.peers->name = strdup($3->str);
-
-			if (!fastd_read_config($2->str, true, depth))
+				peer->name = strdup($3->str);
+			if (!fastd_config_read($2->str, state->peer_group, peer, state->depth))
 				YYERROR;
+
+			peer->next = conf.peers;
+			conf.peers = peer;
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
-			fastd_add_peer_dir($3->str);
+			fastd_config_add_peer_dir(state->peer_group, $3->str);
 		}
 	|	TOK_STRING {
-			if (!fastd_read_config($1->str, false, depth))
+			if (!fastd_config_read($1->str, state->peer_group, NULL, state->depth))
 				YYERROR;
 		}
 	;
@@ -595,7 +600,7 @@ colon_or_port:	':'
 
 port:		colon_or_port TOK_UINT {
 			if ($2 < 1 || $2 > 65535) {
-				fastd_config_error(&@$, filename, depth, "invalid port");
+				fastd_config_error(&@$, state, "invalid port");
 				YYERROR;
 			}
 			$$ = $2;
@@ -603,6 +608,6 @@ port:		colon_or_port TOK_UINT {
 	;
 
 %%
-void fastd_config_error(YYLTYPE *loc, const char *filename, int depth UNUSED, const char *s) {
-	pr_error("config error: %s at %s:%i:%i", s, filename, loc->first_line, loc->first_column);
+void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s) {
+	pr_error("config error: %s at %s:%i:%i", s, state->filename, loc->first_line, loc->first_column);
 }

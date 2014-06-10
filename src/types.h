@@ -107,6 +107,7 @@ typedef struct fastd_mac fastd_mac_t;
 typedef struct fastd_handshake fastd_handshake_t;
 
 typedef struct fastd_lex fastd_lex_t;
+typedef struct fastd_parser_state fastd_parser_state_t;
 typedef struct fastd_string_stack fastd_string_stack_t;
 
 typedef struct fastd_shell_command fastd_shell_command_t;

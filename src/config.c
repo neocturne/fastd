@@ -143,22 +143,22 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 }
 
 /** Handles the start of a peer group configuration */
-void fastd_config_peer_group_push(const char *name) {
+void fastd_config_peer_group_push(fastd_parser_state_t *state, const char *name) {
 	fastd_peer_group_t *group = calloc(1, sizeof(fastd_peer_group_t));
 	group->name = strdup(name);
 	group->max_connections = -1;
 
-	group->parent = conf.peer_group;
+	group->parent = state->peer_group;
 	group->next = group->parent->children;
 
 	group->parent->children = group;
 
-	conf.peer_group = group;
+	state->peer_group = group;
 }
 
 /** Handles the end of a peer group configuration */
-void fastd_config_peer_group_pop(void) {
-	conf.peer_group = conf.peer_group->parent;
+void fastd_config_peer_group_pop(fastd_parser_state_t *state) {
+	state->peer_group = state->peer_group->parent;
 }
 
 /** Frees a peer group and its children */
@@ -189,7 +189,7 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_t *group) {
 }
 
 /** Reads and processes all peer definitions in the current directory (which must also be supplied as the argument) */
-static void read_peer_dir(const char *dir) {
+static void read_peer_dir(fastd_peer_config_t **peers, fastd_peer_group_t *group, const char *dir) {
 	DIR *dirh = opendir(".");
 
 	if (dirh) {
@@ -221,13 +221,17 @@ static void read_peer_dir(const char *dir) {
 				continue;
 			}
 
-			fastd_peer_config_new();
-			conf.peers->name = strdup(result->d_name);
-			conf.peers->config_source_dir = dir;
+			fastd_peer_config_t *peer = fastd_peer_config_new(group);
+			peer->name = strdup(result->d_name);
+			peer->config_source_dir = dir;
 
-			if (!fastd_read_config(result->d_name, true, 0)) {
+			if (fastd_config_read(result->d_name, group, peer, 0)) {
+				peer->next = *peers;
+				*peers = peer;
+			}
+			else {
 				pr_warn("peer config `%s' will be ignored", result->d_name);
-				fastd_peer_config_delete();
+				fastd_peer_config_free(peer);
 			}
 		}
 
@@ -240,14 +244,14 @@ static void read_peer_dir(const char *dir) {
 	}
 }
 
-/** Reads all peer configured directories */
-static void read_peer_dirs(void) {
+/** Reads all configured peer directories for a peer grup */
+static void read_peer_dirs(fastd_peer_config_t **peers, fastd_peer_group_t *group) {
 	char *oldcwd = get_current_dir_name();
 
 	fastd_string_stack_t *dir;
-	for (dir = conf.peer_group->peer_dirs; dir; dir = dir->next) {
+	for (dir = group->peer_dirs; dir; dir = dir->next) {
 		if (!chdir(dir->str))
-			read_peer_dir(dir->str);
+			read_peer_dir(peers, group, dir->str);
 		else
 			pr_error("change from directory `%s' to `%s' failed: %s", oldcwd, dir->str, strerror(errno));
 	}
@@ -259,15 +263,15 @@ static void read_peer_dirs(void) {
 }
 
 /** Adds a peer directory to the configuration */
-void fastd_add_peer_dir(const char *dir) {
+void fastd_config_add_peer_dir(fastd_peer_group_t *group, const char *dir) {
 	char *oldcwd = get_current_dir_name();
 
 	if (!chdir(dir)) {
 		char *newdir = get_current_dir_name();
-		conf.peer_group->peer_dirs = fastd_string_stack_push(conf.peer_group->peer_dirs, newdir);
+		group->peer_dirs = fastd_string_stack_push(group->peer_dirs, newdir);
 		free(newdir);
 
-		if(chdir(oldcwd))
+		if (chdir(oldcwd))
 			pr_error("can't chdir to `%s': %s", oldcwd, strerror(errno));
 	}
 	else {
@@ -278,7 +282,7 @@ void fastd_add_peer_dir(const char *dir) {
 }
 
 /** Reads and processes a configuration file */
-bool fastd_read_config(const char *filename, bool peer_config, int depth) {
+bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fastd_peer_config_t *peer_config, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error("maximum config include depth exceeded");
 
@@ -321,15 +325,21 @@ bool fastd_read_config(const char *filename, bool peer_config, int depth) {
 	int token;
 	YYSTYPE token_val;
 	YYLTYPE loc = {1, 0, 1, 0};
+	fastd_parser_state_t state = {
+		.peer_group = peer_group,
+		.peer = peer_config,
+		.filename = filename,
+		.depth = depth+1,
+	};
 
 	if (peer_config)
 		token = START_PEER_CONFIG;
 	else
-		token = conf.peer_group->parent ? START_PEER_GROUP_CONFIG : START_CONFIG;
+		token = peer_group->parent ? START_PEER_GROUP_CONFIG : START_CONFIG;
 
-	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, filename, depth+1);
+	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, &state);
 
-	while(parse_ret == YYPUSH_MORE) {
+	while (parse_ret == YYPUSH_MORE) {
 		token = fastd_lex(&token_val, &loc, lex);
 
 		if (token < 0) {
@@ -343,7 +353,7 @@ bool fastd_read_config(const char *filename, bool peer_config, int depth) {
 			strings = token_val.str;
 		}
 
-		parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, filename, depth+1);
+		parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, &state);
 	}
 
 	if (parse_ret)
@@ -559,17 +569,13 @@ void fastd_config_verify(void) {
 		conf.protocol->peer_verify(peer);
 }
 
-/** Reads the peer dirs of the current peer group and its children */
-static void peer_dirs_read_peer_group(void) {
-	read_peer_dirs();
+/** Reads the peer dirs of a peer group and its children */
+static void peer_dirs_read_peer_group(fastd_peer_config_t **peers, fastd_peer_group_t *group) {
+	read_peer_dirs(peers, group);
 
-	fastd_peer_group_t *base = conf.peer_group, *group;
-	for (group = conf.peer_group->children; group; group = group->next) {
-		conf.peer_group = group;
-		peer_dirs_read_peer_group();
-	}
-
-	conf.peer_group = base;
+	fastd_peer_group_t *child;
+	for (child = group->children; child; child = child->next)
+		peer_dirs_read_peer_group(peers, child);
 }
 
 /** Deletes peer configs that have disappeared from a peer dir on reconfiguration */
@@ -632,13 +638,8 @@ static void peer_dirs_handle_new_peers(fastd_peer_config_t **peers, fastd_peer_c
 
 /** Refreshes the peer configurations from the configured peer dirs */
 void fastd_config_load_peer_dirs(void) {
-	fastd_peer_config_t *old_peers = conf.peers;
-	conf.peers = NULL;
-
-	peer_dirs_read_peer_group();
-
-	fastd_peer_config_t *new_peers = conf.peers;
-	conf.peers = old_peers;
+	fastd_peer_config_t *new_peers = NULL;
+	peer_dirs_read_peer_group(&new_peers, conf.peer_group);
 
 	peer_dirs_handle_old_peers(&conf.peers, &new_peers);
 	peer_dirs_handle_new_peers(&conf.peers, new_peers);
@@ -648,8 +649,11 @@ void fastd_config_load_peer_dirs(void) {
 
 /** Frees all resources used by the global configuration */
 void fastd_config_release(void) {
-	while (conf.peers)
-		fastd_peer_config_delete();
+	while (conf.peers) {
+		fastd_peer_config_t *peer = conf.peers, *next = peer->next;
+		fastd_peer_config_free(peer);
+		conf.peers = next;
+	}
 
 	while (conf.bind_addrs) {
 		fastd_bind_address_t *next = conf.bind_addrs->next;
