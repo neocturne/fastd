@@ -80,12 +80,13 @@ bool fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *sessi
 	if (age < 0) {
 		size_t shift = age < (-64) ? 64 : ((size_t)-age);
 
-		if (shift > 63)
+		if (shift >= 64)
 			session->receive_reorder_seen = 0;
 		else
 			session->receive_reorder_seen <<= shift;
 
-		session->receive_reorder_seen |= (1 << (shift-1));
+		if (shift <= 64)
+			session->receive_reorder_seen |= ((uint64_t)1 << (shift-1));
 
 		memcpy(session->receive_nonce, nonce, COMMON_NONCEBYTES);
 		session->reorder_timeout = fastd_in_seconds(REORDER_TIME);
