@@ -342,8 +342,7 @@ static void init_handshake(fastd_peer_t *peer) {
 	if (has_group_config_constraints(fastd_peer_get_group(peer)))
 		delay = fastd_rand(0, 3000);
 
-	if (!fastd_peer_is_established(peer))
-		peer->state = STATE_HANDSHAKE;
+	peer->state = STATE_HANDSHAKE;
 
 	fastd_peer_schedule_handshake(peer, delay);
 }
