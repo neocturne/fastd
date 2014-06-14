@@ -399,6 +399,7 @@ static void setup_peer(fastd_peer_t *peer) {
 		if (fastd_remote_is_dynamic(next_remote)) {
 			peer->state = STATE_RESOLVING;
 			fastd_resolve_peer(peer, next_remote);
+			fastd_peer_schedule_handshake_default(peer);
 		}
 		else  {
 			init_handshake(peer);
@@ -817,6 +818,8 @@ void fastd_peer_handle_handshake_queue(void) {
 
 		if (fastd_peer_is_established(peer))
 			return;
+
+		peer->state = STATE_HANDSHAKE;
 
 		if (++next_remote->current_address < next_remote->n_addresses)
 			return;
