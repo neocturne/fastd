@@ -38,6 +38,8 @@
 #include "async.h"
 #include "shell.h"
 
+#include <sys/wait.h>
+
 
 /**
    Calls the on-verify command and returns the result
