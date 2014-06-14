@@ -35,6 +35,8 @@
 #include "peer.h"
 #include "peer_hashtable.h"
 
+#include <sys/uio.h>
+
 
 /** Handles the ancillary control messages of received packets */
 static inline void handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {

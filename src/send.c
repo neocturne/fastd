@@ -33,6 +33,8 @@
 #include "fastd.h"
 #include "peer.h"
 
+#include <sys/uio.h>
+
 
 /** Adds packet info to ancillary control messages */
 static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *local_addr) {

@@ -33,6 +33,8 @@
 #include "async.h"
 #include "fastd.h"
 
+#include <sys/uio.h>
+
 
 /** The packet header used on the async notification sockets */
 typedef struct fastd_async_hdr {
