@@ -66,11 +66,15 @@ static size_t peer_address_bucket(const fastd_peer_address_t *addr) {
 
 	switch(addr->sa.sa_family) {
 	case AF_INET:
-		fastd_hash(&hash, &addr->in, sizeof(addr->in));
+		fastd_hash(&hash, &addr->in.sin_addr.s_addr, sizeof(addr->in.sin_addr.s_addr));
+		fastd_hash(&hash, &addr->in.sin_port, sizeof(addr->in.sin_port));
 		break;
 
 	case AF_INET6:
-		fastd_hash(&hash, &addr->in6, sizeof(addr->in6));
+		fastd_hash(&hash, &addr->in6.sin6_addr, sizeof(addr->in6.sin6_addr));
+		fastd_hash(&hash, &addr->in6.sin6_port, sizeof(addr->in6.sin6_port));
+		if (IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr))
+			fastd_hash(&hash, &addr->in6.sin6_scope_id, sizeof(addr->in6.sin6_scope_id));
 		break;
 
 	default:
