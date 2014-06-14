@@ -80,6 +80,9 @@ static void * do_verify_thread(void *p) {
 
 	free(arg);
 
+	if (sem_post(&ctx.verify_limit))
+		exit_errno("sem_post");
+
 	return NULL;
 }
 
@@ -105,6 +108,11 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 		return ret ? fastd_tristate_true : fastd_tristate_false;
 	}
 	else {
+		if (sem_trywait(&ctx.verify_limit)) {
+			pr_debug("maximum number of verification processes reached");
+			return fastd_tristate_false;
+		}
+
 		verify_arg_t *arg = calloc(1, sizeof(verify_arg_t) + data_len);
 
 		arg->env = env;
@@ -120,6 +128,9 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 		pthread_t thread;
 		if ((errno = pthread_create(&thread, &ctx.detached_thread, do_verify_thread, arg)) != 0) {
 			pr_error_errno("unable to create verify thread");
+
+			if (sem_post(&ctx.verify_limit))
+				exit_errno("sem_post");
 
 			fastd_shell_env_free(env);
 			free(arg);

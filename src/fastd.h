@@ -43,6 +43,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <poll.h>
+#include <semaphore.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -242,6 +243,9 @@ struct fastd_context {
 
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
+#ifdef WITH_VERIFY
+	sem_t verify_limit;			/**< Keeps track of the number of verifier threads */
+#endif
 
 #ifdef USE_EPOLL
 	int epoll_fd;				/**< The file descriptor for the epoll facility */

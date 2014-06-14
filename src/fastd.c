@@ -534,6 +534,11 @@ static inline void init(int argc, char *argv[]) {
 	VECTOR_ALLOC(ctx.peers, 0);
 	VECTOR_ALLOC(ctx.async_pids, 0);
 
+#ifdef WITH_VERIFY
+	if (sem_init(&ctx.verify_limit, 0, VERIFY_LIMIT))
+		exit_errno("sem_init");
+#endif
+
 	if (pthread_attr_init(&ctx.detached_thread))
 		exit_errno("pthread_attr_init");
 	if (pthread_attr_setdetachstate(&ctx.detached_thread, PTHREAD_CREATE_DETACHED))

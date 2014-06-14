@@ -120,6 +120,9 @@
 /** How long a peer stays valid after a successful on-verify run */
 #define VERIFY_VALID_TIME 60	/* 1 minute */
 
+/** Maximum number of concurrent on-verify runs */
+#define VERIFY_LIMIT 32
+
 /** The minimum interval between two handshakes with a peer */
 #define MIN_HANDSHAKE_INTERVAL 15
 
