@@ -81,8 +81,6 @@ static void aes128_ctr_free(fastd_cipher_state_t *state) {
 
 /** The openssl aes128-ctr implementation */
 const fastd_cipher_t fastd_cipher_aes128_ctr_openssl = {
-	.available = fastd_true,
-
 	.init = aes128_ctr_init,
 	.crypt = aes128_ctr_crypt,
 	.free = aes128_ctr_free,
