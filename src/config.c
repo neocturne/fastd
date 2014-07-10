@@ -519,12 +519,14 @@ static void config_check_base(void) {
 	}
 
 	if (conf.mode == MODE_TUN) {
-		if (conf.peers->next)
-			exit_error("config error: in TUN mode exactly one peer must be configured");
-		if (conf.peer_group->children)
-			exit_error("config error: in TUN mode peer groups can't be used");
 		if (has_peer_group_peer_dirs(conf.peer_group))
 			exit_error("config error: in TUN mode peer directories can't be used");
+
+		if (conf.peer_group->children)
+			exit_error("config error: in TUN mode peer groups can't be used");
+
+		if (conf.peers && conf.peers->next)
+			exit_error("config error: in TUN mode exactly one peer must be configured");
 	}
 
 #ifndef USE_PMTU
