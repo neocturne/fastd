@@ -460,7 +460,9 @@ static inline void notify_systemd(void) {
 static inline void init_early(void) {
 	fastd_close_all_fds();
 
-	fastd_random_bytes(&ctx.randseed, sizeof(ctx.randseed), false);
+	unsigned int seed;
+	fastd_random_bytes(&seed, sizeof(seed), false);
+	srandom(seed);
 
 	fastd_cipher_init();
 	fastd_mac_init();

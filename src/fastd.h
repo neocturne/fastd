@@ -281,8 +281,6 @@ struct fastd_context {
 
 	VECTOR(fastd_peer_eth_addr_t) eth_addrs; /**< Sorted vector of all known ethernet addresses with associated peers and timeouts */
 
-	unsigned int randseed;			/**< Random seed for non-cryptographic random numbers */
-
 	size_t unknown_handshake_pos;		/**< Current start position in the ring buffer unknown_handshakes */
 	fastd_handshake_timeout_t unknown_handshakes[8]; /**< Ring buffer of unknown addresses handshakes have been received from */
 
@@ -328,7 +326,7 @@ void fastd_random_bytes(void *buffer, size_t len, bool secure);
 
 /** Returns a random number between \a min (inclusively) and \a max (exclusively) */
 static inline int fastd_rand(int min, int max) {
-	unsigned int r = (unsigned int)rand_r(&ctx.randseed);
+	unsigned int r = (unsigned int)random();
 	return (r%(max-min) + min);
 }
 
