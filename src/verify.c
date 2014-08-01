@@ -115,7 +115,7 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 			return fastd_tristate_false;
 		}
 
-		verify_arg_t *arg = calloc(1, sizeof(verify_arg_t) + data_len);
+		verify_arg_t *arg = fastd_alloc0(sizeof(verify_arg_t) + data_len);
 
 		arg->env = env;
 		arg->ret_len = sizeof(fastd_async_verify_return_t) + data_len;

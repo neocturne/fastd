@@ -125,11 +125,11 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 
 	remote->last_resolve_timeout = fastd_in_seconds(MIN_RESOLVE_INTERVAL);
 
-	resolv_arg_t *arg = malloc(sizeof(resolv_arg_t));
+	resolv_arg_t *arg = fastd_new(resolv_arg_t);
 
 	arg->peer_id = peer->id;
 	arg->remote = remote - VECTOR_DATA(peer->remotes);
-	arg->hostname = strdup(remote->config->hostname);
+	arg->hostname = fastd_strdup(remote->config->hostname);
 	arg->constraints = remote->config->address;
 
 	pthread_t thread;

@@ -30,6 +30,7 @@
 */
 
 
+#include "../../../../alloc.h"
 #include "../../../../crypto.h"
 
 #include <openssl/evp.h>
@@ -43,7 +44,7 @@ struct fastd_cipher_state {
 
 /** Initializes the cipher state */
 static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
-	fastd_cipher_state_t *state = malloc(sizeof(fastd_cipher_state_t));
+	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 
 	state->aes = EVP_CIPHER_CTX_new();
 	EVP_EncryptInit(state->aes, EVP_aes_128_ctr(), (const unsigned char*)key, NULL);

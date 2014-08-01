@@ -185,7 +185,7 @@ static bool set_bound_address(fastd_socket_t *sock) {
 		return false;
 	}
 
-	sock->bound_addr = calloc(1, sizeof(addr));
+	sock->bound_addr = fastd_new0(fastd_peer_address_t);
 	*sock->bound_addr = addr;
 
 	return true;
@@ -234,7 +234,7 @@ fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af) {
 	if (fd < 0)
 		return NULL;
 
-	fastd_socket_t *sock = malloc(sizeof(fastd_socket_t));
+	fastd_socket_t *sock = fastd_new(fastd_socket_t);
 
 	sock->fd = fd;
 	sock->addr = NULL;

@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include "types.h"
+#include "alloc.h"
 #include "dlist.h"
 #include "buffer.h"
 #include "log.h"
@@ -395,7 +395,7 @@ static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr)
 
 /** Duplicates a string, creating a one-element string stack */
 static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
-	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
+	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = NULL;
 	strcpy(ret->str, str);
 
@@ -405,7 +405,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
 /** Duplicates a string of a given maximum length, creating a one-element string stack */
 static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, size_t len) {
 	size_t str_len = strnlen(str, len);
-	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
+	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
 	ret->next = NULL;
 	strncpy(ret->str, str, str_len);
 	ret->str[str_len] = 0;
@@ -415,7 +415,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, siz
 
 /** Pushes the copy of a string onto the top of a string stack */
 static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
-	fastd_string_stack_t *ret = malloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
+	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = stack;
 	strcpy(ret->str, str);
 

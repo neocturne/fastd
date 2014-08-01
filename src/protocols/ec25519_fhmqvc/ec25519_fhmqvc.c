@@ -59,7 +59,7 @@ static inline void check_session_refresh(fastd_peer_t *peer) {
 
 /** Initializes the protocol-specific configuration */
 static fastd_protocol_config_t* protocol_init(void) {
-	fastd_protocol_config_t *protocol_config = malloc(sizeof(fastd_protocol_config_t));
+	fastd_protocol_config_t *protocol_config = fastd_new(fastd_protocol_config_t);
 
 	if (!conf.secret)
 		exit_error("no secret key configured");
@@ -100,7 +100,7 @@ static void protocol_peer_configure(fastd_peer_config_t *peer_conf) {
 		return;
 	}
 
-	peer_conf->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
+	peer_conf->protocol_config = fastd_new(fastd_protocol_peer_config_t);
 	peer_conf->protocol_config->public_key = key;
 
 	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, PUBLICKEYBYTES) == 0)

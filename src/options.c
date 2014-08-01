@@ -102,7 +102,7 @@ static void option_daemon(void) {
 /** Handles the --pid-file option */
 static void option_pid_file(const char *arg) {
 	free(conf.pid_file);
-	conf.pid_file = strdup(arg);
+	conf.pid_file = fastd_strdup(arg);
 }
 
 
@@ -138,13 +138,13 @@ static void option_config_peer_dir(const char *arg) {
 /** Handles the --config-user option */
 static void option_user(const char *arg) {
 	free(conf.user);
-	conf.user = strdup(arg);
+	conf.user = fastd_strdup(arg);
 }
 
 /** Handles the --config-group option */
 static void option_group(const char *arg) {
 	free(conf.group);
-	conf.group = strdup(arg);
+	conf.group = fastd_strdup(arg);
 }
 
 #endif
@@ -184,7 +184,7 @@ static void option_syslog_level(const char *arg) {
 /** Handles the --syslog-ident option */
 static void option_syslog_ident(const char *arg) {
 	free(conf.log_syslog_ident);
-	conf.log_syslog_ident = strdup(arg);
+	conf.log_syslog_ident = fastd_strdup(arg);
 }
 
 /** Handles the --hide-ip-addresses option */
@@ -214,7 +214,7 @@ static void option_mode(const char *arg) {
 /** Handles the --interface option */
 static void option_interface(const char *arg) {
 	free(conf.ifname);
-	conf.ifname = strdup(arg);
+	conf.ifname = fastd_strdup(arg);
 }
 
 /** Handles the --mtu option */
@@ -241,7 +241,7 @@ static void option_bind(const char *arg) {
 		if (!charptr || (charptr[1] != ':' && charptr[1] != '\0'))
 			exit_error("invalid bind address `%s'", arg);
 
-		addrstr = strndup(arg+1, charptr-arg-1);
+		addrstr = fastd_strndup(arg+1, charptr-arg-1);
 
 		if (charptr[1] == ':')
 			charptr++;
@@ -251,10 +251,10 @@ static void option_bind(const char *arg) {
 	else {
 		charptr = strrchr(arg, ':');
 		if (charptr) {
-			addrstr = strndup(arg, charptr-arg);
+			addrstr = fastd_strndup(arg, charptr-arg);
 		}
 		else {
-			addrstr = strdup(arg);
+			addrstr = fastd_strdup(arg);
 		}
 	}
 

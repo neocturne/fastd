@@ -72,7 +72,7 @@ static uint8_t* create_method_list(size_t *len) {
 	for (i = 0; conf.methods[i].name; i++)
 		*len += strlen(conf.methods[i].name) + 1;
 
-	uint8_t *ret = malloc(*len);
+	uint8_t *ret = fastd_alloc(*len);
 	(*len)--;
 
 	char *ptr = (char*)ret;
@@ -364,7 +364,7 @@ void fastd_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *lo
 		method = get_method(&handshake);
 
 		if (handshake.records[RECORD_VERSION_NAME].data)
-			handshake.peer_version = peer_version = strndup((const char*)handshake.records[RECORD_VERSION_NAME].data, handshake.records[RECORD_VERSION_NAME].length);
+			handshake.peer_version = peer_version = fastd_strndup((const char*)handshake.records[RECORD_VERSION_NAME].data, handshake.records[RECORD_VERSION_NAME].length);
 	}
 
 	if (handshake.type > 1 && !method) {

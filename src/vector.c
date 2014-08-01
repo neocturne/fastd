@@ -31,6 +31,7 @@
 
 
 #include "vector.h"
+#include "alloc.h"
 
 #include <string.h>
 
@@ -52,7 +53,7 @@ void _fastd_vector_alloc(fastd_vector_desc_t *desc, void **data, size_t n, size_
 
 	desc->length = n;
 
-	*data = malloc(desc->allocated * elemsize);
+	*data = fastd_alloc(desc->allocated * elemsize);
 }
 
 /**
@@ -74,7 +75,7 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 
 	if (alloc != desc->allocated) {
 		desc->allocated = alloc;
-		*data = realloc(*data, alloc * elemsize);
+		*data = fastd_realloc(*data, alloc * elemsize);
 	}
 }
 

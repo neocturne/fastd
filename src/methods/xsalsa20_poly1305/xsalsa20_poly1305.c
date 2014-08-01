@@ -65,7 +65,7 @@ static size_t method_key_length(const fastd_method_t *method UNUSED) {
 
 /** Initializes the session state */
 static fastd_method_session_state_t* method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret, bool initiator) {
-	fastd_method_session_state_t *session = malloc(sizeof(fastd_method_session_state_t));
+	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	fastd_method_common_init(&session->common, initiator);
 

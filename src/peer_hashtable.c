@@ -44,7 +44,7 @@
 void fastd_peer_hashtable_init(void) {
 	fastd_random_bytes(&ctx.peer_addr_ht_seed, sizeof(ctx.peer_addr_ht_seed), false);
 
-	ctx.peer_addr_ht = malloc(sizeof(*ctx.peer_addr_ht) * PEER_ADDR_HT_SIZE);
+	ctx.peer_addr_ht = fastd_new_array(PEER_ADDR_HT_SIZE, __typeof__(*ctx.peer_addr_ht));
 
 	size_t i;
 	for (i = 0; i < PEER_ADDR_HT_SIZE; i++)

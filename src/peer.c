@@ -350,7 +350,7 @@ static void init_handshake(fastd_peer_t *peer) {
 /** Handles an asynchronous DNS resolve response */
 void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses) {
 	free(remote->addresses);
-	remote->addresses = malloc(n_addresses*sizeof(fastd_peer_address_t));
+	remote->addresses = fastd_new_array(n_addresses, fastd_peer_address_t);
 	memcpy(remote->addresses, addresses, n_addresses*sizeof(fastd_peer_address_t));
 
 	remote->n_addresses = n_addresses;
@@ -432,7 +432,7 @@ static void delete_peer(fastd_peer_t *peer) {
 
 /** Allocates a new peer config */
 fastd_peer_config_t* fastd_peer_config_new(fastd_peer_group_t *group) {
-	fastd_peer_config_t *peer = calloc(1, sizeof(fastd_peer_config_t));
+	fastd_peer_config_t *peer = fastd_new0(fastd_peer_config_t);
 	peer->group = group;
 
 	return peer;
@@ -707,7 +707,7 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 
 /** Create a new peer */
 fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
-	fastd_peer_t *peer = calloc(1, sizeof(fastd_peer_t));
+	fastd_peer_t *peer = fastd_new0(fastd_peer_t);
 
 	peer->id = ctx.next_peer_id++;
 
@@ -723,7 +723,7 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 
 			if (!remote_config->hostname) {
 				remote.n_addresses = 1;
-				remote.addresses = malloc(sizeof(fastd_peer_address_t));
+				remote.addresses = fastd_new(fastd_peer_address_t);
 				remote.addresses[0] = remote_config->address;
 			}
 

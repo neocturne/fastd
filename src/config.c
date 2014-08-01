@@ -58,7 +58,7 @@ extern const fastd_protocol_t fastd_protocol_ec25519_fhmqvc;
 
 /** Initializes the global configuration with default values */
 static void default_config(void) {
-	conf.log_syslog_ident = strdup("fastd");
+	conf.log_syslog_ident = fastd_strdup("fastd");
 
 	conf.mtu = 1500;
 	conf.mode = MODE_TAP;
@@ -68,8 +68,8 @@ static void default_config(void) {
 
 	conf.protocol = &fastd_protocol_ec25519_fhmqvc;
 
-	conf.peer_group = calloc(1, sizeof(fastd_peer_group_t));
-	conf.peer_group->name = strdup("default");
+	conf.peer_group = fastd_new0(fastd_peer_group_t);
+	conf.peer_group->name = fastd_strdup("default");
 	conf.peer_group->max_connections = -1;
 }
 
@@ -125,13 +125,13 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 	}
 #endif
 
-	fastd_bind_address_t *addr = malloc(sizeof(fastd_bind_address_t));
+	fastd_bind_address_t *addr = fastd_new(fastd_bind_address_t);
 	addr->next = conf.bind_addrs;
 	conf.bind_addrs = addr;
 	conf.n_bind_addrs++;
 
 	addr->addr = *address;
-	addr->bindtodev = bindtodev ? strdup(bindtodev) : NULL;
+	addr->bindtodev = fastd_strdup(bindtodev);
 
 	fastd_peer_address_simplify(&addr->addr);
 
@@ -144,8 +144,8 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 
 /** Handles the start of a peer group configuration */
 void fastd_config_peer_group_push(fastd_parser_state_t *state, const char *name) {
-	fastd_peer_group_t *group = calloc(1, sizeof(fastd_peer_group_t));
-	group->name = strdup(name);
+	fastd_peer_group_t *group = fastd_new0(fastd_peer_group_t);
+	group->name = fastd_strdup(name);
 	group->max_connections = -1;
 
 	group->parent = state->peer_group;
@@ -222,7 +222,7 @@ static void read_peer_dir(fastd_peer_config_t **peers, fastd_peer_group_t *group
 			}
 
 			fastd_peer_config_t *peer = fastd_peer_config_new(group);
-			peer->name = strdup(result->d_name);
+			peer->name = fastd_strdup(result->d_name);
 			peer->config_source_dir = dir;
 
 			if (fastd_config_read(result->d_name, group, peer, 0)) {
@@ -312,7 +312,7 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 	lex = fastd_lex_init(file);
 
 	if (filename) {
-		filename2 = strdup(filename);
+		filename2 = fastd_strdup(filename);
 		dir = dirname(filename2);
 
 		if (chdir(dir)) {
@@ -439,7 +439,7 @@ static void configure_user(void) {
 		if (getgrouplist(conf.user, conf.gid, NULL, &ngroups) < 0) {
 			/* the user has supplementary groups */
 
-			conf.groups = calloc(ngroups, sizeof(gid_t));
+			conf.groups = fastd_new0_array(ngroups, gid_t);
 			if (getgrouplist(conf.user, conf.gid, conf.groups, &ngroups) < 0)
 				exit_errno("getgrouplist");
 
@@ -480,7 +480,7 @@ static void configure_methods(void) {
 	for (method_name = conf.method_list; method_name; method_name = method_name->next)
 		n_methods++;
 
-	conf.methods = calloc(n_methods+1, sizeof(fastd_method_info_t));
+	conf.methods = fastd_new0_array(n_methods+1, fastd_method_info_t);
 
 	for (i = 0, method_name = conf.method_list; method_name; i++, method_name = method_name->next) {
 		conf.methods[i].name = method_name->str;

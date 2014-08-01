@@ -90,7 +90,7 @@ void fastd_tuntap_open(void) {
 	if (ioctl(ctx.tunfd, TUNSETIFF, &ifr) < 0)
 		exit_errno("TUNSETIFF ioctl failed");
 
-	ctx.ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+	ctx.ifname = fastd_strndup(ifr.ifr_name, IFNAMSIZ-1);
 
 	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (ctl_sock < 0)
@@ -161,7 +161,7 @@ static void setup_tap(void) {
 		exit_errno("TAPGIFNAME ioctl failed");
 
 	free(ctx.ifname);
-	ctx.ifname = strndup(ifr.ifr_name, IFNAMSIZ-1);
+	ctx.ifname = fastd_strndup(ifr.ifr_name, IFNAMSIZ-1);
 
 	set_tap_mtu();
 }
@@ -199,7 +199,7 @@ void fastd_tuntap_open(void) {
 	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
 		exit_errno("could not open tun/tap device file");
 
-	if (!(ctx.ifname = fdevname_r(ctx.tunfd, malloc(IFNAMSIZ), IFNAMSIZ)))
+	if (!(ctx.ifname = fdevname_r(ctx.tunfd, fastd_alloc(IFNAMSIZ), IFNAMSIZ)))
 		exit_errno("could not get tun/tap interface name");
 
 	switch (conf.mode) {
@@ -272,7 +272,7 @@ void fastd_tuntap_open(void) {
 	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
 		exit_errno("could not open tun device file");
 
-	ctx.ifname = strndup(conf.ifname, IFNAMSIZ-1);
+	ctx.ifname = fastd_strndup(conf.ifname, IFNAMSIZ-1);
 
 	switch (conf.mode) {
 	case MODE_TAP:

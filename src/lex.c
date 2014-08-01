@@ -159,7 +159,7 @@ static inline char current(fastd_lex_t *lex) {
 
 /** Returns the current token as a newly allocated string */
 static char* get_token(fastd_lex_t *lex) {
-	return strndup(lex->buffer+lex->start, lex->tok_len);
+	return fastd_strndup(lex->buffer+lex->start, lex->tok_len);
 }
 
 /** Tries to add the next character to the current token */
@@ -249,7 +249,7 @@ static int parse_string(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 	if (lex->needspace)
 		return syntax_error(yylval, lex);
 
-	buf = malloc(len);
+	buf = fastd_alloc(len);
 
 	while (true) {
 		if (!next(yylloc, lex, true)) {
@@ -276,7 +276,7 @@ static int parse_string(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 
 		if (pos >= len) {
 			len *= 2;
-			buf = realloc(buf, len);
+			buf = fastd_realloc(buf, len);
 		}
 
 		buf[pos++] = cur;
@@ -444,7 +444,7 @@ static int parse_keyword(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 
 /** Initializes a new scanner for the given file */
 fastd_lex_t* fastd_lex_init(FILE *file) {
-	fastd_lex_t *lex = calloc(1, sizeof(fastd_lex_t));
+	fastd_lex_t *lex = fastd_new0(fastd_lex_t);
 	lex->file = file;
 
 	advance(lex);

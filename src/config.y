@@ -211,12 +211,12 @@ peer_group_statement:
 
 user:		TOK_STRING {
 			free(conf.user);
-			conf.user = strdup($1->str);
+			conf.user = fastd_strdup($1->str);
 		}
 
 group:		TOK_STRING {
 			free(conf.group);
-			conf.group = strdup($1->str);
+			conf.group = fastd_strdup($1->str);
 		}
 
 drop_capabilities:
@@ -260,7 +260,7 @@ log:		TOK_LEVEL log_level {
 		}
 	|	TOK_TO TOK_SYSLOG TOK_AS TOK_STRING maybe_log_level {
 			free(conf.log_syslog_ident);
-			conf.log_syslog_ident = strdup($4->str);
+			conf.log_syslog_ident = fastd_strdup($4->str);
 
 			conf.log_syslog_level = $5;
 		}
@@ -288,7 +288,7 @@ log_level:	TOK_FATAL	{ $$ = LL_FATAL; }
 	|	TOK_DEBUG2	{ $$ = LL_DEBUG2; }
 	;
 
-interface:	TOK_STRING	{ free(conf.ifname); conf.ifname = strdup($1->str); }
+interface:	TOK_STRING	{ free(conf.ifname); conf.ifname = fastd_strdup($1->str); }
 	;
 
 bind:		bind_address maybe_bind_interface maybe_bind_default {
@@ -373,7 +373,7 @@ method:		TOK_STRING {
 		}
 	;
 
-secret:		TOK_STRING	{ free(conf.secret); conf.secret = strdup($1->str); }
+secret:		TOK_STRING	{ free(conf.secret); conf.secret = fastd_strdup($1->str); }
 	;
 
 on_pre_up:	sync_def_sync TOK_STRING {
@@ -423,7 +423,7 @@ on_verify:	sync_def_async TOK_STRING {
 
 peer:		TOK_STRING {
 			fastd_peer_config_t *peer = fastd_peer_config_new(state->peer_group);
-			peer->name = strdup($1->str);
+			peer->name = fastd_strdup($1->str);
 			peer->next = conf.peers;
 
 			conf.peers = peer;
@@ -446,7 +446,7 @@ peer_remote:	TOK_ADDR4 port {
 			while (*remote)
 				remote = &(*remote)->next;
 
-			*remote = calloc(1, sizeof(fastd_remote_config_t));
+			*remote = fastd_new0(fastd_remote_config_t);
 
 			(*remote)->address.in.sin_family = AF_INET;
 			(*remote)->address.in.sin_addr = $1;
@@ -458,7 +458,7 @@ peer_remote:	TOK_ADDR4 port {
 			while (*remote)
 				remote = &(*remote)->next;
 
-			*remote = calloc(1, sizeof(fastd_remote_config_t));
+			*remote = fastd_new0(fastd_remote_config_t);
 
 			(*remote)->address.in6.sin6_family = AF_INET6;
 			(*remote)->address.in6.sin6_addr = $1;
@@ -475,9 +475,9 @@ peer_remote:	TOK_ADDR4 port {
 			inet_ntop(AF_INET6, &$1.addr, addrbuf, sizeof(addrbuf));
 			addrlen = strlen(addrbuf);
 
-			*remote = calloc(1, sizeof(fastd_remote_config_t));
+			*remote = fastd_new0(fastd_remote_config_t);
 
-			(*remote)->hostname = malloc(addrlen + strlen($1.ifname) + 2);
+			(*remote)->hostname = fastd_alloc(addrlen + strlen($1.ifname) + 2);
 			memcpy((*remote)->hostname, addrbuf, addrlen);
 			(*remote)->hostname[addrlen] = '%';
 			strcpy((*remote)->hostname+addrlen+1, $1.ifname);
@@ -490,9 +490,9 @@ peer_remote:	TOK_ADDR4 port {
 			while (*remote)
 				remote = &(*remote)->next;
 
-			*remote = calloc(1, sizeof(fastd_remote_config_t));
+			*remote = fastd_new0(fastd_remote_config_t);
 
-			(*remote)->hostname = strdup($2->str);
+			(*remote)->hostname = fastd_strdup($2->str);
 			(*remote)->address.sa.sa_family = $1;
 			(*remote)->address.in.sin_port = htons($3);
 		}
@@ -504,7 +504,7 @@ peer_float:	boolean {
 	;
 
 peer_key:	TOK_STRING {
-			free(state->peer->key); state->peer->key = strdup($1->str);
+			free(state->peer->key); state->peer->key = fastd_strdup($1->str);
 		}
 	;
 
@@ -543,7 +543,7 @@ forward:	boolean		{ conf.forward = $1; }
 include:	TOK_PEER TOK_STRING maybe_as {
 			fastd_peer_config_t *peer = fastd_peer_config_new(state->peer_group);
 			if ($3)
-				peer->name = strdup($3->str);
+				peer->name = fastd_strdup($3->str);
 			if (!fastd_config_read($2->str, state->peer_group, peer, state->depth))
 				YYERROR;
 

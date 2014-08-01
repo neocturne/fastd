@@ -151,7 +151,7 @@ static inline void close_log(void) {
 
 /** Initializes the configured sockets */
 static void init_sockets(void) {
-	ctx.socks = malloc(conf.n_bind_addrs * sizeof(fastd_socket_t));
+	ctx.socks = fastd_new_array(conf.n_bind_addrs, fastd_socket_t);
 
 	size_t i;
 	fastd_bind_address_t *addr = conf.bind_addrs;

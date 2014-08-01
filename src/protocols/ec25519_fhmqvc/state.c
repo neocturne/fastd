@@ -37,7 +37,7 @@
 /** Allocates the protocol-specific state */
 static void init_protocol_state(void) {
 	if (!ctx.protocol_state) {
-		ctx.protocol_state = calloc(1, sizeof(fastd_protocol_state_t));
+		ctx.protocol_state = fastd_new0(fastd_protocol_state_t);
 
 		ctx.protocol_state->prev_handshake_key.preferred_till = ctx.now;
 		ctx.protocol_state->handshake_key.preferred_till = ctx.now;
@@ -84,7 +84,7 @@ void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_peer_t *peer) {
 	if (peer->protocol_state)
 		exit_bug("tried to reinit peer state");
 
-	peer->protocol_state = calloc(1, sizeof(fastd_protocol_peer_state_t));
+	peer->protocol_state = fastd_new0(fastd_protocol_peer_state_t);
 	peer->protocol_state->last_serial = ctx.protocol_state->handshake_key.serial;
 }
 

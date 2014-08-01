@@ -580,7 +580,7 @@ static fastd_peer_t * add_temporary(fastd_socket_t *sock, const fastd_peer_addre
 
 	fastd_peer_t *peer = fastd_peer_add(NULL);
 
-	peer->protocol_config = malloc(sizeof(fastd_protocol_peer_config_t));
+	peer->protocol_config = fastd_new(fastd_protocol_peer_config_t);
 	memcpy(&peer->protocol_config->public_key, key, PUBLICKEYBYTES);
 
 	/* Ugly hack */

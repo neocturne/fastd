@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include "types.h"
+#include "alloc.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -59,7 +59,7 @@ static inline void fastd_shell_command_unset(fastd_shell_command_t *command) {
 static inline void fastd_shell_command_set(fastd_shell_command_t *command, const char *val, bool sync) {
 	fastd_shell_command_unset(command);
 
-	command->command = strdup(val);
+	command->command = fastd_strdup(val);
 	command->dir = get_current_dir_name();
 	command->sync = sync;
 }

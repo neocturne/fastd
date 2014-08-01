@@ -54,7 +54,7 @@ struct fastd_shell_env {
 
 /** Allocated a new shell environment */
 fastd_shell_env_t * fastd_shell_env_alloc(void) {
-	fastd_shell_env_t *env = malloc(sizeof(fastd_shell_env_t));
+	fastd_shell_env_t *env = fastd_new(fastd_shell_env_t);
 	VECTOR_ALLOC(env->entries, 0);
 
 	return env;
@@ -62,7 +62,7 @@ fastd_shell_env_t * fastd_shell_env_alloc(void) {
 
 /** Sets a variable in a shell environment */
 void fastd_shell_env_set(fastd_shell_env_t *env, const char *key, const char *value) {
-	shell_env_entry_t entry = {.key = key, .value = value ? strdup(value) : NULL};
+	shell_env_entry_t entry = {.key = key, .value = fastd_strdup(value)};
 	VECTOR_ADD(env->entries, entry);
 }
 
