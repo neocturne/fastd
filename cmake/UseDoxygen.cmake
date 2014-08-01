@@ -32,7 +32,7 @@
 #  	 "${CMAKE_CURRENT_BINARY_DIR}/foo.c" "${CMAKE_CURRENT_BINARY_DIR}/bar/"
 #  
 #  DOXYFILE_OUTPUT_DIR - Path where the Doxygen output is stored.
-#  	Defaults to "${CMAKE_CURRENT_BINARY_DIR}/doc".
+#  	Defaults to "${CMAKE_CURRENT_BINARY_DIR}/doxygen".
 #  
 #  DOXYFILE_LATEX - ON/OFF; Set to "ON" if you want the LaTeX documentation
 #  	to be built.
@@ -70,7 +70,7 @@ if(DOXYGEN_FOUND)
 endif()
 
 if(DOXYGEN_FOUND AND DOXYFILE_IN_FOUND)
-	usedoxygen_set_default(DOXYFILE_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/doc"
+	usedoxygen_set_default(DOXYFILE_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/doxygen"
 		PATH "Doxygen output directory")
 	usedoxygen_set_default(DOXYFILE_HTML_DIR "html"
 		STRING "Doxygen HTML output directory")
@@ -134,11 +134,4 @@ if(DOXYGEN_FOUND AND DOXYFILE_IN_FOUND)
 
 
 	configure_file("${DOXYFILE_IN}" "${DOXYFILE}" @ONLY)
-
-	get_target_property(DOC_TARGET doc TYPE)
-	if(NOT DOC_TARGET)
-		add_custom_target(doc)
-	endif()
-
-	add_dependencies(doc doxygen)
 endif()
