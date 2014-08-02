@@ -1,11 +1,11 @@
+set(PTHREAD_CFLAGS -pthread)
+
+if(NOT DARWIN)
+  set(PTHREAD_LDFLAGS -pthread)
+endif(NOT DARWIN)
+
+
 find_package(BISON 2.5 REQUIRED)
-
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-find_package(Threads)
-if(NOT CMAKE_USE_PTHREADS_INIT)
-  MESSAGE(FATAL_ERROR "No pthread support found.")
-endif(NOT CMAKE_USE_PTHREADS_INIT)
-
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(UECC REQUIRED libuecc>=3)
 

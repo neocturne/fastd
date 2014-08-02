@@ -48,6 +48,9 @@
 /** Defined if the platform supports epoll */
 #cmakedefine USE_EPOLL
 
+/** Defined if the platform uses select instead of poll */
+#cmakedefine USE_SELECT
+
 /** Defined if the platform supports SO_FREEBIND */
 #cmakedefine USE_FREEBIND
 

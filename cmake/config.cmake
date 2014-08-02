@@ -4,6 +4,12 @@ else()
   set(LINUX FALSE)
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(DARWIN TRUE)
+else()
+  set(DARWIN FALSE)
+endif()
+
 
 set(USE_BINDTODEVICE ${LINUX})
 set(USE_EPOLL ${LINUX})
@@ -11,6 +17,9 @@ set(USE_FREEBIND ${LINUX})
 set(USE_PMTU ${LINUX})
 set(USE_PKTINFO ${LINUX})
 set(USE_PACKET_MARK ${LINUX})
+
+# OSX doesn't support poll on devices...
+set(USE_SELECT ${DARWIN})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
   set(USE_MULTIAF_BIND FALSE)

@@ -42,7 +42,9 @@
 
 #else
 
+#ifndef __APPLE__
 #include <net/if_tun.h>
+#endif
 
 #ifdef __FreeBSD__
 #include <net/if_tap.h>
@@ -52,7 +54,7 @@
 
 
 /** Defines if the platform uses an address family header on TUN interfaces */
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 static const bool multiaf_tun = false;
 #else
 static const bool multiaf_tun = true;
@@ -294,6 +296,57 @@ void fastd_tuntap_open(void) {
 
 #endif
 
+#elif __APPLE__
+
+/** Opens the TUN/TAP device */
+void fastd_tuntap_open(void) {
+	const char *devtype;
+	switch (conf.mode) {
+	case MODE_TAP:
+		devtype = "tap";
+		break;
+
+	case MODE_TUN:
+		devtype = "tun";
+		break;
+
+	default:
+		exit_bug("invalid mode");
+	}
+
+	char ifname[5+IFNAMSIZ] = "/dev/";
+	if (!conf.ifname)
+		exit_error("config error: no interface name given.");
+	else if (strncmp(conf.ifname, devtype, 3) != 0)
+		exit_error("config error: `%s' doesn't seem to be a %s device", conf.ifname, devtype);
+	else
+		strncat(ifname, conf.ifname, IFNAMSIZ-1);
+
+	pr_debug("initializing tun device...");
+
+	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
+		exit_errno("could not open tun device file");
+
+	ctx.ifname = fastd_strndup(conf.ifname, IFNAMSIZ-1);
+
+	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (ctl_sock < 0)
+		exit_errno("socket");
+
+	struct ifreq ifr = {};
+	strncpy(ifr.ifr_name, conf.ifname, IFNAMSIZ-1);
+	ifr.ifr_mtu = conf.mtu;
+	if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
+		exit_errno("SIOCSIFMTU ioctl failed");
+
+	if (close(ctl_sock))
+		pr_error_errno("close");
+
+	fastd_poll_set_fd_tuntap();
+
+	pr_debug("tun device initialized.");
+}
+
 #else
 
 #error unknown tun/tap implementation
@@ -348,7 +401,7 @@ void fastd_tuntap_write(fastd_buffer_t buffer) {
 	}
 
 	if (write(ctx.tunfd, buffer.data, buffer.len) < 0)
-		pr_warn_errno("write");
+		pr_debug2_errno("write");
 }
 
 /** Closes the TUN/TAP device */

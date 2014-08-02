@@ -439,11 +439,17 @@ static void configure_user(void) {
 		if (getgrouplist(conf.user, conf.gid, NULL, &ngroups) < 0) {
 			/* the user has supplementary groups */
 
-			conf.groups = fastd_new0_array(ngroups, gid_t);
-			if (getgrouplist(conf.user, conf.gid, conf.groups, &ngroups) < 0)
+			GROUPLIST_TYPE groups[ngroups];
+
+			if (getgrouplist(conf.user, conf.gid, groups, &ngroups) < 0)
 				exit_errno("getgrouplist");
 
 			conf.n_groups = ngroups;
+			conf.groups = fastd_new_array(ngroups, gid_t);
+
+			int i;
+			for (i = 0; i < ngroups; i++)
+				conf.groups[i] = groups[i];
 		}
 	}
 }

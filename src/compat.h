@@ -35,6 +35,7 @@
 #include <fastd_config.h>
 
 #include <stdint.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <sys/types.h>
@@ -80,12 +81,20 @@ struct ethhdr {
 #endif
 
 
+/** The type of the third parameter of getgrouplist */
+#ifdef __APPLE__
+#define GROUPLIST_TYPE int
+#else
+#define GROUPLIST_TYPE gid_t
+#endif
+
+
 #ifndef HAVE_GET_CURRENT_DIR_NAME
 
 /** Replacement function for *BSD systems not supporting get_current_dir_name() */
 static inline char *get_current_dir_name(void) {
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__APPLE__)
 
 	return getcwd(NULL, 0);
 
@@ -96,5 +105,30 @@ static inline char *get_current_dir_name(void) {
 #endif
 
 }
+
+#endif
+
+
+#ifdef __APPLE__
+
+#include <mach/mach_time.h>
+
+#define CLOCK_MONOTONIC 0
+#define clockid_t int
+
+static inline int clock_gettime(clockid_t clk_id __attribute__((unused)), struct timespec *tp) {
+	static mach_timebase_info_data_t timebase_info = {};
+
+	if (!timebase_info.denom)
+		mach_timebase_info(&timebase_info);
+
+	uint64_t time = (((long double)mach_absolute_time())*timebase_info.numer) / timebase_info.denom;
+
+	tp->tv_sec = time / 1000000000;
+	tp->tv_nsec = time % 1000000000;
+
+	return 0;
+}
+
 
 #endif

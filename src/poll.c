@@ -43,6 +43,12 @@
 
 #endif
 
+#ifdef USE_SELECT
+
+#include <sys/select.h>
+
+#endif
+
 
 /** Returns the time to the next handshake or -1 */
 static inline int handshake_timeout(void) {
@@ -236,6 +242,8 @@ void fastd_poll_delete_peer(size_t i) {
 
 
 void fastd_poll_handle(void) {
+	size_t i;
+
 	int maintenance_timeout = timespec_diff(&ctx.next_maintenance, &ctx.now);
 
 	if (maintenance_timeout < 0)
@@ -252,14 +260,63 @@ void fastd_poll_handle(void) {
 	sigemptyset(&set);
 	pthread_sigmask(SIG_SETMASK, &set, &oldset);
 
-	int ret = poll(VECTOR_DATA(ctx.pollfds), VECTOR_LEN(ctx.pollfds), timeout);
+	int ret = 0;
+
+#ifdef USE_SELECT
+	/* Inefficient implementation for OSX... */
+	fd_set readfds;
+	FD_ZERO(&readfds);
+	int maxfd = -1;
+
+	for (i = 0; i < VECTOR_LEN(ctx.pollfds); i++) {
+		struct pollfd *pollfd = &VECTOR_INDEX(ctx.pollfds, i);
+		if (pollfd->fd >= 0) {
+			FD_SET(pollfd->fd, &readfds);
+
+			if (pollfd->fd > maxfd)
+				maxfd = pollfd->fd;
+		}
+	}
+
+	fd_set errfds = readfds;
+
+	if (maxfd >= 0) {
+		struct timeval tv = {}, *tvp = NULL;
+		if (timeout >= 0) {
+			tvp = &tv;
+			tv.tv_sec = timeout/1000;
+			tv.tv_usec = (timeout%1000)*1000;
+		}
+		ret = select(maxfd+1, &readfds, NULL, &errfds, tvp);
+		if (ret < 0 && errno != EINTR)
+			exit_errno("select");
+	}
+
+	if (ret > 0) {
+		for (i = 0; i < VECTOR_LEN(ctx.pollfds); i++) {
+			struct pollfd *pollfd = &VECTOR_INDEX(ctx.pollfds, i);
+			pollfd->revents = 0;
+
+			if (pollfd->fd < 0)
+				continue;
+
+			if (FD_ISSET(pollfd->fd, &readfds))
+				pollfd->revents |= POLLIN;
+			if (FD_ISSET(pollfd->fd, &errfds))
+				pollfd->revents |= POLLERR;
+		}
+	}
+
+#else
+	ret = poll(VECTOR_DATA(ctx.pollfds), VECTOR_LEN(ctx.pollfds), timeout);
 	if (ret < 0 && errno != EINTR)
 		exit_errno("poll");
+#endif
 
 	pthread_sigmask(SIG_SETMASK, &oldset, NULL);
 	fastd_update_time();
 
-	if (ret < 0)
+	if (ret <= 0)
 		return;
 
 	if (VECTOR_INDEX(ctx.pollfds, 0).revents & POLLIN)
@@ -267,7 +324,6 @@ void fastd_poll_handle(void) {
 	if (VECTOR_INDEX(ctx.pollfds, 1).revents & POLLIN)
 		fastd_async_handle();
 
-	size_t i;
 	for (i = 0; i < ctx.n_socks; i++) {
 		if (VECTOR_INDEX(ctx.pollfds, 2+i).revents & (POLLERR|POLLHUP|POLLNVAL)) {
 			fastd_socket_error(&ctx.socks[i]);
