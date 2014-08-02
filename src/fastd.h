@@ -36,6 +36,7 @@
 #include "dlist.h"
 #include "buffer.h"
 #include "log.h"
+#include "sem.h"
 #include "shell.h"
 #include "vector.h"
 
@@ -244,7 +245,7 @@ struct fastd_context {
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
 #ifdef WITH_VERIFY
-	sem_t verify_limit;			/**< Keeps track of the number of verifier threads */
+	fastd_sem_t verify_limit;		/**< Keeps track of the number of verifier threads */
 #endif
 
 #ifdef USE_EPOLL

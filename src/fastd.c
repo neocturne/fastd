@@ -537,8 +537,7 @@ static inline void init(int argc, char *argv[]) {
 	VECTOR_ALLOC(ctx.async_pids, 0);
 
 #ifdef WITH_VERIFY
-	if (sem_init(&ctx.verify_limit, 0, VERIFY_LIMIT))
-		exit_errno("sem_init");
+	fastd_sem_init(&ctx.verify_limit, VERIFY_LIMIT);
 #endif
 
 	if (pthread_attr_init(&ctx.detached_thread))
