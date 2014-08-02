@@ -261,11 +261,11 @@ void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
 	peer->next_handshake = ctx.now;
 
 	peer->next_handshake.tv_sec += delay/1000;
-	peer->next_handshake.tv_nsec += (delay%1000)*1e6;
+	peer->next_handshake.tv_nsec += (delay%1000)*1000000;
 
-	if (peer->next_handshake.tv_nsec > 1e9) {
+	if (peer->next_handshake.tv_nsec > 1000000000) {
 		peer->next_handshake.tv_sec++;
-		peer->next_handshake.tv_nsec -= 1e9;
+		peer->next_handshake.tv_nsec -= 1000000000;
 	}
 
 	fastd_dlist_head_t *list;

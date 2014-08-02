@@ -439,7 +439,7 @@ static inline bool timespec_after(const struct timespec *tp1, const struct times
 
 /** Returns (\a tp1 - \a tp2) in milliseconds  */
 static inline int timespec_diff(const struct timespec *tp1, const struct timespec *tp2) {
-	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1e6;
+	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1000000;
 }
 
 /**
