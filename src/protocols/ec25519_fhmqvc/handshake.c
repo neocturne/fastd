@@ -486,7 +486,7 @@ static size_t key_count(const unsigned char key[PUBLICKEYBYTES]) {
 	size_t ret = 0;
 
 	fastd_peer_config_t *p;
-	for (p = conf.peers; p; p = p->next) {
+	for (p = ctx.peer_configs; p; p = p->next) {
 		if (!p->protocol_config)
 			continue;
 

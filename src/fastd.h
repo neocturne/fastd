@@ -205,7 +205,6 @@ struct fastd_config {
 	char *secret;				/**< The configured secret key */
 
 	fastd_peer_group_t *peer_group;		/**< The root peer group configuration */
-	fastd_peer_config_t *peers;		/**< The configured peers */
 
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
 
@@ -242,8 +241,11 @@ struct fastd_context {
 
 	struct timespec now;			/**< The current monotonous timestamp */
 
+	fastd_peer_config_t *peer_configs;	/**< The configured peers */
+
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
+
 #ifdef WITH_VERIFY
 	fastd_sem_t verify_limit;		/**< Keeps track of the number of verifier threads */
 #endif

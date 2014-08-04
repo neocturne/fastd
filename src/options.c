@@ -122,8 +122,8 @@ static void option_config_peer(const char *arg) {
 	if(!fastd_config_read(arg, conf.peer_group, peer, 0))
 		exit(1);
 
-	peer->next = conf.peers;
-	conf.peers = peer;
+	peer->next = ctx.peer_configs;
+	ctx.peer_configs = peer;
 
 }
 

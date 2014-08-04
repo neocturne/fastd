@@ -206,10 +206,10 @@ static inline void on_post_down(void) {
 */
 static void init_peers(void) {
 	fastd_peer_config_t *peer_conf;
-	for (peer_conf = conf.peers; peer_conf; peer_conf = peer_conf->next)
+	for (peer_conf = ctx.peer_configs; peer_conf; peer_conf = peer_conf->next)
 		conf.protocol->peer_configure(peer_conf);
 
-	for (peer_conf = conf.peers; peer_conf; peer_conf = peer_conf->next) {
+	for (peer_conf = ctx.peer_configs; peer_conf; peer_conf = peer_conf->next) {
 		bool enable = conf.protocol->peer_check(peer_conf);
 
 		if (enable && !peer_conf->enabled)

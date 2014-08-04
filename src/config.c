@@ -382,7 +382,7 @@ static void assess_peers(void) {
 	conf.has_floating = false;
 
 	fastd_peer_config_t *peer;
-	for (peer = conf.peers; peer; peer = peer->next) {
+	for (peer = ctx.peer_configs; peer; peer = peer->next) {
 		if (fastd_peer_config_is_floating(peer))
 			conf.has_floating = true;
 	}
@@ -531,7 +531,7 @@ static void config_check_base(void) {
 		if (conf.peer_group->children)
 			exit_error("config error: in TUN mode peer groups can't be used");
 
-		if (conf.peers && conf.peers->next)
+		if (ctx.peer_configs && ctx.peer_configs->next)
 			exit_error("config error: in TUN mode exactly one peer must be configured");
 	}
 
@@ -551,11 +551,11 @@ void fastd_config_check(void) {
 	config_check_base();
 
 	if (conf.mode == MODE_TUN) {
-		if (!conf.peers)
+		if (!ctx.peer_configs)
 			exit_error("config error: in TUN mode exactly one peer must be configured");
 	}
 
-	if (!conf.peers && !has_peer_group_peer_dirs(conf.peer_group))
+	if (!ctx.peer_configs && !has_peer_group_peer_dirs(conf.peer_group))
 		exit_error("config error: neither fixed peers nor peer dirs have been configured");
 
 	if (!conf.method_list) {
@@ -573,7 +573,7 @@ void fastd_config_verify(void) {
 	configure_methods();
 
 	fastd_peer_config_t *peer;
-	for (peer = conf.peers; peer; peer = peer->next)
+	for (peer = ctx.peer_configs; peer; peer = peer->next)
 		conf.protocol->peer_verify(peer);
 }
 
@@ -649,18 +649,18 @@ void fastd_config_load_peer_dirs(void) {
 	fastd_peer_config_t *new_peers = NULL;
 	peer_dirs_read_peer_group(&new_peers, conf.peer_group);
 
-	peer_dirs_handle_old_peers(&conf.peers, &new_peers);
-	peer_dirs_handle_new_peers(&conf.peers, new_peers);
+	peer_dirs_handle_old_peers(&ctx.peer_configs, &new_peers);
+	peer_dirs_handle_new_peers(&ctx.peer_configs, new_peers);
 
 	assess_peers();
 }
 
 /** Frees all resources used by the global configuration */
 void fastd_config_release(void) {
-	while (conf.peers) {
-		fastd_peer_config_t *peer = conf.peers, *next = peer->next;
+	while (ctx.peer_configs) {
+		fastd_peer_config_t *peer = ctx.peer_configs, *next = peer->next;
 		fastd_peer_config_free(peer);
-		conf.peers = next;
+		ctx.peer_configs = next;
 	}
 
 	while (conf.bind_addrs) {

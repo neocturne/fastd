@@ -424,9 +424,9 @@ on_verify:	sync_def_async TOK_STRING {
 peer:		TOK_STRING {
 			fastd_peer_config_t *peer = fastd_peer_config_new(state->peer_group);
 			peer->name = fastd_strdup($1->str);
-			peer->next = conf.peers;
+			peer->next = ctx.peer_configs;
 
-			conf.peers = peer;
+			ctx.peer_configs = peer;
 			state->peer = peer;
 		}
 	;
@@ -547,8 +547,8 @@ include:	TOK_PEER TOK_STRING maybe_as {
 			if (!fastd_config_read($2->str, state->peer_group, peer, state->depth))
 				YYERROR;
 
-			peer->next = conf.peers;
-			conf.peers = peer;
+			peer->next = ctx.peer_configs;
+			ctx.peer_configs = peer;
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
 			fastd_config_add_peer_dir(state->peer_group, $3->str);
