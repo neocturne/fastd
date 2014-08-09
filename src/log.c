@@ -72,7 +72,7 @@ static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_a
 
 	case AF_INET6:
 		if (!bind_address && conf.hide_ip_addresses)
-			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
+			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in6.sin6_port));
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
 			char ifname_buf[IF_NAMESIZE];
 			if (!iface && IN6_IS_ADDR_LINKLOCAL(&address->in6.sin6_addr))
