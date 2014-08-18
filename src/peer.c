@@ -846,27 +846,6 @@ void fastd_peer_set_established(fastd_peer_t *peer) {
 	pr_info("connection with %P established.", peer);
 }
 
-/** Checks if an address would be a valid address which could be resolved for a given remote config */
-bool fastd_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr) {
-	if (!remote->hostname)
-		return false;
-
-	if (remote->address.sa.sa_family != AF_UNSPEC &&
-	    remote->address.sa.sa_family != addr->sa.sa_family)
-		return false;
-
-	if (addr->sa.sa_family == AF_INET6) {
-		if (remote->address.in.sin_port != addr->in6.sin6_port)
-			return false;
-	}
-	else {
-		if (remote->address.in.sin_port != addr->in.sin_port)
-			return false;
-	}
-
-	return true;
-}
-
 /** Compares two MAC addresses */
 static inline int eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_eth_addr_t *addr2) {
 	return memcmp(addr1->data, addr2->data, ETH_ALEN);

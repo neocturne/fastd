@@ -222,8 +222,6 @@ static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *conf
 	return (!config->remotes || config->floating);
 }
 
-bool fastd_remote_matches_dynamic(const fastd_remote_config_t *remote, const fastd_peer_address_t *addr);
-
 /** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */
 static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 	return peer->config ? fastd_peer_config_is_floating(peer->config) : true;
