@@ -536,7 +536,7 @@ static inline void init(int argc, char *argv[]) {
 	VECTOR_ALLOC(ctx.peers, 0);
 	VECTOR_ALLOC(ctx.async_pids, 0);
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	fastd_sem_init(&ctx.verify_limit, VERIFY_LIMIT);
 #endif
 

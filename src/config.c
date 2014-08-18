@@ -682,7 +682,7 @@ void fastd_config_release(void) {
 	fastd_shell_command_unset(&conf.on_connect);
 	fastd_shell_command_unset(&conf.on_establish);
 	fastd_shell_command_unset(&conf.on_disestablish);
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	fastd_shell_command_unset(&conf.on_verify);
 #endif
 

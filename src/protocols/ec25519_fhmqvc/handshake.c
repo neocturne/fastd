@@ -553,7 +553,7 @@ bool fastd_protocol_ec25519_fhmqvc_peer_check_dynamic(fastd_peer_t *peer) {
 }
 
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 
 /** Data attached to an asynchronous on-verify run */
 typedef struct verify_data {
@@ -635,7 +635,7 @@ static inline fastd_peer_t * add_dynamic(fastd_socket_t *sock UNUSED, const fast
 	return NULL;
 }
 
-#endif /* WITH_VERIFY */
+#endif /* WITH_DYNAMIC_PEERS */
 
 
 /** Handles a received handshake packet */
@@ -689,7 +689,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		}
 	}
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	if (fastd_peer_is_dynamic(peer)) {
 		if (!handle_dynamic(sock, local_addr, remote_addr, peer, handshake, method))
 			return;

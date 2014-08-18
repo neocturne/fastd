@@ -223,7 +223,7 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 
 	.handshake_init = fastd_protocol_ec25519_fhmqvc_handshake_init,
 	.handshake_handle = fastd_protocol_ec25519_fhmqvc_handshake_handle,
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	.handle_verify_return = fastd_protocol_ec25519_fhmqvc_handle_verify_return,
 #endif
 

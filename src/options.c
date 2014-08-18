@@ -353,7 +353,7 @@ static void option_on_disestablish(const char *arg) {
 	fastd_shell_command_set(&conf.on_disestablish, arg, false);
 }
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 
 /** Handles the --on-verify option */
 static void option_on_verify(const char *arg) {

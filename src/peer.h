@@ -73,7 +73,7 @@ struct fastd_peer {
 
 	struct timespec establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	bool dynamic;					/**< Specifies if the peer has been added dynamically by a on-verify script */
 
 	struct timespec verify_timeout;			/**< Specifies the minimum time after which on-verify may be run again */
@@ -202,7 +202,7 @@ static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 	fastd_dlist_remove(&peer->handshake_entry);
 }
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 /** Call to signal that there is currently an asychronous on-verify command running for the peer */
 static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
 	peer->verify_timeout = fastd_in_seconds(MIN_VERIFY_INTERVAL);
@@ -231,7 +231,7 @@ static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 
 /** Checks if a peer is not statically configured, but added after a on-verify run */
 static inline bool fastd_peer_is_dynamic(const fastd_peer_t *peer UNUSED) {
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	return peer->dynamic;
 #else
 	return false;

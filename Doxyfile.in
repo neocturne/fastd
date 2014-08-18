@@ -1945,7 +1945,7 @@ INCLUDE_FILE_PATTERNS  =
 PREDEFINED             = __attribute__(x)= \
                          VECTOR(x):=VECTOR<x> \
                          WITH_CAPABILITIES \
-                         WITH_VERIFY \
+                         WITH_DYNAMIC_PEERS \
                          WITH_CMDLINE_USER \
                          WITH_CMDLINE_LOGGING \
                          WITH_CMDLINE_OPERATION \

@@ -43,7 +43,7 @@ set(WITH_CMDLINE_LOGGING TRUE CACHE BOOL "Include support for setting logging re
 set(WITH_CMDLINE_OPERATION TRUE CACHE BOOL "Include support for setting options related to the VPN operation (like mode, interface, encryption method) on the command line")
 set(WITH_CMDLINE_COMMANDS TRUE CACHE BOOL "Include support for setting handler scripts (e.g. --on-up) on the command line")
 
-set(WITH_VERIFY TRUE CACHE BOOL "Include support for on-verify handlers")
+set(WITH_DYNAMIC_PEERS TRUE CACHE BOOL "Include support for dynamic peers (using on-verify handlers)")
 
 set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
 

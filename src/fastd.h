@@ -89,7 +89,7 @@ struct fastd_protocol {
 	/** Handles a handshake for the given peer */
 	void (*handshake_handle)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	/** Handles an asynchrounous on-verify command return */
 	void (*handle_verify_return)(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *protocol_data, bool ok);
 #endif
@@ -217,7 +217,7 @@ struct fastd_config {
 	fastd_shell_command_t on_connect;	/**< The command to execute before a handshake is sent to establish a new connection */
 	fastd_shell_command_t on_establish;	/**< The command to execute when a new connection has been established */
 	fastd_shell_command_t on_disestablish;	/**< The command to execute when a connection has been disestablished */
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	fastd_shell_command_t on_verify;	/**< The command to execute to check if a connection from an unknown peer should be allowed */
 #endif
 
@@ -246,7 +246,7 @@ struct fastd_context {
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	fastd_sem_t verify_limit;		/**< Keeps track of the number of verifier threads */
 #endif
 
@@ -472,7 +472,7 @@ static inline void fastd_update_time(void) {
 
 /** Checks if a on-verify command is set */
 static inline bool fastd_allow_verify(void) {
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	return fastd_shell_command_isset(&conf.on_verify);
 #else
 	return false;

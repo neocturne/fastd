@@ -33,7 +33,7 @@
 #include "verify.h"
 
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 
 #include "async.h"
 #include "shell.h"
@@ -142,4 +142,4 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 	}
 }
 
-#endif /* WITH_VERIFY */
+#endif /* WITH_DYNAMIC_PEERS */

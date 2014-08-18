@@ -73,7 +73,7 @@ static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_re
 	fastd_peer_handle_resolve(peer, remote, resolve_return->n_addr, resolve_return->addr);
 }
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 
 /** Handles a on-verify response */
 static void handle_verify_return(const fastd_async_verify_return_t *verify_return) {
@@ -123,7 +123,7 @@ void fastd_async_handle(void) {
 		handle_resolve_return((const fastd_async_resolve_return_t *)buf);
 		break;
 
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 	case ASYNC_TYPE_VERIFY_RETURN:
 		handle_verify_return((const fastd_async_verify_return_t *)buf);
 		break;

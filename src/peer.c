@@ -738,7 +738,7 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 		pr_verbose("adding peer %P (group `%s')", peer, fastd_peer_get_group(peer)->name);
 	}
 	else {
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 		if (!fastd_shell_command_isset(&conf.on_verify))
 			exit_bug("tried to add dynamic peer without on-verify command");
 
@@ -913,7 +913,7 @@ static bool maintain_peer(fastd_peer_t *peer) {
 	if (fastd_peer_is_dynamic(peer) || fastd_peer_is_established(peer)) {
 		/* check for peer timeout */
 		if (fastd_timed_out(&peer->timeout)) {
-#ifdef WITH_VERIFY
+#ifdef WITH_DYNAMIC_PEERS
 			if (fastd_peer_is_dynamic(peer) &&
 			    fastd_timed_out(&peer->verify_timeout) &&
 			    fastd_timed_out(&peer->verify_valid_timeout)) {

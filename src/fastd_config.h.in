@@ -83,7 +83,7 @@
 #cmakedefine WITH_CMDLINE_COMMANDS
 
 /** Defined if on-verify support is enabled */
-#cmakedefine WITH_VERIFY
+#cmakedefine WITH_DYNAMIC_PEERS
 
 /** Defined if systemd support is enabled */
 #cmakedefine ENABLE_SYSTEMD
