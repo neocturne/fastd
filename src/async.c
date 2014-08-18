@@ -63,7 +63,7 @@ void fastd_async_init(void) {
 /** Handles a DNS resolver response */
 static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_return) {
 	fastd_peer_t *peer = fastd_peer_find_by_id(resolve_return->peer_id);
-	if (!peer)
+	if (!peer || !fastd_peer_is_enabled(peer))
 		return;
 
 	if (fastd_peer_is_dynamic(peer))

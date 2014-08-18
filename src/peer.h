@@ -37,7 +37,8 @@
 
 /** The state of a peer */
 typedef enum fastd_peer_state {
-	STATE_INIT = 0,					/**< The peer peer was just created */
+	STATE_INACTIVE = 0,				/**< The peer is not active at the moment */
+	STATE_PASSIVE,					/**< The peer is waiting for incoming connections */
 	STATE_RESOLVING,				/**< The peer is currently resolving its first remote */
 	STATE_HANDSHAKE,				/**< The peer has tried to perform a handshake */
 	STATE_ESTABLISHED,				/**< The peer has established a connection */
@@ -45,8 +46,9 @@ typedef enum fastd_peer_state {
 
 /** The config state of a peer */
 typedef enum fastd_peer_config_state {
-	CONFIG_DISABLED = 0,				/**< The peer is configured statically, but has been not yet been enabled or disabled because of a configuration error */
+	CONFIG_NEW = 0,					/**< The peer is configured statically, but has been not been enabled yet */
 	CONFIG_STATIC,					/**< The peer is configured statically */
+	CONFIG_DISABLED,				/**< The peer is configured statically, but has been disabled because of a configuration error */
 #ifdef WITH_DYNAMIC_PEERS
 	CONFIG_DYNAMIC,					/**< The peer is configured dynamically (using a on-verify handler) */
 #endif
@@ -243,6 +245,19 @@ static inline bool fastd_peer_is_dynamic(const fastd_peer_t *peer UNUSED) {
 #else
 	return false;
 #endif
+}
+
+/** Checks if a peer is enabled */
+static inline bool fastd_peer_is_enabled(const fastd_peer_t *peer) {
+	switch (peer->config->config_state) {
+	case CONFIG_STATIC:
+#ifdef WITH_DYNAMIC_PEERS
+	case CONFIG_DYNAMIC:
+#endif
+		return true;
+	default:
+		return false;
+	}
 }
 
 /** Returns the currently active remote entry */

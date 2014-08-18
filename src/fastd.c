@@ -206,16 +206,11 @@ static inline void on_post_down(void) {
 */
 static void init_peers(void) {
 	fastd_peer_config_t *peer_conf;
-	for (peer_conf = ctx.peer_configs; peer_conf; peer_conf = peer_conf->next)
+	for (peer_conf = ctx.peer_configs; peer_conf; peer_conf = peer_conf->next) {
 		conf.protocol->peer_configure(peer_conf);
 
-	for (peer_conf = ctx.peer_configs; peer_conf; peer_conf = peer_conf->next) {
-		bool enable = conf.protocol->peer_check(peer_conf);
-
-		if (enable && peer_conf->config_state == CONFIG_DISABLED)
+		if (peer_conf->config_state == CONFIG_NEW)
 			fastd_peer_add(peer_conf);
-
-		peer_conf->config_state = enable ? CONFIG_STATIC : CONFIG_DISABLED;
 	}
 
 	size_t i;
@@ -229,10 +224,13 @@ static void init_peers(void) {
 			}
 		}
 		else {
-			if (peer->config->config_state == CONFIG_DISABLED) {
-				pr_info("previously enabled peer %P disabled, deleting.", peer);
-				fastd_peer_delete(peer);
-				continue;
+			fastd_peer_config_state_t state = conf.protocol->peer_check(peer->config) ? CONFIG_STATIC : CONFIG_DISABLED;
+			if (state != peer->config->config_state) {
+				if (peer->config->config_state != CONFIG_NEW)
+					pr_info("peer %P is %s now.", peer, (state == CONFIG_DISABLED) ? "disabled" : "enabled");
+
+				peer->config->config_state = state;
+				fastd_peer_reset(peer);
 			}
 		}
 
@@ -257,6 +255,9 @@ static void dump_state(void) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
+
+		if (!fastd_peer_is_enabled(peer))
+			continue;
 
 		if (!fastd_peer_is_established(peer)) {
 			pr_info("peer %P not connected, address: %I", peer, &peer->address);

@@ -439,6 +439,9 @@ static fastd_peer_t* find_sender_key(const fastd_peer_address_t *address, const 
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
+		if (!fastd_peer_is_enabled(peer))
+			continue;
+
 		if (memcmp(&peer->config->protocol_config->public_key, key, PUBLICKEYBYTES) == 0) {
 			if (!fastd_peer_matches_address(peer, address)) {
 				errno = EPERM;

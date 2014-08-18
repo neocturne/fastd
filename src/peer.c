@@ -136,7 +136,7 @@ static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
 }
 
 /** Finds the entry for a peer with a specified ID in the array \e ctx.peers */
-static fastd_peer_t** peer_p_find_by_id(uint64_t id) {
+static fastd_peer_t ** peer_p_find_by_id(uint64_t id) {
 	fastd_peer_t key = {.id = id};
 	fastd_peer_t *const keyp = &key;
 
@@ -304,14 +304,17 @@ static bool is_peer_in_group(const fastd_peer_t *peer, const fastd_peer_group_t 
    After a call to reset_peer a peer must be deleted by delete_peer or re-initialized by setup_peer.
 */
 static void reset_peer(fastd_peer_t *peer) {
+	if (peer->state == STATE_INACTIVE)
+		return;
+
+	pr_debug("resetting peer %P", peer);
+
 	if (fastd_peer_is_established(peer)) {
 		on_disestablish(peer);
 		pr_info("connection with %P disestablished.", peer);
 	}
 
 	free_socket(peer);
-
-	memset(&peer->local_address, 0, sizeof(peer->local_address));
 
 	conf.protocol->reset_peer_state(peer);
 
@@ -328,6 +331,12 @@ static void reset_peer(fastd_peer_t *peer) {
 	VECTOR_RESIZE(ctx.eth_addrs, VECTOR_LEN(ctx.eth_addrs)-deleted);
 
 	fastd_peer_unschedule_handshake(peer);
+
+	fastd_peer_hashtable_remove(peer);
+
+	peer->address.sa.sa_family = AF_UNSPEC;
+	peer->local_address.sa.sa_family = AF_UNSPEC;
+	peer->state = STATE_INACTIVE;
 }
 
 /**
@@ -367,13 +376,6 @@ static inline bool has_remote_hostname(const fastd_remote_t *remote) {
 
 /** Initializes a peer */
 static void setup_peer(fastd_peer_t *peer) {
-	fastd_peer_hashtable_remove(peer);
-	peer->address.sa.sa_family = AF_UNSPEC;
-
-	peer->local_address.sa.sa_family = AF_UNSPEC;
-
-	peer->state = STATE_INIT;
-
 	if (VECTOR_LEN(peer->remotes) == 0) {
 		peer->next_remote = -1;
 	}
@@ -393,6 +395,10 @@ static void setup_peer(fastd_peer_t *peer) {
 
 	peer->establish_handshake_timeout = ctx.now;
 
+	if (!fastd_peer_is_enabled(peer))
+		/* Keep the peer in STATE_INACTIVE */
+		return;
+
 	if (!peer->protocol_state)
 		conf.protocol->init_peer_state(peer);
 
@@ -408,6 +414,9 @@ static void setup_peer(fastd_peer_t *peer) {
 		else  {
 			init_handshake(peer);
 		}
+	}
+	else {
+		peer->state = STATE_PASSIVE;
 	}
 }
 
@@ -599,6 +608,9 @@ bool fastd_peer_claim_address(fastd_peer_t *new_peer, fastd_socket_t *sock, cons
 			if (peer == new_peer)
 				continue;
 
+			if (!fastd_peer_is_enabled(peer))
+				continue;
+
 			if (fastd_peer_owns_address(peer, remote_addr)) {
 				reset_peer_address(new_peer);
 				return false;
@@ -667,8 +679,6 @@ bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_
 
 /** Resets and re-initializes a peer */
 void fastd_peer_reset(fastd_peer_t *peer) {
-	pr_debug("resetting peer %P", peer);
-
 	reset_peer(peer);
 	setup_peer(peer);
 }
