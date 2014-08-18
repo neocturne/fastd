@@ -222,15 +222,15 @@ static void init_peers(void) {
 	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
-		if (peer->config) {
-			if (!peer->config->enabled) {
-				pr_info("previously enabled peer %P disabled, deleting.", peer);
+		if (fastd_peer_is_dynamic(peer)) {
+			if (!conf.protocol->peer_check_dynamic(peer)) {
 				fastd_peer_delete(peer);
 				continue;
 			}
 		}
 		else {
-			if (!conf.protocol->peer_check_dynamic(peer)) {
+			if (!peer->config->enabled) {
+				pr_info("previously enabled peer %P disabled, deleting.", peer);
 				fastd_peer_delete(peer);
 				continue;
 			}

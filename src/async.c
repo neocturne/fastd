@@ -66,7 +66,7 @@ static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_re
 	if (!peer)
 		return;
 
-	if (!peer->config)
+	if (fastd_peer_is_dynamic(peer))
 		exit_bug("resolve return for dynamic peer");
 
 	fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, resolve_return->remote);
@@ -81,7 +81,7 @@ static void handle_verify_return(const fastd_async_verify_return_t *verify_retur
 	if (!peer)
 		return;
 
-	if (peer->config)
+	if (!fastd_peer_is_dynamic(peer))
 		exit_bug("verify return for permanent peer");
 
 	fastd_peer_set_verified(peer, verify_return->ok);

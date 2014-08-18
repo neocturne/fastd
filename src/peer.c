@@ -423,7 +423,7 @@ static void delete_peer(fastd_peer_t *peer) {
 
 	conf.protocol->free_peer_state(peer);
 
-	if (!peer->config)
+	if (fastd_peer_is_dynamic(peer))
 		free(peer->protocol_config);
 
 	for (i = 0; i < VECTOR_LEN(peer->remotes); i++)
@@ -741,6 +741,8 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 #ifdef WITH_VERIFY
 		if (!fastd_shell_command_isset(&conf.on_verify))
 			exit_bug("tried to add dynamic peer without on-verify command");
+
+		peer->dynamic = true;
 
 		peer->verify_timeout = ctx.now;
 		peer->verify_valid_timeout = ctx.now;
