@@ -742,8 +742,7 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 			exit_bug("tried to add dynamic peer without on-verify command");
 
 		peer->config = fastd_peer_config_new(conf.peer_group);
-
-		peer->dynamic = true;
+		peer->config->config_state = CONFIG_DYNAMIC;
 
 		peer->verify_timeout = ctx.now;
 		peer->verify_valid_timeout = ctx.now;

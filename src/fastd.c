@@ -212,10 +212,10 @@ static void init_peers(void) {
 	for (peer_conf = ctx.peer_configs; peer_conf; peer_conf = peer_conf->next) {
 		bool enable = conf.protocol->peer_check(peer_conf);
 
-		if (enable && !peer_conf->enabled)
+		if (enable && peer_conf->config_state == CONFIG_DISABLED)
 			fastd_peer_add(peer_conf);
 
-		peer_conf->enabled = enable;
+		peer_conf->config_state = enable ? CONFIG_STATIC : CONFIG_DISABLED;
 	}
 
 	size_t i;
@@ -229,7 +229,7 @@ static void init_peers(void) {
 			}
 		}
 		else {
-			if (!peer->config->enabled) {
+			if (peer->config->config_state == CONFIG_DISABLED) {
 				pr_info("previously enabled peer %P disabled, deleting.", peer);
 				fastd_peer_delete(peer);
 				continue;

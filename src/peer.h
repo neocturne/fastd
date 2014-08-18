@@ -43,6 +43,15 @@ typedef enum fastd_peer_state {
 	STATE_ESTABLISHED,				/**< The peer has established a connection */
 } fastd_peer_state_t;
 
+/** The config state of a peer */
+typedef enum fastd_peer_config_state {
+	CONFIG_DISABLED = 0,				/**< The peer is configured statically, but has been not yet been enabled or disabled because of a configuration error */
+	CONFIG_STATIC,					/**< The peer is configured statically */
+#ifdef WITH_DYNAMIC_PEERS
+	CONFIG_DYNAMIC,					/**< The peer is configured dynamically (using a on-verify handler) */
+#endif
+} fastd_peer_config_state_t;
+
 /** Dynamic state of a peer */
 struct fastd_peer {
 	uint64_t id;					/**< A unique ID assigned to each peer */
@@ -74,8 +83,6 @@ struct fastd_peer {
 	struct timespec establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
 
 #ifdef WITH_DYNAMIC_PEERS
-	bool dynamic;					/**< Specifies if the peer has been added dynamically by a on-verify script */
-
 	struct timespec verify_timeout;			/**< Specifies the minimum time after which on-verify may be run again */
 	struct timespec verify_valid_timeout;		/**< Specifies how long a peer stays valid after a successful on-verify run */
 #endif
@@ -91,9 +98,10 @@ struct fastd_peer {
 struct fastd_peer_config {
 	fastd_peer_config_t *next;			/**< The next peer configuration */
 
+	fastd_peer_config_state_t config_state;		/**< Specifies the way this peer was configured and if it is enabled */
+
 	const char *config_source_dir;			/**< The directory this peer's configuration was loaded from */
 
-	bool enabled;					/**< Specifies if this peer was disabled because of a configuration error */
 	char *name;					/**< The peer's name */
 
 	fastd_remote_config_t *remotes;			/**< A linked list of the peer's remote entries */
@@ -231,7 +239,7 @@ static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 /** Checks if a peer is not statically configured, but added after a on-verify run */
 static inline bool fastd_peer_is_dynamic(const fastd_peer_t *peer UNUSED) {
 #ifdef WITH_DYNAMIC_PEERS
-	return peer->dynamic;
+	return peer->config->config_state == CONFIG_DYNAMIC;
 #else
 	return false;
 #endif
