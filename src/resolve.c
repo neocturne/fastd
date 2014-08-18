@@ -114,7 +114,7 @@ static void* resolve_peer(void *varg) {
 /** Starts to resolve a given dynamic remote of a peer to an IP address asynchronously */
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 	if (!peer->config)
-		exit_bug("trying to resolve temporary peer");
+		exit_bug("trying to resolve dynamic peer");
 
 	if (!fastd_timed_out(&remote->last_resolve_timeout)) {
 		/* last resolve was just a few seconds ago */

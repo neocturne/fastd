@@ -67,7 +67,7 @@ static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_re
 		return;
 
 	if (!peer->config)
-		exit_bug("resolve return for temporary peer");
+		exit_bug("resolve return for dynamic peer");
 
 	fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, resolve_return->remote);
 	fastd_peer_handle_resolve(peer, remote, resolve_return->n_addr, resolve_return->addr);

@@ -228,7 +228,7 @@ static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 }
 
 /** Checks if a peer is not statically configured, but added after a on-verify run */
-static inline bool fastd_peer_is_temporary(const fastd_peer_t *peer) {
+static inline bool fastd_peer_is_dynamic(const fastd_peer_t *peer) {
 	return (!peer->config);
 }
 

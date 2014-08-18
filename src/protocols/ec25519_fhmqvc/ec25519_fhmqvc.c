@@ -219,7 +219,7 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.peer_configure = protocol_peer_configure,
 
 	.peer_check = fastd_protocol_ec25519_fhmqvc_peer_check,
-	.peer_check_temporary = fastd_protocol_ec25519_fhmqvc_peer_check_temporary,
+	.peer_check_dynamic = fastd_protocol_ec25519_fhmqvc_peer_check_dynamic,
 
 	.handshake_init = fastd_protocol_ec25519_fhmqvc_handshake_init,
 	.handshake_handle = fastd_protocol_ec25519_fhmqvc_handshake_handle,

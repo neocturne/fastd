@@ -230,7 +230,7 @@ static void init_peers(void) {
 			}
 		}
 		else {
-			if (!conf.protocol->peer_check_temporary(peer)) {
+			if (!conf.protocol->peer_check_dynamic(peer)) {
 				fastd_peer_delete(peer);
 				continue;
 			}

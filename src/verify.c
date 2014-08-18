@@ -26,7 +26,7 @@
 /**
    \file
 
-   Handling of on-verify commands to add peers not configured statically ("temporary peers")
+   Handling of on-verify commands to add peers not configured statically ("dynamic peers")
 */
 
 

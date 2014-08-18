@@ -740,14 +740,14 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 	else {
 #ifdef WITH_VERIFY
 		if (!fastd_shell_command_isset(&conf.on_verify))
-			exit_bug("tried to add temporary peer without on-verify command");
+			exit_bug("tried to add dynamic peer without on-verify command");
 
 		peer->verify_timeout = ctx.now;
 		peer->verify_valid_timeout = ctx.now;
 
-		pr_debug("adding temporary peer");
+		pr_debug("adding dynamic peer");
 #else
-		exit_bug("temporary peers not supported");
+		exit_bug("dynamic peers not supported");
 #endif
 	}
 
@@ -908,11 +908,11 @@ fastd_peer_t* fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
    \li If no data was sent to the peer for some time, a keepalive is sent.
  */
 static bool maintain_peer(fastd_peer_t *peer) {
-	if (fastd_peer_is_temporary(peer) || fastd_peer_is_established(peer)) {
+	if (fastd_peer_is_dynamic(peer) || fastd_peer_is_established(peer)) {
 		/* check for peer timeout */
 		if (fastd_timed_out(&peer->timeout)) {
 #ifdef WITH_VERIFY
-			if (fastd_peer_is_temporary(peer) &&
+			if (fastd_peer_is_dynamic(peer) &&
 			    fastd_timed_out(&peer->verify_timeout) &&
 			    fastd_timed_out(&peer->verify_valid_timeout)) {
 				fastd_peer_delete(peer);

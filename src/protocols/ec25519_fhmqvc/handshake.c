@@ -540,12 +540,12 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fa
 	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
 }
 
-/** Checks if a temporary peer (added after an on-verify command) can stay after new peers have been configured */
-bool fastd_protocol_ec25519_fhmqvc_peer_check_temporary(fastd_peer_t *peer) {
+/** Checks if a dynamic peer (added after an on-verify command) can stay after new peers have been configured */
+bool fastd_protocol_ec25519_fhmqvc_peer_check_dynamic(fastd_peer_t *peer) {
 	if (key_count(peer->protocol_config->public_key.u8)) {
 		char buf[65];
 		hexdump(buf, peer->protocol_config->public_key.u8);
-		pr_info("key %s is configured now, deleting temporary peer.", buf);
+		pr_info("key %s is configured now, deleting dynamic peer.", buf);
 		return false;
 	}
 
@@ -560,8 +560,8 @@ typedef struct verify_data {
 	aligned_int256_t peer_handshake_key;		/**< The public key of the peer being verified */
 } verify_data_t;
 
-/** Adds a temporary peer for an unknown key */
-static fastd_peer_t * add_temporary(fastd_socket_t *sock, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
+/** Adds a dynamic peer for an unknown key */
+static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
 	if (!fastd_allow_verify()) {
 		pr_debug("ignoring handshake from %I (unknown key)", addr);
 		return NULL;
@@ -589,8 +589,8 @@ static fastd_peer_t * add_temporary(fastd_socket_t *sock, const fastd_peer_addre
 	return peer;
 }
 
-/** Is called when a handshake from a temporary peer is received */
-static bool handle_temporary(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+/** Is called when a handshake from a dynamic peer is received */
+static bool handle_dynamic(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 			     fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
 	if (handshake->type > 2 || !fastd_timed_out(&peer->verify_timeout))
 		return !fastd_timed_out(&peer->verify_valid_timeout);
@@ -629,8 +629,8 @@ void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fast
 
 #else
 
-/** Dummy add temporary function for fastd versions without on-verify support */
-static inline fastd_peer_t * add_temporary(fastd_socket_t *sock UNUSED, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES] UNUSED) {
+/** Dummy add dynamic function for fastd versions without on-verify support */
+static inline fastd_peer_t * add_dynamic(fastd_socket_t *sock UNUSED, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES] UNUSED) {
 	pr_debug("ignoring handshake from %I (unknown key)", addr);
 	return NULL;
 }
@@ -656,7 +656,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 			return;
 
 		case ENOENT:
-			peer = add_temporary(sock, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
+			peer = add_dynamic(sock, remote_addr, handshake->records[RECORD_SENDER_KEY].data);
 			if (peer)
 				break;
 
@@ -690,8 +690,8 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 	}
 
 #ifdef WITH_VERIFY
-	if (fastd_peer_is_temporary(peer)) {
-		if (!handle_temporary(sock, local_addr, remote_addr, peer, handshake, method))
+	if (fastd_peer_is_dynamic(peer)) {
+		if (!handle_dynamic(sock, local_addr, remote_addr, peer, handshake, method))
 			return;
 	}
 #endif

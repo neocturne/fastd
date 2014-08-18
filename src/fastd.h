@@ -79,8 +79,8 @@ struct fastd_protocol {
 	/** Checks if a peer configuration is valid and a connection may be established */
 	bool (*peer_check)(fastd_peer_config_t *peer_conf);
 
-	/** Checks if a temporary peer is valid and a connection may be established */
-	bool (*peer_check_temporary)(fastd_peer_t *peer);
+	/** Checks if a dynamic peer is valid and a connection may be established */
+	bool (*peer_check_dynamic)(fastd_peer_t *peer);
 
 
 	/** Sends a handshake to the given peer */

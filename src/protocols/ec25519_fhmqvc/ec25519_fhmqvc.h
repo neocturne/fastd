@@ -102,7 +102,7 @@ struct fastd_protocol_peer_state {
 
 
 bool fastd_protocol_ec25519_fhmqvc_peer_check(fastd_peer_config_t *peer_conf);
-bool fastd_protocol_ec25519_fhmqvc_peer_check_temporary(fastd_peer_t *peer);
+bool fastd_protocol_ec25519_fhmqvc_peer_check_dynamic(fastd_peer_t *peer);
 
 void fastd_protocol_ec25519_fhmqvc_maintenance(void);
 void fastd_protocol_ec25519_fhmqvc_init_peer_state(fastd_peer_t *peer);

@@ -92,7 +92,7 @@ void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const f
 /**
    Generates a protocol-specific string representation of a peer
 
-   This will only be used for peers without names (e.g. temporary peers) and
+   This will only be used for peers without names (e.g. dynamic peers) and
    creates a string containing the first 16 hexadecimal digits of the peer's
    public key.
 */
