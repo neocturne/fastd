@@ -360,6 +360,11 @@ void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_
 		init_handshake(peer);
 }
 
+/** Checks if a remote contains a hostname instead of a static IP address */
+static inline bool has_remote_hostname(const fastd_remote_t *remote) {
+	return remote->config->hostname;
+}
+
 /** Initializes a peer */
 static void setup_peer(fastd_peer_t *peer) {
 	fastd_peer_hashtable_remove(peer);
@@ -395,7 +400,7 @@ static void setup_peer(fastd_peer_t *peer) {
 	if (next_remote) {
 		next_remote->current_address = 0;
 
-		if (fastd_remote_is_dynamic(next_remote)) {
+		if (has_remote_hostname(next_remote)) {
 			peer->state = STATE_RESOLVING;
 			fastd_resolve_peer(peer, next_remote);
 			fastd_peer_schedule_handshake_default(peer);
@@ -832,7 +837,7 @@ void fastd_peer_handle_handshake_queue(void) {
 	next_remote = fastd_peer_get_next_remote(peer);
 	next_remote->current_address = 0;
 
-	if (fastd_remote_is_dynamic(next_remote))
+	if (has_remote_hostname(next_remote))
 		fastd_resolve_peer(peer, next_remote);
 }
 

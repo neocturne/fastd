@@ -259,11 +259,6 @@ static inline const fastd_peer_group_t * fastd_peer_get_group(const fastd_peer_t
 		return conf.peer_group;
 }
 
-/** Checks if a remote is dynamic (is contains a hostname instead of a static IP address) */
-static inline bool fastd_remote_is_dynamic(const fastd_remote_t *remote) {
-	return remote->config->hostname;
-}
-
 /** Signals that a valid packet was received from the peer */
 static inline void fastd_peer_seen(fastd_peer_t *peer) {
 	peer->timeout = fastd_in_seconds(PEER_STALE_TIME);
