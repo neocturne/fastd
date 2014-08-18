@@ -225,7 +225,7 @@ static inline bool fastd_peer_config_is_floating(const fastd_peer_config_t *conf
 
 /** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */
 static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
-	return peer->config ? fastd_peer_config_is_floating(peer->config) : true;
+	return fastd_peer_config_is_floating(peer->config);
 }
 
 /** Checks if a peer is not statically configured, but added after a on-verify run */
@@ -258,10 +258,7 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 
 /** Returns the peer's peer group */
 static inline const fastd_peer_group_t * fastd_peer_get_group(const fastd_peer_t *peer) {
-	if (peer->config)
-		return peer->config->group;
-	else
-		return conf.peer_group;
+	return peer->config->group;
 }
 
 /** Signals that a valid packet was received from the peer */

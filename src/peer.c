@@ -42,7 +42,7 @@ void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, 
 	/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
 	char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
 
-	fastd_shell_env_set(env, "PEER_NAME", (peer && peer->config) ? peer->config->name : NULL);
+	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->config->name : NULL);
 
 	switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
 	case AF_INET:

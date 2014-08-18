@@ -93,7 +93,7 @@ static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_a
 
 /** Creates a string representation of a peer */
 static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *peer) {
-	if (peer->config && peer->config->name) {
+	if (peer->config->name) {
 		return snprintf_safe(buffer, size, "<%s>", peer->config->name);
 	}
 	else {
