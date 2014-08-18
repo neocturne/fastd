@@ -47,7 +47,7 @@ typedef enum fastd_peer_state {
 struct fastd_peer {
 	uint64_t id;					/**< A unique ID assigned to each peer */
 
-	const fastd_peer_config_t *config;		/**< The peer's fastd_peer_config_t */
+	fastd_peer_config_t *config;			/**< The peer's fastd_peer_config_t */
 
 	/** The socket used by the peer. This can either be a common bound socket or a
 	    dynamic, unbound socket that is used exclusively by this peer */
@@ -80,7 +80,6 @@ struct fastd_peer {
 	struct timespec verify_valid_timeout;		/**< Specifies how long a peer stays valid after a successful on-verify run */
 #endif
 
-	fastd_protocol_peer_config_t *protocol_config;	/**< Protocol-specific peer configuration for config-less (on-verify) peers */
 	fastd_protocol_peer_state_t *protocol_state;	/**< Protocol-specific peer state */
 };
 

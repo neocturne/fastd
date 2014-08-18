@@ -80,8 +80,8 @@ void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const f
 	hexdump(buf, conf.protocol_config->key.public.u8);
 	fastd_shell_env_set(env, "LOCAL_KEY", buf);
 
-	if (peer && peer->protocol_config) {
-		hexdump(buf, peer->protocol_config->public_key.u8);
+	if (peer && peer->config->protocol_config) {
+		hexdump(buf, peer->config->protocol_config->public_key.u8);
 		fastd_shell_env_set(env, "PEER_KEY", buf);
 	}
 	else {
@@ -97,10 +97,10 @@ void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const f
    public key.
 */
 bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len) {
-	if (peer && peer->protocol_config) {
+	if (peer && peer->config->protocol_config) {
 		char dumpbuf[65];
 
-		hexdump(dumpbuf, peer->protocol_config->public_key.u8);
+		hexdump(dumpbuf, peer->config->protocol_config->public_key.u8);
 		snprintf(buf, len, "%.16s", dumpbuf);
 		return true;
 	}
