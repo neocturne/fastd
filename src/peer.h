@@ -93,7 +93,7 @@ struct fastd_peer_config {
 
 	const char *config_source_dir;			/**< The directory this peer's configuration was loaded from */
 
-	bool enabled;					/**< Speficies if this peer was disabled because of a configuration error */
+	bool enabled;					/**< Specifies if this peer was disabled because of a configuration error */
 	char *name;					/**< The peer's name */
 
 	fastd_remote_config_t *remotes;			/**< A linked list of the peer's remote entries */

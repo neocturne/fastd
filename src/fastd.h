@@ -90,7 +90,7 @@ struct fastd_protocol {
 	void (*handshake_handle)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method);
 
 #ifdef WITH_DYNAMIC_PEERS
-	/** Handles an asynchrounous on-verify command return */
+	/** Handles an asynchronous on-verify command return */
 	void (*handle_verify_return)(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *protocol_data, bool ok);
 #endif
 
