@@ -180,7 +180,7 @@ void fastd_poll_handle(void) {
 #else
 
 void fastd_poll_init(void) {
-	VECTOR_ALLOC(ctx.pollfds, 2 + ctx.n_socks);
+	VECTOR_RESIZE(ctx.pollfds, 2 + ctx.n_socks);
 
 	VECTOR_INDEX(ctx.pollfds, 0) = (struct pollfd) {
 		.fd = -1,

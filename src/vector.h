@@ -55,21 +55,10 @@ typedef struct fastd_vector_desc {
 
 
 
-void _fastd_vector_alloc(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize);
 void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize);
 void _fastd_vector_insert(fastd_vector_desc_t *desc, void **data, void *element, size_t pos, size_t elemsize);
 void _fastd_vector_delete(fastd_vector_desc_t *desc, void **data, size_t pos, size_t elemsize);
 
-
-/**
-   Allocates resources for the vector \e a, starting with \e n elements
-
-   \hideinitializer
-*/
-#define VECTOR_ALLOC(v, n) ({						\
-			__typeof__(v) *_v = &(v);			\
-			_fastd_vector_alloc(&_v->desc, (void**)&_v->data, (n), sizeof(*_v->data)); \
-		})
 
 /**
    Resizes the vector \e a to \e n elements

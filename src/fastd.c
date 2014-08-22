@@ -533,10 +533,6 @@ static inline void init(int argc, char *argv[]) {
 	ctx.next_maintenance = fastd_in_seconds(MAINTENANCE_INTERVAL);
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 
-	VECTOR_ALLOC(ctx.eth_addrs, 0);
-	VECTOR_ALLOC(ctx.peers, 0);
-	VECTOR_ALLOC(ctx.async_pids, 0);
-
 #ifdef WITH_DYNAMIC_PEERS
 	fastd_sem_init(&ctx.verify_limit, VERIFY_LIMIT);
 #endif

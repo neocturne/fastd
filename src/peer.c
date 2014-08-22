@@ -729,8 +729,6 @@ fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
 	if (peer_conf) {
 		peer->config = peer_conf;
 
-		VECTOR_ALLOC(peer->remotes, 0);
-
 		fastd_remote_config_t *remote_config;
 		for (remote_config = peer_conf->remotes; remote_config; remote_config = remote_config->next) {
 			fastd_remote_t remote = {.config = remote_config};

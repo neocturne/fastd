@@ -41,22 +41,6 @@
 
 
 /**
-   Allocates a new vector
-
-   Internal function, use VECTOR_ALLOC() instead.
-*/
-void _fastd_vector_alloc(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize) {
-	desc->allocated = MIN_VECTOR_ALLOC;
-
-	while (desc->allocated < n*3/2)
-		desc->allocated <<= 1;
-
-	desc->length = n;
-
-	*data = fastd_alloc(desc->allocated * elemsize);
-}
-
-/**
    Resizes a vector
 
    Vector allocations are always powers of 2.
@@ -67,6 +51,11 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 	desc->length = n;
 
 	size_t alloc = desc->allocated;
+
+	if (!alloc) {
+		alloc = MIN_VECTOR_ALLOC;
+		n = n*3/2;
+	}
 
 	while (alloc < n)
 		alloc <<= 1;
