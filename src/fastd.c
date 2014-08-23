@@ -562,7 +562,7 @@ static inline void reap_zombies(void) {
 			pr_debug("child process %u finished", (unsigned)pid);
 		}
 		else {
-			if (errno == ECHILD) {
+			if (errno == ECHILD || errno == EINTR) {
 				i++;
 				continue;
 			}
