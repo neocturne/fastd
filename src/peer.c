@@ -693,22 +693,6 @@ static inline bool peer_configs_equal(const fastd_peer_t *peer1, const fastd_pee
 	return true;
 }
 
-/** Replaces a peer with a new configuration */
-static void replace_peer(fastd_peer_t *old, fastd_peer_t *new) {
-	reset_peer(old);
-
-	new->id = old->id;
-
-	new->protocol_state = old->protocol_state;
-	old->protocol_state = NULL;
-
-	fastd_peer_t tmp = *old;
-	*old = *new;
-	*new = tmp;
-
-	fastd_peer_free(new);
-}
-
 /** Adds a new peer */
 bool fastd_peer_add(fastd_peer_t *peer) {
 	if (!peer->key) {
@@ -744,17 +728,17 @@ bool fastd_peer_add(fastd_peer_t *peer) {
 
 				return true;
 			}
+			else {
+				pr_verbose("peer %P has changed", peer);
+			}
 
-			pr_verbose("peer %P has changed, resetting...", peer);
-
-			replace_peer(other, peer);
-			return true;
+			fastd_peer_delete(other);
+			break;
 
 #ifdef WITH_DYNAMIC_PEERS
 		case CONFIG_DYNAMIC:
 			pr_verbose("dynamic peer %P is now configured as %P", other, peer);
-			replace_peer(other, peer);
-			return true;
+			fastd_peer_delete(other);
 #endif
 		}
 	}
