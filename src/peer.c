@@ -364,11 +364,6 @@ void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_
 		init_handshake(peer);
 }
 
-/** Checks if a remote contains a hostname instead of a static IP address */
-static inline bool has_remote_hostname(const fastd_remote_t *remote) {
-	return remote->hostname;
-}
-
 /** Initializes a peer */
 static void setup_peer(fastd_peer_t *peer) {
 	if (VECTOR_LEN(peer->remotes) == 0) {
@@ -376,8 +371,16 @@ static void setup_peer(fastd_peer_t *peer) {
 	}
 	else {
 		size_t i;
-		for (i = 0; i < VECTOR_LEN(peer->remotes); i++)
-			VECTOR_INDEX(peer->remotes, i).last_resolve_timeout = ctx.now;
+		for (i = 0; i < VECTOR_LEN(peer->remotes); i++) {
+			fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, i);
+
+			remote->last_resolve_timeout = ctx.now;
+
+			if (!remote->hostname) {
+				remote->n_addresses = 1;
+				remote->addresses = &remote->address;
+			}
+		}
 
 		peer->next_remote = 0;
 	}
@@ -403,7 +406,7 @@ static void setup_peer(fastd_peer_t *peer) {
 	if (next_remote) {
 		next_remote->current_address = 0;
 
-		if (has_remote_hostname(next_remote)) {
+		if (next_remote->hostname) {
 			peer->state = STATE_RESOLVING;
 			fastd_resolve_peer(peer, next_remote);
 			fastd_peer_schedule_handshake_default(peer);
@@ -430,8 +433,10 @@ void fastd_peer_free(fastd_peer_t *peer) {
 	for (i = 0; i < VECTOR_LEN(peer->remotes); i++) {
 		fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, i);
 
-		free(remote->addresses);
-		free(remote->hostname);
+		if (remote->hostname) {
+			free(remote->addresses);
+			free(remote->hostname);
+		}
 	}
 
 	VECTOR_FREE(peer->remotes);
@@ -848,7 +853,7 @@ void fastd_peer_handle_handshake_queue(void) {
 	next_remote = fastd_peer_get_next_remote(peer);
 	next_remote->current_address = 0;
 
-	if (has_remote_hostname(next_remote))
+	if (next_remote->hostname)
 		fastd_resolve_peer(peer, next_remote);
 }
 
