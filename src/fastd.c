@@ -199,51 +199,6 @@ static inline void on_post_down(void) {
 	fastd_shell_command_exec(&conf.on_post_down, NULL);
 }
 
-/**
-   Initializes the peers
-
-   Is called after each reconfiguration to remove old peers and add new ones.
-*/
-static void init_peers(void) {
-	fastd_peer_config_t *peer_conf;
-	for (peer_conf = ctx.peer_configs; peer_conf; peer_conf = peer_conf->next) {
-		conf.protocol->peer_configure(peer_conf);
-
-		if (peer_conf->config_state == CONFIG_NEW)
-			fastd_peer_add(peer_conf);
-	}
-
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
-		if (fastd_peer_is_dynamic(peer)) {
-			if (!conf.protocol->peer_check_dynamic(peer)) {
-				fastd_peer_delete(peer);
-				continue;
-			}
-		}
-		else {
-			fastd_peer_config_state_t state = conf.protocol->peer_check(peer->config) ? CONFIG_STATIC : CONFIG_DISABLED;
-			if (state != peer->config->config_state) {
-				if (peer->config->config_state != CONFIG_NEW)
-					pr_info("peer %P is %s now.", peer, (state == CONFIG_DISABLED) ? "disabled" : "enabled");
-
-				peer->config->config_state = state;
-				fastd_peer_reset(peer);
-			}
-		}
-
-		i++;
-	}
-}
-
-/** Removes all peers */
-static void delete_peers(void) {
-	while (VECTOR_LEN(ctx.peers))
-		fastd_peer_delete(VECTOR_INDEX(ctx.peers, VECTOR_LEN(ctx.peers)-1));
-}
-
 /** Dumps statistics and the list of known peers to the logs */
 static void dump_state(void) {
 	pr_info("TX stats: %U packet(s), %U byte(s); dropped: %U packet(s), %U byte(s); error: %U packet(s), %U byte(s)",
@@ -584,7 +539,6 @@ static inline void init(int argc, char *argv[]) {
 		set_user();
 
 	fastd_config_load_peer_dirs();
-	init_peers();
 }
 
 
@@ -629,7 +583,6 @@ static inline void handle_signals(void) {
 		pr_info("reconfigure triggered");
 
 		fastd_config_load_peer_dirs();
-		init_peers();
 	}
 
 	if (dump) {
@@ -651,6 +604,12 @@ static inline void run(void) {
 
 	maintenance();
 	handle_signals();
+}
+
+/** Removes all peers */
+static void delete_peers(void) {
+	while (VECTOR_LEN(ctx.peers))
+		fastd_peer_delete(VECTOR_INDEX(ctx.peers, VECTOR_LEN(ctx.peers)-1));
 }
 
 /**

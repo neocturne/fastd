@@ -42,7 +42,7 @@ void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, 
 	/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
 	char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
 
-	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->config->name : NULL);
+	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->name : NULL);
 
 	switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
 	case AF_INET:
@@ -293,7 +293,7 @@ static inline bool is_group_in(const fastd_peer_group_t *group1, const fastd_pee
 
 /** Checks if a peer lies in a peer group */
 static bool is_peer_in_group(const fastd_peer_t *peer, const fastd_peer_group_t *group) {
-	return is_group_in(fastd_peer_get_group(peer), group);
+	return is_group_in(peer->group, group);
 }
 
 /**
@@ -304,11 +304,6 @@ static bool is_peer_in_group(const fastd_peer_t *peer, const fastd_peer_group_t 
    After a call to reset_peer a peer must be deleted by delete_peer or re-initialized by setup_peer.
 */
 static void reset_peer(fastd_peer_t *peer) {
-	if (peer->state == STATE_INACTIVE)
-		return;
-
-	pr_debug("resetting peer %P", peer);
-
 	if (fastd_peer_is_established(peer)) {
 		on_disestablish(peer);
 		pr_info("connection with %P disestablished.", peer);
@@ -348,7 +343,7 @@ static void reset_peer(fastd_peer_t *peer) {
 */
 static void init_handshake(fastd_peer_t *peer) {
 	unsigned delay = 0;
-	if (has_group_config_constraints(fastd_peer_get_group(peer)))
+	if (has_group_config_constraints(peer->group))
 		delay = fastd_rand(0, 3000);
 
 	peer->state = STATE_HANDSHAKE;
@@ -371,7 +366,7 @@ void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_
 
 /** Checks if a remote contains a hostname instead of a static IP address */
 static inline bool has_remote_hostname(const fastd_remote_t *remote) {
-	return remote->config->hostname;
+	return remote->hostname;
 }
 
 /** Initializes a peer */
@@ -395,12 +390,14 @@ static void setup_peer(fastd_peer_t *peer) {
 
 	peer->establish_handshake_timeout = ctx.now;
 
+#ifdef WITH_DYNAMIC_PEERS
+	peer->verify_timeout = ctx.now;
+	peer->verify_valid_timeout = ctx.now;
+#endif
+
 	if (!fastd_peer_is_enabled(peer))
 		/* Keep the peer in STATE_INACTIVE */
 		return;
-
-	if (!peer->protocol_state)
-		conf.protocol->init_peer_state(peer);
 
 	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
 	if (next_remote) {
@@ -420,68 +417,42 @@ static void setup_peer(fastd_peer_t *peer) {
 	}
 }
 
-/** Frees a peer */
+/**
+   Frees a peer
+
+   If the peer has already been added to the peer list,
+   use fastd_peer_delete() instead.
+*/
+void fastd_peer_free(fastd_peer_t *peer) {
+	free(peer->key);
+
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(peer->remotes); i++) {
+		fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, i);
+
+		free(remote->addresses);
+		free(remote->hostname);
+	}
+
+	VECTOR_FREE(peer->remotes);
+
+	free(peer->name);
+	free(peer);
+}
+
+/** Deletes a peer */
 static void delete_peer(fastd_peer_t *peer) {
-	pr_debug("deleting peer %P", peer);
+	pr_verbose("deleting peer %P", peer);
 
 	size_t i = peer_index(peer);
 	VECTOR_DELETE(ctx.peers, i);
 	fastd_poll_delete_peer(i);
 
-	fastd_peer_hashtable_remove(peer);
-
 	conf.protocol->free_peer_state(peer);
 
-	if (fastd_peer_is_dynamic(peer))
-		fastd_peer_config_free(peer->config);
-
-	for (i = 0; i < VECTOR_LEN(peer->remotes); i++)
-		free(VECTOR_INDEX(peer->remotes, i).addresses);
-
-	VECTOR_FREE(peer->remotes);
-
-	free(peer);
+	fastd_peer_free(peer);
 }
 
-
-/** Allocates a new peer config */
-fastd_peer_config_t* fastd_peer_config_new(fastd_peer_group_t *group) {
-	fastd_peer_config_t *peer = fastd_new0(fastd_peer_config_t);
-	peer->group = group;
-
-	return peer;
-}
-
-/** Frees a peer config (which must not be referenced anywhere) */
-void fastd_peer_config_free(fastd_peer_config_t *peer) {
-	while (peer->remotes) {
-		fastd_remote_config_t *remote = peer->remotes;
-		peer->remotes = remote->next;
-
-		free(remote->hostname);
-		free(remote);
-	}
-
-	free(peer->name);
-	free(peer->key);
-	free(peer->protocol_config);
-	free(peer);
-}
-
-/** Deletes a peer config, and removes the peer assiciated with the peer config */
-void fastd_peer_config_purge(fastd_peer_config_t *config) {
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
-		if (peer->config == config) {
-			fastd_peer_delete(peer);
-			break;
-		}
-	}
-
-	fastd_peer_config_free(config);
-}
 
 /** Checks if two fastd_peer_address_t are equal */
 bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2) {
@@ -556,8 +527,10 @@ bool fastd_peer_owns_address(const fastd_peer_t *peer, const fastd_peer_address_
 	if (fastd_peer_is_floating(peer))
 		return false;
 
-	fastd_remote_config_t *remote;
-	for (remote = peer->config->remotes; remote; remote = remote->next) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(peer->remotes); i++) {
+		fastd_remote_t *remote = &VECTOR_INDEX(peer->remotes, i);
+
 		if (remote->hostname)
 			continue;
 
@@ -643,43 +616,13 @@ bool fastd_peer_claim_address(fastd_peer_t *new_peer, fastd_socket_t *sock, cons
 	return true;
 }
 
-/** Checks if two remote configs are equivalent */
-static bool remote_configs_equal(const fastd_remote_config_t *remote1, const fastd_remote_config_t *remote2) {
-	if (!remote1 && !remote2)
-		return true;
-
-	if (!remote1 || !remote2)
-		return false;
-
-	if (!fastd_peer_address_equal(&remote1->address, &remote2->address))
-		return false;
-
-	if (!strequal(remote1->hostname, remote2->hostname))
-		return false;
-
-	return remote_configs_equal(remote1->next, remote2->next);
-}
-
-/** Checks if two peer configs are equivalent */
-bool fastd_peer_config_equal(const fastd_peer_config_t *peer1, const fastd_peer_config_t *peer2) {
-	if (peer1->group != peer2->group)
-		return false;
-
-	if(peer1->floating != peer2->floating)
-		return false;
-
-	if (!remote_configs_equal(peer1->remotes, peer2->remotes))
-		return false;
-
-	if (!strequal(peer1->key, peer2->key))
-		return false;
-
-	return true;
-}
-
 /** Resets and re-initializes a peer */
 void fastd_peer_reset(fastd_peer_t *peer) {
-	reset_peer(peer);
+	if (peer->state != STATE_INACTIVE) {
+		pr_debug("resetting peer %P", peer);
+		reset_peer(peer);
+	}
+
 	setup_peer(peer);
 }
 
@@ -709,7 +652,7 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 
 	const fastd_peer_group_t *group;
 
-	for (group = fastd_peer_get_group(peer); group; group = group->parent) {
+	for (group = peer->group; group; group = group->parent) {
 		if (group->max_connections < 0)
 			continue;
 
@@ -720,53 +663,111 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 	return true;
 }
 
-/** Create a new peer */
-fastd_peer_t* fastd_peer_add(fastd_peer_config_t *peer_conf) {
-	fastd_peer_t *peer = fastd_new0(fastd_peer_t);
+/** Checks if two peer configurations are equivalent (exept for the name) */
+static inline bool peer_configs_equal(const fastd_peer_t *peer1, const fastd_peer_t *peer2) {
+	if (peer1->group != peer2->group)
+		return false;
 
-	peer->id = ctx.next_peer_id++;
+	if (peer1->floating != peer2->floating)
+		return false;
 
-	if (peer_conf) {
-		peer->config = peer_conf;
+	if (VECTOR_LEN(peer1->remotes) != VECTOR_LEN(peer2->remotes))
+		return false;
 
-		fastd_remote_config_t *remote_config;
-		for (remote_config = peer_conf->remotes; remote_config; remote_config = remote_config->next) {
-			fastd_remote_t remote = {.config = remote_config};
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(peer1->remotes); i++) {
+		const fastd_remote_t *remote1 = &VECTOR_INDEX(peer1->remotes, i), *remote2 = &VECTOR_INDEX(peer2->remotes, i);
 
-			if (!remote_config->hostname) {
-				remote.n_addresses = 1;
-				remote.addresses = fastd_new(fastd_peer_address_t);
-				remote.addresses[0] = remote_config->address;
+		if (!fastd_peer_address_equal(&remote1->address, &remote2->address))
+			return false;
+
+		if (!strequal(remote1->hostname, remote2->hostname))
+			return false;
+	}
+
+	return true;
+}
+
+/** Replaces a peer with a new configuration */
+static void replace_peer(fastd_peer_t *old, fastd_peer_t *new) {
+	reset_peer(old);
+
+	new->id = old->id;
+
+	new->protocol_state = old->protocol_state;
+	old->protocol_state = NULL;
+
+	fastd_peer_t tmp = *old;
+	*old = *new;
+	*new = tmp;
+
+	fastd_peer_free(new);
+}
+
+/** Adds a new peer */
+bool fastd_peer_add(fastd_peer_t *peer) {
+	if (!peer->key) {
+		pr_warn("no valid key configured for peer %P", peer);
+		goto error;
+	}
+
+	fastd_peer_t *other = conf.protocol->find_peer(peer->key);
+	if (other) {
+		if (peer->config_state != CONFIG_NEW)
+			exit_bug("tried to replace with active peer");
+
+		switch (other->config_state) {
+		case CONFIG_NEW:
+		case CONFIG_DISABLED:
+			pr_warn("duplicate key used by peers %P and %P, disabling both", peer, other);
+			other->config_state = CONFIG_DISABLED;
+			goto error;
+
+		case CONFIG_STATIC:
+			if (!strequal(other->name, peer->name))
+				pr_verbose("peer %P has been renamed to %P", other, peer);
+
+			if (peer_configs_equal(other, peer)) {
+				free(other->name);
+				other->name = peer->name;
+				peer->name = NULL;
+
+				fastd_peer_free(peer);
+
+				pr_verbose("peer %P is unchanged", other);
+				other->config_state = CONFIG_NEW;
+
+				return true;
 			}
 
-			VECTOR_ADD(peer->remotes, remote);
-		}
+			pr_verbose("peer %P has changed, resetting...", peer);
 
-		pr_verbose("adding peer %P (group `%s')", peer, fastd_peer_get_group(peer)->name);
-	}
-	else {
+			replace_peer(other, peer);
+			return true;
+
 #ifdef WITH_DYNAMIC_PEERS
-		if (!fastd_shell_command_isset(&conf.on_verify))
-			exit_bug("tried to add dynamic peer without on-verify command");
-
-		peer->config = fastd_peer_config_new(conf.peer_group);
-		peer->config->config_state = CONFIG_DYNAMIC;
-
-		peer->verify_timeout = ctx.now;
-		peer->verify_valid_timeout = ctx.now;
-
-		pr_debug("adding dynamic peer");
-#else
-		exit_bug("dynamic peers not supported");
+		case CONFIG_DYNAMIC:
+			pr_verbose("dynamic peer %P is now configured as %P", other, peer);
+			replace_peer(other, peer);
+			return true;
 #endif
+		}
 	}
 
-	setup_peer(peer);
+	peer->id = ctx.next_peer_id++;
 
 	VECTOR_ADD(ctx.peers, peer);
 	fastd_poll_add_peer();
 
-	return peer;
+	conf.protocol->init_peer_state(peer);
+
+	pr_verbose("adding peer %P", peer);
+
+	return true;
+
+  error:
+	fastd_peer_free(peer);
+	return false;
 }
 
 /** Prints a debug message when no handshake could be sent because the current remote didn't resolve successfully */

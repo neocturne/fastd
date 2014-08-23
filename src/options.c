@@ -117,14 +117,12 @@ static void option_config(const char *arg) {
 
 /** Handles the --config-peer option */
 static void option_config_peer(const char *arg) {
-	fastd_peer_config_t *peer = fastd_peer_config_new(conf.peer_group);
+	fastd_peer_t *peer = fastd_new0(fastd_peer_t);
 
 	if(!fastd_config_read(arg, conf.peer_group, peer, 0))
 		exit(1);
 
-	peer->next = ctx.peer_configs;
-	ctx.peer_configs = peer;
-
+	fastd_peer_add(peer);
 }
 
 /** Handles the --config-peer-dir option */

@@ -75,9 +75,7 @@ static void default_config(void) {
 
 /** Handles the configuration of a handshake protocol */
 void fastd_config_protocol(const char *name) {
-	if (!strcmp(name, "ec25519-fhmqvc"))
-		conf.protocol = &fastd_protocol_ec25519_fhmqvc;
-	else
+	if (strcmp(name, conf.protocol->name))
 		exit_error("config error: protocol `%s' not supported", name);
 }
 
@@ -189,7 +187,7 @@ static bool has_peer_group_peer_dirs(const fastd_peer_group_t *group) {
 }
 
 /** Reads and processes all peer definitions in the current directory (which must also be supplied as the argument) */
-static void read_peer_dir(fastd_peer_config_t **peers, fastd_peer_group_t *group, const char *dir) {
+static void read_peer_dir(fastd_peer_group_t *group, const char *dir) {
 	DIR *dirh = opendir(".");
 
 	if (dirh) {
@@ -221,18 +219,16 @@ static void read_peer_dir(fastd_peer_config_t **peers, fastd_peer_group_t *group
 				continue;
 			}
 
-			fastd_peer_config_t *peer = fastd_peer_config_new(group);
+			fastd_peer_t *peer = fastd_new0(fastd_peer_t);
 			peer->name = fastd_strdup(result->d_name);
 			peer->config_source_dir = dir;
 
-			if (fastd_config_read(result->d_name, group, peer, 0)) {
-				peer->next = *peers;
-				*peers = peer;
+			if (!fastd_config_read(result->d_name, group, peer, 0)) {
+				fastd_peer_free(peer);
+				continue;
 			}
-			else {
-				pr_warn("peer config `%s' will be ignored", result->d_name);
-				fastd_peer_config_free(peer);
-			}
+
+			fastd_peer_add(peer);
 		}
 
 		if (closedir(dirh) < 0)
@@ -245,13 +241,13 @@ static void read_peer_dir(fastd_peer_config_t **peers, fastd_peer_group_t *group
 }
 
 /** Reads all configured peer directories for a peer grup */
-static void read_peer_dirs(fastd_peer_config_t **peers, fastd_peer_group_t *group) {
+static void read_peer_dirs(fastd_peer_group_t *group) {
 	char *oldcwd = get_current_dir_name();
 
 	fastd_string_stack_t *dir;
 	for (dir = group->peer_dirs; dir; dir = dir->next) {
 		if (!chdir(dir->str))
-			read_peer_dir(peers, group, dir->str);
+			read_peer_dir(group, dir->str);
 		else
 			pr_error("change from directory `%s' to `%s' failed: %s", oldcwd, dir->str, strerror(errno));
 	}
@@ -282,7 +278,7 @@ void fastd_config_add_peer_dir(fastd_peer_group_t *group, const char *dir) {
 }
 
 /** Reads and processes a configuration file */
-bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fastd_peer_config_t *peer_config, int depth) {
+bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fastd_peer_t *peer, int depth) {
 	if (depth >= MAX_CONFIG_DEPTH)
 		exit_error("maximum config include depth exceeded");
 
@@ -327,15 +323,18 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 	YYLTYPE loc = {1, 0, 1, 0};
 	fastd_parser_state_t state = {
 		.peer_group = peer_group,
-		.peer = peer_config,
+		.peer = peer,
 		.filename = filename,
 		.depth = depth+1,
 	};
 
-	if (peer_config)
+	if (peer) {
 		token = START_PEER_CONFIG;
-	else
+		peer->group = peer_group;
+	}
+	else {
 		token = peer_group->parent ? START_PEER_GROUP_CONFIG : START_CONFIG;
+	}
 
 	int parse_ret = fastd_config_push_parse(ps, token, &token_val, &loc, &state);
 
@@ -375,17 +374,6 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 		fclose(file);
 
 	return ret;
-}
-
-/** Gathers some information about the configured peers */
-static void assess_peers(void) {
-	conf.has_floating = false;
-
-	fastd_peer_config_t *peer;
-	for (peer = ctx.peer_configs; peer; peer = peer->next) {
-		if (fastd_peer_config_is_floating(peer))
-			conf.has_floating = true;
-	}
 }
 
 /** Loads information about the configured user and group */
@@ -531,7 +519,7 @@ static void config_check_base(void) {
 		if (conf.peer_group->children)
 			exit_error("config error: in TUN mode peer groups can't be used");
 
-		if (ctx.peer_configs && ctx.peer_configs->next)
+		if (VECTOR_LEN(ctx.peers) != 1)
 			exit_error("config error: in TUN mode exactly one peer must be configured");
 	}
 
@@ -551,11 +539,11 @@ void fastd_config_check(void) {
 	config_check_base();
 
 	if (conf.mode == MODE_TUN) {
-		if (!ctx.peer_configs)
+		if (!VECTOR_LEN(ctx.peers))
 			exit_error("config error: in TUN mode exactly one peer must be configured");
 	}
 
-	if (!ctx.peer_configs && !has_peer_group_peer_dirs(conf.peer_group))
+	if (!VECTOR_LEN(ctx.peers) && !has_peer_group_peer_dirs(conf.peer_group))
 		exit_error("config error: neither fixed peers nor peer dirs have been configured");
 
 	if (!conf.method_list) {
@@ -571,98 +559,74 @@ void fastd_config_check(void) {
 void fastd_config_verify(void) {
 	config_check_base();
 	configure_methods();
-
-	fastd_peer_config_t *peer;
-	for (peer = ctx.peer_configs; peer; peer = peer->next)
-		conf.protocol->peer_verify(peer);
 }
 
 /** Reads the peer dirs of a peer group and its children */
-static void peer_dirs_read_peer_group(fastd_peer_config_t **peers, fastd_peer_group_t *group) {
-	read_peer_dirs(peers, group);
+static void peer_dirs_read_peer_group(fastd_peer_group_t *group) {
+	read_peer_dirs(group);
 
 	fastd_peer_group_t *child;
 	for (child = group->children; child; child = child->next)
-		peer_dirs_read_peer_group(peers, child);
+		peer_dirs_read_peer_group(child);
 }
 
-/** Deletes peer configs that have disappeared from a peer dir on reconfiguration */
-static void peer_dirs_handle_old_peers(fastd_peer_config_t **old_peers, fastd_peer_config_t **new_peers) {
-	fastd_peer_config_t **peer, **next, **new_peer, **new_next;
-	for (peer = old_peers; *peer; peer = next) {
-		next = &(*peer)->next;
+/** Initializes the configured peers */
+static void configure_peers(void) {
+	ctx.has_floating = false;
 
-		/* don't touch statically configured peers */
-		if (!(*peer)->config_source_dir)
+	ssize_t i;
+	for (i = VECTOR_LEN(ctx.peers)-1; i >= 0; i--) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
+
+		if (peer->config_state == CONFIG_STATIC) {
+			/* The peer hasn't been touched since the last run of init_peers(), so its definition must have disappeared */
+			fastd_peer_delete(peer);
 			continue;
-
-		/* search for each peer in the list of new peers */
-		for (new_peer = new_peers; *new_peer; new_peer = new_next) {
-			new_next = &(*new_peer)->next;
-
-			if (((*peer)->config_source_dir == (*new_peer)->config_source_dir) && strequal((*peer)->name, (*new_peer)->name)) {
-				if (fastd_peer_config_equal(*peer, *new_peer)) {
-					pr_verbose("peer `%s' unchanged", (*peer)->name);
-
-					fastd_peer_config_t *free_peer = *new_peer;
-					*new_peer = *new_next;
-					fastd_peer_config_free(free_peer);
-					peer = NULL;
-				}
-				else {
-					pr_verbose("peer `%s' changed, resetting", (*peer)->name);
-					new_peer = NULL;
-				}
-
-				break;
-			}
 		}
 
-		/* no new peer was found, or the old one has changed */
-		if (peer && (!new_peer || !*new_peer)) {
-			pr_verbose("removing peer `%s'", (*peer)->name);
-
-			fastd_peer_config_t *free_peer = *peer;
-			*peer = *next;
-			next = peer;
-
-			fastd_peer_config_purge(free_peer);
-		}
-	}
-}
-
-/** Adds new peer configs on reconfiguration */
-static void peer_dirs_handle_new_peers(fastd_peer_config_t **peers, fastd_peer_config_t *new_peers) {
-	fastd_peer_config_t *peer;
-	for (peer = new_peers; peer; peer = peer->next) {
-		if (peer->next)
+		if (fastd_peer_is_dynamic(peer))
 			continue;
 
-		peer->next = *peers;
-		*peers = new_peers;
-		return;
+		if (peer->config_state != CONFIG_DISABLED && !conf.protocol->check_peer(peer))
+			peer->config_state = CONFIG_DISABLED;
+
+		if (peer->config_state == CONFIG_DISABLED) {
+			fastd_peer_reset(peer);
+			continue;
+		}
+
+		if (fastd_peer_is_floating(peer))
+			ctx.has_floating = true;
+
+		peer->config_state = CONFIG_STATIC;
+
+		if (!fastd_peer_is_established(peer))
+			fastd_peer_reset(peer);
 	}
 }
 
 /** Refreshes the peer configurations from the configured peer dirs */
 void fastd_config_load_peer_dirs(void) {
-	fastd_peer_config_t *new_peers = NULL;
-	peer_dirs_read_peer_group(&new_peers, conf.peer_group);
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
-	peer_dirs_handle_old_peers(&ctx.peer_configs, &new_peers);
-	peer_dirs_handle_new_peers(&ctx.peer_configs, new_peers);
+		if (fastd_peer_is_dynamic(peer))
+			continue;
 
-	assess_peers();
+		/* Reset all peers' config states */
+		if (!peer->config_source_dir)
+			peer->config_state = CONFIG_NEW;
+		else if (peer->config_state == CONFIG_DISABLED)
+			peer->config_state = CONFIG_STATIC;
+	}
+
+	peer_dirs_read_peer_group(conf.peer_group);
+	configure_peers();
 }
 
 /** Frees all resources used by the global configuration */
 void fastd_config_release(void) {
-	while (ctx.peer_configs) {
-		fastd_peer_config_t *peer = ctx.peer_configs, *next = peer->next;
-		fastd_peer_config_free(peer);
-		ctx.peer_configs = next;
-	}
-
 	while (conf.bind_addrs) {
 		fastd_bind_address_t *next = conf.bind_addrs->next;
 		free(conf.bind_addrs->bindtodev);

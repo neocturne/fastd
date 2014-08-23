@@ -203,7 +203,7 @@ statement:	peer_group_statement
 	;
 
 peer_group_statement:
-		TOK_PEER peer '{' peer_conf '}'
+		TOK_PEER peer '{' peer_conf '}' peer_after
 	|	TOK_PEER TOK_GROUP peer_group '{' peer_group_config '}' peer_group_after
 	|	TOK_PEER TOK_LIMIT peer_limit ';'
 	|	TOK_INCLUDE include ';'
@@ -422,14 +422,16 @@ on_verify:	sync_def_async TOK_STRING {
 	;
 
 peer:		TOK_STRING {
-			fastd_peer_config_t *peer = fastd_peer_config_new(state->peer_group);
-			peer->name = fastd_strdup($1->str);
-			peer->next = ctx.peer_configs;
-
-			ctx.peer_configs = peer;
-			state->peer = peer;
+			state->peer = fastd_new0(fastd_peer_t);
+			state->peer->name = fastd_strdup($1->str);
+			state->peer->group = state->peer_group;
 		}
 	;
+
+peer_after:	{
+			if (!fastd_peer_add(state->peer))
+				YYERROR;
+		}
 
 peer_conf:	peer_conf peer_statement
 	|
@@ -442,59 +444,51 @@ peer_statement: TOK_REMOTE peer_remote ';'
 	;
 
 peer_remote:	TOK_ADDR4 port {
-			fastd_remote_config_t **remote = &state->peer->remotes;
-			while (*remote)
-				remote = &(*remote)->next;
+			fastd_remote_t remote = {};
 
-			*remote = fastd_new0(fastd_remote_config_t);
+			remote.address.in.sin_family = AF_INET;
+			remote.address.in.sin_addr = $1;
+			remote.address.in.sin_port = htons($2);
+			fastd_peer_address_simplify(&remote.address);
 
-			(*remote)->address.in.sin_family = AF_INET;
-			(*remote)->address.in.sin_addr = $1;
-			(*remote)->address.in.sin_port = htons($2);
-			fastd_peer_address_simplify(&(*remote)->address);
+			VECTOR_ADD(state->peer->remotes, remote);
 		}
 	|	TOK_ADDR6 port {
-			fastd_remote_config_t **remote = &state->peer->remotes;
-			while (*remote)
-				remote = &(*remote)->next;
+			fastd_remote_t remote = {};
 
-			*remote = fastd_new0(fastd_remote_config_t);
+			remote.address.in6.sin6_family = AF_INET6;
+			remote.address.in6.sin6_addr = $1;
+			remote.address.in6.sin6_port = htons($2);
+			fastd_peer_address_simplify(&remote.address);
 
-			(*remote)->address.in6.sin6_family = AF_INET6;
-			(*remote)->address.in6.sin6_addr = $1;
-			(*remote)->address.in6.sin6_port = htons($2);
-			fastd_peer_address_simplify(&(*remote)->address);
+			VECTOR_ADD(state->peer->remotes, remote);
 		}
 	|	TOK_ADDR6_SCOPED port {
 			char addrbuf[INET6_ADDRSTRLEN];
 			size_t addrlen;
-			fastd_remote_config_t **remote = &state->peer->remotes;
-			while (*remote)
-				remote = &(*remote)->next;
 
 			inet_ntop(AF_INET6, &$1.addr, addrbuf, sizeof(addrbuf));
 			addrlen = strlen(addrbuf);
 
-			*remote = fastd_new0(fastd_remote_config_t);
+			fastd_remote_t remote = {};
+			remote.hostname = fastd_alloc(addrlen + strlen($1.ifname) + 2);
+			memcpy(remote.hostname, addrbuf, addrlen);
+			remote.hostname[addrlen] = '%';
+			strcpy(remote.hostname+addrlen+1, $1.ifname);
 
-			(*remote)->hostname = fastd_alloc(addrlen + strlen($1.ifname) + 2);
-			memcpy((*remote)->hostname, addrbuf, addrlen);
-			(*remote)->hostname[addrlen] = '%';
-			strcpy((*remote)->hostname+addrlen+1, $1.ifname);
+			remote.address.sa.sa_family = AF_INET6;
+			remote.address.in.sin_port = htons($2);
 
-			(*remote)->address.sa.sa_family = AF_INET6;
-			(*remote)->address.in.sin_port = htons($2);
+			VECTOR_ADD(state->peer->remotes, remote);
 		}
 	|	maybe_af TOK_STRING port {
-			fastd_remote_config_t **remote = &state->peer->remotes;
-			while (*remote)
-				remote = &(*remote)->next;
+			fastd_remote_t remote = {};
 
-			*remote = fastd_new0(fastd_remote_config_t);
+			remote.hostname = fastd_strdup($2->str);
+			remote.address.sa.sa_family = $1;
+			remote.address.in.sin_port = htons($3);
 
-			(*remote)->hostname = fastd_strdup($2->str);
-			(*remote)->address.sa.sa_family = $1;
-			(*remote)->address.in.sin_port = htons($3);
+			VECTOR_ADD(state->peer->remotes, remote);
 		}
 	;
 
@@ -504,7 +498,8 @@ peer_float:	boolean {
 	;
 
 peer_key:	TOK_STRING {
-			free(state->peer->key); state->peer->key = fastd_strdup($1->str);
+			free(state->peer->key);
+			state->peer->key = conf.protocol->read_key($1->str);
 		}
 	;
 
@@ -541,14 +536,14 @@ forward:	boolean		{ conf.forward = $1; }
 
 
 include:	TOK_PEER TOK_STRING maybe_as {
-			fastd_peer_config_t *peer = fastd_peer_config_new(state->peer_group);
-			if ($3)
-				peer->name = fastd_strdup($3->str);
+			fastd_peer_t *peer = fastd_new0(fastd_peer_t);
+			peer->name = fastd_strdup(fastd_string_stack_get($3));
+
 			if (!fastd_config_read($2->str, state->peer_group, peer, state->depth))
 				YYERROR;
 
-			peer->next = ctx.peer_configs;
-			ctx.peer_configs = peer;
+			if (!fastd_peer_add(peer))
+				YYERROR;
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
 			fastd_config_add_peer_dir(state->peer_group, $3->str);

@@ -93,16 +93,18 @@ static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_a
 
 /** Creates a string representation of a peer */
 static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *peer) {
-	if (peer->config->name) {
-		return snprintf_safe(buffer, size, "<%s>", peer->config->name);
+	if (peer) {
+		if (peer->name) {
+			return snprintf_safe(buffer, size, "<%s>", peer->name);
+		}
+		else {
+			char buf[65];
+			if (conf.protocol->describe_peer(peer, buf, sizeof(buf)))
+				return snprintf_safe(buffer, size, "{%s}", buf);
+		}
 	}
-	else {
-		char buf[65];
-		if (conf.protocol->describe_peer(peer, buf, sizeof(buf)))
-			return snprintf_safe(buffer, size, "{%s}", buf);
-		else
-			return snprintf_safe(buffer, size, "(null)");
-	}
+
+	return snprintf_safe(buffer, size, "(null)");
 }
 
 /** vsnprintf-like function using different conversion specifiers */
@@ -166,12 +168,7 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 			break;
 
 		case 'P':
-			p = va_arg(ap, const fastd_peer_t*);
-
-			if (p)
-				buffer += snprint_peer_str(buffer, buffer_end-buffer, (const fastd_peer_t*)p);
-			else
-				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
+			buffer += snprint_peer_str(buffer, buffer_end-buffer, va_arg(ap, const fastd_peer_t*));
 			break;
 
 		case 'I':

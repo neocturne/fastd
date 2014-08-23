@@ -150,7 +150,7 @@ static inline void handle_socket_receive_known(fastd_socket_t *sock, const fastd
 
 /** Determines if packets from known addresses are accepted */
 static inline bool allow_unknown_peers(void) {
-	return conf.has_floating || fastd_allow_verify();
+	return ctx.has_floating || fastd_allow_verify();
 }
 
 /** Handles a packet received from an unknown address */

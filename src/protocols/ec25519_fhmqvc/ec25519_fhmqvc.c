@@ -74,37 +74,26 @@ static fastd_protocol_config_t* protocol_init(void) {
 	return protocol_config;
 }
 
-/** Checks if a peer configuration is valid */
-static void protocol_peer_verify(fastd_peer_config_t *peer_conf) {
-	if (!peer_conf->key)
-		exit_error("no key configured for peer `%s'", peer_conf->name);
+/** Parses a peer's key */
+static fastd_protocol_key_t * protocol_read_key(const char *key) {
+	fastd_protocol_key_t *ret = fastd_new(fastd_protocol_key_t);
 
-	aligned_int256_t key;
-	if (!read_key(key.u8, peer_conf->key))
-		exit_error("invalid key configured for peer `%s'", peer_conf->name);
+	if (!read_key(ret->key.u8, key)) {
+		free(ret);
+		return NULL;
+	}
+
+	return ret;
 }
 
-/** Initializes the protocol-specific peer configuration */
-static void protocol_peer_configure(fastd_peer_config_t *peer_conf) {
-	if (peer_conf->protocol_config)
-		return;
-
-	if (!peer_conf->key) {
-		pr_warn("no key configured for `%s', disabling peer", peer_conf->name);
-		return;
+/** Checks if a peer is configured using our own key */
+static bool protocol_check_peer(const fastd_peer_t *peer) {
+	if (memcmp(conf.protocol_config->key.public.u8, peer->key->key.u8, PUBLICKEYBYTES) == 0) {
+		pr_verbose("found own key as %P, ignoring peer", peer);
+		return false;
 	}
 
-	aligned_int256_t key;
-	if (!read_key(key.u8, peer_conf->key)) {
-		pr_warn("invalid key configured for `%s', disabling peer", peer_conf->name);
-		return;
-	}
-
-	peer_conf->protocol_config = fastd_new(fastd_protocol_peer_config_t);
-	peer_conf->protocol_config->public_key = key;
-
-	if (memcmp(&peer_conf->protocol_config->public_key, &conf.protocol_config->key.public, PUBLICKEYBYTES) == 0)
-		pr_debug("found own key as `%s', ignoring peer", peer_conf->name);
+	return true;
 }
 
 /** Checks if the current session with a peer is valid and resets the connection if not */
@@ -215,11 +204,6 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.name = "ec25519-fhmqvc",
 
 	.init = protocol_init,
-	.peer_verify = protocol_peer_verify,
-	.peer_configure = protocol_peer_configure,
-
-	.peer_check = fastd_protocol_ec25519_fhmqvc_peer_check,
-	.peer_check_dynamic = fastd_protocol_ec25519_fhmqvc_peer_check_dynamic,
 
 	.handshake_init = fastd_protocol_ec25519_fhmqvc_handshake_init,
 	.handshake_handle = fastd_protocol_ec25519_fhmqvc_handshake_handle,
@@ -234,8 +218,13 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.reset_peer_state = fastd_protocol_ec25519_fhmqvc_reset_peer_state,
 	.free_peer_state = fastd_protocol_ec25519_fhmqvc_free_peer_state,
 
+	.read_key = protocol_read_key,
+	.check_peer = protocol_check_peer,
+	.find_peer = fastd_protocol_ec25519_fhmqvc_find_peer,
+
 	.generate_key = fastd_protocol_ec25519_fhmqvc_generate_key,
 	.show_key = fastd_protocol_ec25519_fhmqvc_show_key,
+
 	.set_shell_env = fastd_protocol_ec25519_fhmqvc_set_shell_env,
 	.describe_peer = fastd_protocol_ec25519_fhmqvc_describe_peer,
 };

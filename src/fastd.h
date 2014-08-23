@@ -68,20 +68,7 @@ struct fastd_protocol {
 	const char *name;
 
 	/** Performs one-time initialization tasks for the protocol */
-	fastd_protocol_config_t* (*init)(void);
-
-	/** Does some basic checks for the validity of a peer configuration */
-	void (*peer_verify)(fastd_peer_config_t *peer_conf);
-
-	/** Initializes protocol-specific parts of a peer configuration */
-	void (*peer_configure)(fastd_peer_config_t *peer_conf);
-
-	/** Checks if a peer configuration is valid and a connection may be established */
-	bool (*peer_check)(fastd_peer_config_t *peer_conf);
-
-	/** Checks if a dynamic peer is valid and a connection may be established */
-	bool (*peer_check_dynamic)(fastd_peer_t *peer);
-
+	fastd_protocol_config_t * (*init)(void);
 
 	/** Sends a handshake to the given peer */
 	void (*handshake_init)(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer);
@@ -101,15 +88,26 @@ struct fastd_protocol {
 	/** Sends a payload data packet to the given peer */
 	void (*send)(fastd_peer_t *peer, fastd_buffer_t buffer);
 
+
 	/** Initializes the protocol state for a peer */
 	void (*init_peer_state)(fastd_peer_t *peer);
 
 	/** Resets the protocol state for a peer (resets active sessions etc.) */
 	void (*reset_peer_state)(fastd_peer_t *peer);
 
-
 	/** Frees the protocol state for a peer */
 	void (*free_peer_state)(fastd_peer_t *peer);
+
+
+	/** Initializes protocol-specific parts of a peer configuration */
+	fastd_protocol_key_t * (*read_key)(const char *key);
+
+	/** Checks a peer after reading its configuration */
+	bool (*check_peer)(const fastd_peer_t *peer);
+
+	/** Searches a peer identified by a specific key */
+	fastd_peer_t * (*find_peer)(const fastd_protocol_key_t *key);
+
 
 	/** Generates a new keypair and outputs it */
 	void (*generate_key)(void);
@@ -206,8 +204,6 @@ struct fastd_config {
 
 	fastd_peer_group_t *peer_group;		/**< The root peer group configuration */
 
-	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
-
 	fastd_protocol_config_t *protocol_config; /**< The protocol-specific configuration */
 
 	fastd_shell_command_t on_pre_up;	/**< The command to execute before the initialization of the tunnel interface */
@@ -241,8 +237,6 @@ struct fastd_context {
 
 	struct timespec now;			/**< The current monotonous timestamp */
 
-	fastd_peer_config_t *peer_configs;	/**< The configured peers */
-
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
 
@@ -255,6 +249,8 @@ struct fastd_context {
 #else
 	VECTOR(struct pollfd) pollfds;		/**< The vector of pollfds for all file descriptors */
 #endif
+
+	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
 
 	uint32_t peer_addr_ht_seed;		/**< The hash seed used for peer_addr_ht */
 	VECTOR(fastd_peer_t*) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
@@ -423,6 +419,11 @@ static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t
 	strcpy(ret->str, str);
 
 	return ret;
+}
+
+/** Gets the head of string stack (or NULL if the stack is NULL) */
+static inline const char * fastd_string_stack_get(const fastd_string_stack_t *stack) {
+	return stack ? stack->str : NULL;
 }
 
 /** Frees a whole string stack */

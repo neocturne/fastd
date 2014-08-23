@@ -121,7 +121,7 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 		return;
 	}
 
-	pr_verbose("resolving host `%s' for peer %P...", remote->config->hostname, peer);
+	pr_verbose("resolving host `%s' for peer %P...", remote->hostname, peer);
 
 	remote->last_resolve_timeout = fastd_in_seconds(MIN_RESOLVE_INTERVAL);
 
@@ -129,8 +129,8 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 
 	arg->peer_id = peer->id;
 	arg->remote = remote - VECTOR_DATA(peer->remotes);
-	arg->hostname = fastd_strdup(remote->config->hostname);
-	arg->constraints = remote->config->address;
+	arg->hostname = fastd_strdup(remote->hostname);
+	arg->constraints = remote->address;
 
 	pthread_t thread;
 	if ((errno = pthread_create(&thread, &ctx.detached_thread, resolve_peer, arg)) != 0) {

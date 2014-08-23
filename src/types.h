@@ -82,11 +82,9 @@ typedef union fastd_peer_address fastd_peer_address_t;
 typedef struct fastd_bind_address fastd_bind_address_t;
 typedef struct fastd_socket fastd_socket_t;
 typedef struct fastd_peer_group fastd_peer_group_t;
-typedef struct fastd_peer_config fastd_peer_config_t;
 typedef struct fastd_eth_addr fastd_eth_addr_t;
 typedef struct fastd_peer fastd_peer_t;
 typedef struct fastd_peer_eth_addr fastd_peer_eth_addr_t;
-typedef struct fastd_remote_config fastd_remote_config_t;
 typedef struct fastd_remote fastd_remote_t;
 typedef struct fastd_stats fastd_stats_t;
 typedef struct fastd_handshake_timeout fastd_handshake_timeout_t;
@@ -124,7 +122,7 @@ typedef union fastd_block128 {
 /* May be defined by the protocol/method/crypto implementations however they like */
 typedef struct fastd_protocol_config fastd_protocol_config_t;
 typedef struct fastd_protocol_state fastd_protocol_state_t;
-typedef struct fastd_protocol_peer_config fastd_protocol_peer_config_t;
+typedef struct fastd_protocol_key fastd_protocol_key_t;
 typedef struct fastd_protocol_peer_state fastd_protocol_peer_state_t;
 
 typedef struct fastd_method fastd_method_t;
