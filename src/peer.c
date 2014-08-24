@@ -750,7 +750,8 @@ bool fastd_peer_add(fastd_peer_t *peer) {
 
 	conf.protocol->init_peer_state(peer);
 
-	pr_verbose("adding peer %P", peer);
+	if (!fastd_peer_is_dynamic(peer) && peer->config_source_dir)
+		pr_verbose("adding peer %P", peer);
 
 	return true;
 
