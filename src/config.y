@@ -429,8 +429,10 @@ peer:		TOK_STRING {
 	;
 
 peer_after:	{
-			if (!fastd_peer_add(state->peer))
+			if (!fastd_peer_add(state->peer)) {
+				fastd_config_error(&@$, state, "invalid peer definition");
 				YYERROR;
+			}
 		}
 
 peer_conf:	peer_conf peer_statement
@@ -542,8 +544,10 @@ include:	TOK_PEER TOK_STRING maybe_as {
 			if (!fastd_config_read($2->str, state->peer_group, peer, state->depth))
 				YYERROR;
 
-			if (!fastd_peer_add(peer))
+			if (!fastd_peer_add(peer)) {
+				fastd_config_error(&@$, state, "invalid peer definition");
 				YYERROR;
+			}
 		}
 	|	TOK_PEERS TOK_FROM TOK_STRING {
 			fastd_config_add_peer_dir(state->peer_group, $3->str);
