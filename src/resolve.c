@@ -116,14 +116,14 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote) {
 	if (fastd_peer_is_dynamic(peer))
 		exit_bug("trying to resolve dynamic peer");
 
-	if (!fastd_timed_out(&remote->last_resolve_timeout)) {
+	if (!fastd_timed_out(remote->last_resolve_timeout)) {
 		/* last resolve was just a few seconds ago */
 		return;
 	}
 
 	pr_verbose("resolving host `%s' for peer %P...", remote->hostname, peer);
 
-	remote->last_resolve_timeout = fastd_in_seconds(MIN_RESOLVE_INTERVAL);
+	remote->last_resolve_timeout = ctx.now + MIN_RESOLVE_INTERVAL;
 
 	resolv_arg_t *arg = fastd_new(resolv_arg_t);
 

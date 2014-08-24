@@ -177,7 +177,7 @@ static bool establish(fastd_peer_t *peer, const fastd_method_info_t *method, fas
 		return false;
 	}
 
-	peer->establish_handshake_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
+	peer->establish_handshake_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 	fastd_peer_seen(peer);
 	fastd_peer_set_established(peer);
 
@@ -567,8 +567,8 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 /** Is called when a handshake from a dynamic peer is received */
 static bool handle_dynamic(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 			     fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
-	if (handshake->type > 2 || !fastd_timed_out(&peer->verify_timeout))
-		return !fastd_timed_out(&peer->verify_valid_timeout);
+	if (handshake->type > 2 || !fastd_timed_out(peer->verify_timeout))
+		return !fastd_timed_out(peer->verify_valid_timeout);
 
 	verify_data_t verify_data;
 	memset(&verify_data, 0, sizeof(verify_data));
@@ -597,7 +597,7 @@ void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fast
 
 	const verify_data_t *data = protocol_data;
 
-	peer->last_handshake_response_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
+	peer->last_handshake_response_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 	peer->last_handshake_response_address = *remote_addr;
 	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, method);
 }
@@ -652,7 +652,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		return;
 	}
 
-	if (!fastd_timed_out(&peer->establish_handshake_timeout)) {
+	if (!fastd_timed_out(peer->establish_handshake_timeout)) {
 		pr_debug("received repeated handshakes from %P[%I], ignoring", peer, remote_addr);
 		return;
 	}
@@ -675,7 +675,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 	memcpy(&peer_handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
 
 	if (handshake->type == 1) {
-		if (!fastd_timed_out(&peer->last_handshake_response_timeout)
+		if (!fastd_timed_out(peer->last_handshake_response_timeout)
 		    && fastd_peer_address_equal(remote_addr, &peer->last_handshake_response_address)) {
 			pr_debug("not responding to repeated handshake from %P[%I]", peer, remote_addr);
 			return;
@@ -683,7 +683,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 
 		pr_verbose("received handshake from %P[%I]%s%s", peer, remote_addr, handshake->peer_version ? " using fastd " : "", handshake->peer_version ?: "");
 
-		peer->last_handshake_response_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
+		peer->last_handshake_response_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 		peer->last_handshake_response_address = *remote_addr;
 		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key, method);
 		return;

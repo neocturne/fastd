@@ -72,8 +72,8 @@ void fastd_protocol_ec25519_fhmqvc_maintenance(void) {
 
 		new_handshake_key(&ctx.protocol_state->handshake_key.key);
 
-		ctx.protocol_state->handshake_key.preferred_till = fastd_in_seconds(15);
-		ctx.protocol_state->handshake_key.valid_till = fastd_in_seconds(30);
+		ctx.protocol_state->handshake_key.preferred_till = ctx.now + 15000;
+		ctx.protocol_state->handshake_key.valid_till = ctx.now + 30000;
 	}
 }
 

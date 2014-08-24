@@ -46,13 +46,13 @@
 
 /** Common method session state */
 typedef struct fastd_method_common {
-	struct timespec valid_till;			/**< How long the session is valid */
-	struct timespec refresh_after;			/**< When to try refreshing the session */
+	fastd_timeout_t valid_till;			/**< How long the session is valid */
+	fastd_timeout_t refresh_after;			/**< When to try refreshing the session */
 
 	uint8_t send_nonce[COMMON_NONCEBYTES];		/**< The next nonce to use */
 	uint8_t receive_nonce[COMMON_NONCEBYTES];	/**< The hightest nonce received to far for this session */
 
-	struct timespec reorder_timeout;		/**< How long to packets with a lower sequence number (nonce) than the newest received */
+	fastd_timeout_t reorder_timeout;		/**< How long to packets with a lower sequence number (nonce) than the newest received */
 	uint64_t receive_reorder_seen;			/**< Bitmap specifying which of the 64 sequence numbers (nonces) before \a receive_nonce have bit seen */
 } fastd_method_common_t;
 
@@ -71,7 +71,7 @@ static inline bool fastd_method_session_common_is_valid(const fastd_method_commo
 	if (session->send_nonce[0] == 0xff && session->send_nonce[1] == 0xff)
 		return false;
 
-	return (!fastd_timed_out(&session->valid_till));
+	return (!fastd_timed_out(session->valid_till));
 }
 
 /**
@@ -92,7 +92,7 @@ static inline bool fastd_method_session_common_want_refresh(const fastd_method_c
 	if (session->send_nonce[0] == 0xff)
 		return true;
 
-	if (fastd_method_session_common_is_initiator(session) && fastd_timed_out(&session->refresh_after))
+	if (fastd_method_session_common_is_initiator(session) && fastd_timed_out(session->refresh_after))
 		return true;
 
 	return false;
@@ -100,9 +100,9 @@ static inline bool fastd_method_session_common_want_refresh(const fastd_method_c
 
 /** The common \a session_superseded implementation */
 static inline void fastd_method_session_common_superseded(fastd_method_common_t *session) {
-	struct timespec valid_max = fastd_in_seconds(KEY_VALID_OLD);
+	fastd_timeout_t valid_max = ctx.now + KEY_VALID_OLD;
 
-	if (timespec_after(&session->valid_till, &valid_max))
+	if (valid_max < session->valid_till)
 		session->valid_till = valid_max;
 }
 

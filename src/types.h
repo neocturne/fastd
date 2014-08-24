@@ -76,6 +76,10 @@ typedef enum fastd_drop_caps {
 } fastd_drop_caps_t;
 
 
+/** A timestamp used as a timeout */
+typedef int64_t fastd_timeout_t;
+
+
 typedef struct fastd_buffer fastd_buffer_t;
 
 typedef union fastd_peer_address fastd_peer_address_t;

@@ -57,7 +57,7 @@ static inline int handshake_timeout(void) {
 
 	fastd_peer_t *peer = container_of(ctx.handshake_queue.next, fastd_peer_t, handshake_entry);
 
-	int diff_msec = timespec_diff(&peer->next_handshake, &ctx.now);
+	int diff_msec = peer->next_handshake - ctx.now;
 	if (diff_msec < 0)
 		return 0;
 	else
@@ -129,7 +129,7 @@ void fastd_poll_delete_peer(size_t i UNUSED) {
 
 
 void fastd_poll_handle(void) {
-	int maintenance_timeout = timespec_diff(&ctx.next_maintenance, &ctx.now);
+	int maintenance_timeout = ctx.next_maintenance - ctx.now;
 
 	if (maintenance_timeout < 0)
 		maintenance_timeout = 0;
@@ -244,7 +244,7 @@ void fastd_poll_delete_peer(size_t i) {
 void fastd_poll_handle(void) {
 	size_t i;
 
-	int maintenance_timeout = timespec_diff(&ctx.next_maintenance, &ctx.now);
+	int maintenance_timeout = ctx.next_maintenance - ctx.now;
 
 	if (maintenance_timeout < 0)
 		maintenance_timeout = 0;

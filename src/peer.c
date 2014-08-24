@@ -258,21 +258,13 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
 	fastd_peer_unschedule_handshake(peer);
 
-	peer->next_handshake = ctx.now;
-
-	peer->next_handshake.tv_sec += delay/1000;
-	peer->next_handshake.tv_nsec += (delay%1000)*1000000;
-
-	if (peer->next_handshake.tv_nsec > 1000000000) {
-		peer->next_handshake.tv_sec++;
-		peer->next_handshake.tv_nsec -= 1000000000;
-	}
+	peer->next_handshake = ctx.now + delay;
 
 	fastd_dlist_head_t *list;
 	for (list = &ctx.handshake_queue; list->next; list = list->next) {
 		fastd_peer_t *entry = container_of(list->next, fastd_peer_t, handshake_entry);
 
-		if (timespec_after(&entry->next_handshake, &peer->next_handshake))
+		if (entry->next_handshake > peer->next_handshake)
 			break;
 	}
 
@@ -785,13 +777,13 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 		return;
 	}
 
-	if (!fastd_timed_out(&peer->last_handshake_timeout)
+	if (!fastd_timed_out(peer->last_handshake_timeout)
 	    && fastd_peer_address_equal(&peer->address, &peer->last_handshake_address)) {
 		pr_debug("not sending a handshake to %P as we sent one a short time ago", peer);
 		return;
 	}
 
-	peer->last_handshake_timeout = fastd_in_seconds(MIN_HANDSHAKE_INTERVAL);
+	peer->last_handshake_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 	peer->last_handshake_address = peer->address;
 	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);
 }
@@ -802,7 +794,7 @@ void fastd_peer_handle_handshake_queue(void) {
 		return;
 
 	fastd_peer_t *peer = container_of(ctx.handshake_queue.next, fastd_peer_t, handshake_entry);
-	if (!fastd_timed_out(&peer->next_handshake))
+	if (!fastd_timed_out(peer->next_handshake))
 		return;
 
 	fastd_peer_schedule_handshake_default(peer);
@@ -875,7 +867,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 
 		if (cmp == 0) {
 			VECTOR_INDEX(ctx.eth_addrs, cur).peer = peer;
-			VECTOR_INDEX(ctx.eth_addrs, cur).timeout = fastd_in_seconds(ETH_ADDR_STALE_TIME);
+			VECTOR_INDEX(ctx.eth_addrs, cur).timeout = ctx.now + ETH_ADDR_STALE_TIME;
 			return; /* We're done here. */
 		}
 		else if (cmp < 0) {
@@ -886,7 +878,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 		}
 	}
 
-	VECTOR_INSERT(ctx.eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, fastd_in_seconds(ETH_ADDR_STALE_TIME)}), min);
+	VECTOR_INSERT(ctx.eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, ctx.now + ETH_ADDR_STALE_TIME}), min);
 
 	pr_debug("learned new MAC address %E on peer %P", &addr, peer);
 }
@@ -911,11 +903,11 @@ fastd_peer_t* fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
 static bool maintain_peer(fastd_peer_t *peer) {
 	if (fastd_peer_is_dynamic(peer) || fastd_peer_is_established(peer)) {
 		/* check for peer timeout */
-		if (fastd_timed_out(&peer->timeout)) {
+		if (fastd_timed_out(peer->timeout)) {
 #ifdef WITH_DYNAMIC_PEERS
 			if (fastd_peer_is_dynamic(peer) &&
-			    fastd_timed_out(&peer->verify_timeout) &&
-			    fastd_timed_out(&peer->verify_valid_timeout)) {
+			    fastd_timed_out(peer->verify_timeout) &&
+			    fastd_timed_out(peer->verify_valid_timeout)) {
 				fastd_peer_delete(peer);
 				return false;
 			}
@@ -930,7 +922,7 @@ static bool maintain_peer(fastd_peer_t *peer) {
 		if (!fastd_peer_is_established(peer))
 			return true;
 
-		if (!fastd_timed_out(&peer->keepalive_timeout))
+		if (!fastd_timed_out(peer->keepalive_timeout))
 			return true;
 
 		pr_debug2("sending keepalive to %P", peer);
@@ -945,10 +937,10 @@ static void eth_addr_cleanup(void) {
 	size_t i, deleted = 0;
 
 	for (i = 0; i < VECTOR_LEN(ctx.eth_addrs); i++) {
-		if (fastd_timed_out(&VECTOR_INDEX(ctx.eth_addrs, i).timeout)) {
+		if (fastd_timed_out(VECTOR_INDEX(ctx.eth_addrs, i).timeout)) {
 			deleted++;
 			pr_debug("MAC address %E not seen for more than %u seconds, removing",
-				 &VECTOR_INDEX(ctx.eth_addrs, i).addr, ETH_ADDR_STALE_TIME);
+				 &VECTOR_INDEX(ctx.eth_addrs, i).addr, ETH_ADDR_STALE_TIME/1000);
 		}
 		else if (deleted) {
 			VECTOR_INDEX(ctx.eth_addrs, i-deleted) = VECTOR_INDEX(ctx.eth_addrs, i);

@@ -485,7 +485,7 @@ static inline void init(int argc, char *argv[]) {
 	init_config(&status_fd);
 
 	fastd_update_time();
-	ctx.next_maintenance = fastd_in_seconds(MAINTENANCE_INTERVAL);
+	ctx.next_maintenance = ctx.now + MAINTENANCE_INTERVAL;
 	ctx.unknown_handshakes[0].timeout = ctx.now;
 
 #ifdef WITH_DYNAMIC_PEERS
@@ -544,13 +544,13 @@ static inline void init(int argc, char *argv[]) {
 
 /** Performs periodic maintenance tasks */
 static inline void maintenance(void) {
-	if (!fastd_timed_out(&ctx.next_maintenance))
+	if (!fastd_timed_out(ctx.next_maintenance))
 		return;
 
 	fastd_socket_handle_binds();
 	fastd_peer_maintenance();
 
-	ctx.next_maintenance.tv_sec += MAINTENANCE_INTERVAL;
+	ctx.next_maintenance += MAINTENANCE_INTERVAL;
 }
 
 /** Reaps zombies of asynchronous shell commands. */

@@ -101,46 +101,46 @@
 
 
 /** The interval of periodic maintenance tasks */
-#define MAINTENANCE_INTERVAL 10
+#define MAINTENANCE_INTERVAL 10000	/* 10 seconds */
 
 /** The time after which a keepalive should be sent */
-#define KEEPALIVE_TIMEOUT 15
+#define KEEPALIVE_TIMEOUT 15000		/* 15 seconds */
 
 /** The time after with a peer is reset if no traffic is received from it */
-#define PEER_STALE_TIME 90
+#define PEER_STALE_TIME 90000		/* 90 seconds */
 
 /** The time after which a peer's ethernet address is forgotten if it is not seen */
-#define ETH_ADDR_STALE_TIME 300
+#define ETH_ADDR_STALE_TIME 300000	/* 5 minutes */
 
 
 /** The time after a packet is received and no packets with lower sequence numbers are accepted anymore */
-#define REORDER_TIME 10
+#define REORDER_TIME 10000
 
 
 /** The minimum time that must pass between two on-verify calls on the same peer */
-#define MIN_VERIFY_INTERVAL 10
+#define MIN_VERIFY_INTERVAL 10000	/* 10 seconds */
 
 /** How long a peer stays valid after a successful on-verify run */
-#define VERIFY_VALID_TIME 60	/* 1 minute */
+#define VERIFY_VALID_TIME 60000		/* 1 minute */
 
 /** Maximum number of concurrent on-verify runs */
 #define VERIFY_LIMIT 32
 
 /** The minimum interval between two handshakes with a peer */
-#define MIN_HANDSHAKE_INTERVAL 15
+#define MIN_HANDSHAKE_INTERVAL 15000	/* 15 seconds */
 
 /** The minimum interval between two resolves of the same remote */
-#define MIN_RESOLVE_INTERVAL 15
+#define MIN_RESOLVE_INTERVAL 15000	/* 15 seconds */
 
 
 /** How long a session stays valid after a key is negotiated */
-#define KEY_VALID 3600		/* 60 minutes */
+#define KEY_VALID 3600000		/* 60 minutes */
 
 /** How long an old session stays valid after a new session has been established */
-#define KEY_VALID_OLD 60	/* 1 minute */
+#define KEY_VALID_OLD 60000		/* 1 minute */
 
 /** How many seconds after the establishment of a session we want to refresh the session */
-#define KEY_REFRESH 3300	/* 55 minutes */
+#define KEY_REFRESH 3300000		/* 55 minutes */
 
 /** A random time up to KEY_REFRESH_SPLAY is subtracted from KEY_REFRESH */
-#define KEY_REFRESH_SPLAY 300	/* 5 minutes */
+#define KEY_REFRESH_SPLAY 300000	/* 5 minutes */

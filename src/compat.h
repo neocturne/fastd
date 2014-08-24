@@ -116,7 +116,7 @@ static inline char *get_current_dir_name(void) {
 #define CLOCK_MONOTONIC 0
 #define clockid_t int
 
-static inline int clock_gettime(clockid_t clk_id __attribute__((unused)), struct timespec *tp) {
+static inline int clock_gettime(clockid_t clk_id __attribute__((unused)), fastd_timeout_t *tp) {
 	static mach_timebase_info_data_t timebase_info = {};
 
 	if (!timebase_info.denom)

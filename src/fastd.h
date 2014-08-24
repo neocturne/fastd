@@ -154,7 +154,7 @@ struct fastd_stats {
 /** A data structure keeping track of an unknown addresses that a handshakes was received from recently */
 struct fastd_handshake_timeout {
 	fastd_peer_address_t address;		/**< An address a handshake was received from */
-	struct timespec timeout;		/**< Timeout until handshakes from this address are ignored */
+	fastd_timeout_t timeout;		/**< Timeout until handshakes from this address are ignored */
 };
 
 
@@ -235,7 +235,7 @@ struct fastd_context {
 
 	char *ifname;				/**< The actual interface name */
 
-	struct timespec now;			/**< The current monotonous timestamp */
+	int64_t now;				/**< The current monotonous timestamp in microseconds after an arbitrary point in time */
 
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
@@ -256,7 +256,7 @@ struct fastd_context {
 	VECTOR(fastd_peer_t*) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
 
 	fastd_dlist_head_t handshake_queue;	/**< A doubly linked list of the peers currently queued for handshakes (ordered by the time of the next handshake) */
-	struct timespec next_maintenance;	/**< The time of the next maintenance call */
+	fastd_timeout_t next_maintenance;	/**< The time of the next maintenance call */
 
 	VECTOR(pid_t) async_pids;		/**< PIDs of asynchronously executed commands which still have to be reaped */
 	int async_rfd;				/**< The read side of the pipe used to send data from other thread to the main thread */
@@ -435,17 +435,6 @@ static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 	}
 }
 
-/** Compares two timespecs and returns \em true if \p tp1 is after \p tp2 */
-static inline bool timespec_after(const struct timespec *tp1, const struct timespec *tp2) {
-	return (tp1->tv_sec > tp2->tv_sec ||
-		(tp1->tv_sec == tp2->tv_sec && tp1->tv_nsec > tp2->tv_nsec));
-}
-
-/** Returns (\a tp1 - \a tp2) in milliseconds  */
-static inline int timespec_diff(const struct timespec *tp1, const struct timespec *tp2) {
-	return ((tp1->tv_sec - tp2->tv_sec))*1000 + (tp1->tv_nsec - tp2->tv_nsec)/1000000;
-}
-
 /**
    Checks if a timeout has occured
 
@@ -455,20 +444,16 @@ static inline int timespec_diff(const struct timespec *tp1, const struct timespe
 
    \note The current time is updated only once per main loop iteration, after waiting for input.
 */
-static inline bool fastd_timed_out(const struct timespec *timeout) {
-	return !timespec_after(timeout, &ctx.now);
-}
-
-/** Returns a timespec that lies a given number of seconds in the future */
-static inline struct timespec fastd_in_seconds(const int seconds) {
-	struct timespec ret = ctx.now;
-	ret.tv_sec += seconds;
-	return ret;
+static inline bool fastd_timed_out(fastd_timeout_t timeout) {
+	return timeout <= ctx.now;
 }
 
 /** Updates the current time */
 static inline void fastd_update_time(void) {
-	clock_gettime(CLOCK_MONOTONIC, &ctx.now);
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	ctx.now = (1000*(int64_t)ts.tv_sec) + ts.tv_nsec/1000000;
 }
 
 /** Checks if a on-verify command is set */

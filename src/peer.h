@@ -69,8 +69,8 @@ struct fastd_peer {
 	fastd_peer_config_state_t config_state;		/**< Specifies the way this peer was configured and if it is enabled */
 	fastd_peer_state_t state;			/**< The peer's state */
 
-	struct timespec timeout;			/**< The timeout after which the peer is reset */
-	struct timespec keepalive_timeout;		/**< The timeout after which a keepalive is sent to the peer */
+	fastd_timeout_t timeout;			/**< The timeout after which the peer is reset */
+	fastd_timeout_t keepalive_timeout;		/**< The timeout after which a keepalive is sent to the peer */
 
 	const fastd_peer_group_t *group;		/**< The peer group the peer belongs to */
 
@@ -78,22 +78,22 @@ struct fastd_peer {
 	ssize_t next_remote;				/**< An index into the field remotes or -1 */
 	bool floating;					/**< Specifies if the peer has any floating remotes */
 
-	struct timespec next_handshake;			/**< The time of the next handshake */
+	fastd_timeout_t next_handshake;			/**< The time of the next handshake */
 	fastd_dlist_head_t handshake_entry;		/**< Entry in the handshake queue */
 
-	struct timespec last_handshake_timeout;		/**< No handshakes are sent to the peer until this timeout has occured to avoid flooding the peer */
+	fastd_timeout_t last_handshake_timeout;		/**< No handshakes are sent to the peer until this timeout has occured to avoid flooding the peer */
 	fastd_peer_address_t last_handshake_address;	/**< The address the last handshake was sent to */
 
-	struct timespec last_handshake_response_timeout; /**< All handshakes from last_handshake_address will be ignored until this timeout has occured */
+	fastd_timeout_t last_handshake_response_timeout; /**< All handshakes from last_handshake_address will be ignored until this timeout has occured */
 	fastd_peer_address_t last_handshake_response_address; /**< The address the last handshake was received from */
 
-	struct timespec establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
+	fastd_timeout_t establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
 
 	const char *config_source_dir;			/**< The directory this peer's configuration was loaded from */
 
 #ifdef WITH_DYNAMIC_PEERS
-	struct timespec verify_timeout;			/**< Specifies the minimum time after which on-verify may be run again */
-	struct timespec verify_valid_timeout;		/**< Specifies how long a peer stays valid after a successful on-verify run */
+	fastd_timeout_t verify_timeout;			/**< Specifies the minimum time after which on-verify may be run again */
+	fastd_timeout_t verify_valid_timeout;		/**< Specifies how long a peer stays valid after a successful on-verify run */
 #endif
 
 	fastd_protocol_key_t *key;			/**< The peer's public key */
@@ -122,7 +122,7 @@ struct fastd_peer_group {
 struct fastd_peer_eth_addr {
 	fastd_eth_addr_t addr;				/**< The MAC address */
 	fastd_peer_t *peer;				/**< The corresponding peer */
-	struct timespec timeout;			/**< Timeout after which the address entry will be purged */
+	fastd_timeout_t timeout;			/**< Timeout after which the address entry will be purged */
 };
 
 /** A remote entry */
@@ -134,7 +134,7 @@ struct fastd_remote {
 	size_t current_address;				/**< The index of the remote the next handshake will be sent to */
 	fastd_peer_address_t *addresses;		/**< The IP addresses the remote was resolved to */
 
-	struct timespec last_resolve_timeout;		/**< Timeout before the remote must not be resolved again */
+	fastd_timeout_t last_resolve_timeout;		/**< Timeout before the remote must not be resolved again */
 };
 
 
@@ -190,12 +190,12 @@ static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 #ifdef WITH_DYNAMIC_PEERS
 /** Call to signal that there is currently an asychronous on-verify command running for the peer */
 static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
-	peer->verify_timeout = fastd_in_seconds(MIN_VERIFY_INTERVAL);
+	peer->verify_timeout = ctx.now + MIN_VERIFY_INTERVAL;
 }
 
 /** Marks the peer verification as successful or failed */
 static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
-	peer->verify_valid_timeout = ok ? fastd_in_seconds(VERIFY_VALID_TIME) : ctx.now;
+	peer->verify_valid_timeout = ctx.now + (ok ? VERIFY_VALID_TIME : 0);
 }
 #endif
 
@@ -252,7 +252,7 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 
 /** Signals that a valid packet was received from the peer */
 static inline void fastd_peer_seen(fastd_peer_t *peer) {
-	peer->timeout = fastd_in_seconds(PEER_STALE_TIME);
+	peer->timeout = ctx.now + PEER_STALE_TIME;
 }
 
 /** Checks if a peer uses dynamic sockets (which means that each connection attempt uses a new socket) */
