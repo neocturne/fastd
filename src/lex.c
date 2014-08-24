@@ -158,7 +158,7 @@ static inline char current(fastd_lex_t *lex) {
 }
 
 /** Returns the current token as a newly allocated string */
-static char* get_token(fastd_lex_t *lex) {
+static char * get_token(fastd_lex_t *lex) {
 	return fastd_strndup(lex->buffer+lex->start, lex->tok_len);
 }
 
@@ -443,7 +443,7 @@ static int parse_keyword(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 
 
 /** Initializes a new scanner for the given file */
-fastd_lex_t* fastd_lex_init(FILE *file) {
+fastd_lex_t * fastd_lex_init(FILE *file) {
 	fastd_lex_t *lex = fastd_new0(fastd_lex_t);
 	lex->file = file;
 

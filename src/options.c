@@ -394,7 +394,7 @@ static bool config_match(const char *opt, ...) {
 
 	va_start(ap, opt);
 
-	while((str = va_arg(ap, const char*)) != NULL) {
+	while((str = va_arg(ap, const char *)) != NULL) {
 		if (strcmp(opt, str) == 0) {
 			match = true;
 			break;

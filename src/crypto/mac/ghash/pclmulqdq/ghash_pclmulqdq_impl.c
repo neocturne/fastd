@@ -76,9 +76,9 @@ static inline __m128i byteswap(__m128i v) {
 
 
 /** Initializes the state used by this GHASH implementation */
-fastd_mac_state_t* fastd_ghash_pclmulqdq_init(const uint8_t *key) {
+fastd_mac_state_t * fastd_ghash_pclmulqdq_init(const uint8_t *key) {
 	fastd_mac_state_t *state;
-	if (posix_memalign((void**)&state, 16, sizeof(fastd_mac_state_t)))
+	if (posix_memalign((void **)&state, 16, sizeof(fastd_mac_state_t)))
 		abort();
 
 	memcpy(&state->H, key, sizeof(__m128i));

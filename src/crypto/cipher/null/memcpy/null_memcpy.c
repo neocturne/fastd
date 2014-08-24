@@ -34,7 +34,7 @@
 
 
 /** Doesn't do anything as the null cipher doesn't use any state */
-static fastd_cipher_state_t* null_init(const uint8_t *key UNUSED) {
+static fastd_cipher_state_t * null_init(const uint8_t *key UNUSED) {
 	return NULL;
 }
 

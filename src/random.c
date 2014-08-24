@@ -51,7 +51,7 @@ void fastd_random_bytes(void *buffer, size_t len, bool secure) {
 		exit_errno("unable to open random device");
 
 	while (read_bytes < len) {
-		ssize_t ret = read(fd, ((char*)buffer)+read_bytes, len-read_bytes);
+		ssize_t ret = read(fd, ((char *)buffer)+read_bytes, len-read_bytes);
 
 		if (ret < 0)
 			exit_errno("unable to read from random device");

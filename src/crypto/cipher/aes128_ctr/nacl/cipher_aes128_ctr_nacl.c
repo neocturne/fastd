@@ -42,12 +42,12 @@ struct __attribute__((aligned(16))) fastd_cipher_state {
 
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
+static fastd_cipher_state_t * aes128_ctr_init(const uint8_t *key) {
 	fastd_block128_t k;
 	memcpy(k.b, key, sizeof(fastd_block128_t));
 
 	fastd_cipher_state_t *state;
-	if (posix_memalign((void**)&state, 16, sizeof(fastd_cipher_state_t)))
+	if (posix_memalign((void **)&state, 16, sizeof(fastd_cipher_state_t)))
 		abort();
 
 	crypto_stream_aes128ctr_beforenm(state->d, k.b);

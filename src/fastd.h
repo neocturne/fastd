@@ -238,7 +238,7 @@ struct fastd_context {
 	int64_t now;				/**< The current monotonous timestamp in microseconds after an arbitrary point in time */
 
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
-	VECTOR(fastd_peer_t*) peers;		/**< The currectly active peers */
+	VECTOR(fastd_peer_t *) peers;		/**< The currectly active peers */
 
 #ifdef WITH_DYNAMIC_PEERS
 	fastd_sem_t verify_limit;		/**< Keeps track of the number of verifier threads */
@@ -253,7 +253,7 @@ struct fastd_context {
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
 
 	uint32_t peer_addr_ht_seed;		/**< The hash seed used for peer_addr_ht */
-	VECTOR(fastd_peer_t*) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
+	VECTOR(fastd_peer_t *) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
 
 	fastd_dlist_head_t handshake_queue;	/**< A doubly linked list of the peers currently queued for handshakes (ordered by the time of the next handshake) */
 	fastd_timeout_t next_maintenance;	/**< The time of the next maintenance call */
@@ -307,7 +307,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer);
 void fastd_close_all_fds(void);
 
 bool fastd_socket_handle_binds(void);
-fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af);
+fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af);
 void fastd_socket_close(fastd_socket_t *sock);
 void fastd_socket_error(fastd_socket_t *sock);
 
@@ -351,7 +351,7 @@ static inline void fastd_setnonblock(int fd) {
  */
 #define container_of(ptr, type, member) ({				\
 			const __typeof__(((type *)0)->member) *_mptr = (ptr); \
-			(type*)((char*)_mptr - offsetof(type, member)); \
+			(type *)((char *)_mptr - offsetof(type, member)); \
 		})
 
 /**
@@ -393,7 +393,7 @@ static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr)
 }
 
 /** Duplicates a string, creating a one-element string stack */
-static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
+static inline fastd_string_stack_t * fastd_string_stack_dup(const char *str) {
 	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = NULL;
 	strcpy(ret->str, str);
@@ -402,7 +402,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dup(const char *str) {
 }
 
 /** Duplicates a string of a given maximum length, creating a one-element string stack */
-static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, size_t len) {
+static inline fastd_string_stack_t * fastd_string_stack_dupn(const char *str, size_t len) {
 	size_t str_len = strnlen(str, len);
 	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
 	ret->next = NULL;
@@ -413,7 +413,7 @@ static inline fastd_string_stack_t* fastd_string_stack_dupn(const char *str, siz
 }
 
 /** Pushes the copy of a string onto the top of a string stack */
-static inline fastd_string_stack_t* fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
+static inline fastd_string_stack_t * fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
 	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
 	ret->next = stack;
 	strcpy(ret->str, str);

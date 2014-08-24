@@ -46,7 +46,7 @@ typedef struct resolv_arg {
 
 
 /** The resolver thread main routine */
-static void* resolve_peer(void *varg) {
+static void * resolve_peer(void *varg) {
 	resolv_arg_t *arg = varg;
 
 	struct addrinfo *res = NULL, *res2;
@@ -77,7 +77,7 @@ static void* resolve_peer(void *varg) {
 	}
 
 	uint8_t retbuf[sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)] __attribute__((aligned(8)));
-	fastd_async_resolve_return_t *ret = (fastd_async_resolve_return_t*)retbuf;
+	fastd_async_resolve_return_t *ret = (fastd_async_resolve_return_t *)retbuf;
 	ret->peer_id = arg->peer_id;
 	ret->remote = arg->remote;
 

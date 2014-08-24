@@ -101,7 +101,7 @@ bool fastd_cipher_config(const char *name, const char *impl) {
 }
 
 /** Returns information about the cipher with the specified name if there is an implementation available */
-const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
+const fastd_cipher_info_t * fastd_cipher_info_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (strcmp(ciphers[i].name, name))
@@ -117,7 +117,7 @@ const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name) {
 }
 
 /** Returns the chosen cipher implementation for a given cipher */
-const fastd_cipher_t* fastd_cipher_get(const fastd_cipher_info_t *info) {
+const fastd_cipher_t * fastd_cipher_get(const fastd_cipher_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
 		if (ciphers[i].info == info)

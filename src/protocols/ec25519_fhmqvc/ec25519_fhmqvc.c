@@ -58,7 +58,7 @@ static inline void check_session_refresh(fastd_peer_t *peer) {
 }
 
 /** Initializes the protocol-specific configuration */
-static fastd_protocol_config_t* protocol_init(void) {
+static fastd_protocol_config_t * protocol_init(void) {
 	fastd_protocol_config_t *protocol_config = fastd_new(fastd_protocol_config_t);
 
 	if (!conf.secret)

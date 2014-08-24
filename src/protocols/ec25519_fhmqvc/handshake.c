@@ -129,7 +129,7 @@ static inline bool new_session(fastd_peer_t *peer, const fastd_method_info_t *me
 		fastd_sha256_t secret[blocks];
 		derive_key(secret, blocks, salt, method->name, A, B, X, Y, sigma);
 
-		peer->protocol_state->session.method_state = method->provider->session_init(method->method, (const uint8_t*)secret, initiator);
+		peer->protocol_state->session.method_state = method->provider->session_init(method->method, (const uint8_t *)secret, initiator);
 	}
 	else {
 		fastd_sha256_t hash;

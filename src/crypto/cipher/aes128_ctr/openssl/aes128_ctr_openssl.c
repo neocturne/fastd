@@ -43,11 +43,11 @@ struct fastd_cipher_state {
 
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t* aes128_ctr_init(const uint8_t *key) {
+static fastd_cipher_state_t * aes128_ctr_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 
 	state->aes = EVP_CIPHER_CTX_new();
-	EVP_EncryptInit(state->aes, EVP_aes_128_ctr(), (const unsigned char*)key, NULL);
+	EVP_EncryptInit(state->aes, EVP_aes_128_ctr(), (const unsigned char *)key, NULL);
 
 	return state;
 }
@@ -59,10 +59,10 @@ static bool aes128_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t
 	if (!EVP_EncryptInit(state->aes, NULL, NULL, iv))
 		return false;
 
-	if (!EVP_EncryptUpdate(state->aes, (unsigned char*)out, &clen, (const unsigned char*)in, len))
+	if (!EVP_EncryptUpdate(state->aes, (unsigned char *)out, &clen, (const unsigned char *)in, len))
 		return false;
 
-	if (!EVP_EncryptFinal(state->aes, ((unsigned char*)out) + clen, &clen2))
+	if (!EVP_EncryptFinal(state->aes, ((unsigned char *)out) + clen, &clen2))
 		return false;
 
 	if ((size_t)(clen+clen2) != len)

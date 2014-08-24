@@ -160,7 +160,7 @@ static inline size_t peer_index(fastd_peer_t *peer) {
 }
 
 /** Finds a peer with a specified ID */
-fastd_peer_t* fastd_peer_find_by_id(uint64_t id) {
+fastd_peer_t * fastd_peer_find_by_id(uint64_t id) {
 	fastd_peer_t **ret = peer_p_find_by_id(id);
 
 	if (ret)
@@ -884,7 +884,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 }
 
 /** Finds the peer that is associated with a given MAC address */
-fastd_peer_t* fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
+fastd_peer_t * fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
 	const fastd_peer_eth_addr_t key = {.addr = addr};
 	fastd_peer_eth_addr_t *peer_eth_addr = VECTOR_BSEARCH(&key, ctx.eth_addrs, peer_eth_addr_cmp);
 

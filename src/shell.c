@@ -143,7 +143,7 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 	sigemptyset(&set);
 	pthread_sigmask(SIG_SETMASK, &set, NULL);
 
-	execl("/bin/sh", "sh", "-c", command->command, (char*)NULL);
+	execl("/bin/sh", "sh", "-c", command->command, (char *)NULL);
 	_exit(127);
 }
 

@@ -38,7 +38,7 @@
 #include <stdio.h>
 
 
-fastd_lex_t* fastd_lex_init(FILE *file);
+fastd_lex_t * fastd_lex_init(FILE *file);
 void fastd_lex_destroy(fastd_lex_t *lex);
 
 int fastd_lex(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex);

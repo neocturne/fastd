@@ -227,7 +227,7 @@ bool fastd_socket_handle_binds(void) {
 }
 
 /** Opens a single unbound socket for the given address family */
-fastd_socket_t* fastd_socket_open(fastd_peer_t *peer, int af) {
+fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
 
 	int fd = bind_socket(&any_address, true);

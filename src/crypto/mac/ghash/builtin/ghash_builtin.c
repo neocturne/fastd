@@ -72,9 +72,9 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 
 
 /** Initializes the MAC state with the unpacked key data */
-static fastd_mac_state_t* ghash_init(const uint8_t *key) {
+static fastd_mac_state_t * ghash_init(const uint8_t *key) {
 	fastd_mac_state_t *state;
-	if (posix_memalign((void**)&state, 16, sizeof(fastd_mac_state_t)))
+	if (posix_memalign((void **)&state, 16, sizeof(fastd_mac_state_t)))
 		abort();
 
 	fastd_block128_t Hbase[4];

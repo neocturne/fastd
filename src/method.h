@@ -59,9 +59,9 @@ struct fastd_method_provider {
 	size_t (*key_length)(const fastd_method_t *method);
 
 	/** Initiates a session */
-	fastd_method_session_state_t* (*session_init)(const fastd_method_t *method, const uint8_t *secret, bool initiator);
+	fastd_method_session_state_t * (*session_init)(const fastd_method_t *method, const uint8_t *secret, bool initiator);
 	/** Initiates a session in pre-v11 compatiblity mode */
-	fastd_method_session_state_t* (*session_init_compat)(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
+	fastd_method_session_state_t * (*session_init_compat)(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
 	/** Closes a session */
 	void (*session_free)(fastd_method_session_state_t *session);
 
@@ -85,7 +85,7 @@ bool fastd_method_create_by_name(const char *name, const fastd_method_provider_t
 
 
 /** Finds the fastd_method_info_t for a configured method */
-static inline const fastd_method_info_t* fastd_method_get_by_name(const char *name) {
+static inline const fastd_method_info_t * fastd_method_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; conf.methods[i].name; i++) {
 		if (!strcmp(conf.methods[i].name, name))

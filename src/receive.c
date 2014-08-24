@@ -42,18 +42,18 @@
 static inline void handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
 	memset(local_addr, 0, sizeof(fastd_peer_address_t));
 
-	const uint8_t *end = (const uint8_t*)message->msg_control + message->msg_controllen;
+	const uint8_t *end = (const uint8_t *)message->msg_control + message->msg_controllen;
 
 	struct cmsghdr *cmsg;
 	for (cmsg = CMSG_FIRSTHDR(message); cmsg; cmsg = CMSG_NXTHDR(message, cmsg)) {
-		if ((const uint8_t*)cmsg + sizeof(*cmsg) > end)
+		if ((const uint8_t *)cmsg + sizeof(*cmsg) > end)
 			return;
 
 #ifdef USE_PKTINFO
 		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
 			struct in_pktinfo pktinfo;
 
-			if ((const uint8_t*)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
+			if ((const uint8_t *)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
 				return;
 
 			memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
@@ -69,7 +69,7 @@ static inline void handle_socket_control(struct msghdr *message, const fastd_soc
 		if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
 			struct in6_pktinfo pktinfo;
 
-			if ((uint8_t*)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
+			if ((uint8_t *)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
 				return;
 
 			memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));

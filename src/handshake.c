@@ -58,14 +58,14 @@ static const char *const RECORD_TYPES[RECORD_MAX] = {
 
 
 /** Reads a TLV record as an 8bit integer */
-#define AS_UINT8(ptr) (*(uint8_t*)(ptr).data)
+#define AS_UINT8(ptr) (*(uint8_t *)(ptr).data)
 
 /** Reads a TLV record as a 16bit integer (big endian) */
-#define AS_UINT16(ptr) ((*(uint8_t*)(ptr).data) + (*((uint8_t*)(ptr).data+1) << 8))
+#define AS_UINT16(ptr) ((*(uint8_t *)(ptr).data) + (*((uint8_t *)(ptr).data+1) << 8))
 
 
 /** Generates a zero-separated list of supported methods */
-static uint8_t* create_method_list(size_t *len) {
+static uint8_t * create_method_list(size_t *len) {
 	*len = 0;
 
 	size_t i;
@@ -75,7 +75,7 @@ static uint8_t* create_method_list(size_t *len) {
 	uint8_t *ret = fastd_alloc(*len);
 	(*len)--;
 
-	char *ptr = (char*)ret;
+	char *ptr = (char *)ret;
 
 	for (i = 0; conf.methods[i].name; i++)
 		ptr = stpcpy(ptr, conf.methods[i].name) + 1;
@@ -93,16 +93,16 @@ static inline bool string_equal(const char *str, const char *buf, size_t maxlen)
 
 /** Checks if a string is equal to the value of a TLV record */
 static inline bool record_equal(const char *str, const fastd_handshake_record_t *record) {
-	return string_equal(str, (const char*)record->data, record->length);
+	return string_equal(str, (const char *)record->data, record->length);
 }
 
 /** Parses a list of zero-separated strings */
-static fastd_string_stack_t* parse_string_list(const uint8_t *data, size_t len) {
+static fastd_string_stack_t * parse_string_list(const uint8_t *data, size_t len) {
 	const uint8_t *end = data+len;
 	fastd_string_stack_t *ret = NULL;
 
 	while (data < end) {
-		fastd_string_stack_t *part = fastd_string_stack_dupn((char*)data, end-data);
+		fastd_string_stack_t *part = fastd_string_stack_dupn((char *)data, end-data);
 		part->next = ret;
 		ret = part;
 		data += strlen(part->str) + 1;
@@ -304,7 +304,7 @@ static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_
 }
 
 /** Returns the method info with a specified name and length */
-static inline const fastd_method_info_t* get_method_by_name(const char *name, size_t n) {
+static inline const fastd_method_info_t * get_method_by_name(const char *name, size_t n) {
 	char name0[n+1];
 	memcpy(name0, name, n);
 	name0[n] = 0;
@@ -313,7 +313,7 @@ static inline const fastd_method_info_t* get_method_by_name(const char *name, si
 }
 
 /** Returns the most appropriate method to negotiate with a peer a handshake was received from */
-static inline const fastd_method_info_t* get_method(const fastd_handshake_t *handshake) {
+static inline const fastd_method_info_t * get_method(const fastd_handshake_t *handshake) {
 	if (handshake->records[RECORD_METHOD_LIST].data && handshake->records[RECORD_METHOD_LIST].length) {
 		fastd_string_stack_t *method_list = parse_string_list(handshake->records[RECORD_METHOD_LIST].data, handshake->records[RECORD_METHOD_LIST].length);
 
@@ -335,7 +335,7 @@ static inline const fastd_method_info_t* get_method(const fastd_handshake_t *han
 	if (!handshake->records[RECORD_METHOD_NAME].data)
 		return NULL;
 
-	return get_method_by_name((const char*)handshake->records[RECORD_METHOD_NAME].data, handshake->records[RECORD_METHOD_NAME].length);
+	return get_method_by_name((const char *)handshake->records[RECORD_METHOD_NAME].data, handshake->records[RECORD_METHOD_NAME].length);
 }
 
 /** Handles a handshake packet */
@@ -364,7 +364,7 @@ void fastd_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *lo
 		method = get_method(&handshake);
 
 		if (handshake.records[RECORD_VERSION_NAME].data)
-			handshake.peer_version = peer_version = fastd_strndup((const char*)handshake.records[RECORD_VERSION_NAME].data, handshake.records[RECORD_VERSION_NAME].length);
+			handshake.peer_version = peer_version = fastd_strndup((const char *)handshake.records[RECORD_VERSION_NAME].data, handshake.records[RECORD_VERSION_NAME].length);
 	}
 
 	if (handshake.type > 1 && !method) {

@@ -50,7 +50,7 @@ struct fastd_cipher {
 	bool (*available)(void);
 
 	/** Initializes a cipher context with the given key */
-	fastd_cipher_state_t* (*init)(const uint8_t *key);
+	fastd_cipher_state_t * (*init)(const uint8_t *key);
 	/** Encrypts or decrypts data */
 	bool (*crypt)(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv);
 	/** Frees a cipher context */
@@ -69,7 +69,7 @@ struct fastd_mac {
 	bool (*available)(void);
 
 	/** Initializes a MAC context with the given key */
-	fastd_mac_state_t* (*init)(const uint8_t *key);
+	fastd_mac_state_t * (*init)(const uint8_t *key);
 	/** Computes the MAC of data blocks */
 	bool (*hash)(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
 	/** Frees a MAC context */
@@ -80,14 +80,14 @@ struct fastd_mac {
 void fastd_cipher_init(void);
 bool fastd_cipher_config(const char *name, const char *impl);
 
-const fastd_cipher_info_t* fastd_cipher_info_get_by_name(const char *name);
-const fastd_cipher_t* fastd_cipher_get(const fastd_cipher_info_t *info);
+const fastd_cipher_info_t * fastd_cipher_info_get_by_name(const char *name);
+const fastd_cipher_t * fastd_cipher_get(const fastd_cipher_info_t *info);
 
 void fastd_mac_init(void);
 bool fastd_mac_config(const char *name, const char *impl);
 
-const fastd_mac_info_t* fastd_mac_info_get_by_name(const char *name);
-const fastd_mac_t* fastd_mac_get(const fastd_mac_info_t *info);
+const fastd_mac_info_t * fastd_mac_info_get_by_name(const char *name);
+const fastd_mac_t * fastd_mac_get(const fastd_mac_info_t *info);
 
 
 /** Sets a range of memory to zero, ensuring the operation can't be optimized out by the compiler */

@@ -99,7 +99,7 @@ void fastd_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *lo
 
 
 /** Returns the TLV data of a handshake packet in a given buffer */
-static inline void* fastd_handshake_tlv_data(const fastd_buffer_t *buffer) {
+static inline void * fastd_handshake_tlv_data(const fastd_buffer_t *buffer) {
 	fastd_handshake_packet_t *packet = buffer->data;
 	return packet->tlv_data;
 }
@@ -111,7 +111,7 @@ static inline uint16_t fastd_handshake_tlv_len(const fastd_buffer_t *buffer) {
 }
 
 /** Adds an uninitialized TLV record of given type and length to a handshake buffer */
-static inline uint8_t* fastd_handshake_extend(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
+static inline uint8_t * fastd_handshake_extend(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
 	uint8_t *dst = buffer->data + buffer->len;
 
 	if (buffer->data + buffer->len + 4 + len > buffer->base + buffer->base_len)
@@ -138,7 +138,7 @@ static inline void fastd_handshake_add(fastd_buffer_t *buffer, fastd_handshake_r
 }
 
 /** Adds an TLV record of given type and length initialized with zeros to a handshake buffer */
-static inline uint8_t* fastd_handshake_add_zero(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
+static inline uint8_t * fastd_handshake_add_zero(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, len);
 
 	memset(dst, 0, len);

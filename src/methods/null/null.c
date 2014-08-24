@@ -54,7 +54,7 @@ static size_t method_key_length(const fastd_method_t *method UNUSED) {
 }
 
 /** Initiates a new null session */
-static fastd_method_session_state_t* method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret UNUSED, bool initiator) {
+static fastd_method_session_state_t * method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret UNUSED, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	session->valid = true;
@@ -64,7 +64,7 @@ static fastd_method_session_state_t* method_session_init(const fastd_method_t *m
 }
 
 /** Initiates a new null session (pre-v11 compat handshake) */
-static fastd_method_session_state_t* method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length UNUSED, bool initiator) {
+static fastd_method_session_state_t * method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length UNUSED, bool initiator) {
 	return method_session_init(method, secret, initiator);
 }
 

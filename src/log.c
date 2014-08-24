@@ -144,15 +144,15 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 			break;
 
 		case 's':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%s", va_arg(ap, char*));
+			buffer += snprintf_safe(buffer, buffer_end-buffer, "%s", va_arg(ap, char *));
 			break;
 
 		case 'p':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%p", va_arg(ap, void*));
+			buffer += snprintf_safe(buffer, buffer_end-buffer, "%p", va_arg(ap, void *));
 			break;
 
 		case 'E':
-			eth_addr = va_arg(ap, const fastd_eth_addr_t*);
+			eth_addr = va_arg(ap, const fastd_eth_addr_t *);
 
 			if (eth_addr) {
 				if (conf.hide_mac_addresses)
@@ -168,18 +168,18 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 			break;
 
 		case 'P':
-			buffer += snprint_peer_str(buffer, buffer_end-buffer, va_arg(ap, const fastd_peer_t*));
+			buffer += snprint_peer_str(buffer, buffer_end-buffer, va_arg(ap, const fastd_peer_t *));
 			break;
 
 		case 'I':
 		case 'B':
 		case 'L':
-			p = va_arg(ap, const fastd_peer_address_t*);
+			p = va_arg(ap, const fastd_peer_address_t *);
 
-			iface = (*format == 'L') ? va_arg(ap, const char*) : NULL;
+			iface = (*format == 'L') ? va_arg(ap, const char *) : NULL;
 
 			if (p)
-				buffer += snprint_peer_address(buffer, buffer_end-buffer, (const fastd_peer_address_t*)p, iface, *format != 'I');
+				buffer += snprint_peer_address(buffer, buffer_end-buffer, (const fastd_peer_address_t *)p, iface, *format != 'I');
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;
@@ -198,7 +198,7 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 }
 
 /** Returns a prefix string to use for log messages of a specified level */
-static inline const char* get_log_prefix(fastd_loglevel_t log_level) {
+static inline const char * get_log_prefix(fastd_loglevel_t log_level) {
 	switch(log_level) {
 	case LL_FATAL:
 		return "Fatal: ";

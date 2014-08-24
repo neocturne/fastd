@@ -107,7 +107,7 @@ static size_t method_key_length(const fastd_method_t *method) {
 }
 
 /** Initializes a session */
-static fastd_method_session_state_t* method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t * method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	fastd_method_common_init(&session->common, initiator);

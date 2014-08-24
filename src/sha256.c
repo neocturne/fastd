@@ -145,7 +145,7 @@ static void sha256_blocks_va(uint32_t out[FASTD_SHA256_HASH_WORDS], va_list ap) 
 	va_list ap2;
 
 	va_copy(ap2, ap);
-	while (va_arg(ap2, const uint32_t*))
+	while (va_arg(ap2, const uint32_t *))
 		count++;
 	va_end(ap2);
 
@@ -153,7 +153,7 @@ static void sha256_blocks_va(uint32_t out[FASTD_SHA256_HASH_WORDS], va_list ap) 
 
 	size_t i = 0;
 	const uint32_t *block;
-	while ((block = va_arg(ap, const uint32_t*)) != NULL)
+	while ((block = va_arg(ap, const uint32_t *)) != NULL)
 		blocks[i++] = block;
 
 	sha256_list(out, blocks, count*FASTD_SHA256_BLOCK_BYTES);
@@ -228,7 +228,7 @@ static void hmacsha256_blocks_va(fastd_sha256_t *out, const uint32_t key[FASTD_H
 	va_list ap2;
 
 	va_copy(ap2, ap);
-	while (va_arg(ap2, const uint32_t*))
+	while (va_arg(ap2, const uint32_t *))
 		count++;
 	va_end(ap2);
 
@@ -236,7 +236,7 @@ static void hmacsha256_blocks_va(fastd_sha256_t *out, const uint32_t key[FASTD_H
 
 	size_t i = 0;
 	const uint32_t *block;
-	while ((block = va_arg(ap, const uint32_t*)) != NULL)
+	while ((block = va_arg(ap, const uint32_t *)) != NULL)
 		blocks[i++] = block;
 
 	hmacsha256_list(out, key, blocks, count*FASTD_SHA256_BLOCK_BYTES);

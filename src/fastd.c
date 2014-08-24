@@ -399,7 +399,7 @@ static inline void notify_systemd(void) {
 	if (sa.sun_path[0] == '@')
 		sa.sun_path[0] = 0;
 
-	if (connect(fd, (struct sockaddr*)&sa, offsetof(struct sockaddr_un, sun_path) + strnlen(notify_socket, sizeof(sa.sun_path))) < 0) {
+	if (connect(fd, (struct sockaddr *)&sa, offsetof(struct sockaddr_un, sun_path) + strnlen(notify_socket, sizeof(sa.sun_path))) < 0) {
 		pr_debug_errno("unable to connect to notify socket: connect");
 		close(fd);
 		return;

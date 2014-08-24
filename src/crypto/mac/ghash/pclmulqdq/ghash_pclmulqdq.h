@@ -35,6 +35,6 @@
 #include "../../../../crypto.h"
 
 
-fastd_mac_state_t* fastd_ghash_pclmulqdq_init(const uint8_t *key);
+fastd_mac_state_t * fastd_ghash_pclmulqdq_init(const uint8_t *key);
 bool fastd_ghash_pclmulqdq_hash(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
 void fastd_ghash_pclmulqdq_free(fastd_mac_state_t *state);

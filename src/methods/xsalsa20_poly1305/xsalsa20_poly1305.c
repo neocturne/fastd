@@ -64,7 +64,7 @@ static size_t method_key_length(const fastd_method_t *method UNUSED) {
 }
 
 /** Initializes the session state */
-static fastd_method_session_state_t* method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t * method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	fastd_method_common_init(&session->common, initiator);
@@ -75,7 +75,7 @@ static fastd_method_session_state_t* method_session_init(const fastd_method_t *m
 }
 
 /** Initializes the session state (pre-v11 compat handshake) */
-static fastd_method_session_state_t* method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t * method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug("xsalsa20-poly1305: tried to init with short secret");
 

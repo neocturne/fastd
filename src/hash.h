@@ -43,7 +43,7 @@
 static inline void fastd_hash(uint32_t *hash, const void *data, size_t len) {
 	size_t i;
 	for (i = 0; i < len; ++i) {
-		*hash += ((uint8_t*)data)[i];
+		*hash += ((uint8_t *)data)[i];
 		*hash += (*hash << 10);
 		*hash ^= (*hash >> 6);
 	}

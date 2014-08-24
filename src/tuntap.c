@@ -379,7 +379,7 @@ void fastd_tuntap_handle(void) {
 /** Writes a packet to the TUN/TAP device */
 void fastd_tuntap_write(fastd_buffer_t buffer) {
 	if (multiaf_tun && conf.mode == MODE_TUN) {
-		uint8_t version = *((uint8_t*)buffer.data) >> 4;
+		uint8_t version = *((uint8_t *)buffer.data) >> 4;
 		uint32_t af;
 
 		switch (version) {

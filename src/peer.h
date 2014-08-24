@@ -168,7 +168,7 @@ bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_addre
 bool fastd_peer_claim_address(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool force);
 void fastd_peer_reset_socket(fastd_peer_t *peer);
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay);
-fastd_peer_t* fastd_peer_find_by_id(uint64_t id);
+fastd_peer_t * fastd_peer_find_by_id(uint64_t id);
 
 void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
 void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
@@ -266,7 +266,7 @@ static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 }
 
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
-fastd_peer_t* fastd_peer_find_by_eth_addr(fastd_eth_addr_t addr);
+fastd_peer_t * fastd_peer_find_by_eth_addr(fastd_eth_addr_t addr);
 
 void fastd_peer_handle_handshake_queue(void);
 void fastd_peer_maintenance(void);

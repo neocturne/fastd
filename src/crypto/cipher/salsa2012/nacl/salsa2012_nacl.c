@@ -43,7 +43,7 @@ struct fastd_cipher_state {
 
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t* salsa2012_init(const uint8_t *key) {
+static fastd_cipher_state_t * salsa2012_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 	memcpy(state->key, key, crypto_stream_salsa2012_KEYBYTES);
 
