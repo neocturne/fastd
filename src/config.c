@@ -579,7 +579,7 @@ static void configure_peers(void) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
 		if (peer->config_state == CONFIG_STATIC) {
-			/* The peer hasn't been touched since the last run of init_peers(), so its definition must have disappeared */
+			/* The peer hasn't been touched since the last run of configure_peers(), so its definition must have disappeared */
 			fastd_peer_delete(peer);
 			continue;
 		}
