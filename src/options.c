@@ -122,7 +122,8 @@ static void option_config_peer(const char *arg) {
 	if(!fastd_config_read(arg, conf.peer_group, peer, 0))
 		exit(1);
 
-	fastd_peer_add(peer);
+	if (!fastd_peer_add(peer))
+		exit_error("invalid peer definition");
 }
 
 /** Handles the --config-peer-dir option */
