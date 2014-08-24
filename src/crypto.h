@@ -71,7 +71,7 @@ struct fastd_mac {
 	/** Initializes a MAC context with the given key */
 	fastd_mac_state_t * (*init)(const uint8_t *key);
 	/** Computes the MAC of data blocks */
-	bool (*hash)(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks);
+	bool (*digest)(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length);
 	/** Frees a MAC context */
 	void (*free)(fastd_mac_state_t *state);
 };

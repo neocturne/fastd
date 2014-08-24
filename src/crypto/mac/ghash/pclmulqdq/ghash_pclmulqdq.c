@@ -46,6 +46,6 @@ const fastd_mac_t fastd_mac_ghash_pclmulqdq = {
 	.available = ghash_available,
 
 	.init = fastd_ghash_pclmulqdq_init,
-	.hash = fastd_ghash_pclmulqdq_hash,
+	.digest = fastd_ghash_pclmulqdq_digest,
 	.free = fastd_ghash_pclmulqdq_free,
 };

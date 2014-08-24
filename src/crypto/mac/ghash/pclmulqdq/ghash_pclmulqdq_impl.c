@@ -31,6 +31,8 @@
 
 
 #include "ghash_pclmulqdq.h"
+#include "../../../../log.h"
+
 #include <wmmintrin.h>
 #include <emmintrin.h>
 #include <tmmintrin.h>
@@ -150,7 +152,12 @@ static __m128i gmul(__m128i v, __m128i h) {
 
 
 /** Calculates the GHASH of the supplied input blocks */
-bool fastd_ghash_pclmulqdq_hash(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
+bool fastd_ghash_pclmulqdq_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
+	if (length % sizeof(fastd_block128_t))
+		exit_bug("ghash_digest (pclmulqdq): invalid length");
+
+	size_t n_blocks = length / sizeof(fastd_block128_t);
+
 	vecblock_t v = {.v = _mm_setzero_si128()};
 
 	size_t i;

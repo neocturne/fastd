@@ -31,6 +31,7 @@
 
 
 #include "../../../../crypto.h"
+#include "../../../../log.h"
 
 
 /** MAC state used by this GHASH implmentation */
@@ -119,7 +120,12 @@ static fastd_mac_state_t * ghash_init(const uint8_t *key) {
 }
 
 /** Calculates the GHASH of the supplied blocks */
-static bool ghash_hash(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t n_blocks) {
+static bool ghash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
+	if (length % sizeof(fastd_block128_t))
+		exit_bug("ghash_digest (builtin): invalid length");
+
+	size_t n_blocks = length / sizeof(fastd_block128_t);
+
 	memset(out, 0, sizeof(fastd_block128_t));
 
 	size_t i;
@@ -142,6 +148,6 @@ static void ghash_free(fastd_mac_state_t *state) {
 /** The builtin GHASH implementation */
 const fastd_mac_t fastd_mac_ghash_builtin = {
 	.init = ghash_init,
-	.hash = ghash_hash,
+	.digest = ghash_digest,
 	.free = ghash_free,
 };

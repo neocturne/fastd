@@ -237,7 +237,7 @@ static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state
 
 		put_size(&outblocks[n_blocks+1], in.len);
 
-		ok = session->ghash->hash(session->ghash_state, &tag, outblocks+1, n_blocks+1);
+		ok = session->ghash->digest(session->ghash_state, &tag, outblocks+1, (n_blocks+1)*sizeof(fastd_block128_t));
 	}
 
 	if (!ok) {
@@ -298,7 +298,7 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 
 		put_size(&inblocks[n_blocks], in.len-sizeof(fastd_block128_t));
 
-		ok = session->ghash->hash(session->ghash_state, &tag, inblocks+1, n_blocks);
+		ok = session->ghash->digest(session->ghash_state, &tag, inblocks+1, n_blocks*sizeof(fastd_block128_t));
 	}
 
 	if (!ok || memcmp(&tag, &outblocks[0], sizeof(fastd_block128_t)) != 0) {
