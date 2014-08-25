@@ -38,6 +38,7 @@
 #include "log.h"
 #include "sem.h"
 #include "shell.h"
+#include "util.h"
 #include "vector.h"
 
 #include <errno.h>
@@ -339,41 +340,6 @@ static inline void fastd_setnonblock(int fd) {
 		exit_errno("Setting file status flags failed: fcntl");
 }
 
-
-/**
-   Returns a pointer to a data structure, given the address of a member contained in the structure
-
-   @param ptr		the address of the member
-   @param type		the type of the container
-   @param member	the name of the member
-
-   \hideinitializer
- */
-#define container_of(ptr, type, member) ({				\
-			const __typeof__(((type *)0)->member) *_mptr = (ptr); \
-			(type *)((char *)_mptr - offsetof(type, member)); \
-		})
-
-/**
-   Returns the number of elements of an array
-
-   \hideinitializer
- */
-#define array_size(array) (sizeof(array)/sizeof((array)[0]))
-
-/**
-   Determines how many blocks of a given size \a a are needed to contain some length \a l
- */
-static inline size_t block_count(size_t l, size_t a) {
-	return (l+a-1)/a;
-}
-
-/**
-   Rounds up a length \a l to the next multiple of a block size \a a
- */
-static inline size_t alignto(size_t l, size_t a) {
-	return block_count(l, a)*a;
-}
 
 /** Returns the maximum payload size \em fastd is configured to transport */
 static inline size_t fastd_max_payload(void) {
