@@ -26,6 +26,7 @@ add_subdirectory(null)
 add_subdirectory(cipher_test)
 add_subdirectory(composed_gmac)
 add_subdirectory(generic_gmac)
+add_subdirectory(generic_hmac_sha1)
 add_subdirectory(generic_poly1305)
 add_subdirectory(xsalsa20_poly1305)
 
