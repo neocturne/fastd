@@ -119,6 +119,7 @@ typedef struct fastd_shell_env fastd_shell_env_t;
 /** A 128-bit aligned block of data, primarily used by the cryptographic functions */
 typedef union fastd_block128 {
 	uint8_t b[16];		/**< Byte-wise access to the data */
+	uint32_t dw[4];		/**< Doubleword-wise access to the data */
 	uint64_t qw[2];		/**< Quadword-wise access to the data */
 } __attribute__((aligned(16))) fastd_block128_t;
 

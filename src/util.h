@@ -66,3 +66,28 @@ static inline size_t block_count(size_t l, size_t a) {
 static inline size_t alignto(size_t l, size_t a) {
 	return block_count(l, a)*a;
 }
+
+/**
+   Checks if two strings are equal
+
+   @param str1 The first string (may be NULL)
+   @param str2 The second string (may be NULL)
+
+   @return True if both strings are NULL or both strings are not NULL and equal
+*/
+static inline bool strequal(const char *str1, const char *str2) {
+	if (str1 && str2)
+		return (!strcmp(str1, str2));
+	else
+		return (str1 == str2);
+}
+
+/** Returns the maximum of two size_t values */
+static inline size_t max_size_t(size_t a, size_t b) {
+	return (a > b) ? a : b;
+}
+
+/** Returns the minimum of two size_t values */
+static inline size_t min_size_t(size_t a, size_t b) {
+	return (a < b) ? a : b;
+}

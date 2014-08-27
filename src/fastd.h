@@ -430,28 +430,3 @@ static inline bool fastd_allow_verify(void) {
 	return false;
 #endif
 }
-
-/**
-   Checks if two strings are equal
-
-   @param str1 The first string (may be NULL)
-   @param str2 The second string (may be NULL)
-
-   @return True if both strings are NULL or both strings are not NULL and equal
-*/
-static inline bool strequal(const char *str1, const char *str2) {
-	if (str1 && str2)
-		return (!strcmp(str1, str2));
-	else
-		return (str1 == str2);
-}
-
-/** Returns the maximum of two size_t values */
-static inline size_t max_size_t(size_t a, size_t b) {
-	return (a > b) ? a : b;
-}
-
-/** Returns the minimum of two size_t values */
-static inline size_t min_size_t(size_t a, size_t b) {
-	return (a < b) ? a : b;
-}
