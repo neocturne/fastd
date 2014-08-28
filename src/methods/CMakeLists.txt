@@ -25,8 +25,10 @@ endmacro(fastd_method_require)
 add_subdirectory(null)
 add_subdirectory(cipher_test)
 add_subdirectory(composed_gmac)
+add_subdirectory(composed_umac)
 add_subdirectory(generic_gmac)
 add_subdirectory(generic_poly1305)
+add_subdirectory(generic_umac)
 add_subdirectory(xsalsa20_poly1305)
 
 
