@@ -60,7 +60,6 @@ endmacro(fastd_mac_impl_compile_flags)
 
 
 add_subdirectory(ghash)
-add_subdirectory(hmac_sha1)
 
 
 set(MAC_DEFINITIONS "")
