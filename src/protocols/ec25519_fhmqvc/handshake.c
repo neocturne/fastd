@@ -30,6 +30,7 @@
 */
 
 #include "handshake.h"
+#include "../../crypto.h"
 #include "../../handshake.h"
 #include "../../hkdf_sha256.h"
 #include "../../verify.h"
@@ -270,7 +271,7 @@ static bool make_shared_handshake_key(const ecc_int256_t *handshake_key, bool in
 /** Checks if the currently cached shared handshake key is valid and generates a new one otherwise  */
 static bool update_shared_handshake_key(const fastd_peer_t *peer, const handshake_key_t *handshake_key, const aligned_int256_t *peer_handshake_key) {
 	if (peer->protocol_state->last_handshake_serial == handshake_key->serial) {
-		if (memcmp(&peer->protocol_state->peer_handshake_key, peer_handshake_key, PUBLICKEYBYTES) == 0)
+		if (secure_memequal(&peer->protocol_state->peer_handshake_key, peer_handshake_key, PUBLICKEYBYTES))
 			return true;
 	}
 
@@ -442,7 +443,7 @@ static fastd_peer_t * find_key(const uint8_t key[PUBLICKEYBYTES], const fastd_pe
 		if (address && !fastd_peer_is_enabled(peer))
 			continue;
 
-		if (memcmp(&peer->key->key, key, PUBLICKEYBYTES) == 0) {
+		if (secure_memequal(&peer->key->key, key, PUBLICKEYBYTES)) {
 			if (!address)
 				return peer;
 
@@ -480,7 +481,7 @@ static fastd_peer_t * match_sender_key(const fastd_socket_t *sock, const fastd_p
 		exit_bug("packet without correct peer set on dynamic socket");
 
 	if (peer) {
-		if (memcmp(&peer->key->key, key, PUBLICKEYBYTES) == 0)
+		if (secure_memequal(&peer->key->key, key, PUBLICKEYBYTES))
 			return peer;
 
 		if (fastd_peer_owns_address(peer, address)) {
@@ -658,7 +659,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 	}
 
 	if (has_field(handshake, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES)) {
-		if (memcmp(&conf.protocol_config->key.public, handshake->records[RECORD_RECIPIENT_KEY].data, PUBLICKEYBYTES) != 0) {
+		if (!secure_memequal(&conf.protocol_config->key.public, handshake->records[RECORD_RECIPIENT_KEY].data, PUBLICKEYBYTES)) {
 			pr_debug("received protocol handshake with wrong recipient key from %P[%I]", peer, remote_addr);
 			return;
 		}
@@ -708,11 +709,11 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 
 	handshake_key_t *handshake_key;
 	if (is_handshake_key_valid(&ctx.protocol_state->handshake_key) &&
-	    memcmp(&ctx.protocol_state->handshake_key.key.public, handshake->records[RECORD_RECIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+	    secure_memequal(&ctx.protocol_state->handshake_key.key.public, handshake->records[RECORD_RECIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES)) {
 		handshake_key = &ctx.protocol_state->handshake_key;
 	}
 	else if (is_handshake_key_valid(&ctx.protocol_state->prev_handshake_key) &&
-		 memcmp(&ctx.protocol_state->prev_handshake_key.key.public, handshake->records[RECORD_RECIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES) == 0) {
+		 secure_memequal(&ctx.protocol_state->prev_handshake_key.key.public, handshake->records[RECORD_RECIPIENT_HANDSHAKE_KEY].data, PUBLICKEYBYTES)) {
 		handshake_key = &ctx.protocol_state->prev_handshake_key;
 	}
 	else {

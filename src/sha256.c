@@ -31,6 +31,7 @@
 
 
 #include "sha256.h"
+#include "crypto.h"
 
 #include <stdarg.h>
 #include <string.h>
@@ -261,7 +262,7 @@ bool fastd_hmacsha256_blocks_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], 
 	hmacsha256_blocks_va(&out, key, ap);
 	va_end(ap);
 
-	return !memcmp(out.b, mac, FASTD_SHA256_HASH_BYTES);
+	return secure_memequal(out.b, mac, FASTD_SHA256_HASH_BYTES);
 }
 
 /** Computes the HMAC-SHA256 of an arbitraty input buffer */
@@ -280,5 +281,5 @@ bool fastd_hmacsha256_verify(const uint8_t mac[FASTD_SHA256_HASH_BYTES], const u
 	fastd_sha256_t out;
 
 	fastd_hmacsha256(&out, key, in, len);
-	return !memcmp(out.b, mac, FASTD_SHA256_HASH_BYTES);
+	return secure_memequal(out.b, mac, FASTD_SHA256_HASH_BYTES);
 }

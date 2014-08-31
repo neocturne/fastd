@@ -96,6 +96,28 @@ static inline void secure_memzero(void *s, size_t n) {
 	__asm__ volatile("" : : "m"(s));
 }
 
+static inline bool secure_memequal(const void *s1, const void *s2, size_t n) {
+	uint8_t v = 0;
+	const uint8_t *i1 = s1, *i2 = s2;
+	size_t i;
+
+	for (i = 0; i < n; i++)
+		v |= i1[i] ^ i2[i];
+
+	return (v == 0);
+}
+
+static inline bool block_equal(const fastd_block128_t *a, const fastd_block128_t *b) {
+	uint32_t v = 0;
+
+	v |= a->dw[0] ^ b->dw[0];
+	v |= a->dw[1] ^ b->dw[1];
+	v |= a->dw[2] ^ b->dw[2];
+	v |= a->dw[3] ^ b->dw[3];
+
+	return (v == 0);
+}
+
 /** XORs two blocks of data */
 static inline void xor(fastd_block128_t *x, const fastd_block128_t *a, const fastd_block128_t *b) {
 	x->qw[0] = a->qw[0] ^ b->qw[0];

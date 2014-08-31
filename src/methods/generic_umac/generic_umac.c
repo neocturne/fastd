@@ -224,7 +224,7 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	if (ok)
 		ok = session->uhash->digest(session->uhash_state, &tag, inblocks+1, in_len);
 
-	if (!ok || memcmp(&tag, &outblocks[0], sizeof(fastd_block128_t)) != 0) {
+	if (!ok || !block_equal(&tag, &outblocks[0])) {
 		fastd_buffer_free(*out);
 		return false;
 	}
