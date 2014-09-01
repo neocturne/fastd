@@ -32,6 +32,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
 
 
 typedef struct fastd_dlist_head fastd_dlist_head_t;
