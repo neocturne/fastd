@@ -66,7 +66,6 @@ fastd_context_t ctx = {};
 
 static volatile bool sighup = false;		/**< Is set to true when a SIGHUP is received */
 static volatile bool terminate = false;		/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
-static volatile bool dump = false;		/**< Is set to true when a SIGUSR1 is received */
 static volatile bool sigchld = false;		/**< Is set to true when a SIGCHLD is received */
 
 
@@ -75,10 +74,6 @@ static void on_signal(int signo) {
 	switch(signo) {
 	case SIGHUP:
 		sighup = true;
-		break;
-
-	case SIGUSR1:
-		dump = true;
 		break;
 
 	case SIGCHLD:
@@ -114,8 +109,6 @@ static void init_signals(void) {
 	action.sa_handler = on_signal;
 	if (sigaction(SIGHUP, &action, NULL))
 		exit_errno("sigaction");
-	if (sigaction(SIGUSR1, &action, NULL))
-		exit_errno("sigaction");
 	if (sigaction(SIGCHLD, &action, NULL))
 		exit_errno("sigaction");
 	if (sigaction(SIGTERM, &action, NULL))
@@ -131,6 +124,10 @@ static void init_signals(void) {
 	if (sigaction(SIGTTIN, &action, NULL))
 		exit_errno("sigaction");
 	if (sigaction(SIGTTOU, &action, NULL))
+		exit_errno("sigaction");
+	if (sigaction(SIGUSR1, &action, NULL))
+		exit_errno("sigaction");
+	if (sigaction(SIGUSR2, &action, NULL))
 		exit_errno("sigaction");
 
 }
@@ -197,44 +194,6 @@ static inline void on_down(void) {
 /** Calls the on-post-down command */
 static inline void on_post_down(void) {
 	fastd_shell_command_exec(&conf.on_post_down, NULL);
-}
-
-/** Dumps statistics and the list of known peers to the logs */
-static void dump_state(void) {
-	pr_info("TX stats: %U packet(s), %U byte(s); dropped: %U packet(s), %U byte(s); error: %U packet(s), %U byte(s)",
-		ctx.tx.packets, ctx.tx.bytes, ctx.tx_dropped.packets, ctx.tx_dropped.bytes, ctx.tx_error.packets, ctx.tx_error.bytes);
-	pr_info("RX stats: %U packet(s), %U byte(s)", ctx.rx.packets, ctx.rx.bytes);
-
-	pr_info("dumping peers:");
-
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
-		if (!fastd_peer_is_enabled(peer))
-			continue;
-
-		if (!fastd_peer_is_established(peer)) {
-			pr_info("peer %P not connected, address: %I", peer, &peer->address);
-			continue;
-		}
-
-		if (conf.mode == MODE_TAP) {
-			unsigned eth_addresses = 0;
-			size_t j;
-			for (j = 0; j < VECTOR_LEN(ctx.eth_addrs); j++) {
-				if (VECTOR_INDEX(ctx.eth_addrs, j).peer == peer)
-					eth_addresses++;
-			}
-
-			pr_info("peer %P connected, address: %I, associated MAC addresses: %u", peer, &peer->address, eth_addresses);
-		}
-		else {
-			pr_info("peer %P connected, address: %I", peer, &peer->address);
-		}
-	}
-
-	pr_info("dump finished.");
 }
 
 
@@ -583,11 +542,6 @@ static inline void handle_signals(void) {
 		pr_info("reconfigure triggered");
 
 		fastd_config_load_peer_dirs();
-	}
-
-	if (dump) {
-		dump = false;
-		dump_state();
 	}
 
 	if (sigchld) {
