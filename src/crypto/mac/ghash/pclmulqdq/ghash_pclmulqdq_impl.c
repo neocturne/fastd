@@ -31,7 +31,7 @@
 
 
 #include "ghash_pclmulqdq.h"
-#include "../../../../log.h"
+#include "../../../../alloc.h"
 
 #include <wmmintrin.h>
 #include <emmintrin.h>
@@ -79,9 +79,7 @@ static inline __m128i byteswap(__m128i v) {
 
 /** Initializes the state used by this GHASH implementation */
 fastd_mac_state_t * fastd_ghash_pclmulqdq_init(const uint8_t *key) {
-	fastd_mac_state_t *state;
-	if (posix_memalign((void **)&state, 16, sizeof(fastd_mac_state_t)))
-		abort();
+	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
 
 	memcpy(&state->H, key, sizeof(__m128i));
 	state->H.v = byteswap(state->H.v);

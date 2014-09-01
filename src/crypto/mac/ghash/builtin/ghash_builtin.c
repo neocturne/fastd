@@ -31,7 +31,7 @@
 
 
 #include "../../../../crypto.h"
-#include "../../../../log.h"
+#include "../../../../alloc.h"
 
 
 /** MAC state used by this GHASH implmentation */
@@ -74,9 +74,7 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 
 /** Initializes the MAC state with the unpacked key data */
 static fastd_mac_state_t * ghash_init(const uint8_t *key) {
-	fastd_mac_state_t *state;
-	if (posix_memalign((void **)&state, 16, sizeof(fastd_mac_state_t)))
-		abort();
+	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
 
 	fastd_block128_t Hbase[4];
 	fastd_block128_t Rbase[4];

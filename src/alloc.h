@@ -49,6 +49,20 @@ static inline void * fastd_alloc(size_t size) {
 }
 
 /**
+   Allocates a block of uninitialized memory on the heap, aligned to 16 bytes
+
+   Terminates the process on failure.
+*/
+static inline void * fastd_alloc_aligned(size_t size, size_t align) {
+	void *ret;
+	int err = posix_memalign(&ret, align, size);
+	if (err)
+		exit_error("posix_memalign: %s", strerror(err));
+
+	return ret;
+}
+
+/**
    Allocates a block of memory set to zero for an array on the heap
 
    Terminates the process on failure.
@@ -86,6 +100,9 @@ static inline void * fastd_realloc(void *ptr, size_t size) {
 
 /** Allocates a block of uninitialized memory in the size of a given type */
 #define fastd_new(type) ((type *)fastd_alloc(sizeof(type)))
+
+/** Allocates a block of uninitialized memory in the size of a given type, aligned to 16 bytes */
+#define fastd_new_aligned(type, align) ((type *)fastd_alloc_aligned(sizeof(type), align))
 
 /** Allocates a block of memory set to zero in the size of a given type */
 #define fastd_new0(type) ((type *)fastd_alloc0(sizeof(type)))

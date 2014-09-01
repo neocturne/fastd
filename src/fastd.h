@@ -32,7 +32,6 @@
 
 #pragma once
 
-#include "alloc.h"
 #include "dlist.h"
 #include "buffer.h"
 #include "log.h"
