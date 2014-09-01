@@ -96,6 +96,7 @@ static inline void secure_memzero(void *s, size_t n) {
 	__asm__ volatile("" : : "m"(s));
 }
 
+/** Checks if two blocks of memory are equal in constant time */
 static inline bool secure_memequal(const void *s1, const void *s2, size_t n) {
 	uint8_t v = 0;
 	const uint8_t *i1 = s1, *i2 = s2;
@@ -107,6 +108,7 @@ static inline bool secure_memequal(const void *s1, const void *s2, size_t n) {
 	return (v == 0);
 }
 
+/** Checks if two 128bit blocks are equal in constant time */
 static inline bool block_equal(const fastd_block128_t *a, const fastd_block128_t *b) {
 	uint32_t v = 0;
 
