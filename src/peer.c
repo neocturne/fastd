@@ -439,7 +439,8 @@ void fastd_peer_free(fastd_peer_t *peer) {
 
 /** Deletes a peer */
 static void delete_peer(fastd_peer_t *peer) {
-	pr_verbose("deleting peer %P", peer);
+	if (fastd_peer_is_dynamic(peer) || peer->config_source_dir)
+		pr_verbose("deleting peer %P", peer);
 
 	size_t i = peer_index(peer);
 	VECTOR_DELETE(ctx.peers, i);
@@ -742,7 +743,7 @@ bool fastd_peer_add(fastd_peer_t *peer) {
 
 	conf.protocol->init_peer_state(peer);
 
-	if (!fastd_peer_is_dynamic(peer) && peer->config_source_dir)
+	if (fastd_peer_is_dynamic(peer) || peer->config_source_dir)
 		pr_verbose("adding peer %P", peer);
 
 	return true;
