@@ -41,6 +41,14 @@
 /** Defined if the platform defines get_current_dir_name() */
 #cmakedefine HAVE_GET_CURRENT_DIR_NAME
 
+/** Defined if <endian.h> exists */
+#cmakedefine HAVE_ENDIAN_H
+
+/** Defined if <sys/endian.h> exists */
+#cmakedefine HAVE_SYS_ENDIAN_H
+
+/** Defined if be32toh etc. exist */
+#cmakedefine HAVE_LINUX_ENDIAN
 
 /** Defined if the platform supports SO_BINDTODEVICE */
 #cmakedefine USE_BINDTODEVICE

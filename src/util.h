@@ -32,6 +32,18 @@
 
 #pragma once
 
+
+#include <sys/types.h>
+
+#ifdef HAVE_ENDIAN_H
+#include <endian.h>
+#endif
+
+#ifdef HAVE_SYS_ENDIAN_H
+#include <sys/endian.h>
+#endif
+
+
 /**
    Returns a pointer to a data structure, given the address of a member contained in the structure
 
@@ -91,3 +103,14 @@ static inline size_t max_size_t(size_t a, size_t b) {
 static inline size_t min_size_t(size_t a, size_t b) {
 	return (a < b) ? a : b;
 }
+
+
+#ifndef HAVE_LINUX_ENDIAN
+
+/** converts a 32bit integer from big endian to host byte order */
+#define be32toh(x) betoh32(x)
+
+/** converts a 32bit integer from little endian to host byte order */
+#define le32toh(x) letoh32(x)
+
+#endif

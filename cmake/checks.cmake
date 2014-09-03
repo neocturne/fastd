@@ -57,3 +57,35 @@ endif(NOT DARWIN)
 set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
 check_type_size("struct ethhdr" SIZEOF_ETHHDR)
 string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
+
+
+set(CMAKE_REQUIRED_INCLUDES "sys/types.h")
+
+check_c_source_compiles("
+#include <endian.h>
+
+int main() {
+	return 0;
+}
+" HAVE_ENDIAN_H)
+
+if(HAVE_ENDIAN_H)
+  check_symbol_exists("be32toh" "endian.h" HAVE_LINUX_ENDIAN)
+
+else(HAVE_ENDIAN_H)
+  check_c_source_compiles("
+  #include <sys/types.h>
+  #include <sys/endian.h>
+
+  int main() {
+    return 0;
+  }
+  " HAVE_SYS_ENDIAN_H)
+
+  if(HAVE_SYS_ENDIAN_H)
+    check_symbol_exists("be32toh" "sys/types.h;sys/endian.h" HAVE_LINUX_ENDIAN)
+
+  else(HAVE_SYS_ENDIAN_H)
+    message(FATAL_ERROR "Neither <endian.h> nor <sys/endian.h> found")
+  endif(HAVE_SYS_ENDIAN_H)
+endif(HAVE_ENDIAN_H)

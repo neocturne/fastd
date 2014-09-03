@@ -35,8 +35,6 @@
 #include "../../../../util.h"
 #include "../../../../log.h"
 
-#include <endian.h>
-
 
 /** MAC state used by this UHASH implmentation */
 struct fastd_mac_state {
