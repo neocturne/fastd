@@ -105,12 +105,28 @@ static inline size_t min_size_t(size_t a, size_t b) {
 }
 
 
-#ifndef HAVE_LINUX_ENDIAN
+#ifdef __APPLE__
 
-/** converts a 32bit integer from big endian to host byte order */
+#include <libkern/OSByteOrder.h>
+
+/** Converts a 32bit integer from host byte order to big endian  */
+#define htobe32(x) OSSwapHostToBigInt32(x)
+
+/** Converts a 32bit integer from host byte order to little endian  */
+#define htole32(x) OSSwapHostToLittleInt32(x)
+
+/** Converts a 32bit integer from big endian to host byte order */
+#define be32toh(x) OSSwapBigToHostInt32(x)
+
+/** Converts a 32bit integer from little endian to host byte order */
+#define le32toh(x) OSSwapLittleToHostInt32(x)
+
+#elif !defined(HAVE_LINUX_ENDIAN)
+
+/** Converts a 32bit integer from big endian to host byte order */
 #define be32toh(x) betoh32(x)
 
-/** converts a 32bit integer from little endian to host byte order */
+/** Converts a 32bit integer from little endian to host byte order */
 #define le32toh(x) letoh32(x)
 
 #endif
