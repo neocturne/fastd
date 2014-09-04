@@ -184,7 +184,24 @@ static void print_error(const char *prefix, const fastd_peer_address_t *remote_a
 		break;
 
 	case REPLY_UNACCEPTABLE_VALUE:
-		pr_warn("Handshake with %I failed: %s error: unacceptable value for field `%s'", remote_addr, prefix, error_field_str);
+		switch (error_detail) {
+		case RECORD_PROTOCOL_NAME:
+			pr_warn("Handshake with %I failed: %s error: peer doesn't use the handshake protocol `%s'", remote_addr, prefix, conf.protocol->name);
+			break;
+
+		case RECORD_MODE:
+			pr_warn("Handshake with %I failed: %s error: TUN/TAP mode mismatch", remote_addr, prefix);
+			break;
+
+		case RECORD_METHOD_NAME:
+		case RECORD_METHOD_LIST:
+			pr_warn("Handshake with %I failed: %s error: no common methods are configured", remote_addr, prefix);
+			break;
+
+		default:
+			pr_warn("Handshake with %I failed: %s error: unacceptable value for field `%s'", remote_addr, prefix, error_field_str);
+		}
+
 		break;
 
 	default:
