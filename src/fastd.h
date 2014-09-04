@@ -253,6 +253,8 @@ struct fastd_context {
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
 
 	uint32_t peer_addr_ht_seed;		/**< The hash seed used for peer_addr_ht */
+	size_t peer_addr_ht_size;		/**< The number of hash buckets in the peer address hashtable */
+	size_t peer_addr_ht_used;		/**< The current number of entries in the peer address hashtable */
 	VECTOR(fastd_peer_t *) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
 
 	fastd_dlist_head_t handshake_queue;	/**< A doubly linked list of the peers currently queued for handshakes (ordered by the time of the next handshake) */
