@@ -146,6 +146,21 @@ static inline void close_log(void) {
 }
 
 
+/** Return's an address's port (in network byte order) */
+static inline uint16_t get_bind_port(const fastd_bind_address_t *addr) {
+	switch (addr->addr.sa.sa_family) {
+	case AF_UNSPEC:
+	case AF_INET:
+		return addr->addr.in.sin_port;
+
+	case AF_INET6:
+		return addr->addr.in6.sin6_port;
+
+	default:
+		exit_bug("unsupported address family");
+	}
+}
+
 /** Initializes the configured sockets */
 static void init_sockets(void) {
 	ctx.socks = fastd_new_array(conf.n_bind_addrs, fastd_socket_t);
@@ -153,13 +168,18 @@ static void init_sockets(void) {
 	size_t i;
 	fastd_bind_address_t *addr = conf.bind_addrs;
 	for (i = 0; i < conf.n_bind_addrs; i++) {
-		ctx.socks[i] = (fastd_socket_t){ .fd = -2, .addr = addr };
+		if (get_bind_port(addr)) {
+			ctx.socks[i] = (fastd_socket_t){ .fd = -2, .addr = addr };
 
-		if (addr == conf.bind_addr_default_v4)
-			ctx.sock_default_v4 = &ctx.socks[i];
+			if (addr == conf.bind_addr_default_v4)
+				ctx.sock_default_v4 = &ctx.socks[i];
 
-		if (addr == conf.bind_addr_default_v6)
-			ctx.sock_default_v6 = &ctx.socks[i];
+			if (addr == conf.bind_addr_default_v6)
+				ctx.sock_default_v6 = &ctx.socks[i];
+		}
+		else {
+			ctx.socks[i] = (fastd_socket_t){ .fd = -1, .addr = NULL };
+		}
 
 		addr = addr->next;
 	}

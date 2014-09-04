@@ -199,6 +199,9 @@ bool fastd_socket_handle_binds(void) {
 		if (ctx.socks[i].fd >= 0)
 			continue;
 
+		if (!ctx.socks[i].addr)
+			continue;
+
 		ctx.socks[i].fd = bind_socket(ctx.socks[i].addr, ctx.socks[i].fd < -1);
 
 		if (ctx.socks[i].fd >= 0) {
@@ -226,11 +229,20 @@ bool fastd_socket_handle_binds(void) {
 	return true;
 }
 
-/** Opens a single unbound socket for the given address family */
+/** Opens a single socket bound to a random port for the given address family */
 fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
 
-	int fd = bind_socket(&any_address, true);
+	const fastd_bind_address_t *bind_address;
+
+	if (af == AF_INET && conf.bind_addr_default_v4)
+		bind_address = conf.bind_addr_default_v4;
+	else if (af == AF_INET6 && conf.bind_addr_default_v6)
+		bind_address = conf.bind_addr_default_v6;
+	else
+		bind_address = &any_address;
+
+	int fd = bind_socket(bind_address, true);
 	if (fd < 0)
 		return NULL;
 
