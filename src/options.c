@@ -106,6 +106,16 @@ static void option_pid_file(const char *arg) {
 }
 
 
+#ifdef WITH_STATUS_SOCKET
+
+/** Handles the --status-socket option */
+static void option_status_socket(const char *arg) {
+	free(conf.status_socket);
+	conf.status_socket = fastd_strdup(arg);
+}
+
+#endif
+
 /** Handles the --config option */
 static void option_config(const char *arg) {
 	if (!strcmp(arg, "-"))

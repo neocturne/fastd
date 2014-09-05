@@ -1946,6 +1946,7 @@ PREDEFINED             = __attribute__(x)= \
                          VECTOR(x):=VECTOR<x> \
                          WITH_CAPABILITIES \
                          WITH_DYNAMIC_PEERS \
+                         WITH_STATUS_SOCKET \
                          WITH_CMDLINE_USER \
                          WITH_CMDLINE_LOGGING \
                          WITH_CMDLINE_OPERATION \

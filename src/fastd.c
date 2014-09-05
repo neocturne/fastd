@@ -481,6 +481,7 @@ static inline void init(int argc, char *argv[]) {
 	fastd_cap_init();
 
 	init_sockets();
+	fastd_status_init();
 	fastd_async_init();
 	fastd_poll_init();
 
@@ -601,6 +602,7 @@ static inline void cleanup(void) {
 	delete_peers();
 
 	fastd_tuntap_close();
+	fastd_status_close();
 	close_sockets();
 	fastd_poll_free();
 

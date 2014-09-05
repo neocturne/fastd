@@ -53,7 +53,9 @@ typedef enum fastd_loglevel {
 } fastd_loglevel_t;
 
 
-/** Logs a formatted string with the specified log level */
+size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address, bool hide);
+
+
 void fastd_logf(const fastd_loglevel_t level, const char *format, ...);
 
 /** Logs a formatted fatal error message */

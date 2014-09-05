@@ -76,12 +76,22 @@ void fastd_poll_init(void) {
 	if (ctx.epoll_fd < 0)
 		exit_errno("epoll_create1");
 
-	struct epoll_event event = {
+	struct epoll_event event_async = {
 		.events = EPOLLIN,
 		.data.ptr = &ctx.async_rfd,
 	};
-	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.async_rfd, &event) < 0)
+	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.async_rfd, &event_async) < 0)
 		exit_errno("epoll_ctl");
+
+#ifdef WITH_STATUS_SOCKET
+	struct epoll_event event_status = {
+		.events = EPOLLIN,
+		.data.ptr = &ctx.status_fd,
+	};
+
+	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.status_fd, &event_status) < 0)
+		exit_errno("epoll_ctl");
+#endif
 }
 
 void fastd_poll_free(void) {
@@ -161,6 +171,12 @@ void fastd_poll_handle(void) {
 			if (events[i].events & EPOLLIN)
 				fastd_async_handle();
 		}
+#ifdef WITH_STATUS_SOCKET
+		else if (events[i].data.ptr == &ctx.status_fd) {
+			if (events[i].events & EPOLLIN)
+				fastd_status_handle();
+		}
+#endif
 		else {
 			fastd_socket_t *sock = events[i].data.ptr;
 
@@ -180,7 +196,7 @@ void fastd_poll_handle(void) {
 #else
 
 void fastd_poll_init(void) {
-	VECTOR_RESIZE(ctx.pollfds, 2 + ctx.n_socks);
+	VECTOR_RESIZE(ctx.pollfds, 3 + ctx.n_socks);
 
 	VECTOR_INDEX(ctx.pollfds, 0) = (struct pollfd) {
 		.fd = -1,
@@ -194,9 +210,19 @@ void fastd_poll_init(void) {
 		.revents = 0,
 	};
 
+	VECTOR_INDEX(ctx.pollfds, 2) = (struct pollfd) {
+#ifdef WITH_STATUS_SOCKET
+		.fd = ctx.status_fd,
+#else
+		.fd = -1,
+#endif
+		.events = POLLIN,
+		.revents = 0,
+	};
+
 	size_t i;
 	for (i = 0; i < ctx.n_socks; i++) {
-		VECTOR_INDEX(ctx.pollfds, 2+i) = (struct pollfd) {
+		VECTOR_INDEX(ctx.pollfds, 3+i) = (struct pollfd) {
 			.fd = -1,
 			.events = POLLIN,
 			.revents = 0,
@@ -214,16 +240,16 @@ void fastd_poll_set_fd_tuntap(void) {
 }
 
 void fastd_poll_set_fd_sock(size_t i) {
-	VECTOR_INDEX(ctx.pollfds, 2+i).fd = ctx.socks[i].fd;
+	VECTOR_INDEX(ctx.pollfds, 3+i).fd = ctx.socks[i].fd;
 }
 
 void fastd_poll_set_fd_peer(size_t i) {
 	fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
 	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
-		VECTOR_INDEX(ctx.pollfds, 2+ctx.n_socks+i).fd = -1;
+		VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).fd = -1;
 	else
-		VECTOR_INDEX(ctx.pollfds, 2+ctx.n_socks+i).fd = peer->sock->fd;
+		VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).fd = peer->sock->fd;
 }
 
 void fastd_poll_add_peer(void) {
@@ -237,7 +263,7 @@ void fastd_poll_add_peer(void) {
 }
 
 void fastd_poll_delete_peer(size_t i) {
-	VECTOR_DELETE(ctx.pollfds, 2+ctx.n_socks+i);
+	VECTOR_DELETE(ctx.pollfds, 3+ctx.n_socks+i);
 }
 
 
@@ -253,7 +279,7 @@ void fastd_poll_handle(void) {
 	if (timeout < 0 || timeout > maintenance_timeout)
 		timeout = maintenance_timeout;
 
-	if (VECTOR_LEN(ctx.pollfds) != 2 + ctx.n_socks + VECTOR_LEN(ctx.peers))
+	if (VECTOR_LEN(ctx.pollfds) != 3 + ctx.n_socks + VECTOR_LEN(ctx.peers))
 		exit_bug("fd count mismatch");
 
 	sigset_t set, oldset;
@@ -324,12 +350,17 @@ void fastd_poll_handle(void) {
 	if (VECTOR_INDEX(ctx.pollfds, 1).revents & POLLIN)
 		fastd_async_handle();
 
+#ifdef WITH_STATUS_SOCKET
+	if (VECTOR_INDEX(ctx.pollfds, 2).revents & POLLIN)
+		fastd_status_handle();
+#endif
+
 	for (i = 0; i < ctx.n_socks; i++) {
-		if (VECTOR_INDEX(ctx.pollfds, 2+i).revents & (POLLERR|POLLHUP|POLLNVAL)) {
+		if (VECTOR_INDEX(ctx.pollfds, 3+i).revents & (POLLERR|POLLHUP|POLLNVAL)) {
 			fastd_socket_error(&ctx.socks[i]);
-			VECTOR_INDEX(ctx.pollfds, 2+i).fd = -1;
+			VECTOR_INDEX(ctx.pollfds, 3+i).fd = -1;
 		}
-		else if (VECTOR_INDEX(ctx.pollfds, 2+i).revents & POLLIN) {
+		else if (VECTOR_INDEX(ctx.pollfds, 3+i).revents & POLLIN) {
 			fastd_receive(&ctx.socks[i]);
 		}
 	}
@@ -337,15 +368,15 @@ void fastd_poll_handle(void) {
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
-		if (VECTOR_INDEX(ctx.pollfds, 2+ctx.n_socks+i).revents & (POLLERR|POLLHUP|POLLNVAL)) {
+		if (VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).revents & (POLLERR|POLLHUP|POLLNVAL)) {
 			fastd_peer_reset_socket(peer);
 		}
-		else if (VECTOR_INDEX(ctx.pollfds, 2+ctx.n_socks+i).revents & POLLIN) {
+		else if (VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).revents & POLLIN) {
 			fastd_receive(peer->sock);
 		}
 	}
 
-	if (VECTOR_LEN(ctx.pollfds) != 2 + ctx.n_socks + VECTOR_LEN(ctx.peers))
+	if (VECTOR_LEN(ctx.pollfds) != 3 + ctx.n_socks + VECTOR_LEN(ctx.peers))
 		exit_bug("fd count mismatch");
 }
 

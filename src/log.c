@@ -52,7 +52,7 @@ static inline size_t snprintf_safe(char *buffer, size_t size, const char *format
 }
 
 /** Creates a string representation of a peer address */
-static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address) {
+size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address, bool hide) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
 	switch (address->sa.sa_family) {
@@ -63,7 +63,7 @@ static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_a
 			return snprintf(buffer, size, "any");
 
 	case AF_INET:
-		if (!bind_address && conf.hide_ip_addresses)
+		if (!bind_address && hide)
 			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
 		else if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))
 			return snprintf_safe(buffer, size, "%s:%u", addr_buf, ntohs(address->in.sin_port));
@@ -71,7 +71,7 @@ static size_t snprint_peer_address(char *buffer, size_t size, const fastd_peer_a
 			return 0;
 
 	case AF_INET6:
-		if (!bind_address && conf.hide_ip_addresses)
+		if (!bind_address && hide)
 			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in6.sin6_port));
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
 			char ifname_buf[IF_NAMESIZE];
@@ -179,7 +179,7 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 			iface = (*format == 'L') ? va_arg(ap, const char *) : NULL;
 
 			if (p)
-				buffer += snprint_peer_address(buffer, buffer_end-buffer, (const fastd_peer_address_t *)p, iface, *format != 'I');
+				buffer += fastd_snprint_peer_address(buffer, buffer_end-buffer, (const fastd_peer_address_t *)p, iface, *format != 'I', conf.hide_ip_addresses);
 			else
 				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
 			break;

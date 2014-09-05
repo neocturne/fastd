@@ -93,6 +93,9 @@
 /** Defined if on-verify support is enabled */
 #cmakedefine WITH_DYNAMIC_PEERS
 
+/** Defined if status socket support is enabled */
+#cmakedefine WITH_STATUS_SOCKET
+
 /** Defined if systemd support is enabled */
 #cmakedefine ENABLE_SYSTEMD
 

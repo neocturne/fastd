@@ -27,7 +27,7 @@
    \file
 
    \em fastd main header file defining most data structures
- */
+*/
 
 
 #pragma once
@@ -217,6 +217,10 @@ struct fastd_config {
 	fastd_shell_command_t on_verify;	/**< The command to execute to check if a connection from an unknown peer should be allowed */
 #endif
 
+#ifdef WITH_STATUS_SOCKET
+	char *status_socket;			/**< The path of the status socket */
+#endif
+
 	bool daemon;				/**< Set to make fastd fork to the background after initialization */
 	char *pid_file;				/**< A filename to write fastd's PID to */
 
@@ -248,6 +252,10 @@ struct fastd_context {
 	int epoll_fd;				/**< The file descriptor for the epoll facility */
 #else
 	VECTOR(struct pollfd) pollfds;		/**< The vector of pollfds for all file descriptors */
+#endif
+
+#ifdef WITH_STATUS_SOCKET
+	int status_fd;				/**< The file descriptor of the status socket */
 #endif
 
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
@@ -324,6 +332,23 @@ void fastd_cap_init(void);
 void fastd_cap_drop(void);
 
 void fastd_random_bytes(void *buffer, size_t len, bool secure);
+
+#ifdef WITH_STATUS_SOCKET
+
+void fastd_status_init(void);
+void fastd_status_close(void);
+void fastd_status_handle(void);
+
+#else
+
+static inline void fastd_status_init(void) {
+}
+
+static inline void fastd_status_close(void) {
+}
+
+#endif
+
 
 /** Returns a random number between \a min (inclusively) and \a max (exclusively) */
 static inline int fastd_rand(int min, int max) {

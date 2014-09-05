@@ -44,6 +44,7 @@ set(WITH_CMDLINE_OPERATION TRUE CACHE BOOL "Include support for setting options 
 set(WITH_CMDLINE_COMMANDS TRUE CACHE BOOL "Include support for setting handler scripts (e.g. --on-up) on the command line")
 
 set(WITH_DYNAMIC_PEERS TRUE CACHE BOOL "Include support for dynamic peers (using on-verify handlers)")
+set(WITH_STATUS_SOCKET TRUE CACHE BOOL "Include support for the status socket")
 
 set(MAX_CONFIG_DEPTH 10 CACHE STRING "Maximum config include depth")
 

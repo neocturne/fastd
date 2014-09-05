@@ -650,6 +650,10 @@ void fastd_config_release(void) {
 	fastd_shell_command_unset(&conf.on_verify);
 #endif
 
+#ifdef WITH_STATUS_SOCKET
+	free(conf.status_socket);
+#endif
+
 	free(conf.user);
 	free(conf.group);
 	free(conf.groups);

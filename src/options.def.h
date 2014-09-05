@@ -2,6 +2,9 @@ OPTION(usage, "--help" OR "-h", "Shows this help text");
 OPTION(version, "--version" OR "-v", "Shows the fastd version");
 OPTION(option_daemon, "--daemon" OR "-d", "Runs fastd in the background");
 OPTION_ARG(option_pid_file, "--pid-file", "<filename>", "Writes fastd's PID to the specified file");
+#ifdef WITH_STATUS_SOCKET
+OPTION_ARG(option_status_socket, "--status-socket", "<socket>", "Configure a socket to get fastd's status");
+#endif
 SEPARATOR;
 
 OPTION_ARG(option_config, "--config" OR "-c", "<filename>", "Loads a config file");

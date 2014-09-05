@@ -116,6 +116,8 @@
 %token TOK_REMOTE
 %token TOK_SECRET
 %token TOK_SECURE
+%token TOK_SOCKET
+%token TOK_STATUS
 %token TOK_STDERR
 %token TOK_SYNC
 %token TOK_SYSLOG
@@ -199,6 +201,7 @@ statement:	peer_group_statement
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_ON TOK_VERIFY on_verify ';'
+	|	TOK_STATUS TOK_SOCKET status_socket ';'
 	|	TOK_FORWARD forward ';'
 	;
 
@@ -415,8 +418,18 @@ on_verify:	sync_def_async TOK_STRING {
 #ifdef WITH_DYNAMIC_PEERS
 			fastd_shell_command_set(&conf.on_verify, $2->str, $1);
 #else
-				fastd_config_error(&@$, state, "`on verify' is not supported by this version of fastd");
-				YYERROR;
+			fastd_config_error(&@$, state, "`on verify' is not supported by this version of fastd");
+			YYERROR;
+#endif
+		}
+	;
+
+status_socket:	TOK_STRING {
+#ifdef WITH_STATUS_SOCKET
+			free(conf.status_socket); conf.status_socket = fastd_strdup($1->str);
+#else
+			fastd_config_error(&@$, state, "status sockets aren't supported by this version of fastd");
+			YYERROR;
 #endif
 		}
 	;
