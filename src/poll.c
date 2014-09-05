@@ -196,7 +196,7 @@ void fastd_poll_handle(void) {
 #else
 
 void fastd_poll_init(void) {
-	VECTOR_RESIZE(ctx.pollfds, 3 + ctx.n_socks);
+	VECTOR_RESIZE(ctx.pollfds, 3 + ctx.n_socks + VECTOR_LEN(ctx.peers));
 
 	VECTOR_INDEX(ctx.pollfds, 0) = (struct pollfd) {
 		.fd = -1,
@@ -221,7 +221,7 @@ void fastd_poll_init(void) {
 	};
 
 	size_t i;
-	for (i = 0; i < ctx.n_socks; i++) {
+	for (i = 0; i < ctx.n_socks + VECTOR_LEN(ctx.peers); i++) {
 		VECTOR_INDEX(ctx.pollfds, 3+i) = (struct pollfd) {
 			.fd = -1,
 			.events = POLLIN,
@@ -244,6 +244,9 @@ void fastd_poll_set_fd_sock(size_t i) {
 }
 
 void fastd_poll_set_fd_peer(size_t i) {
+	if (!VECTOR_LEN(ctx.pollfds))
+		exit_bug("fastd_poll_set_fd_peer: polling not initialized yet");
+
 	fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
 	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
@@ -253,6 +256,10 @@ void fastd_poll_set_fd_peer(size_t i) {
 }
 
 void fastd_poll_add_peer(void) {
+	if (!VECTOR_LEN(ctx.pollfds))
+		/* Polling is not initialized yet */
+		return;
+
 	struct pollfd pollfd = {
 		.fd = -1,
 		.events = POLLIN,
