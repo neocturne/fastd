@@ -147,8 +147,10 @@ struct fastd_socket {
 
 /** Some kind of network transfer stratistics */
 struct fastd_stats {
+#ifdef WITH_STATUS_SOCKET
 	uint64_t packets;			/**< The number of packets transferred */
 	uint64_t bytes;				/**< The number of bytes transferred */
+#endif
 };
 
 /** A data structure keeping track of an unknown addresses that a handshakes was received from recently */
@@ -377,6 +379,16 @@ static inline size_t fastd_max_payload(void) {
 	default:
 		exit_bug("invalid mode");
 	}
+}
+
+/** Adds statistics for a single packet of a given size */
+static inline void fastd_stats_add(fastd_stats_t *stats UNUSED, size_t stat_size UNUSED) {
+#ifdef WITH_STATUS_SOCKET
+	if (stat_size) {
+		stats->packets++;
+		stats->bytes += stat_size;
+	}
+#endif
 }
 
 /** Checks if a fastd_peer_address_t is an IPv6 link-local address */

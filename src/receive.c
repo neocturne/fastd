@@ -267,8 +267,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
 			fastd_peer_eth_addr_add(peer, src_addr);
 	}
 
-	ctx.rx.packets++;
-	ctx.rx.bytes += buffer.len;
+	fastd_stats_add(&ctx.rx, buffer.len);
 
 	fastd_tuntap_write(buffer);
 

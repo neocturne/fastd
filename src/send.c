@@ -75,14 +75,6 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 	}
 }
 
-/** Adds statistics for a single packet of a given size */
-static inline void count_stat(fastd_stats_t *stats, size_t stat_size) {
-	if (stat_size) {
-		stats->packets++;
-		stats->bytes += stat_size;
-	}
-}
-
 /** Sends a packet of a given type */
 static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
 	if (!sock)
@@ -151,23 +143,23 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 		case EWOULDBLOCK:
 #endif
 			pr_debug2_errno("sendmsg");
-			count_stat(&ctx.tx_dropped, stat_size);
+			fastd_stats_add(&ctx.tx_dropped, stat_size);
 			break;
 
 		case ENETDOWN:
 		case ENETUNREACH:
 		case EHOSTUNREACH:
 			pr_debug_errno("sendmsg");
-			count_stat(&ctx.tx_error, stat_size);
+			fastd_stats_add(&ctx.tx_error, stat_size);
 			break;
 
 		default:
 			pr_warn_errno("sendmsg");
-			count_stat(&ctx.tx_error, stat_size);
+			fastd_stats_add(&ctx.tx_error, stat_size);
 		}
 	}
 	else {
-		count_stat(&ctx.tx, stat_size);
+		fastd_stats_add(&ctx.tx, stat_size);
 	}
 
 	fastd_buffer_free(buffer);
