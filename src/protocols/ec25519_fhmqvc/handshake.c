@@ -606,7 +606,7 @@ void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fast
 #else
 
 /** Dummy add dynamic function for fastd versions without on-verify support */
-static inline fastd_peer_t * add_dynamic(fastd_socket_t *sock UNUSED, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES] UNUSED) {
+static inline fastd_peer_t * add_dynamic(UNUSED fastd_socket_t *sock, const fastd_peer_address_t *addr, UNUSED const unsigned char key[PUBLICKEYBYTES]) {
 	pr_debug("ignoring handshake from %I (unknown key)", addr);
 	return NULL;
 }

@@ -210,7 +210,7 @@ static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
 }
 
 /** Checks if a peer is not statically configured, but added after a on-verify run */
-static inline bool fastd_peer_is_dynamic(const fastd_peer_t *peer UNUSED) {
+static inline bool fastd_peer_is_dynamic(UNUSED const fastd_peer_t *peer) {
 #ifdef WITH_DYNAMIC_PEERS
 	return peer->config_state == CONFIG_DYNAMIC;
 #else

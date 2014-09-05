@@ -50,21 +50,21 @@ struct fastd_method_session_state {
 
 
 /** Matches the method name "xsalsa20-poly1305" */
-static bool method_create_by_name(const char *name, fastd_method_t **method UNUSED) {
+static bool method_create_by_name(const char *name, UNUSED fastd_method_t **method) {
 	return !strcmp(name, "xsalsa20-poly1305");
 }
 
 /** Does nothing as this provider has only a single method */
-static void method_destroy(fastd_method_t *method UNUSED) {
+static void method_destroy(UNUSED fastd_method_t *method) {
 }
 
 /** Returns the key length used by xsalsa20-poly1305 */
-static size_t method_key_length(const fastd_method_t *method UNUSED) {
+static size_t method_key_length(UNUSED const fastd_method_t *method) {
 	return crypto_secretbox_xsalsa20poly1305_KEYBYTES;
 }
 
 /** Initializes the session state */
-static fastd_method_session_state_t * method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t * method_session_init(UNUSED const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	fastd_method_common_init(&session->common, initiator);
@@ -147,7 +147,7 @@ static inline bool handle_header(const fastd_method_common_t *session, fastd_buf
 
 
 /** Performs encryption and authentication of a packet */
-static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_pull_head_zero(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	*out = fastd_buffer_alloc(in.len, 0, 0);

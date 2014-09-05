@@ -134,7 +134,7 @@ void fastd_poll_set_fd_peer(size_t i) {
 void fastd_poll_add_peer(void) {
 }
 
-void fastd_poll_delete_peer(size_t i UNUSED) {
+void fastd_poll_delete_peer(UNUSED size_t i) {
 }
 
 

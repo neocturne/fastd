@@ -198,7 +198,7 @@ static void consume(fastd_lex_t *lex, bool needspace) {
 }
 
 /** Signals an error caused by an I/O error */
-static int io_error(YYSTYPE *yylval, fastd_lex_t *lex UNUSED) {
+static int io_error(YYSTYPE *yylval, UNUSED fastd_lex_t *lex) {
 	yylval->error = "I/O error";
 	return -1;
 }

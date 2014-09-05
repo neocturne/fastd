@@ -146,7 +146,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Encrypts and authenticates a packet */
-static bool method_encrypt(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	size_t tail_len = in.len ? alignto(in.len, 2 * sizeof(fastd_block128_t))-in.len : (2 * sizeof(fastd_block128_t));
 
 	fastd_buffer_pull_head_zero(&in, sizeof(fastd_block128_t));

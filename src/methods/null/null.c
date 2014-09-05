@@ -40,21 +40,21 @@ struct fastd_method_session_state {
 
 
 /** Returns true if the name is "null" */
-static bool method_create_by_name(const char *name, fastd_method_t **method UNUSED) {
+static bool method_create_by_name(const char *name, UNUSED fastd_method_t **method) {
 	return !strcmp(name, "null");
 }
 
 /** Does nothing as the null provider provides only a single method */
-static void method_destroy(fastd_method_t *method UNUSED) {
+static void method_destroy(UNUSED fastd_method_t *method) {
 }
 
 /** Returns 0 */
-static size_t method_key_length(const fastd_method_t *method UNUSED) {
+static size_t method_key_length(UNUSED const fastd_method_t *method) {
 	return 0;
 }
 
 /** Initiates a new null session */
-static fastd_method_session_state_t * method_session_init(const fastd_method_t *method UNUSED, const uint8_t *secret UNUSED, bool initiator) {
+static fastd_method_session_state_t * method_session_init(UNUSED const fastd_method_t *method, UNUSED const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	session->valid = true;
@@ -64,7 +64,7 @@ static fastd_method_session_state_t * method_session_init(const fastd_method_t *
 }
 
 /** Initiates a new null session (pre-v11 compat handshake) */
-static fastd_method_session_state_t * method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length UNUSED, bool initiator) {
+static fastd_method_session_state_t * method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, UNUSED size_t length, bool initiator) {
 	return method_session_init(method, secret, initiator);
 }
 
@@ -79,7 +79,7 @@ static bool method_session_is_initiator(fastd_method_session_state_t *session) {
 }
 
 /** Returns false */
-static bool method_session_want_refresh(fastd_method_session_state_t *session UNUSED) {
+static bool method_session_want_refresh(UNUSED fastd_method_session_state_t *session) {
 	return false;
 }
 
@@ -99,7 +99,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Just returns the input buffer as the output */
-static bool method_passthrough(fastd_peer_t *peer UNUSED, fastd_method_session_state_t *session UNUSED, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_passthrough(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	*out = in;
 	return true;
 }

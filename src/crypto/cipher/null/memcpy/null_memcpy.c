@@ -34,18 +34,18 @@
 
 
 /** Doesn't do anything as the null cipher doesn't use any state */
-static fastd_cipher_state_t * null_init(const uint8_t *key UNUSED) {
+static fastd_cipher_state_t * null_init(UNUSED const uint8_t *key) {
 	return NULL;
 }
 
 /** Just copies the input data to the output */
-static bool null_memcpy(const fastd_cipher_state_t *state UNUSED, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv UNUSED) {
+static bool null_memcpy(UNUSED const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, UNUSED const uint8_t *iv) {
 	memcpy(out, in, len);
 	return true;
 }
 
 /** Doesn't do anything as the null cipher doesn't use any state */
-static void null_free(fastd_cipher_state_t *state UNUSED) {
+static void null_free(UNUSED fastd_cipher_state_t *state) {
 }
 
 /** The memcpy null implementation */

@@ -382,7 +382,7 @@ static inline size_t fastd_max_payload(void) {
 }
 
 /** Adds statistics for a single packet of a given size */
-static inline void fastd_stats_add(fastd_stats_t *stats UNUSED, size_t stat_size UNUSED) {
+static inline void fastd_stats_add(UNUSED fastd_stats_t *stats, UNUSED size_t stat_size) {
 #ifdef WITH_STATUS_SOCKET
 	if (stat_size) {
 		stats->packets++;
