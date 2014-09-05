@@ -538,11 +538,14 @@ static inline void reap_zombies(void) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.async_pids);) {
 		pid_t pid = VECTOR_INDEX(ctx.async_pids, i);
-		if (waitpid(pid, NULL, WNOHANG) > 0) {
+
+		pid_t ret = waitpid(pid, NULL, WNOHANG);
+
+		if (ret > 0) {
 			pr_debug("child process %u finished", (unsigned)pid);
 		}
 		else {
-			if (errno == ECHILD || errno == EINTR) {
+			if (ret == 0 || errno == EINTR) {
 				i++;
 				continue;
 			}
