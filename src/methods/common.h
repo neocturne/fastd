@@ -59,7 +59,7 @@ typedef struct fastd_method_common {
 
 void fastd_method_common_init(fastd_method_common_t *session, bool initiator);
 bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age);
-bool fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age);
+fastd_tristate_t fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age);
 
 
 /**

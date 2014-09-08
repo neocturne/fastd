@@ -284,7 +284,8 @@ struct fastd_context {
 	fastd_socket_t *sock_default_v4;	/**< Points to the socket that is used for new outgoing IPv4 connections */
 	fastd_socket_t *sock_default_v6;	/**< Points to the socket that is used for new outgoing IPv6 connections */
 
-	fastd_stats_t rx;			/**< Reception statistics */
+	fastd_stats_t rx;			/**< Reception statistics (total) */
+	fastd_stats_t rx_reordered;		/**< Reception statistics (reordered packets) */
 
 	fastd_stats_t tx;			/**< Transmission statistics (OK) */
 	fastd_stats_t tx_dropped;		/**< Transmission statistics (dropped because of full queues) */
@@ -314,7 +315,7 @@ void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t
 void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source);
 
 void fastd_receive(fastd_socket_t *sock);
-void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer);
+void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reordered);
 
 void fastd_close_all_fds(void);
 

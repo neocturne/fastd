@@ -163,7 +163,7 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 }
 
 /** Decrypts a packet */
-static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, bool *reordered) {
 	if (in.len < COMMON_HEADBYTES)
 		return false;
 
@@ -197,7 +197,11 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 		return false;
 	}
 
-	if (!fastd_method_reorder_check(peer, &session->common, in_nonce, age)) {
+	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
+	if (reorder_check.set) {
+		*reordered = reorder_check.state;
+	}
+	else {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(0, 0, 0);
 	}

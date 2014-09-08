@@ -75,8 +75,14 @@ bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uin
 	return true;
 }
 
-/** Checks if a possibly reordered packet should be accepted */
-bool fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age) {
+/**
+   Checks if a possibly reordered packet should be accepted
+
+   Returns a tristate: undef if it should not be accepted (duplicate or too old),
+   false if the packet is okay and not reordered and true
+   if it is reordered.
+*/
+fastd_tristate_t fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age) {
 	if (age < 0) {
 		size_t shift = age < (-64) ? 64 : ((size_t)-age);
 
@@ -90,15 +96,15 @@ bool fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *sessi
 
 		memcpy(session->receive_nonce, nonce, COMMON_NONCEBYTES);
 		session->reorder_timeout = ctx.now + REORDER_TIME;
-		return true;
+		return fastd_tristate_false;
 	}
 	else if (age == 0 || session->receive_reorder_seen & (1 << (age-1))) {
 		pr_debug("dropping duplicate packet from %P (age %u)", peer, (unsigned)age);
-		return false;
+		return fastd_tristate_undef;
 	}
 	else {
 		pr_debug2("accepting reordered packet from %P (age %u)", peer, (unsigned)age);
 		session->receive_reorder_seen |= (1 << (age-1));
-		return true;
+		return fastd_tristate_true;
 	}
 }

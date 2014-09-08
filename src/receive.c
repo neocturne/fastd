@@ -253,7 +253,7 @@ static inline fastd_eth_addr_t get_source_address(const fastd_buffer_t buffer) {
 }
 
 /** Handles a received and decrypted payload packet */
-void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
+void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reordered) {
 	if (conf.mode == MODE_TAP) {
 		if (buffer.len < ETH_HLEN) {
 			pr_debug("received truncated packet");
@@ -268,6 +268,9 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	}
 
 	fastd_stats_add(&ctx.rx, buffer.len);
+
+	if (reordered)
+		fastd_stats_add(&ctx.rx_reordered, buffer.len);
 
 	fastd_tuntap_write(buffer);
 

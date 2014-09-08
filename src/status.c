@@ -134,6 +134,8 @@ static void dump_status(int fd) {
 	json_object_object_add(json, "statistics", statistics);
 
 	json_object_object_add(statistics, "rx", dump_stats(&ctx.rx));
+	json_object_object_add(statistics, "rx_reordered", dump_stats(&ctx.rx_reordered));
+
 	json_object_object_add(statistics, "tx", dump_stats(&ctx.tx));
 	json_object_object_add(statistics, "tx_dropped", dump_stats(&ctx.tx_dropped));
 	json_object_object_add(statistics, "tx_error", dump_stats(&ctx.tx_error));

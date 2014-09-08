@@ -112,15 +112,17 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 		goto fail;
 
 	fastd_buffer_t recv_buffer;
-	bool ok = false;
+	bool ok = false, reordered;
 
 	if (is_session_valid(&peer->protocol_state->old_session)) {
-		if (peer->protocol_state->old_session.method->provider->decrypt(peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer))
+		reordered = false;
+		if (peer->protocol_state->old_session.method->provider->decrypt(peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer, &reordered))
 			ok = true;
 	}
 
 	if (!ok) {
-		if (peer->protocol_state->session.method->provider->decrypt(peer, peer->protocol_state->session.method_state, &recv_buffer, buffer)) {
+		reordered = false;
+		if (peer->protocol_state->session.method->provider->decrypt(peer, peer->protocol_state->session.method_state, &recv_buffer, buffer, &reordered)) {
 			ok = true;
 
 			if (peer->protocol_state->old_session.method) {
@@ -150,7 +152,7 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	fastd_peer_seen(peer);
 
 	if (recv_buffer.len)
-		fastd_handle_receive(peer, recv_buffer);
+		fastd_handle_receive(peer, recv_buffer, reordered);
 	else
 		fastd_buffer_free(recv_buffer);
 

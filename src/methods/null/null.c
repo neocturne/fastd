@@ -99,7 +99,13 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Just returns the input buffer as the output */
-static bool method_passthrough(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+	*out = in;
+	return true;
+}
+
+/** Just returns the input buffer as the output */
+static bool method_decrypt(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, UNUSED bool *reordered) {
 	*out = in;
 	return true;
 }
@@ -126,6 +132,6 @@ const fastd_method_provider_t fastd_method_null = {
 	.session_superseded = method_session_superseded,
 	.session_free = method_session_free,
 
-	.encrypt = method_passthrough,
-	.decrypt = method_passthrough,
+	.encrypt = method_encrypt,
+	.decrypt = method_decrypt,
 };

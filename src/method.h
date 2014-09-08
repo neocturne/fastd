@@ -77,7 +77,7 @@ struct fastd_method_provider {
 	/** Encrypts a packet for a given session, adding method-specific headers */
 	bool (*encrypt)(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
 	/** Decrypts a packet for a given session, stripping method-specific headers */
-	bool (*decrypt)(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
+	bool (*decrypt)(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, bool *reordered);
 };
 
 
