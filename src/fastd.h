@@ -109,6 +109,10 @@ struct fastd_protocol {
 	fastd_peer_t * (*find_peer)(const fastd_protocol_key_t *key);
 
 
+	/** Retrieves information about the currently used encyption/authentication method of a connection with a peer */
+	const fastd_method_info_t * (*get_current_method)(const fastd_peer_t *peer);
+
+
 	/** Generates a new keypair and outputs it */
 	void (*generate_key)(void);
 

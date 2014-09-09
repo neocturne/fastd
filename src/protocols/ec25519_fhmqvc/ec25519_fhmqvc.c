@@ -200,6 +200,17 @@ void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_sessi
 	session_send(peer, fastd_buffer_alloc(0, alignto(session->method->provider->min_encrypt_head_space, 8), session->method->provider->min_encrypt_tail_space), session);
 }
 
+/** get_current_method implementation for ec25519-fhmqvp */
+const fastd_method_info_t * protocol_get_current_method(const fastd_peer_t *peer) {
+	if (!peer->protocol_state || !fastd_peer_is_established(peer))
+		return NULL;
+
+	if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state) && is_session_valid(&peer->protocol_state->old_session))
+		return peer->protocol_state->old_session.method;
+	else
+		return peer->protocol_state->session.method;
+}
+
 
 /** The \em ec25519-fhmqvc protocol definition */
 const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
@@ -223,6 +234,8 @@ const fastd_protocol_t fastd_protocol_ec25519_fhmqvc = {
 	.read_key = protocol_read_key,
 	.check_peer = protocol_check_peer,
 	.find_peer = fastd_protocol_ec25519_fhmqvc_find_peer,
+
+	.get_current_method = protocol_get_current_method,
 
 	.generate_key = fastd_protocol_ec25519_fhmqvc_generate_key,
 	.show_key = fastd_protocol_ec25519_fhmqvc_show_key,

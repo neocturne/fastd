@@ -30,14 +30,16 @@
 */
 
 
-#include "peer.h"
+#include "types.h"
 
 
 #ifdef WITH_STATUS_SOCKET
 
-#include <sys/un.h>
+#include "method.h"
+#include "peer.h"
 
 #include <json.h>
+#include <sys/un.h>
 
 
 /** Argument for dump_thread */
@@ -97,6 +99,15 @@ static json_object * dump_peer(const fastd_peer_t *peer) {
 
 	if (fastd_peer_is_established(peer)) {
 		connection = json_object_new_object();
+
+		struct json_object *method = NULL;
+
+		const fastd_method_info_t *method_info = conf.protocol->get_current_method(peer);
+
+		if (method_info)
+			method = json_object_new_string(method_info->name);
+
+		json_object_object_add(connection, "method", method);
 
 		if (conf.mode == MODE_TAP) {
 			struct json_object *mac_addresses = json_object_new_array();
