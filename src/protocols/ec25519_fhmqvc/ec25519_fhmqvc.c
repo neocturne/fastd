@@ -106,6 +106,17 @@ static inline bool check_session(fastd_peer_t *peer) {
 	return false;
 }
 
+/** Determines if the old or the new session should be used for sending a packet */
+static inline bool use_old_session(const fastd_protocol_peer_state_t *state) {
+	if (!state->session.method->provider->session_is_initiator(state->session.method_state))
+		return false;
+
+	if (!is_session_valid(&state->old_session))
+		return false;
+
+	return true;
+}
+
 /** Handles a payload packet received from a peer */
 static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!peer->protocol_state || !check_session(peer))
@@ -186,7 +197,7 @@ static void protocol_send(fastd_peer_t *peer, fastd_buffer_t buffer) {
 
 	check_session_refresh(peer);
 
-	if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state) && is_session_valid(&peer->protocol_state->old_session)) {
+	if (use_old_session(peer->protocol_state)) {
 		pr_debug2("sending packet for old session to %P", peer);
 		session_send(peer, buffer, &peer->protocol_state->old_session);
 	}
@@ -205,7 +216,7 @@ const fastd_method_info_t * protocol_get_current_method(const fastd_peer_t *peer
 	if (!peer->protocol_state || !fastd_peer_is_established(peer))
 		return NULL;
 
-	if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state) && is_session_valid(&peer->protocol_state->old_session))
+	if (use_old_session(peer->protocol_state))
 		return peer->protocol_state->old_session.method;
 	else
 		return peer->protocol_state->session.method;
