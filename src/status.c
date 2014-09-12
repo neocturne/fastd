@@ -76,11 +76,11 @@ static void * dump_thread(void *p) {
 
 
 /** Dumps a fastd_stats_t as a JSON object */
-static json_object * dump_stats(const fastd_stats_t *stats) {
+static json_object * dump_stats(const fastd_stats_t *stats, fastd_stat_type_t type) {
 	struct json_object *ret = json_object_new_object();
 
-	json_object_object_add(ret, "packets", json_object_new_int64(stats->packets));
-	json_object_object_add(ret, "bytes", json_object_new_int64(stats->bytes));
+	json_object_object_add(ret, "packets", json_object_new_int64(stats->packets[type]));
+	json_object_object_add(ret, "bytes", json_object_new_int64(stats->bytes[type]));
 
 	return ret;
 }
@@ -144,12 +144,12 @@ static void dump_status(int fd) {
 	struct json_object *statistics = json_object_new_object();
 	json_object_object_add(json, "statistics", statistics);
 
-	json_object_object_add(statistics, "rx", dump_stats(&ctx.rx));
-	json_object_object_add(statistics, "rx_reordered", dump_stats(&ctx.rx_reordered));
+	json_object_object_add(statistics, "rx", dump_stats(&ctx.stats, STAT_RX));
+	json_object_object_add(statistics, "rx_reordered", dump_stats(&ctx.stats, STAT_RX_REORDERED));
 
-	json_object_object_add(statistics, "tx", dump_stats(&ctx.tx));
-	json_object_object_add(statistics, "tx_dropped", dump_stats(&ctx.tx_dropped));
-	json_object_object_add(statistics, "tx_error", dump_stats(&ctx.tx_error));
+	json_object_object_add(statistics, "tx", dump_stats(&ctx.stats, STAT_TX));
+	json_object_object_add(statistics, "tx_dropped", dump_stats(&ctx.stats, STAT_TX_DROPPED));
+	json_object_object_add(statistics, "tx_error", dump_stats(&ctx.stats, STAT_TX_ERROR));
 
 	struct json_object *peers = json_object_new_object();
 	json_object_object_add(json, "peers", peers);

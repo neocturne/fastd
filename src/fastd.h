@@ -149,13 +149,25 @@ struct fastd_socket {
 	fastd_peer_t *peer;			/**< If the socket belongs to a single peer (as it was create dynamically when sending a handshake), contains that peer */
 };
 
-/** Some kind of network transfer stratistics */
+
+/** Type of a traffic stat counter */
+typedef enum fastd_stat_type {
+	STAT_RX = 0,				/**< Reception statistics (total) */
+	STAT_RX_REORDERED,			/**< Reception statistics (reordered) */
+	STAT_TX,				/**< Transmission statistics (OK) */
+	STAT_TX_DROPPED,			/**< Transmission statistics (dropped because of full queues) */
+	STAT_TX_ERROR,				/**< Transmission statistics (other errors) */
+	STAT_MAX,				/**< (Number of defined stat types) */
+} fastd_stat_type_t;
+
+/** Some kind of network transfer statistics */
 struct fastd_stats {
 #ifdef WITH_STATUS_SOCKET
-	uint64_t packets;			/**< The number of packets transferred */
-	uint64_t bytes;				/**< The number of bytes transferred */
+	uint64_t packets[STAT_MAX];		/**< The number of packets transferred */
+	uint64_t bytes[STAT_MAX];		/**< The number of bytes transferred */
 #endif
 };
+
 
 /** A data structure keeping track of an unknown addresses that a handshakes was received from recently */
 struct fastd_handshake_timeout {
@@ -288,12 +300,7 @@ struct fastd_context {
 	fastd_socket_t *sock_default_v4;	/**< Points to the socket that is used for new outgoing IPv4 connections */
 	fastd_socket_t *sock_default_v6;	/**< Points to the socket that is used for new outgoing IPv6 connections */
 
-	fastd_stats_t rx;			/**< Reception statistics (total) */
-	fastd_stats_t rx_reordered;		/**< Reception statistics (reordered packets) */
-
-	fastd_stats_t tx;			/**< Transmission statistics (OK) */
-	fastd_stats_t tx_dropped;		/**< Transmission statistics (dropped because of full queues) */
-	fastd_stats_t tx_error;			/**< Transmission statistics (other errors) */
+	fastd_stats_t stats;			/**< Traffic statistics */
 
 	VECTOR(fastd_peer_eth_addr_t) eth_addrs; /**< Sorted vector of all known ethernet addresses with associated peers and timeouts */
 
@@ -387,12 +394,13 @@ static inline size_t fastd_max_payload(void) {
 }
 
 /** Adds statistics for a single packet of a given size */
-static inline void fastd_stats_add(UNUSED fastd_stats_t *stats, UNUSED size_t stat_size) {
+static inline void fastd_stats_add(UNUSED fastd_peer_t *peer, UNUSED fastd_stat_type_t stat, UNUSED size_t bytes) {
 #ifdef WITH_STATUS_SOCKET
-	if (stat_size) {
-		stats->packets++;
-		stats->bytes += stat_size;
-	}
+	if (!bytes)
+		return;
+
+	ctx.stats.packets[stat]++;
+	ctx.stats.bytes[stat] += bytes;
 #endif
 }
 

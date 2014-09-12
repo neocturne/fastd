@@ -143,23 +143,23 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 		case EWOULDBLOCK:
 #endif
 			pr_debug2_errno("sendmsg");
-			fastd_stats_add(&ctx.tx_dropped, stat_size);
+			fastd_stats_add(peer, STAT_TX_DROPPED, stat_size);
 			break;
 
 		case ENETDOWN:
 		case ENETUNREACH:
 		case EHOSTUNREACH:
 			pr_debug_errno("sendmsg");
-			fastd_stats_add(&ctx.tx_error, stat_size);
+			fastd_stats_add(peer, STAT_TX_ERROR, stat_size);
 			break;
 
 		default:
 			pr_warn_errno("sendmsg");
-			fastd_stats_add(&ctx.tx_error, stat_size);
+			fastd_stats_add(peer, STAT_TX_ERROR, stat_size);
 		}
 	}
 	else {
-		fastd_stats_add(&ctx.tx, stat_size);
+		fastd_stats_add(peer, STAT_TX, stat_size);
 	}
 
 	fastd_buffer_free(buffer);

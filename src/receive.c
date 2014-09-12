@@ -267,10 +267,10 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reorde
 			fastd_peer_eth_addr_add(peer, src_addr);
 	}
 
-	fastd_stats_add(&ctx.rx, buffer.len);
+	fastd_stats_add(peer, STAT_RX, buffer.len);
 
 	if (reordered)
-		fastd_stats_add(&ctx.rx_reordered, buffer.len);
+		fastd_stats_add(peer, STAT_RX_REORDERED, buffer.len);
 
 	fastd_tuntap_write(buffer);
 
