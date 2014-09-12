@@ -75,8 +75,8 @@ static void * dump_thread(void *p) {
 }
 
 
-/** Dumps a fastd_stats_t as a JSON object */
-static json_object * dump_stats(const fastd_stats_t *stats, fastd_stat_type_t type) {
+/** Dumps a single traffic stat as a JSON object */
+static json_object * dump_stat(const fastd_stats_t *stats, fastd_stat_type_t type) {
 	struct json_object *ret = json_object_new_object();
 
 	json_object_object_add(ret, "packets", json_object_new_int64(stats->packets[type]));
@@ -84,6 +84,21 @@ static json_object * dump_stats(const fastd_stats_t *stats, fastd_stat_type_t ty
 
 	return ret;
 }
+
+/** Dumps a fastd_stats_t as a JSON object */
+static json_object * dump_stats(const fastd_stats_t *stats) {
+	struct json_object *statistics = json_object_new_object();
+
+	json_object_object_add(statistics, "rx", dump_stat(stats, STAT_RX));
+	json_object_object_add(statistics, "rx_reordered", dump_stat(stats, STAT_RX_REORDERED));
+
+	json_object_object_add(statistics, "tx", dump_stat(stats, STAT_TX));
+	json_object_object_add(statistics, "tx_dropped", dump_stat(stats, STAT_TX_DROPPED));
+	json_object_object_add(statistics, "tx_error", dump_stat(stats, STAT_TX_ERROR));
+
+	return statistics;
+}
+
 
 /** Dumps a peer's status as a JSON object */
 static json_object * dump_peer(const fastd_peer_t *peer) {
@@ -108,6 +123,8 @@ static json_object * dump_peer(const fastd_peer_t *peer) {
 			method = json_object_new_string(method_info->name);
 
 		json_object_object_add(connection, "method", method);
+
+		json_object_object_add(connection, "statistics", dump_stats(&peer->stats));
 
 		if (conf.mode == MODE_TAP) {
 			struct json_object *mac_addresses = json_object_new_array();
@@ -141,15 +158,7 @@ static json_object * dump_peer(const fastd_peer_t *peer) {
 static void dump_status(int fd) {
 	struct json_object *json = json_object_new_object();
 
-	struct json_object *statistics = json_object_new_object();
-	json_object_object_add(json, "statistics", statistics);
-
-	json_object_object_add(statistics, "rx", dump_stats(&ctx.stats, STAT_RX));
-	json_object_object_add(statistics, "rx_reordered", dump_stats(&ctx.stats, STAT_RX_REORDERED));
-
-	json_object_object_add(statistics, "tx", dump_stats(&ctx.stats, STAT_TX));
-	json_object_object_add(statistics, "tx_dropped", dump_stats(&ctx.stats, STAT_TX_DROPPED));
-	json_object_object_add(statistics, "tx_error", dump_stats(&ctx.stats, STAT_TX_ERROR));
+	json_object_object_add(json, "statistics", dump_stats(&ctx.stats));
 
 	struct json_object *peers = json_object_new_object();
 	json_object_object_add(json, "peers", peers);

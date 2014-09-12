@@ -393,17 +393,6 @@ static inline size_t fastd_max_payload(void) {
 	}
 }
 
-/** Adds statistics for a single packet of a given size */
-static inline void fastd_stats_add(UNUSED fastd_peer_t *peer, UNUSED fastd_stat_type_t stat, UNUSED size_t bytes) {
-#ifdef WITH_STATUS_SOCKET
-	if (!bytes)
-		return;
-
-	ctx.stats.packets[stat]++;
-	ctx.stats.bytes[stat] += bytes;
-#endif
-}
-
 /** Checks if a fastd_peer_address_t is an IPv6 link-local address */
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
 	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));

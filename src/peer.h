@@ -72,6 +72,8 @@ struct fastd_peer {
 	fastd_timeout_t timeout;			/**< The timeout after which the peer is reset */
 	fastd_timeout_t keepalive_timeout;		/**< The timeout after which a keepalive is sent to the peer */
 
+	fastd_stats_t stats;				/**< Traffic statistics */
+
 	const fastd_peer_group_t *group;		/**< The peer group the peer belongs to */
 
 	VECTOR(fastd_remote_t) remotes;			/**< The vector of the peer's remotes */
@@ -270,3 +272,17 @@ fastd_peer_t * fastd_peer_find_by_eth_addr(fastd_eth_addr_t addr);
 
 void fastd_peer_handle_handshake_queue(void);
 void fastd_peer_maintenance(void);
+
+/** Adds statistics for a single packet of a given size */
+static inline void fastd_stats_add(UNUSED fastd_peer_t *peer, UNUSED fastd_stat_type_t stat, UNUSED size_t bytes) {
+#ifdef WITH_STATUS_SOCKET
+	if (!bytes)
+		return;
+
+	ctx.stats.packets[stat]++;
+	ctx.stats.bytes[stat] += bytes;
+
+	peer->stats.packets[stat]++;
+	peer->stats.bytes[stat] += bytes;
+#endif
+}

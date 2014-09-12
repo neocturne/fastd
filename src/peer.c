@@ -321,6 +321,8 @@ static void reset_peer(fastd_peer_t *peer) {
 
 	fastd_peer_hashtable_remove(peer);
 
+	memset(&peer->stats, 0, sizeof(peer->stats));
+
 	peer->address.sa.sa_family = AF_UNSPEC;
 	peer->local_address.sa.sa_family = AF_UNSPEC;
 	peer->state = STATE_INACTIVE;
