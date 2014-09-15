@@ -478,6 +478,9 @@ static inline void init(int argc, char *argv[]) {
 
 	pr_info("fastd " FASTD_VERSION " starting");
 
+	fastd_update_time();
+	ctx.started = ctx.now;
+
 	fastd_cap_init();
 
 	init_sockets();

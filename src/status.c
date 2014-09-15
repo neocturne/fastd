@@ -115,6 +115,8 @@ static json_object * dump_peer(const fastd_peer_t *peer) {
 	if (fastd_peer_is_established(peer)) {
 		connection = json_object_new_object();
 
+		json_object_object_add(connection, "established", json_object_new_int64(ctx.now - peer->established));
+
 		struct json_object *method = NULL;
 
 		const fastd_method_info_t *method_info = conf.protocol->get_current_method(peer);
@@ -157,6 +159,8 @@ static json_object * dump_peer(const fastd_peer_t *peer) {
 /** Dumps fastd's status to a connected socket */
 static void dump_status(int fd) {
 	struct json_object *json = json_object_new_object();
+
+	json_object_object_add(json, "uptime", json_object_new_int64(ctx.now - ctx.started));
 
 	json_object_object_add(json, "statistics", dump_stats(&ctx.stats));
 

@@ -843,6 +843,7 @@ void fastd_peer_set_established(fastd_peer_t *peer) {
 		return;
 
 	peer->state = STATE_ESTABLISHED;
+	peer->established = ctx.now;
 	on_establish(peer);
 	pr_info("connection with %P established.", peer);
 }

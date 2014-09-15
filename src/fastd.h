@@ -257,6 +257,8 @@ struct fastd_context {
 
 	char *ifname;				/**< The actual interface name */
 
+	int64_t started;			/**< The timestamp when fastd was started */
+
 	int64_t now;				/**< The current monotonous timestamp in microseconds after an arbitrary point in time */
 
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */

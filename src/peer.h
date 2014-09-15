@@ -89,6 +89,7 @@ struct fastd_peer {
 	fastd_timeout_t last_handshake_response_timeout; /**< All handshakes from last_handshake_address will be ignored until this timeout has occured */
 	fastd_peer_address_t last_handshake_response_address; /**< The address the last handshake was received from */
 
+	int64_t established;				/**< The time this peer connection has been established */
 	fastd_timeout_t establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
 
 	const char *config_source_dir;			/**< The directory this peer's configuration was loaded from */
