@@ -84,13 +84,15 @@ void fastd_poll_init(void) {
 		exit_errno("epoll_ctl");
 
 #ifdef WITH_STATUS_SOCKET
-	struct epoll_event event_status = {
-		.events = EPOLLIN,
-		.data.ptr = &ctx.status_fd,
-	};
+	if (ctx.status_fd >= 0) {
+		struct epoll_event event_status = {
+			.events = EPOLLIN,
+			.data.ptr = &ctx.status_fd,
+		};
 
-	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.status_fd, &event_status) < 0)
-		exit_errno("epoll_ctl");
+		if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.status_fd, &event_status) < 0)
+			exit_errno("epoll_ctl");
+	}
 #endif
 }
 

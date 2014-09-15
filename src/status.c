@@ -195,8 +195,10 @@ static void dump_status(int fd) {
 
 /** Initialized the status socket */
 void fastd_status_init(void) {
-	if (!conf.status_socket)
+	if (!conf.status_socket) {
+		ctx.status_fd = -1;
 		return;
+	}
 
 	uid_t uid = geteuid();
 	gid_t gid = getegid();
