@@ -127,7 +127,7 @@ static inline bool new_session(fastd_peer_t *peer, const fastd_method_info_t *me
 
 	if (salt) {
 		size_t blocks = block_count(method->provider->key_length(method->method), sizeof(fastd_sha256_t));
-		fastd_sha256_t secret[blocks];
+		fastd_sha256_t secret[blocks ?: 1];
 		derive_key(secret, blocks, salt, method->name, A, B, X, Y, sigma);
 
 		peer->protocol_state->session.method_state = method->provider->session_init(method->method, (const uint8_t *)secret, initiator);

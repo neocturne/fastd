@@ -139,7 +139,7 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 	if (tail_len)
 		memset(in.data+in.len, 0, tail_len);
 
-	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
+	uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
@@ -179,7 +179,7 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	if (flags)
 		return false;
 
-	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
+	uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
