@@ -72,6 +72,7 @@ config_string_mtu='mtu $(guard_value "$value");'
 config_string_peer_limit='peer limit $(guard_value "$value");'
 config_string_user='user $(escape_string "$value");'
 config_string_group='group $(escape_string "$value");'
+config_string_status_socket='status socket $(escape_string "$value");'
 config_string_pmtu='pmtu $(yes_no "$value");'
 config_string_forward='forward $(yes_no "$value");'
 config_string_hide_ip_addresses='hide ip addresses $(yes_no "$value");'
@@ -233,7 +234,7 @@ generate_config() {
 
 	append_options "$s" config \
 		config config_peer config_peer_dir bind method syslog_level mode interface mtu peer_limit \
-		user group pmtu forward hide_ip_addresses hide_mac_addresses secure_handshakes packet_mark
+		user group status_socket pmtu forward hide_ip_addresses hide_mac_addresses secure_handshakes packet_mark
 
 	config_get mode "$s" mode
 
