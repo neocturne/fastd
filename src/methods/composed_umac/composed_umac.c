@@ -192,8 +192,8 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 	bool ok = session->umac_cipher->crypt(session->umac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), umac_nonce);
 
 	if (ok) {
-		uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
-		fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
+		uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
+		fastd_method_expand_nonce(nonce, session->common.send_nonce, session->method->cipher_info->iv_length);
 
 		ok = session->cipher->crypt(session->cipher_state, outblocks+1, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
 	}
@@ -237,8 +237,8 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	if (flags)
 		return false;
 
-	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
-	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
+	uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
+	fastd_method_expand_nonce(nonce, in_nonce, session->method->cipher_info->iv_length);
 
 	uint8_t umac_nonce[session->method->umac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(umac_nonce, in_nonce, sizeof(umac_nonce));
