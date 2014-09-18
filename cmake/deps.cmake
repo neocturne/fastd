@@ -61,7 +61,7 @@ else(WITH_CAPABILITIES)
 endif(WITH_CAPABILITIES)
 
 if(WITH_STATUS_SOCKET)
-  pkg_check_modules(JSONC json-c)
+  pkg_check_modules(JSONC REQUIRED json-c)
 else(WITH_STATUS_SOCKET)
   set(JSONC_INCLUDE_DIRS "")
   set(JSONC_CFLAGS_OTHER "")
