@@ -159,3 +159,34 @@ static inline void fastd_handshake_add_uint16(fastd_buffer_t *buffer, fastd_hand
 	dst[0] = value;
 	dst[1] = value >> 8;
 }
+
+/** Adds an uint24 TLV record of given type and value to a handshake buffer */
+static inline void fastd_handshake_add_uint24(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint32_t value) {
+	uint8_t *dst = fastd_handshake_extend(buffer, type, 3);
+
+	dst[0] = value;
+	dst[1] = value >> 8;
+	dst[2] = value >> 16;
+}
+
+/** Adds an uint32 TLV record of given type and value to a handshake buffer */
+static inline void fastd_handshake_add_uint32(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint32_t value) {
+	uint8_t *dst = fastd_handshake_extend(buffer, type, 4);
+
+	dst[0] = value;
+	dst[1] = value >> 8;
+	dst[2] = value >> 16;
+	dst[3] = value >> 24;
+}
+
+/** Adds an TLV record of given type and value to a handshake buffer, automatically using a 1- to 4-byte value */
+static inline void fastd_handshake_add_uint(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint32_t value) {
+	if (value > 0xffffff)
+		fastd_handshake_add_uint32(buffer, type, value);
+	if (value > 0xffff)
+		fastd_handshake_add_uint24(buffer, type, value);
+	if (value > 0xff)
+		fastd_handshake_add_uint16(buffer, type, value);
+	else
+		fastd_handshake_add_uint8(buffer, type, value);
+}
