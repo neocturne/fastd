@@ -13,8 +13,17 @@ User manual
    manual/mtu
 
 
+Cryptographic algorithms
+------------------------
+
+.. toctree::
+   :maxdepth: 2
+
+
 Developer documentation
 -----------------------
 
 .. toctree::
    :maxdepth: 2
+
+   devel/protocol
