@@ -206,16 +206,24 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
 		return true;
 	}
 
+	if (!source) {
+		fastd_eth_addr_t src_addr = fastd_buffer_source_address(buffer);
+
+		if (fastd_eth_addr_is_unicast(src_addr))
+			fastd_peer_eth_addr_add(NULL, src_addr);
+	}
+
 	fastd_eth_addr_t dest_addr = fastd_buffer_dest_address(buffer);
 	if (!fastd_eth_addr_is_unicast(dest_addr))
 		return false;
 
-	fastd_peer_t *dest = fastd_peer_find_by_eth_addr(dest_addr);
+	fastd_peer_t *dest;
+	bool found = fastd_peer_find_by_eth_addr(dest_addr, &dest);
 
-	if (!dest)
+	if (!found)
 		return false;
 
-	if (dest == source) {
+	if (!dest || dest == source) {
 		fastd_buffer_free(buffer);
 		return true;
 	}

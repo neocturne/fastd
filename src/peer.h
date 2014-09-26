@@ -271,7 +271,7 @@ static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 }
 
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
-fastd_peer_t * fastd_peer_find_by_eth_addr(fastd_eth_addr_t addr);
+bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer);
 
 void fastd_peer_handle_handshake_queue(void);
 void fastd_peer_maintenance(void);

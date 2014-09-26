@@ -862,7 +862,7 @@ static int peer_eth_addr_cmp(const fastd_peer_eth_addr_t *addr1, const fastd_pee
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 	int min = 0, max = VECTOR_LEN(ctx.eth_addrs);
 
-	if (!fastd_peer_is_established(peer))
+	if (peer && !fastd_peer_is_established(peer))
 		exit_bug("tried to learn ethernet address on non-established peer");
 
 	while (max > min) {
@@ -884,18 +884,22 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 
 	VECTOR_INSERT(ctx.eth_addrs, ((fastd_peer_eth_addr_t) {addr, peer, ctx.now + ETH_ADDR_STALE_TIME}), min);
 
-	pr_debug("learned new MAC address %E on peer %P", &addr, peer);
+	if (peer)
+		pr_debug("learned new MAC address %E on peer %P", &addr, peer);
+	else
+		pr_debug("learned new local MAC address %E", &addr);
 }
 
 /** Finds the peer that is associated with a given MAC address */
-fastd_peer_t * fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr) {
+bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer) {
 	const fastd_peer_eth_addr_t key = {.addr = addr};
 	fastd_peer_eth_addr_t *peer_eth_addr = VECTOR_BSEARCH(&key, ctx.eth_addrs, peer_eth_addr_cmp);
 
-	if (peer_eth_addr)
-		return peer_eth_addr->peer;
-	else
-		return NULL;
+	if (!peer_eth_addr)
+		return false;
+
+	*peer = peer_eth_addr->peer;
+	return true;
 }
 
 /**
