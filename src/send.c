@@ -195,13 +195,6 @@ static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
 	fastd_buffer_free(buffer);
 }
 
-/** Returns the destination address of an ethernet packet */
-static inline fastd_eth_addr_t get_dest_address(const fastd_buffer_t buffer) {
-	fastd_eth_addr_t ret;
-	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
-	return ret;
-}
-
 /** Handles sending of a payload packet to a single peer in TAP mode */
 static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *source) {
 	if (conf.mode != MODE_TAP)
@@ -213,7 +206,7 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
 		return true;
 	}
 
-	fastd_eth_addr_t dest_addr = get_dest_address(buffer);
+	fastd_eth_addr_t dest_addr = fastd_buffer_dest_address(buffer);
 	if (!fastd_eth_addr_is_unicast(dest_addr))
 		return false;
 

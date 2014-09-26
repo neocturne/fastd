@@ -245,13 +245,6 @@ void fastd_receive(fastd_socket_t *sock) {
 	handle_socket_receive(sock, &local_addr, &recvaddr, buffer);
 }
 
-/** Returns the source address of an ethernet packet */
-static inline fastd_eth_addr_t get_source_address(const fastd_buffer_t buffer) {
-	fastd_eth_addr_t ret;
-	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
-	return ret;
-}
-
 /** Handles a received and decrypted payload packet */
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reordered) {
 	if (conf.mode == MODE_TAP) {
@@ -261,7 +254,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reorde
 			return;
 		}
 
-		fastd_eth_addr_t src_addr = get_source_address(buffer);
+		fastd_eth_addr_t src_addr = fastd_buffer_source_address(buffer);
 
 		if (fastd_eth_addr_is_unicast(src_addr))
 			fastd_peer_eth_addr_add(peer, src_addr);

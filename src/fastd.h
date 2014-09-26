@@ -395,6 +395,22 @@ static inline size_t fastd_max_payload(void) {
 	}
 }
 
+
+/** Returns the source address of an ethernet packet */
+static inline fastd_eth_addr_t fastd_buffer_source_address(const fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
+	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
+	return ret;
+}
+
+/** Returns the destination address of an ethernet packet */
+static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t buffer) {
+	fastd_eth_addr_t ret;
+	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
+	return ret;
+}
+
+
 /** Checks if a fastd_peer_address_t is an IPv6 link-local address */
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
 	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));
