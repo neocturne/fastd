@@ -519,6 +519,13 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fa
 }
 
 
+static inline void print_unknown_key(const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
+	char buf[65];
+	hexdump(buf, key);
+
+	pr_verbose("ignoring handshake from %I (unknown key %s)", addr, buf);
+}
+
 #ifdef WITH_DYNAMIC_PEERS
 
 /** Data attached to an asynchronous on-verify run */
@@ -529,7 +536,7 @@ typedef struct verify_data {
 /** Adds a dynamic peer for an unknown key */
 static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
 	if (!fastd_allow_verify()) {
-		pr_debug("ignoring handshake from %I (unknown key)", addr);
+		print_unknown_key(addr, key);
 		return NULL;
 	}
 
@@ -606,8 +613,8 @@ void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fast
 #else
 
 /** Dummy add dynamic function for fastd versions without on-verify support */
-static inline fastd_peer_t * add_dynamic(UNUSED fastd_socket_t *sock, const fastd_peer_address_t *addr, UNUSED const unsigned char key[PUBLICKEYBYTES]) {
-	pr_debug("ignoring handshake from %I (unknown key)", addr);
+static inline fastd_peer_t * add_dynamic(UNUSED fastd_socket_t *sock, const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
+	print_unknown_key(addr, key);
 	return NULL;
 }
 
