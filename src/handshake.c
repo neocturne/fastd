@@ -62,19 +62,24 @@ static inline uint8_t as_uint8(const fastd_handshake_record_t *record) {
 	return record->data[0];
 }
 
-/** Reads a TLV record as a 16bit integer (little endian) */
+/** Reads a TLV record as a 16bit integer (big endian) */
 static inline uint16_t as_uint16(const fastd_handshake_record_t *record) {
-	return as_uint8(record) | (uint16_t)record->data[1] << 8;
+	return (uint16_t)as_uint8(record) << 8 | record->data[1];
 }
 
-/** Reads a TLV record as a 24bit integer (little endian) */
+/** Reads a TLV record as a 24bit integer (big endian) */
 static inline uint32_t as_uint24(const fastd_handshake_record_t *record) {
-	return as_uint16(record) | (uint32_t)record->data[2] << 16;
+	return (uint32_t)as_uint16(record) << 8 | record->data[2];
 }
 
-/** Reads a TLV record as a 32bit integer (little endian) */
+/** Reads a TLV record as a 32bit integer (big endian) */
 static inline uint32_t as_uint32(const fastd_handshake_record_t *record) {
-	return as_uint24(record) | (uint32_t)record->data[3] << 24;
+	return as_uint24(record) << 8 | record->data[3];
+}
+
+/** Reads a TLV record as a 16bit integer (little endian) */
+static inline uint16_t as_uint16_le(const fastd_handshake_record_t *record) {
+	return as_uint8(record) | (uint16_t)record->data[1] << 8;
 }
 
 /** Reads a TLV record as a variable-length integer (little endian) */
@@ -170,7 +175,7 @@ static fastd_buffer_t new_handshake(uint8_t type, const fastd_method_info_t *met
 
 	fastd_handshake_add_uint8(&buffer, RECORD_HANDSHAKE_TYPE, type);
 	fastd_handshake_add_uint8(&buffer, RECORD_MODE, conf.mode);
-	fastd_handshake_add_uint16(&buffer, RECORD_MTU, conf.mtu);
+	fastd_handshake_add_uint16_le(&buffer, RECORD_MTU, conf.mtu);
 
 	fastd_handshake_add(&buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
 	fastd_handshake_add(&buffer, RECORD_PROTOCOL_NAME, protocol_len, conf.protocol->name);
@@ -330,9 +335,9 @@ static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_
 
 	if (!conf.secure_handshakes || handshake->type > 1) {
 		if (handshake->records[RECORD_MTU].length == 2) {
-			if (as_uint16(&handshake->records[RECORD_MTU]) != conf.mtu) {
+			if (as_uint16_le(&handshake->records[RECORD_MTU]) != conf.mtu) {
 				pr_warn("MTU configuration differs with peer %I: local MTU is %u, remote MTU is %u",
-					remote_addr, conf.mtu, as_uint16(&handshake->records[RECORD_MTU]));
+					remote_addr, conf.mtu, as_uint16_le(&handshake->records[RECORD_MTU]));
 			}
 		}
 	}
