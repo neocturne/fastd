@@ -55,19 +55,77 @@ Handshake protocol
 The following specification describes the current handshake as it is performed by fastd versions
 since v11 when secure handshakes are enabled.
 
-The handshake protocol consists of three packets. See also: FHMQV-C
+The handshake protocol consists of three packets. See also: :doc:`/crypto/ec25519`, :doc:`/crypto/fhmqvc`
+
+The following fields are sent in all three packets as different fastd versions expect them in
+different parts of the handshake:
+
+* Mode (TUN/TAP)
+* MTU
+* fastd version (e.g. ``v15``)
+* Protocol name (``ec25519-fhmqvc``)
 
 Handshake request
 .................
+The first packet of a handshake contains the following additional fields:
 
+* Handshake type (0x01)
+* FHMQV-C values:
+
+  - Sender key :math:`\hat{A}`
+  - Recipient key :math:`\hat{B}`
+  - Sender handshake key :math:`X`
+
+The recipient key may be omitted if the recipient identity is unknown because the handshake was triggered by an unexpected data packet.
 
 Handshake reply
 ...............
+The second packet of a handshake contains the following additional fields:
 
+* Handshake type (0x02)
+* Reply code (0x00)
+* Method list (list of all supported methods)
+* FHMQV-C values:
+
+  - Sender key :math:`\hat{B}`
+  - Recipient key :math:`\hat{A}`
+  - Sender handshake key :math:`Y`
+  - Recipient handshake key :math:`X`
+  - TLV authentication tag :math:`\text{MAC}_B`
 
 Handshake finish
 ................
+The second packet of a handshake contains the following additional fields:
 
+* Handshake type (0x03)
+* Reply code (0x00)
+* Method (the chosen encryption/authentication scheme)
+* FHMQV-C values:
+
+  - Sender key :math:`\hat{A}`
+  - Recipient key :math:`\hat{B}`
+  - Sender handshake key :math:`X`
+  - Recipient handshake key :math:`Y`
+  - TLV authentication tag :math:`\text{MAC}_A`
+
+Handshake error
+...............
+When an unacceptable handshake is received, fastd will respond with an error packet. The error packet contains the following fields:
+
+* Handshake type (the type of the packet that is answered plus 1)
+* Reply code (0x01 when a record is missing from the handshake,
+  0x02 when a value is unacceptable)
+* Error detail (the record type ID which caused the error)
 
 Payload packets
 ~~~~~~~~~~~~~~~
+The payload packet structure is defined by the methods; at the moment most methods use the same format, starting with a 24 byte header, followed by the actual payload:
+
+* Byte 1: Packet type (0x02)
+* Byte 2: Flags (method-specific; unused, always 0x00)
+* Bytes 3-8: Packet sequence number/nonce (big endian; incremented by 2 for each packet; one side of a connection uses the even sequence numbers and the other side the odd ones)
+* Bytes 9-24: Authentication tag (method-specific)
+
+The ``null`` method uses only a 1 byte header: The packet type is directly followed by the payload data.
+
+In the legacy ``xsalsa20-poly1305`` method, the flag and nonce fields are reversed and the nonce is in little endian for compatiblity reasons.

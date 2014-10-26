@@ -19,6 +19,9 @@ Cryptographic algorithms
 .. toctree::
    :maxdepth: 2
 
+   crypto/ec25519
+   crypto/fhmqvc
+
 
 Developer documentation
 -----------------------
