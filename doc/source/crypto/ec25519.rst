@@ -1,2 +1,187 @@
 ec25519
 =======
+
+Twisted Edwards curves
+~~~~~~~~~~~~~~~~~~~~~~
+In general, a twisted Edwards curve is a mathematical group on the
+points satisfying an equation of the form
+
+.. math::
+
+   ax^2 + y^2 = 1 + dx^2y^2
+
+For purposes of cryptography the curve is defined on a finite field.
+
+The corresponding group law is
+
+.. math::
+
+   (x_1,y_1) + (x_2,y_2) = \left( \frac{x_1y_2 + y_1x_2}{1 + dx_1x_2y_1y_2} , \frac{y_1y_2 - ax_1x_2}{1 - dx_1x_2y_1y_2} \right)
+
+For further information on twisted Edwards curves see [BBJ+08]_.
+
+Extended coordinate representation
+----------------------------------
+Representing a curve point as an coordinate pair :math:`(x,y)` is rather inconvenient for calculations on points
+as reciprocation is a very expensive operation. [HWCD08]_ specifies an alternative representation: the
+*extended coordinate* representation, which stores a point as a tuple of four coodinates :math:`X`, :math:`Y`, :math:`Z` and :math:`T`,
+satisfying the following equations:
+
+.. math::
+
+   x = \frac{X}{Z} \qquad
+   y = \frac{Y}{Z} \qquad
+   x \cdot y = \frac{T}{Z}
+
+By storing the denominator of the fractions as Z, consequent group operations can be performed
+without having to compute reciprocals until a canonical representation is needed again. The
+additional value T is used to speed up some operations.
+
+The extended coordinate representation of twisted Edwards curves allows very efficient *strongly
+unified addition*; the term *strongly unified addition* denotes that the implementation of the addition
+operation can be used to double a point as well, so the special case of adding a point to
+itself doesn't have to be implemented specifically.
+
+As the data of the Explicit-Formulas Database [EFD]_ suggests, the extended coordinate representation
+of twisted Edwards curves allows strongly unified addition with the least number of
+operations of all similar curve types and representations in the database (i. e. 9 multiplications),
+which is the principal reason a twisted Edwards curve has been chosen for fastd's handshake.
+
+
+Point compression
+-----------------
+As the points of an elliptic curve satisfy a curve equation, it is possible to transform the coordinates
+of a point into a more compact representation for transmission or storage. The twisted Edwards curve equation can
+be transformed to:
+
+.. math::
+
+   y^2 = \frac{1 - ax^2}{1 - dx^2}
+
+As one can easily see, there are at most two possible :math:`y` values for each value of :math:`x` (this rule also
+holds when the elliptic curve is defined over a finite field), thus one bit is enough to distinguish
+between the two values.
+
+For the curve used by fastd this means: as it is defined over a field with
+the cardinality :math:`2^{255} - 19`, 255 bit are necessary to store a coordinate.
+Point compression allows to conveniently pack the 255 bit :math:`x` coordinate with
+the least significant bit of the :math:`y` coordinate into a 256 bit representation.
+
+Even though this optimization is quite obvious, it was protected by US patent 6,141,420 ([VMA00]_),
+which chould have complicated the operation of fastd when subject to the US patent law. Fortunately,
+the patent has expired on 29 July 2014.
+
+The curve used by ec25519
+~~~~~~~~~~~~~~~~~~~~~~~~~
+The curve used by ec25519 is based on Curve25519 (see [Ber06]_).
+
+Curve25519 uses a Montgomery curve in a reduced representation, which allows very fast scalar multiplication,
+but makes it impossible to perform simple additions on curve points. Therefore an equivalent twisted Edwards curve is used
+for fastd.
+
+Curve25519 is defined by the following equation:
+
+.. math::
+
+   v^2 = u^3 + 486662u^2 + u
+
+over the prime field :math:`F_p` for the prime :math:`p = 2^{255} - 19`.
+
+[BBJ+08]_ states that for all Montgomery curves
+
+.. math::
+
+   Bv^2 = u^3 + Au^2 + u
+
+with :math:`A \in F_p \setminus \{-2,2\}` and :math:`B \in F_p \setminus \{0\}` there is a birationally equivalent twisted Edwards
+curve
+
+.. math::
+
+   ax^2 + y^2 = 1 + dx^2y^2 \text{ with } a = \frac{A + 2}{B} \text{ and } d = \frac{A - 2}{B},
+
+thus leading to the following curve equation:
+
+.. math::
+
+   486664x^2 + y^2 = 1 + 486660x^2y^2
+
+Generator point
+---------------
+Curve25519 uses a point with
+
+.. math::
+
+   u = 9
+
+as its generator; the :math:`v` coordinate is not specified as it is not needed by the algorithm.
+
+The two possible :math:`v` coordinates are:
+
+.. math::
+
+   \begin{align}
+     v1 &= \texttt{0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9} \\
+     v2 &= \texttt{0x5f51e65e475f794b1fe122d388b72eb36dc2b28192839e4dd6163a5d81312c14}
+   \end{align}
+
+Out of :math:`(u,v_1)` and :math:`(u,v_2)`, the point :math:`(u,v_1)` has been arbitrarily chosen to be used in fastd; using
+the equivalence between Montgomery and twisted Edwards curves given by [BBJ+08]_
+
+.. math::
+
+   \begin{align}
+      x &= \frac{u}{v} \\
+      y &= \frac{u-1}{u+1}
+   \end{align}
+
+this leads to the coordinates
+
+.. math::
+
+   \begin{align}
+     x &= \texttt{0x547c4350219f5e19dd26a3d6668b74346a8eb726eb2396e1228cfa397ffe6bd4} \\
+     y &= \texttt{0x6666666666666666666666666666666666666666666666666666666666666658}
+   \end{align}
+
+which specify the generator point :math:`G` that is used by fastd's ``ec25519-fhmqvc``. Like :math:`(u,v_1)` on
+the Montgomery curve, the point :math:`G = (x, y)` on the twisted Edwards curve has the order
+
+.. math::
+
+   |G| = 2^{252} + 27742317777372353535851937790883648493
+
+Implementation
+~~~~~~~~~~~~~~
+The elliptic curve operations used by fastd have been implemented as a reusable library, *libuecc*, which
+is developed together with fastd. Large portions of the implementation, especially arithmetic modulo :math:`2^{255}-19`,
+haven been taken from the original Curve25519 implementation, which has been released in to the public domain by its
+author D. J. Bernstein.
+
+Like in the Curve25519 implementation, great care has been taken to ensure that there are no data-dependent branches or
+array accesses, thus making *libuecc* resistant to timing attacks.
+
+
+Bibliography
+~~~~~~~~~~~~
+
+.. [BBJ+08]
+   D. J. Bernstein, P. Birkner, M. Joye, T. Lange and C. Peters, "Twisted Edwards
+   curves", in Progress in Cryptology—AFRICACRYPT 2008, Springer, 2008, pp. 389–405.
+
+.. [Ber06]
+   D. J. Bernstein, "Curve25519: new Diffie-Hellman speed records", in Public Key
+   Cryptography-PKC 2006, Springer, 2006, pp. 207–228.
+
+.. [EFD]
+   D. J. Bernstein and T. Lange, "Explicit-Formulas Database—Genus-1 curves over
+   large-characteristic fields". [Online] http://hyperelliptic.org/EFD/g1p/index.html
+
+.. [HWCD08]
+   H. Hisil, K. K.-H. Wong, G. Carter and E. Dawson, "Twisted Edwards curves
+   revisited", in Advances in Cryptology—ASIACRYPT 2008, Springer, 2008, pp. 326–343.
+
+.. [VMA00]
+   S. A. Vanstone, R. C. Mullin and G. B. Agnew, "Elliptic curve encryption systems",
+   US Patent 6,141,420, 2000.
+
