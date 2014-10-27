@@ -83,7 +83,7 @@ where :math:`V|W` designates the concatenation of the binary strings :math:`V` a
 
 .. math::
 
-   \text{HKDF}(\textit{salt}, \textit{IKM}, \textit{info}, L) = \text{HKDF-Expand}(\text{HKDF-Expand}(\textit{salt}, \textit{IKM}), \textit{info}, L)
+   \text{HKDF}(\textit{salt}, \textit{IKM}, \textit{info}, L) = \text{HKDF-Expand}(\text{HKDF-Extract}(\textit{salt}, \textit{IKM}), \textit{info}, L)
 
 See [FIPS180]_ (SHA256), [RFC2104]_ (HMAC) and [RFC5869]_ (HKDF)
 for the specifications of these algorithms.
