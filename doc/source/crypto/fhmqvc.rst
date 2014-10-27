@@ -75,11 +75,9 @@ following definitions for these functions:
 
 .. math::
 
-   \begin{align}
-     d|e &= \text{SHA256}(Y|X|\hat{B}|\hat{A}) \\
-     K_1 &= \textit{KDF}_1(\sigma,\hat{A},\hat{B},X,Y) = \text{HKDF-SHA256}(\texttt{0x00}^{32}, \sigma, \hat{A}|\hat{B}|X|Y, 32) \\
-     K_2 &= \textit{KDF}_2(\sigma,\hat{A},\hat{B},X,Y) = \text{HKDF-SHA256}(K_1, \sigma, \hat{A}|\hat{B}|X|Y|\textit{method}, *)
-   \end{align}
+   d|e &= \text{SHA256}(Y|X|\hat{B}|\hat{A}) \\
+   K_1 &= \textit{KDF}_1(\sigma,\hat{A},\hat{B},X,Y) = \text{HKDF-SHA256}(\texttt{0x00}^{32}, \sigma, \hat{A}|\hat{B}|X|Y, 32) \\
+   K_2 &= \textit{KDF}_2(\sigma,\hat{A},\hat{B},X,Y) = \text{HKDF-SHA256}(K_1, \sigma, \hat{A}|\hat{B}|X|Y|\textit{method}, *)
 
 where :math:`V|W` designates the concatenation of the binary strings :math:`V` and :math:`W` and
 
@@ -96,10 +94,8 @@ as
 
 .. math::
 
-   \begin{align}
-     d = \bar{H}(X|Y|\hat{A}|\hat{B}) \\
-     e = \bar{H}(Y|X|\hat{A}|\hat{B})
-   \end{align}
+   d &= \bar{H}(X|Y|\hat{A}|\hat{B}) \\
+   e &= \bar{H}(Y|X|\hat{A}|\hat{B})
 
 fastd uses a single 256 bit hash :math:`\text{SHA256}(Y|X|\hat{B}|\hat{A})` instead and cuts it into two 128 bit pieces
 which are used as :math:`d` and :math:`e`. This optimization allows reusing the SHA256 implementation that is already used for

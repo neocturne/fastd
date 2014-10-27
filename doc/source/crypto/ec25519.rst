@@ -120,29 +120,23 @@ The two possible :math:`v` coordinates are:
 
 .. math::
 
-   \begin{align}
-     v1 &= \texttt{0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9} \\
-     v2 &= \texttt{0x5f51e65e475f794b1fe122d388b72eb36dc2b28192839e4dd6163a5d81312c14}
-   \end{align}
+   v1 &= \texttt{0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9} \\
+   v2 &= \texttt{0x5f51e65e475f794b1fe122d388b72eb36dc2b28192839e4dd6163a5d81312c14}
 
 Out of :math:`(u,v_1)` and :math:`(u,v_2)`, the point :math:`(u,v_1)` has been arbitrarily chosen to be used in fastd; using
 the equivalence between Montgomery and twisted Edwards curves given by [BBJ+08]_
 
 .. math::
 
-   \begin{align}
-      x &= \frac{u}{v} \\
-      y &= \frac{u-1}{u+1}
-   \end{align}
+   x &= \frac{u}{v} \\
+   y &= \frac{u-1}{u+1}
 
 this leads to the coordinates
 
 .. math::
 
-   \begin{align}
-     x &= \texttt{0x547c4350219f5e19dd26a3d6668b74346a8eb726eb2396e1228cfa397ffe6bd4} \\
-     y &= \texttt{0x6666666666666666666666666666666666666666666666666666666666666658}
-   \end{align}
+   x &= \texttt{0x547c4350219f5e19dd26a3d6668b74346a8eb726eb2396e1228cfa397ffe6bd4} \\
+   y &= \texttt{0x6666666666666666666666666666666666666666666666666666666666666658}
 
 which specify the generator point :math:`G` that is used by fastd's ``ec25519-fhmqvc``. Like :math:`(u,v_1)` on
 the Montgomery curve, the point :math:`G = (x, y)` on the twisted Edwards curve has the order
