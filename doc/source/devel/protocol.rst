@@ -50,6 +50,8 @@ Record ID  Value description             Format                     Values
 ``0x000f`` TLV authentication tag        32-byte opaque value
 ========== ============================= ========================== ===================================================================
 
+.. _handshake_protocol:
+
 Handshake protocol
 ------------------
 The following specification describes the current handshake as it is performed by fastd versions
