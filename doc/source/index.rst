@@ -21,6 +21,9 @@ Cryptographic algorithms
 
    crypto/ec25519
    crypto/fhmqvc
+   crypto/ciphers
+   crypto/macs
+   crypto/methods
 
 
 Developer documentation
