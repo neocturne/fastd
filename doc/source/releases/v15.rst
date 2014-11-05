@@ -1,0 +1,57 @@
+fastd v15
+=========
+
+New features
+~~~~~~~~~~~~
+* New message authentication code UMAC
+
+  The new message authentication code UMAC provides very high security with much higher
+  than the old GMAC methods. "salsa2012+umac" and "null+salsa2012+umac" are the new recommended
+  methods for authenticated encryption and authenticated-only operation.
+
+* Status socket
+
+  A status unix socket can be configured with the new *status socket* option. fastd will dump
+  its current state on every connection on this socket; this status output is much more
+  complete than the old SIGUSR1 output. SIGUSR1 is ignored now.
+
+  To compile fastd with status socket support, libjson-c is required.
+  An example script to get the status can be found at ``doc/examples/status.pl``.
+
+* MacOS X support
+
+  fastd should now also run on recent versions of MacOS X. The inofficial
+  TUN/TAP driver is required for this.
+
+* New Sphinx-based documentation
+
+* Fix warnings with CMake 3.0
+
+Bugfixes
+~~~~~~~~
+* Signal handling improvements
+
+  This should fix an issue where asynchronous handler scripts would be left as zombie processes.
+
+* Config check fixes in TUN mode
+
+  For some configuration mistakes, fastd would segfault instead of printing an error message.
+
+Other changes
+~~~~~~~~~~~~~
+* Nicer error messages for common configuration mismatches like having no common methods
+
+* When no port is given in a *bind* directive, a new random port will be chosed now for every
+  new connection attempt (like it was already done when no bind address was configured at all)
+
+  This allows setting additional bind options like interface binds without setting a static port.
+
+* The peer hashtable is now grown dynamically to reduce memory usage for small numbers of peers
+  and improve performance for huge numbers of peers
+
+* Major refactoring: the internal peer and peer config structs have been merged
+
+* Internally, int64 timestamps in milliseconds are now used always instead of struct timespec
+
+  Milliseconds resolution and int64 range is completely sufficient, and many parts of the code
+  become simpler like this.

@@ -12,6 +12,13 @@ User manual
    manual/methods
    manual/mtu
 
+Release notes
+-------------
+
+.. toctree::
+   :maxdepth: 2
+
+   releases/v15
 
 Cryptographic algorithms
 ------------------------
@@ -24,7 +31,6 @@ Cryptographic algorithms
    crypto/ciphers
    crypto/macs
    crypto/methods
-
 
 Developer documentation
 -----------------------
