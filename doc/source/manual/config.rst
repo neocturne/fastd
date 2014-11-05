@@ -17,9 +17,9 @@ Example config:
   # Set the interface name
   interface "mesh-vpn";
 
-  # Support xsalsa20 and aes128 encryption methods, prefer xsalsa20
-  method "xsalsa20-poly1305";
-  method "aes128-gcm";
+  # Support salsa2012+umac and null methods, prefer salsa2012+umac
+  method "salsa2012+umac";
+  method "null";
 
   # Bind to a fixed port, IPv4 only
   bind 0.0.0.0:10000;
