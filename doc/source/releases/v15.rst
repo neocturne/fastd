@@ -31,7 +31,7 @@ Bugfixes
 ~~~~~~~~
 * Signal handling improvements
 
-  This should fix an issue where asynchronous handler scripts would be left as zombie processes.
+  This should fix an issue where asynchronous handler scripts would be left as zombie processes occasionally.
 
 * Config check fixes in TUN mode
 
