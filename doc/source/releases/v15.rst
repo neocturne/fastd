@@ -11,9 +11,9 @@ New features
 
 * Status socket
 
-  A status unix socket can be configured with the new *status socket* option. fastd will dump
-  its current state on every connection on this socket; this status output is much more
-  complete than the old SIGUSR1 output. SIGUSR1 is ignored now.
+  A unix socket can be configured with the new *status socket* option. fastd will dump
+  its current state as JSON on every connection on this socket; this status output is much more
+  detailed than the old SIGUSR1 output. SIGUSR1 is ignored now.
 
   To compile fastd with status socket support, libjson-c is required.
   An example script to get the status can be found at ``doc/examples/status.pl``.
@@ -41,7 +41,7 @@ Other changes
 ~~~~~~~~~~~~~
 * Nicer error messages for common configuration mismatches like having no common methods
 
-* When no port is given in a *bind* directive, a new random port will be chosed now for every
+* When no port is given in a *bind* directive, a new random port will be chosen now for every
   new connection attempt (like it was already done when no bind address was configured at all)
 
   This allows setting additional bind options like interface binds without setting a static port.
@@ -54,4 +54,4 @@ Other changes
 * Internally, int64 timestamps in milliseconds are now used always instead of struct timespec
 
   Milliseconds resolution and int64 range is completely sufficient, and many parts of the code
-  become simpler like this.
+  have become simpler due to this change.
