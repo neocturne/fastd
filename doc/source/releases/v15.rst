@@ -5,7 +5,7 @@ New features
 ~~~~~~~~~~~~
 * New message authentication code UMAC
 
-  The new message authentication code UMAC provides very high security with much higher
+  The new message authentication code UMAC provides very high security with much higher performance
   than the old GMAC methods. "salsa2012+umac" and "null+salsa2012+umac" are the new recommended
   methods for authenticated encryption and authenticated-only operation.
 
