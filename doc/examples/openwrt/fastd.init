@@ -45,7 +45,7 @@ guard_value() {
 	echo -n "$t"
 }
 
-guard_remote() {
+guard_quotes() {
 	local t=${1//[^-a-zA-Z0-9\[\].:\"% ]/}
 	local quotes=${t//[^\"]/}
 	if [ "${#quotes}" = 0 -o "${#quotes}" = 2 ]; then
@@ -63,7 +63,7 @@ yes_no() {
 config_string_config='include $(escape_string "$value");'
 config_string_config_peer='include peer $(escape_string "$value");'
 config_string_config_peer_dir='include peers from $(escape_string "$value");'
-config_string_bind='bind $(guard_value "$value");'
+config_string_bind='bind $(guard_quotes "$value");'
 config_string_method='method $(escape_string "$value");'
 config_string_syslog_level='log to syslog level $(guard_value "$value");'
 config_string_mode='mode $(guard_value "$value");'
@@ -85,7 +85,7 @@ config_string_peer_group='peer group $(escape_string "$value") {'
 
 peer_string_key='key $(escape_string "$value");'
 peer_string_float='float $(yes_no "$value");'
-peer_string_remote='remote $(guard_remote "$value");'
+peer_string_remote='remote $(guard_quotes "$value");'
 
 generate_option() {
 	local __string=$(eval echo \"\$$2\")
