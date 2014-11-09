@@ -79,6 +79,14 @@ config_string_hide_ip_addresses='hide ip addresses $(yes_no "$value");'
 config_string_hide_mac_addresses='hide mac addresses $(yes_no "$value");'
 config_string_secure_handshakes='secure handshakes $(yes_no "$value");'
 config_string_packet_mark='packet mark $(guard_value "$value");'
+config_string_on_pre_up='on pre-up $(escape_string "$value");'
+config_string_on_up='on up $(escape_string "$value");'
+config_string_on_down='on down $(escape_string "$value");'
+config_string_on_post_down='on post-down $(escape_string "$value");'
+config_string_on_connect='on connect $(escape_string "$value");'
+config_string_on_establish='on establish $(escape_string "$value");'
+config_string_on_disestablish='on disestablish $(escape_string "$value");'
+config_string_on_verify='on verify $(escape_string "$value");'
 
 config_string_peer='peer $(escape_string "$value") {'
 config_string_peer_group='peer group $(escape_string "$value") {'
@@ -234,7 +242,8 @@ generate_config() {
 
 	append_options "$s" config \
 		config config_peer config_peer_dir bind method syslog_level mode interface mtu peer_limit \
-		user group status_socket pmtu forward hide_ip_addresses hide_mac_addresses secure_handshakes packet_mark
+		user group status_socket pmtu forward hide_ip_addresses hide_mac_addresses secure_handshakes packet_mark \
+		on_pre_up on_up on_down on_post_down on_connect on_establish on_disestablish on_verify
 
 	config_get mode "$s" mode
 

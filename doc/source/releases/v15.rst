@@ -27,6 +27,10 @@ New features
 
 * Fix warnings with CMake 3.0
 
+* OpenWrt: allow setting on-connect, on-verify, on-establish... hooks via UCI
+
+* OpenWrt: allow specifying bind interfaces in UCI
+
 Bugfixes
 ~~~~~~~~
 * Signal handling improvements
