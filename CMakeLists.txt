@@ -4,7 +4,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 cmake_policy(SET CMP0017 OLD) # Prefer modules in our module directory
 
 project(FASTD C ASM)
-set(FASTD_VERSION "v14+")
+set(FASTD_VERSION "v15")
 
 include(arch)
 include(config)
