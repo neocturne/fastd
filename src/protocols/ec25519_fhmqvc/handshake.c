@@ -519,12 +519,14 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fa
 }
 
 
+/** Prints a message when a handshake from an unknown peer is received */
 static inline void print_unknown_key(const fastd_peer_address_t *addr, const unsigned char key[PUBLICKEYBYTES]) {
 	char buf[65];
 	hexdump(buf, key);
 
 	pr_verbose("ignoring handshake from %I (unknown key %s)", addr, buf);
 }
+
 
 #ifdef WITH_DYNAMIC_PEERS
 
