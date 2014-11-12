@@ -174,7 +174,10 @@ static void dump_status(int fd) {
 		if (!fastd_peer_is_enabled(peer))
 			continue;
 
-		json_object_object_add(peers, peer->name, dump_peer(peer));
+		char name[1024];
+		fastd_snprint_peer_str(name, sizeof(name), peer);
+
+		json_object_object_add(peers, name, dump_peer(peer));
 	}
 
 
