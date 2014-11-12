@@ -260,6 +260,11 @@ Example config:
   Setting this option to yes (the default) on one side is enough to ensure that a session established by two peers has not
   been downgraded.
 
+| ``status socket "<socket>";``
+
+  Configures a UNIX socket which can be used to retrieve the current state of fastd. An example script
+  to get the status can be found at ``doc/examples/status.pl`` in the fastd repository.
+
 | ``user "<user>";``
 
 Sets the user to run fastd as.

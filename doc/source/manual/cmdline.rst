@@ -15,6 +15,9 @@ Command line options and config files are parsed in order they are specified, so
 --pid-file <filename>
   Writes fastd's PID to the specified file.
 
+--status-socket <socket>
+  Configures a socket to get fastd's status.
+
 --log-level <error|warn|info|verbose|debug|debug2>
   Sets the stderr log level; default is info,
   if no alternative log destination ist configured.
