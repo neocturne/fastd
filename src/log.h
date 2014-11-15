@@ -54,7 +54,6 @@ typedef enum fastd_loglevel {
 
 
 size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address, bool hide);
-size_t fastd_snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *peer);
 
 
 void fastd_logf(const fastd_loglevel_t level, const char *format, ...);

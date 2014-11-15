@@ -92,7 +92,7 @@ size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_ad
 }
 
 /** Creates a string representation of a peer */
-size_t fastd_snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *peer) {
+static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *peer) {
 	if (peer) {
 		if (peer->name) {
 			return snprintf_safe(buffer, size, "<%s>", peer->name);
@@ -168,7 +168,7 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 			break;
 
 		case 'P':
-			buffer += fastd_snprint_peer_str(buffer, buffer_end-buffer, va_arg(ap, const fastd_peer_t *));
+			buffer += snprint_peer_str(buffer, buffer_end-buffer, va_arg(ap, const fastd_peer_t *));
 			break;
 
 		case 'I':
