@@ -102,7 +102,7 @@ bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char 
 
 	char dumpbuf[65];
 	hexdump(dumpbuf, peer->key->key.u8);
-	snprintf(buf, len, "%.16s", dumpbuf);
+	snprintf(buf, len, "%s", dumpbuf);
 
 	return true;
 }

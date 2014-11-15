@@ -98,7 +98,7 @@ static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *pe
 			return snprintf_safe(buffer, size, "<%s>", peer->name);
 		}
 		else {
-			char buf[65];
+			char buf[17];
 			if (conf.protocol->describe_peer(peer, buf, sizeof(buf)))
 				return snprintf_safe(buffer, size, "{%s}", buf);
 		}
