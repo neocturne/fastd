@@ -108,6 +108,7 @@ static json_object * dump_peer(const fastd_peer_t *peer) {
 	char addr_buf[1 + INET6_ADDRSTRLEN + 2 + IFNAMSIZ + 1 + 5 + 1];
 	fastd_snprint_peer_address(addr_buf, sizeof(addr_buf), &peer->address, NULL, false, false);
 
+	json_object_object_add(ret, "name", peer->name ? json_object_new_string(peer->name) : NULL);
 	json_object_object_add(ret, "address", json_object_new_string(addr_buf));
 
 	struct json_object *connection = NULL;
@@ -174,7 +175,9 @@ static void dump_status(int fd) {
 		if (!fastd_peer_is_enabled(peer))
 			continue;
 
-		json_object_object_add(peers, peer->name, dump_peer(peer));
+		char buf[65];
+		if (conf.protocol->describe_peer(peer, buf, sizeof(buf)))
+			json_object_object_add(peers, buf, dump_peer(peer));
 	}
 
 
