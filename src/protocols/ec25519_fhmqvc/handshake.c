@@ -456,7 +456,7 @@ static fastd_peer_t * find_key(const uint8_t key[PUBLICKEYBYTES], const fastd_pe
 			continue;
 		}
 
-		if (fastd_peer_owns_address(peer, address)) {
+		if (address && fastd_peer_owns_address(peer, address)) {
 			errno = EPERM;
 			return NULL;
 		}
