@@ -18,6 +18,7 @@ Release notes
 .. toctree::
    :maxdepth: 2
 
+   releases/v16
    releases/v15
 
 Cryptographic algorithms

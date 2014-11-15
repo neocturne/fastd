@@ -1,0 +1,14 @@
+fastd v16
+=========
+
+Bugfixes
+~~~~~~~~
+* Fix segmentation fault after peers with static IP addresses have been loaded
+* Fix segmentation fault when status sockets are used with unnamed peers (e.g. peers authenticated by a on-verify handler)
+
+Other changes
+~~~~~~~~~~~~~
+* The JSON output of the status sockets has changed
+
+  To fix using the status socket with peers without names or with duplicate names, the
+  peers' public keys are now use as the keys in the JSON object.
