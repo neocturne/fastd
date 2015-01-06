@@ -228,8 +228,15 @@ void fastd_status_init(void) {
 	sa->sun_family = AF_UNIX;
 	strcpy(sa->sun_path, conf.status_socket);
 
-	if (bind(ctx.status_fd, (struct sockaddr*)sa, len))
-		exit_errno("fastd_status_init: bind");
+	if (bind(ctx.status_fd, (struct sockaddr*)sa, len)) {
+		switch (errno) {
+		case EADDRINUSE:
+			exit_error("unable to create status socket: the path `%s' already exists", conf.status_socket);
+
+		default:
+			exit_errno("unable to create status socket");
+		}
+	}
 
 	if (listen(ctx.status_fd, 4))
 		exit_errno("fastd_status_init: listen");
