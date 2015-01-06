@@ -103,19 +103,27 @@ static inline uint32_t as_uint(const fastd_handshake_record_t *record) {
 
 /** Generates a zero-separated list of supported methods */
 static uint8_t * create_method_list(size_t *len) {
-	*len = 0;
+	size_t n, i;
+	for (n = 0; conf.methods[n].name; n++) {
+	}
 
-	size_t i;
-	for (i = 0; conf.methods[i].name; i++)
-		*len += strlen(conf.methods[i].name) + 1;
+	*len = 0;
+	size_t lens[n];
+
+	for (i = 0; i < n; i++) {
+		lens[i] = strlen(conf.methods[i].name) + 1;
+		*len += lens[i];
+	}
 
 	uint8_t *ret = fastd_alloc(*len);
 	(*len)--;
 
-	char *ptr = (char *)ret;
+	uint8_t *ptr = ret;
 
-	for (i = 0; conf.methods[i].name; i++)
-		ptr = stpcpy(ptr, conf.methods[i].name) + 1;
+	for (i = 0; i < n; i++) {
+		memcpy(ptr, conf.methods[i].name, lens[i]);
+		ptr += lens[i];
+	}
 
 	return ret;
 }
