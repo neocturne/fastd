@@ -120,6 +120,8 @@ fastd_peer_t * fastd_protocol_ec25519_fhmqvc_find_peer(const fastd_protocol_key_
 void fastd_protocol_ec25519_fhmqvc_generate_key(void);
 void fastd_protocol_ec25519_fhmqvc_show_key(void);
 
+bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_int256_t *key);
+
 void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer);
 bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len);
 

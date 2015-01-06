@@ -78,7 +78,7 @@ static fastd_protocol_config_t * protocol_init(void) {
 static fastd_protocol_key_t * protocol_read_key(const char *key) {
 	fastd_protocol_key_t *ret = fastd_new(fastd_protocol_key_t);
 
-	if (!read_key(ret->key.u8, key)) {
+	if (!read_key(ret->key.u8, key) || !fastd_protocol_ec25519_fhmqvc_check_key(&ret->key.int256)) {
 		free(ret);
 		return NULL;
 	}

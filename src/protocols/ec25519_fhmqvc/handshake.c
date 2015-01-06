@@ -204,6 +204,29 @@ static inline bool secure_handshake(const fastd_handshake_t *handshake) {
 }
 
 
+static bool check_key(const ecc_25519_work_t *key) {
+	ecc_25519_work_t work;
+
+	if (ecc_25519_is_identity(key))
+		return false;
+
+	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, key);
+	if (!ecc_25519_is_identity(&work))
+		return false;
+
+	return true;
+}
+
+bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_int256_t *key) {
+	ecc_25519_work_t work;
+
+	if (!ecc_25519_load_packed(&work, key))
+		return false;
+
+	return check_key(&work);
+}
+
+
 /** Derives the shares handshake key for computing the MACs used in the handshake */
 static bool make_shared_handshake_key(const ecc_int256_t *handshake_key, bool initiator,
 				      const aligned_int256_t *A, const aligned_int256_t *B,
@@ -218,8 +241,7 @@ static bool make_shared_handshake_key(const ecc_int256_t *handshake_key, bool in
 	if (!ecc_25519_load_packed(&workXY, initiator ? &Y->int256 : &X->int256))
 		return false;
 
-	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, &workXY);
-	if (!ecc_25519_is_identity(&work))
+	if (!check_key(&workXY))
 		return false;
 
 	if (!ecc_25519_load_packed(&work, initiator ? &B->int256 : &A->int256))
@@ -558,12 +580,19 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 		return NULL;
 	}
 
+	aligned_int256_t peer_key;
+	memcpy(&peer_key, key, PUBLICKEYBYTES);
+	if (!fastd_protocol_ec25519_fhmqvc_check_key(&peer_key.int256)) {
+		pr_debug("ignoring handshake from %I (invalid key)", addr);
+		return NULL;
+	}
+
 	fastd_peer_t *peer = fastd_new0(fastd_peer_t);
 	peer->group = conf.peer_group;
 	peer->config_state = CONFIG_DYNAMIC;
 
 	peer->key = fastd_new(fastd_protocol_key_t);
-	memcpy(&peer->key->key, key, PUBLICKEYBYTES);
+	peer->key->key = peer_key;
 
 	if (!fastd_peer_add(peer))
 		exit_bug("failed to add dynamic peer");
