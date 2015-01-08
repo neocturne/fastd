@@ -329,7 +329,7 @@ static void clear_shared_handshake_key(const fastd_peer_t *peer) {
 
 /** Sends a reply to an initial handshake (type 1) */
 static void respond_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer,
-			      const aligned_int256_t *peer_handshake_key, const fastd_method_info_t *method) {
+			      const aligned_int256_t *peer_handshake_key, const fastd_method_info_t *method, bool little_endian) {
 	pr_debug("responding handshake with %P[%I]...", peer, remote_addr);
 
 	const handshake_key_t *handshake_key = &ctx.protocol_state->handshake_key;
@@ -337,7 +337,7 @@ static void respond_handshake(const fastd_socket_t *sock, const fastd_peer_addre
 	if (!update_shared_handshake_key(peer, handshake_key, peer_handshake_key))
 		return;
 
-	fastd_buffer_t buffer = fastd_handshake_new_reply(2, method, true, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
+	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(2, little_endian, method, true, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 	fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
@@ -352,10 +352,10 @@ static void respond_handshake(const fastd_socket_t *sock, const fastd_peer_addre
 	}
 
 	uint8_t *mac = fastd_handshake_add_zero(&buffer, RECORD_TLV_MAC, HASHBYTES);
-	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
+	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer.buffer), fastd_handshake_tlv_len(&buffer.buffer));
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
-	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
+	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer.buffer);
 }
 
 /** Sends a reply to a handshake response (type 2) */
@@ -398,7 +398,7 @@ static void finish_handshake(fastd_socket_t *sock, const fastd_peer_address_t *l
 		       &peer->key->key, &sigma, compat ? NULL : shared_handshake_key.w, handshake_key->serial))
 		return;
 
-	fastd_buffer_t buffer = fastd_handshake_new_reply(3, method, false, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
+	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(3, handshake->little_endian, method, false, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 	fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
@@ -408,7 +408,7 @@ static void finish_handshake(fastd_socket_t *sock, const fastd_peer_address_t *l
 	if (!compat) {
 		fastd_sha256_t hmacbuf;
 		uint8_t *mac = fastd_handshake_add_zero(&buffer, RECORD_TLV_MAC, HASHBYTES);
-		fastd_hmacsha256(&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
+		fastd_hmacsha256(&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(&buffer.buffer), fastd_handshake_tlv_len(&buffer.buffer));
 		memcpy(mac, hmacbuf.b, HASHBYTES);
 	}
 	else {
@@ -417,7 +417,7 @@ static void finish_handshake(fastd_socket_t *sock, const fastd_peer_address_t *l
 		fastd_handshake_add(&buffer, RECORD_T, HASHBYTES, hmacbuf.b);
 	}
 
-	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
+	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer.buffer);
 }
 
 /** Handles a reply to a handshake response (type 3) */
@@ -521,7 +521,7 @@ static fastd_peer_t * match_sender_key(const fastd_socket_t *sock, const fastd_p
 void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer) {
 	fastd_protocol_ec25519_fhmqvc_maintenance();
 
-	fastd_buffer_t buffer = fastd_handshake_new_init(3*(4+PUBLICKEYBYTES) /* sender key, recipient key, handshake key */);
+	fastd_handshake_buffer_t buffer = fastd_handshake_new_init(3*(4+PUBLICKEYBYTES) /* sender key, recipient key, handshake key */);
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 
@@ -539,7 +539,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fa
 	if (!peer || !fastd_peer_is_established(peer))
 		fastd_peer_exec_shell_command(&conf.on_connect, peer, (local_addr && local_addr->sa.sa_family) ? local_addr : sock->bound_addr, remote_addr);
 
-	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
+	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer.buffer);
 }
 
 
@@ -557,6 +557,7 @@ static inline void print_unknown_key(const fastd_peer_address_t *addr, const uns
 /** Data attached to an asynchronous on-verify run */
 typedef struct verify_data {
 	aligned_int256_t peer_handshake_key;		/**< The public key of the peer being verified */
+	bool little_endian;				/**< The handshake endianess */
 } verify_data_t;
 
 /** Adds a dynamic peer for an unknown key */
@@ -614,6 +615,7 @@ static bool handle_dynamic(fastd_socket_t *sock, const fastd_peer_address_t *loc
 	verify_data_t verify_data;
 	memset(&verify_data, 0, sizeof(verify_data));
 	memcpy(&verify_data.peer_handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
+	verify_data.little_endian = handshake->little_endian;
 
 	fastd_tristate_t verified = fastd_verify_peer(peer, sock, local_addr, remote_addr, method, &verify_data, sizeof(verify_data));
 
@@ -640,7 +642,7 @@ void fastd_protocol_ec25519_fhmqvc_handle_verify_return(fastd_peer_t *peer, fast
 
 	peer->last_handshake_response_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 	peer->last_handshake_response_address = *remote_addr;
-	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, method);
+	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, method, data->little_endian);
 }
 
 #else
@@ -726,7 +728,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 
 		peer->last_handshake_response_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 		peer->last_handshake_response_address = *remote_addr;
-		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key, method);
+		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key, method, handshake->little_endian);
 		return;
 	}
 
