@@ -204,6 +204,7 @@ static inline bool secure_handshake(const fastd_handshake_t *handshake) {
 }
 
 
+/** Checks if an ecc25519 work structure represents a valid curve point */
 static bool check_key(const ecc_25519_work_t *key) {
 	ecc_25519_work_t work;
 
@@ -217,6 +218,7 @@ static bool check_key(const ecc_25519_work_t *key) {
 	return true;
 }
 
+/** Checks if public key is a valid curve point */
 bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_int256_t *key) {
 	ecc_25519_work_t work;
 
