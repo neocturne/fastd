@@ -194,7 +194,7 @@ static inline void fastd_handshake_add_uint32(fastd_handshake_buffer_t *buffer, 
 	dst[3] = value;
 }
 
-/** Adds an uint16 TLV record of given type and value to a handshake buffer encoded as little endian */
+/** Adds an uint16 TLV record of given type and value to a handshake buffer (potentially encoded as little endian) */
 static inline void fastd_handshake_add_uint16_endian(fastd_handshake_buffer_t *buffer, fastd_handshake_record_type_t type, uint16_t value) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, 2);
 

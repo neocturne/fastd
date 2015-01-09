@@ -77,7 +77,7 @@ static inline uint32_t as_uint32(const fastd_handshake_record_t *record) {
 	return as_uint24(record) << 8 | record->data[3];
 }
 
-/** Reads a TLV record as a 16bit integer (little endian) */
+/** Reads a TLV record as a 16bit integer (little or big endian) */
 static inline uint16_t as_uint16_endian(const fastd_handshake_record_t *record, bool little_endian) {
 	if (little_endian)
 		return as_uint8(record) | (uint16_t)record->data[1] << 8;
