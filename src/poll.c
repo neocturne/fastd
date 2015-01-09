@@ -73,6 +73,11 @@ static inline int handshake_timeout(void) {
 #include <sys/syscall.h>
 
 
+#ifndef SYS_epoll_pwait
+#define SYS_epoll_pwait __NR_epoll_pwait
+#endif
+
+
 /** Simplified epoll_pwait wrapper (as there are systems without or with broken epoll_pwait) */
 static inline int epoll_wait_unblocked(int epfd, struct epoll_event *events, int maxevents, int timeout) {
 	const uint8_t buf[_NSIG/8] = {};
