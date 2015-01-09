@@ -83,27 +83,13 @@ static fastd_protocol_key_t * protocol_read_key(const char *key) {
 
 	if (read_key(ret->key.u8, key)) {
 		if (ecc_25519_load_packed(&ret->unpacked, &ret->key.int256)) {
-			if (fastd_protocol_ec25519_fhmqvc_check_key(&ret->unpacked))
+			if (!ecc_25519_is_identity(&ret->unpacked))
 				return ret;
 		}
 	}
 
 	free(ret);
 	return NULL;
-}
-
-/** Checks if an ecc25519 work structure represents a valid curve point */
-bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_25519_work_t *key) {
-	ecc_25519_work_t work;
-
-	if (ecc_25519_is_identity(key))
-		return false;
-
-	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, key);
-	if (!ecc_25519_is_identity(&work))
-		return false;
-
-	return true;
 }
 
 

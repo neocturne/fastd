@@ -554,7 +554,7 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 	memcpy(&peer_key.key, key, PUBLICKEYBYTES);
 
 	if (!ecc_25519_load_packed(&peer_key.unpacked, &peer_key.key.int256)
-		|| !fastd_protocol_ec25519_fhmqvc_check_key(&peer_key.unpacked)) {
+		|| ecc_25519_is_identity(&peer_key.unpacked)) {
 		pr_debug("ignoring handshake from %I (invalid key)", addr);
 		return NULL;
 	}
