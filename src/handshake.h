@@ -47,11 +47,11 @@ typedef enum fastd_handshake_record_type {
 	RECORD_FLAGS,			/**< The flags field */
 	RECORD_MODE,			/**< The mode field */
 	RECORD_PROTOCOL_NAME,		/**< The handshake protocol */
-	RECORD_PROTOCOL1,		/**< Protocol-specific value 1 */
-	RECORD_PROTOCOL2,		/**< Protocol-specific value 2 */
-	RECORD_PROTOCOL3,		/**< Protocol-specific value 3 */
-	RECORD_PROTOCOL4,		/**< Protocol-specific value 4 */
-	RECORD_PROTOCOL5,		/**< Protocol-specific value 5 */
+	RECORD_SENDER_KEY,		/**< Sender public key */
+	RECORD_RECIPIENT_KEY,		/**< Recipient public key */
+	RECORD_SENDER_HANDSHAKE_KEY,	/**< Sender ephemeral public key */
+	RECORD_RECIPIENT_HANDSHAKE_KEY,	/**< Recipient ephemeral public key */
+	RECORD_HANDSHAKE_TAG,		/**< pre-v11 compat handshake authentication tag */
 	RECORD_MTU,			/**< MTU field */
 	RECORD_METHOD_NAME,		/**< The default/chosen method */
 	RECORD_VERSION_NAME,		/**< The fastd version */
