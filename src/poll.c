@@ -69,6 +69,15 @@ static inline int handshake_timeout(void) {
 
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include <sys/signal.h>
+#include <sys/syscall.h>
+
+
+/** Simplified epoll_pwait wrapper (as there are systems without or with broken epoll_pwait) */
+static inline int epoll_wait_unblocked(int epfd, struct epoll_event *events, int maxevents, int timeout) {
+	const uint8_t buf[_NSIG/8] = {};
+	return syscall(SYS_epoll_pwait, epfd, events, maxevents, timeout, buf, sizeof(buf));
+}
 
 
 void fastd_poll_init(void) {
@@ -150,11 +159,8 @@ void fastd_poll_handle(void) {
 	if (timeout < 0 || timeout > maintenance_timeout)
 		timeout = maintenance_timeout;
 
-	sigset_t set;
-	sigemptyset(&set);
-
 	struct epoll_event events[16];
-	int ret = epoll_pwait(ctx.epoll_fd, events, 16, timeout, &set);
+	int ret = epoll_wait_unblocked(ctx.epoll_fd, events, 16, timeout);
 	if (ret < 0 && errno != EINTR)
 		exit_errno("epoll_pwait");
 
