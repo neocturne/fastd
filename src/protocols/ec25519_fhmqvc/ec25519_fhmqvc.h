@@ -139,7 +139,7 @@ static inline bool is_session_valid(const protocol_session_t *session) {
 }
 
 
-/** Devides a secret key by 8 (for some optimizations) */
+/** Divides a secret key by 8 (for some optimizations) */
 static inline bool divide_key(ecc_int256_t *key) {
 	uint8_t c = 0, c2;
 	ssize_t i;
