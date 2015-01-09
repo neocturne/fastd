@@ -56,7 +56,7 @@ typedef union aligned_int256 {
 
 /** A keypair */
 typedef struct keypair {
-	ecc_int256_t secret;			/**< The section key */
+	ecc_int256_t secret;			/**< The secret key */
 	aligned_int256_t public;		/**< The public key */
 } keypair_t;
 
@@ -68,7 +68,9 @@ struct fastd_protocol_config {
 /** A peer's public key */
 struct fastd_protocol_key {
 	aligned_int256_t key;			/**< The peer's public key */
+	ecc_25519_work_t unpacked;		/**< The peer's public key (unpacked) */
 };
+
 
 /** Session state */
 typedef struct protocol_session {
@@ -119,8 +121,7 @@ fastd_peer_t * fastd_protocol_ec25519_fhmqvc_find_peer(const fastd_protocol_key_
 
 void fastd_protocol_ec25519_fhmqvc_generate_key(void);
 void fastd_protocol_ec25519_fhmqvc_show_key(void);
-
-bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_int256_t *key);
+bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_25519_work_t *key);
 
 void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer);
 bool fastd_protocol_ec25519_fhmqvc_describe_peer(const fastd_peer_t *peer, char *buf, size_t len);

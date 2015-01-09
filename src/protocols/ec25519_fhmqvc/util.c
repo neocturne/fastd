@@ -34,7 +34,7 @@
 
 
 /** Prints a private or public key on stdout with an optional descriptive text */
-static inline void print_hexdump(const char *desc, unsigned char d[32]) {
+static inline void print_hexdump(const char *desc, const unsigned char d[32]) {
 	char buf[65];
 	hexdump(buf, d);
 

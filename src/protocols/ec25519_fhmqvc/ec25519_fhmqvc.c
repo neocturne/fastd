@@ -78,13 +78,31 @@ static fastd_protocol_config_t * protocol_init(void) {
 static fastd_protocol_key_t * protocol_read_key(const char *key) {
 	fastd_protocol_key_t *ret = fastd_new(fastd_protocol_key_t);
 
-	if (!read_key(ret->key.u8, key) || !fastd_protocol_ec25519_fhmqvc_check_key(&ret->key.int256)) {
-		free(ret);
-		return NULL;
+	if (read_key(ret->key.u8, key)) {
+		if (ecc_25519_load_packed(&ret->unpacked, &ret->key.int256)) {
+			if (fastd_protocol_ec25519_fhmqvc_check_key(&ret->unpacked))
+				return ret;
+		}
 	}
 
-	return ret;
+	free(ret);
+	return NULL;
 }
+
+/** Checks if an ecc25519 work structure represents a valid curve point */
+bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_25519_work_t *key) {
+	ecc_25519_work_t work;
+
+	if (ecc_25519_is_identity(key))
+		return false;
+
+	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, key);
+	if (!ecc_25519_is_identity(&work))
+		return false;
+
+	return true;
+}
+
 
 /** Checks if a peer is configured using our own key */
 static bool protocol_check_peer(const fastd_peer_t *peer) {

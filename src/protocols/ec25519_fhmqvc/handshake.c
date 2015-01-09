@@ -204,50 +204,35 @@ static inline bool secure_handshake(const fastd_handshake_t *handshake) {
 }
 
 
-/** Checks if an ecc25519 work structure represents a valid curve point */
-static bool check_key(const ecc_25519_work_t *key) {
-	ecc_25519_work_t work;
-
-	if (ecc_25519_is_identity(key))
-		return false;
-
-	ecc_25519_scalarmult(&work, &ecc_25519_gf_order, key);
-	if (!ecc_25519_is_identity(&work))
-		return false;
-
-	return true;
-}
-
-/** Checks if public key is a valid curve point */
-bool fastd_protocol_ec25519_fhmqvc_check_key(const ecc_int256_t *key) {
-	ecc_25519_work_t work;
-
-	if (!ecc_25519_load_packed(&work, key))
-		return false;
-
-	return check_key(&work);
-}
-
-
 /** Derives the shares handshake key for computing the MACs used in the handshake */
-static bool make_shared_handshake_key(const ecc_int256_t *handshake_key, bool initiator,
-				      const aligned_int256_t *A, const aligned_int256_t *B,
-				      const aligned_int256_t *X, const aligned_int256_t *Y,
+static bool make_shared_handshake_key(bool initiator, const keypair_t *handshake_key,
+				      const fastd_protocol_key_t *peer_key, const aligned_int256_t *peer_handshake_key,
 				      aligned_int256_t *sigma,
 				      fastd_sha256_t *shared_handshake_key,
 				      fastd_sha256_t *shared_handshake_key_compat) {
 	static const uint32_t zero_salt[FASTD_HMACSHA256_KEY_WORDS] = {};
 
+	const aligned_int256_t *A, *B, *X, *Y;
 	ecc_25519_work_t work, workXY;
 
-	if (!ecc_25519_load_packed(&workXY, initiator ? &Y->int256 : &X->int256))
+	if (!ecc_25519_load_packed(&workXY, &peer_handshake_key->int256))
 		return false;
 
-	if (!check_key(&workXY))
+	if (!fastd_protocol_ec25519_fhmqvc_check_key(&workXY))
 		return false;
 
-	if (!ecc_25519_load_packed(&work, initiator ? &B->int256 : &A->int256))
-		return false;
+	if (initiator) {
+		A = &conf.protocol_config->key.public;
+		B = &peer_key->key;
+		X = &handshake_key->public;
+		Y = peer_handshake_key;
+	}
+	else {
+		A = &peer_key->key;
+		B = &conf.protocol_config->key.public;
+		X = peer_handshake_key;
+		Y = &handshake_key->public;
+	}
 
 	fastd_sha256_t hashbuf;
 	fastd_sha256_blocks(&hashbuf, Y->u32, X->u32, B->u32, A->u32, NULL);
@@ -263,16 +248,16 @@ static bool make_shared_handshake_key(const ecc_int256_t *handshake_key, bool in
 	if (initiator) {
 		ecc_int256_t da;
 		ecc_25519_gf_mult(&da, &d, &conf.protocol_config->key.secret);
-		ecc_25519_gf_add(&s, &da, handshake_key);
+		ecc_25519_gf_add(&s, &da, &handshake_key->secret);
 
-		ecc_25519_scalarmult(&work, &e, &work);
+		ecc_25519_scalarmult(&work, &e, &peer_key->unpacked);
 	}
 	else {
 		ecc_int256_t eb;
 		ecc_25519_gf_mult(&eb, &e, &conf.protocol_config->key.secret);
-		ecc_25519_gf_add(&s, &eb, handshake_key);
+		ecc_25519_gf_add(&s, &eb, &handshake_key->secret);
 
-		ecc_25519_scalarmult(&work, &d, &work);
+		ecc_25519_scalarmult(&work, &d, &peer_key->unpacked);
 	}
 
 	ecc_25519_add(&work, &workXY, &work);
@@ -301,11 +286,9 @@ static bool update_shared_handshake_key(const fastd_peer_t *peer, const handshak
 
 	bool compat = !conf.secure_handshakes;
 
-	if (!make_shared_handshake_key(&handshake_key->key.secret, false,
-				       &peer->key->key,
-				       &conf.protocol_config->key.public,
+	if (!make_shared_handshake_key(false, &handshake_key->key,
+				       peer->key,
 				       peer_handshake_key,
-				       &handshake_key->key.public,
 				       &peer->protocol_state->sigma,
 				       &peer->protocol_state->shared_handshake_key,
 				       compat ? &peer->protocol_state->shared_handshake_key_compat : NULL))
@@ -367,10 +350,8 @@ static void finish_handshake(fastd_socket_t *sock, const fastd_peer_address_t *l
 
 	aligned_int256_t sigma;
 	fastd_sha256_t shared_handshake_key, shared_handshake_key_compat;
-	if (!make_shared_handshake_key(&handshake_key->key.secret, true,
-				       &conf.protocol_config->key.public,
-				       &peer->key->key,
-				       &handshake_key->key.public,
+	if (!make_shared_handshake_key(true, &handshake_key->key,
+				       peer->key,
 				       peer_handshake_key,
 				       &sigma,
 				       compat ? NULL : &shared_handshake_key,
@@ -583,9 +564,11 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 		return NULL;
 	}
 
-	aligned_int256_t peer_key;
-	memcpy(&peer_key, key, PUBLICKEYBYTES);
-	if (!fastd_protocol_ec25519_fhmqvc_check_key(&peer_key.int256)) {
+	fastd_protocol_key_t peer_key;
+	memcpy(&peer_key.key, key, PUBLICKEYBYTES);
+
+	if (!ecc_25519_load_packed(&peer_key.unpacked, &peer_key.key.int256)
+		|| !fastd_protocol_ec25519_fhmqvc_check_key(&peer_key.unpacked)) {
 		pr_debug("ignoring handshake from %I (invalid key)", addr);
 		return NULL;
 	}
@@ -595,7 +578,7 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 	peer->config_state = CONFIG_DYNAMIC;
 
 	peer->key = fastd_new(fastd_protocol_key_t);
-	peer->key->key = peer_key;
+	*peer->key = peer_key;
 
 	if (!fastd_peer_add(peer))
 		exit_bug("failed to add dynamic peer");
