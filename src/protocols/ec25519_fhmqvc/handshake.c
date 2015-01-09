@@ -192,7 +192,7 @@ static bool make_shared_handshake_key(bool initiator, const keypair_t *handshake
 	if (!ecc_25519_load_packed(&workXY, &peer_handshake_key->int256))
 		return false;
 
-	if (!fastd_protocol_ec25519_fhmqvc_check_key(&workXY))
+	if (ecc_25519_is_identity(&workXY))
 		return false;
 
 	if (initiator) {
@@ -235,6 +235,18 @@ static bool make_shared_handshake_key(bool initiator, const keypair_t *handshake
 	}
 
 	ecc_25519_add(&work, &workXY, &work);
+
+	/*
+	  Both our secret keys have been divided by 8 before, so we multiply
+	  the point with 8 here to compensate.
+
+	  By multiplying with 8, we prevent small-subgroup attacks (8 is the order
+	  of the curves twist, see djb's Curve25519 paper). While the factor 8 should
+	  be in the private keys anyways, the reduction modulo the subgroup order (in ecc_25519_gf_*)
+	  will only preserve it if the point actually lies on our subgroup.
+	*/
+	octuple_point(&work);
+
 	ecc_25519_scalarmult(&work, &s, &work);
 
 	if (ecc_25519_is_identity(&work))

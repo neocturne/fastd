@@ -46,12 +46,15 @@ static void init_protocol_state(void) {
 
 /** Generates a new ephemeral keypair */
 static void new_handshake_key(keypair_t *key) {
-		fastd_random_bytes(key->secret.p, SECRETKEYBYTES, false);
-		ecc_25519_gf_sanitize_secret(&key->secret, &key->secret);
+	fastd_random_bytes(key->secret.p, SECRETKEYBYTES, false);
+	ecc_25519_gf_sanitize_secret(&key->secret, &key->secret);
 
-		ecc_25519_work_t work;
-		ecc_25519_scalarmult_base(&work, &key->secret);
-		ecc_25519_store_packed(&key->public.int256, &work);
+	ecc_25519_work_t work;
+	ecc_25519_scalarmult_base(&work, &key->secret);
+	ecc_25519_store_packed(&key->public.int256, &work);
+
+	if (!divide_key(&key->secret))
+		exit_bug("generated invalid ephemeral key");
 }
 
 /**

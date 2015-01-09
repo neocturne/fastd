@@ -71,6 +71,9 @@ static fastd_protocol_config_t * protocol_init(void) {
 	ecc_25519_scalarmult_base(&work, &protocol_config->key.secret);
 	ecc_25519_store_packed(&protocol_config->key.public.int256, &work);
 
+	if (!divide_key(&protocol_config->key.secret))
+		exit_error("invalid secret key");
+
 	return protocol_config;
 }
 
