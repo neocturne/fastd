@@ -69,7 +69,6 @@ static inline int handshake_timeout(void) {
 
 #include <fcntl.h>
 #include <sys/epoll.h>
-#include <sys/signal.h>
 #include <sys/syscall.h>
 
 
