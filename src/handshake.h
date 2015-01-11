@@ -94,8 +94,8 @@ struct fastd_handshake {
 
 /** A buffer a handshake to send is prepared in */
 struct fastd_handshake_buffer {
-	fastd_buffer_t buffer;
-	bool little_endian;
+	fastd_buffer_t buffer;		/**< The actual buffer */
+	bool little_endian;		/**< true if the old little-endian handshake format is used */
 };
 
 
