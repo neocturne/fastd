@@ -81,6 +81,7 @@ struct fastd_method_provider {
 };
 
 
+/** Searches for a provider providing a method and instanciates it */
 bool fastd_method_create_by_name(const char *name, const fastd_method_provider_t **provider, fastd_method_t **method);
 
 

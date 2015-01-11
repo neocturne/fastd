@@ -77,16 +77,31 @@ struct fastd_mac {
 };
 
 
+/** Initializes the list of cipher implementations */
 void fastd_cipher_init(void);
+
+/** Configures a cipher to use a specific implementation */
 bool fastd_cipher_config(const char *name, const char *impl);
 
+
+/** Returns information about the cipher with the specified name if there is an implementation available */
 const fastd_cipher_info_t * fastd_cipher_info_get_by_name(const char *name);
+
+/** Returns the chosen cipher implementation for a given cipher */
 const fastd_cipher_t * fastd_cipher_get(const fastd_cipher_info_t *info);
 
+
+/** Initializes the list of MAC implementations */
 void fastd_mac_init(void);
+
+/** Configures a MAC to use a specific implementation */
 bool fastd_mac_config(const char *name, const char *impl);
 
+
+/** Returns information about the MAC with the specified name if there is an implementation available */
 const fastd_mac_info_t * fastd_mac_info_get_by_name(const char *name);
+
+/** Returns the chosen MAC implementation for a given cipher */
 const fastd_mac_t * fastd_mac_get(const fastd_mac_info_t *info);
 
 

@@ -64,7 +64,6 @@ static inline bool cipher_available(const fastd_cipher_t *cipher) {
 	return (!cipher->available) || cipher->available();
 }
 
-/** Initializes the list of cipher implementations */
 void fastd_cipher_init(void) {
 	size_t i, j;
 	for (i = 0; i < array_size(ciphers); i++) {
@@ -77,7 +76,6 @@ void fastd_cipher_init(void) {
 	}
 }
 
-/** Configures a cipher to use a specific implementation */
 bool fastd_cipher_config(const char *name, const char *impl) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
@@ -100,7 +98,6 @@ bool fastd_cipher_config(const char *name, const char *impl) {
 	return false;
 }
 
-/** Returns information about the cipher with the specified name if there is an implementation available */
 const fastd_cipher_info_t * fastd_cipher_info_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {
@@ -116,7 +113,6 @@ const fastd_cipher_info_t * fastd_cipher_info_get_by_name(const char *name) {
 	return NULL;
 }
 
-/** Returns the chosen cipher implementation for a given cipher */
 const fastd_cipher_t * fastd_cipher_get(const fastd_cipher_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(ciphers); i++) {

@@ -64,7 +64,6 @@ static inline bool mac_available(const fastd_mac_t *mac) {
 	return (!mac->available) || mac->available();
 }
 
-/** Initializes the list of MAC implementations */
 void fastd_mac_init(void) {
 	size_t i, j;
 	for (i = 0; i < array_size(macs); i++) {
@@ -77,7 +76,6 @@ void fastd_mac_init(void) {
 	}
 }
 
-/** Configures a MAC to use a specific implementation */
 bool fastd_mac_config(const char *name, const char *impl) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
@@ -100,7 +98,6 @@ bool fastd_mac_config(const char *name, const char *impl) {
 	return false;
 }
 
-/** Returns information about the MAC with the specified name if there is an implementation available */
 const fastd_mac_info_t * fastd_mac_info_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
@@ -116,7 +113,6 @@ const fastd_mac_info_t * fastd_mac_info_get_by_name(const char *name) {
 	return NULL;
 }
 
-/** Returns the chosen MAC implementation for a given cipher */
 const fastd_mac_t * fastd_mac_get(const fastd_mac_info_t *info) {
 	size_t i;
 	for (i = 0; i < array_size(macs); i++) {
