@@ -458,41 +458,41 @@ peer_statement: TOK_REMOTE peer_remote ';'
 	|	TOK_INCLUDE peer_include ';'
 	;
 
-peer_remote:	TOK_ADDR4 port {
+peer_remote:	maybe_ipv4 TOK_ADDR4 port {
 			fastd_remote_t remote = {};
 
 			remote.address.in.sin_family = AF_INET;
-			remote.address.in.sin_addr = $1;
-			remote.address.in.sin_port = htons($2);
+			remote.address.in.sin_addr = $2;
+			remote.address.in.sin_port = htons($3);
 			fastd_peer_address_simplify(&remote.address);
 
 			VECTOR_ADD(state->peer->remotes, remote);
 		}
-	|	TOK_ADDR6 port {
+	|	maybe_ipv6 TOK_ADDR6 port {
 			fastd_remote_t remote = {};
 
 			remote.address.in6.sin6_family = AF_INET6;
-			remote.address.in6.sin6_addr = $1;
-			remote.address.in6.sin6_port = htons($2);
+			remote.address.in6.sin6_addr = $2;
+			remote.address.in6.sin6_port = htons($3);
 			fastd_peer_address_simplify(&remote.address);
 
 			VECTOR_ADD(state->peer->remotes, remote);
 		}
-	|	TOK_ADDR6_SCOPED port {
+	|	maybe_ipv6 TOK_ADDR6_SCOPED port {
 			char addrbuf[INET6_ADDRSTRLEN];
 			size_t addrlen;
 
-			inet_ntop(AF_INET6, &$1.addr, addrbuf, sizeof(addrbuf));
+			inet_ntop(AF_INET6, &$2.addr, addrbuf, sizeof(addrbuf));
 			addrlen = strlen(addrbuf);
 
 			fastd_remote_t remote = {};
-			remote.hostname = fastd_alloc(addrlen + strlen($1.ifname) + 2);
+			remote.hostname = fastd_alloc(addrlen + strlen($2.ifname) + 2);
 			memcpy(remote.hostname, addrbuf, addrlen);
 			remote.hostname[addrlen] = '%';
-			strcpy(remote.hostname+addrlen+1, $1.ifname);
+			strcpy(remote.hostname+addrlen+1, $2.ifname);
 
 			remote.address.sa.sa_family = AF_INET6;
-			remote.address.in.sin_port = htons($2);
+			remote.address.in.sin_port = htons($3);
 
 			VECTOR_ADD(state->peer->remotes, remote);
 		}
@@ -585,6 +585,14 @@ maybe_as:	TOK_AS TOK_STRING {
 maybe_af:	TOK_IPV4	{ $$ = AF_INET; }
 	|	TOK_IPV6	{ $$ = AF_INET6; }
 	|			{ $$ = AF_UNSPEC; }
+	;
+
+maybe_ipv4:	TOK_IPV4
+	|
+	;
+
+maybe_ipv6:	TOK_IPV6
+	|
 	;
 
 sync_def_sync:	sync		{ $$ = $1; }
