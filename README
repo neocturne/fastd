@@ -1,1 +1,4 @@
+The documentation of fastd can be found in the doc/ directory. Is uses the Sphinx documentation
+generator. A compiled version can be found on http://fastd.readthedocs.org/
+
 For further information please see https://projects.universe-factory.net/projects/fastd/wiki
