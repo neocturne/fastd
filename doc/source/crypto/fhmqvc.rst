@@ -1,7 +1,9 @@
 FHMQV-C
 =======
 FHMQV (Fully Hashed Menezes-Qu-Vanstone) is an extended, implicitly authenticated Diffie-Hellman key exchange which has been
-specified in [SEB09]_, correcting issues found in the earlier MQV ([LMQ+98]_) and Hashed MQV ([Kra05]_) algorithms.
+specified in [SEB09]_, correcting issues found in the earlier MQV ([LMQ+98]_) and Hashed MQV ([Kra05]_) algorithms. It
+should be noted that proof of security provided by [SEB09]_ was recently found to be faulty in [LSW+14]_; nevertheless
+it is very unlikely that this has an impact on the security of the algorithm in practise.
 
 The modified algorithm FHMQV-C specified in the same document also provides *Perfect Forward Secrecy* (PFS),
 which isn't the case for the simple FHMQV algorithm.
@@ -123,6 +125,10 @@ Bibliography
 .. [LMQ+98]
    L. Law, A. Menezes, M. Qu, J. Solinas and S. Vanstone, "An efficient protocol for
    authenticated key agreement", Designs, Codes and Cryptography, vol. 28, pp. 361–377, 1998.
+
+.. [LSW+14]
+   S. Liu, K. Sakurai, J. Weng, F. Zhang, and Y. Zhao, "Security Model and Analysis of FHMQV, Revisited",
+   in Information Security and Cryptology, pp. 255–269, Springer, 2014.
 
 .. [RFC2104]
    H. Krawczyk, M. Bellare and R. Canetti, "HMAC: Keyed-Hashing for Message Authentication",
