@@ -243,6 +243,10 @@ static void print_error(const char *prefix, const fastd_peer_address_t *remote_a
 			pr_warn("Handshake with %I failed: %s error: TUN/TAP mode mismatch", remote_addr, prefix);
 			break;
 
+		case RECORD_MTU:
+			pr_warn("Handshake with %I failed: %s error: MTU configuration differs with peer (local MTU is %u)", remote_addr, prefix, conf.mtu);
+			break;
+
 		case RECORD_METHOD_NAME:
 		case RECORD_METHOD_LIST:
 			pr_warn("Handshake with %I failed: %s error: no common methods are configured", remote_addr, prefix);
@@ -364,8 +368,8 @@ static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_
 	if (!conf.secure_handshakes || handshake->type > 1) {
 		if (handshake->records[RECORD_MTU].length == 2) {
 			if (as_uint16_endian(&handshake->records[RECORD_MTU], handshake->little_endian) != conf.mtu) {
-				pr_warn("MTU configuration differs with peer %I: local MTU is %u, remote MTU is %u",
-					remote_addr, conf.mtu, as_uint16_endian(&handshake->records[RECORD_MTU], handshake->little_endian));
+				send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MTU);
+				return false;
 			}
 		}
 	}
