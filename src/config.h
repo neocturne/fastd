@@ -46,7 +46,7 @@ struct fastd_parser_state {
 
 
 void fastd_config_protocol(const char *name);
-void fastd_config_method(const char *name);
+void fastd_config_method(fastd_peer_group_t *group, const char *name);
 void fastd_config_cipher(const char *name, const char *impl);
 void fastd_config_mac(const char *name, const char *impl);
 void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6);

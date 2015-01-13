@@ -80,10 +80,10 @@ void fastd_config_protocol(const char *name) {
 }
 
 /** Handles the configuration of a crypto method */
-void fastd_config_method(const char *name) {
+void fastd_config_method(fastd_peer_group_t *group, const char *name) {
 	fastd_string_stack_t **method;
 
-	for (method = &conf.method_list; *method; method = &(*method)->next) {
+	for (method = &group->methods; *method; method = &(*method)->next) {
 		if (!strcmp((*method)->str, name)) {
 			pr_debug("duplicate method name `%s', ignoring", name);
 			return;
@@ -168,6 +168,7 @@ static void free_peer_group(fastd_peer_group_t *group) {
 	}
 
 	fastd_string_stack_free(group->peer_dirs);
+	fastd_string_stack_free(group->methods);
 	free(group->name);
 	free(group);
 }
@@ -467,12 +468,30 @@ static void configure_method_parameters(void) {
 	conf.min_decrypt_head_space = alignto(conf.min_decrypt_head_space, 16) + 8;
 }
 
+
+/** Collects a list of the configured methods of all peer groups */
+static void collect_methods(const fastd_peer_group_t *group, size_t *count) {
+	const fastd_string_stack_t *method;
+
+	for (method = group->methods; method; method = method->next) {
+		if (!fastd_string_stack_contains(conf.method_list, method->str)) {
+			conf.method_list = fastd_string_stack_push(conf.method_list, method->str);
+			(*count)++;
+		}
+	}
+
+	const fastd_peer_group_t *sub;
+	for (sub = group->children; sub; sub = sub->next)
+		collect_methods(sub, count);
+}
+
+
 /** Handles the initialization of the configured methods */
 static void configure_methods(void) {
 	size_t n_methods = 0, i;
 	fastd_string_stack_t *method_name;
-	for (method_name = conf.method_list; method_name; method_name = method_name->next)
-		n_methods++;
+
+	collect_methods(conf.peer_group, &n_methods);
 
 	conf.methods = fastd_new0_array(n_methods+1, fastd_method_info_t);
 
@@ -546,9 +565,9 @@ void fastd_config_check(void) {
 	if (!VECTOR_LEN(ctx.peers) && !has_peer_group_peer_dirs(conf.peer_group))
 		exit_error("config error: neither fixed peers nor peer dirs have been configured");
 
-	if (!conf.method_list) {
+	if (!conf.peer_group->methods) {
 		pr_warn("no encryption method configured, falling back to method `null' (unencrypted)");
-		fastd_config_method("null");
+		fastd_config_method(conf.peer_group, "null");
 	}
 
 	configure_user();

@@ -191,7 +191,6 @@ statement:	peer_group_statement
 	|	TOK_PMTU pmtu ';'
 	|	TOK_MODE mode ';'
 	|	TOK_PROTOCOL protocol ';'
-	|	TOK_METHOD method ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_PRE_UP on_pre_up ';'
 	|	TOK_ON TOK_UP on_up ';'
@@ -209,6 +208,7 @@ peer_group_statement:
 		TOK_PEER peer '{' peer_conf '}' peer_after
 	|	TOK_PEER TOK_GROUP peer_group '{' peer_group_config '}' peer_group_after
 	|	TOK_PEER TOK_LIMIT peer_limit ';'
+	|	TOK_METHOD method ';'
 	|	TOK_INCLUDE include ';'
 	;
 
@@ -368,11 +368,6 @@ mode:		TOK_TAP		{ conf.mode = MODE_TAP; }
 
 protocol:	TOK_STRING {
 			fastd_config_protocol($1->str);
-		}
-	;
-
-method:		TOK_STRING {
-			fastd_config_method($1->str);
 		}
 	;
 
@@ -543,6 +538,11 @@ peer_limit:	TOK_UINT {
 			}
 
 			state->peer_group->max_connections = $1;
+		}
+	;
+
+method:		TOK_STRING {
+			fastd_config_method(state->peer_group, $1->str);
 		}
 	;
 

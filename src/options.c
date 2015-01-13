@@ -315,7 +315,7 @@ static void option_protocol(const char *arg) {
 
 /** Handles the --method option */
 static void option_method(const char *arg) {
-	fastd_config_method(arg);
+	fastd_config_method(conf.peer_group, arg);
 }
 
 /** Handles the --forward option */

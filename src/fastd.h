@@ -450,6 +450,18 @@ static inline const char * fastd_string_stack_get(const fastd_string_stack_t *st
 	return stack ? stack->str : NULL;
 }
 
+/**  */
+static inline bool fastd_string_stack_contains(const fastd_string_stack_t *stack, const char *str) {
+	while (stack) {
+		if (strcmp(stack->str, str) == 0)
+			return true;
+
+		stack = stack->next;
+	}
+
+	return false;
+}
+
 /** Frees a whole string stack */
 static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 	while (str) {
