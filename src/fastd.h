@@ -204,6 +204,7 @@ struct fastd_config {
 
 	fastd_drop_caps_t drop_caps;		/**< Specifies if and when to drop capabilities */
 
+#ifdef USE_USER
 	char *user;				/**< Specifies which user to switch to after initialization */
 	char *group;				/**< Can specify an alternative group to switch to */
 
@@ -211,6 +212,7 @@ struct fastd_config {
 	gid_t gid;				/**< The GID of the configured group */
 	size_t n_groups;			/**< The number of supplementary groups of the user */
 	gid_t *groups;				/**< The supplementary groups of the configured user */
+#endif
 
 	const fastd_protocol_t *protocol;	/**< The handshake protocol */
 	fastd_string_stack_t *method_list;	/**< The list of configured method names */

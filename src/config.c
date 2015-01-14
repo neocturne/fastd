@@ -383,14 +383,10 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 
 /** Loads information about the configured user and group */
 static void configure_user(void) {
+#ifdef USE_USER
 	conf.uid = getuid();
 	conf.gid = getgid();
 
-#ifdef __ANDROID__
-	if (conf.user || conf.group) {
-		exit_error("config error: setting user/group is not supported on Android");
-	}
-#else
 	if (conf.user) {
 		struct passwd pwd, *pwdr;
 		size_t bufspace = 1024;
@@ -683,9 +679,12 @@ void fastd_config_release(void) {
 	free(conf.status_socket);
 #endif
 
+#ifdef USE_USER
 	free(conf.user);
 	free(conf.group);
 	free(conf.groups);
+#endif
+
 	free(conf.ifname);
 	free(conf.secret);
 	free(conf.protocol_config);

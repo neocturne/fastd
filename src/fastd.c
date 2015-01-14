@@ -256,6 +256,8 @@ static inline void write_pid(void) {
 		return;
 	}
 #endif
+
+#ifdef USE_USER
 	uid_t uid = geteuid();
 	gid_t gid = getegid();
 
@@ -265,28 +267,32 @@ static inline void write_pid(void) {
 		if (seteuid(conf.uid) < 0)
 			pr_debug_errno("seteuid");
 	}
+#endif
 
 	FILE *f = fopen(conf.pid_file, "w");
-	if (f == NULL) {
+	if (f) {
+		if (fprintf(f, "%u", (unsigned)getpid()) < 0)
+			pr_error_errno("can't write PID file: fprintf");
+
+		if (fclose(f) < 0)
+			pr_warn_errno("fclose");
+
+	}
+	else {
 		pr_error_errno("can't write PID file: fopen");
-		goto end;
 	}
 
-	if (fprintf(f, "%u", (unsigned)getpid()) < 0)
-		pr_error_errno("can't write PID file: fprintf");
-
-	if (fclose(f) < 0)
-		pr_warn_errno("fclose");
-
- end:
+#ifdef USE_USER
 	if (seteuid(uid) < 0)
 		pr_debug_errno("seteuid");
 	if (setegid(gid) < 0)
 		pr_debug_errno("setegid");
+#endif
 }
 
 /** Switches to the configured user */
 static void set_user(void) {
+#ifdef USE_USER
 	if (conf.user || conf.group) {
 		if (setgid(conf.gid) < 0)
 			exit_errno("setgid");
@@ -296,10 +302,12 @@ static void set_user(void) {
 
 		pr_info("changed to UID %i, GID %i", (int)conf.uid, (int)conf.gid);
 	}
+#endif
 }
 
 /** Sets the configured user's supplementary groups */
 static void set_groups(void) {
+#ifdef USE_USER
 	if (conf.groups) {
 		if (setgroups(conf.n_groups, conf.groups) < 0) {
 			if (errno != EPERM)
@@ -312,6 +320,7 @@ static void set_groups(void) {
 				pr_debug_errno("setgroups");
 		}
 	}
+#endif
 }
 
 /** Switches the user and drops all capabilities */

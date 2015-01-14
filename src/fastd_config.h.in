@@ -71,6 +71,9 @@
 /** Defined if the platform supports SO_MARK */
 #cmakedefine USE_PACKET_MARK
 
+/** Defined if the platform supports settings users and groups */
+#cmakedefine USE_USER
+
 /** Defined if the platform supports binding on IPv4 and IPv6 with a single socket */
 #cmakedefine USE_MULTIAF_BIND
 

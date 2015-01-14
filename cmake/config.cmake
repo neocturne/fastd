@@ -18,6 +18,14 @@ set(USE_PMTU ${LINUX})
 set(USE_PKTINFO ${LINUX})
 set(USE_PACKET_MARK ${LINUX})
 
+
+if(ANDROID)
+  set(USE_USER FALSE)
+else(ANDROID)
+  set(USE_USER TRUE)
+endif(ANDROID)
+
+
 # OSX doesn't support poll on devices...
 set(USE_SELECT ${DARWIN})
 
@@ -36,9 +44,16 @@ set(ENABLE_LTO FALSE CACHE BOOL "Enable link-time optimization")
 
 if(LINUX AND NOT ANDROID)
   set(ENABLE_SYSTEMD TRUE CACHE BOOL "Enable systemd support")
+else(LINUX AND NOT ANDROID)
+  set(ENABLE_SYSTEMD FALSE)
 endif(LINUX AND NOT ANDROID)
 
-set(WITH_CMDLINE_USER TRUE CACHE BOOL "Include support for setting user/group related options on the command line")
+if(USE_USER)
+  set(WITH_CMDLINE_USER TRUE CACHE BOOL "Include support for setting user/group related options on the command line")
+else(USE_USER)
+  set(WITH_CMDLINE_USER FALSE)
+endif(USE_USER)
+
 set(WITH_CMDLINE_LOGGING TRUE CACHE BOOL "Include support for setting logging related options on the command line")
 set(WITH_CMDLINE_OPERATION TRUE CACHE BOOL "Include support for setting options related to the VPN operation (like mode, interface, encryption method) on the command line")
 set(WITH_CMDLINE_COMMANDS TRUE CACHE BOOL "Include support for setting handler scripts (e.g. --on-up) on the command line")
