@@ -47,12 +47,10 @@
 
 #ifdef __ANDROID__
 
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-
 #include "fastd.h"
+
+#include <sys/un.h>
+
 
 /** declare a work buffer for sending/receiving \e n handles */
 #define ANCIL_FD_BUFFER(n) \
@@ -205,7 +203,7 @@ bool fastd_android_protect_socket(int fd) {
 	pr_debug("sending fd to protect");
 	if (ancil_send_fd(ctx.android_ctrl_sock_fd, fd) == -1) {
 		exit_errno("could not send handle to Android for protecting");
-        }
+	}
 
 	char buf[20];
 	if (read(ctx.android_ctrl_sock_fd, buf, sizeof(buf)) == -1) {
