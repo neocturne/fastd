@@ -64,26 +64,31 @@
 fastd_context_t ctx = {};
 
 
-static volatile bool sighup = false;		/**< Is set to true when a SIGHUP is received */
-static volatile bool terminate = false;		/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
-static volatile bool sigchld = false;		/**< Is set to true when a SIGCHLD is received */
+static volatile bool sig_reload = false;	/**< Is set to true when a SIGHUP is received */
+static volatile bool sig_reset = false;		/**< Is set to true when a SIGUSR2 is received */
+static volatile bool sig_terminate = false;	/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
+static volatile bool sig_child = false;		/**< Is set to true when a SIGCHLD is received */
 
 
 /** Signal handler; just saves the signals to be handled later */
 static void on_signal(int signo) {
 	switch(signo) {
 	case SIGHUP:
-		sighup = true;
+		sig_reload = true;
+		break;
+
+	case SIGUSR2:
+		sig_reset = true;
 		break;
 
 	case SIGCHLD:
-		sigchld = true;
+		sig_child = true;
 		break;
 
 	case SIGTERM:
 	case SIGQUIT:
 	case SIGINT:
-		terminate = true;
+		sig_terminate = true;
 		break;
 
 	default:
@@ -109,6 +114,8 @@ static void init_signals(void) {
 	action.sa_handler = on_signal;
 	if (sigaction(SIGHUP, &action, NULL))
 		exit_errno("sigaction");
+	if (sigaction(SIGUSR2, &action, NULL))
+		exit_errno("sigaction");
 	if (sigaction(SIGCHLD, &action, NULL))
 		exit_errno("sigaction");
 	if (sigaction(SIGTERM, &action, NULL))
@@ -126,8 +133,6 @@ static void init_signals(void) {
 	if (sigaction(SIGTTOU, &action, NULL))
 		exit_errno("sigaction");
 	if (sigaction(SIGUSR1, &action, NULL))
-		exit_errno("sigaction");
-	if (sigaction(SIGUSR2, &action, NULL))
 		exit_errno("sigaction");
 
 }
@@ -563,16 +568,24 @@ static inline void reap_zombies(void) {
 
 /** The \em real signal handlers */
 static inline void handle_signals(void) {
-	if (sighup) {
-		sighup = false;
+	if (sig_reload) {
+		sig_reload = false;
 
 		pr_info("reconfigure triggered");
 
 		fastd_config_load_peer_dirs();
 	}
 
-	if (sigchld) {
-		sigchld = false;
+	if (sig_reset) {
+		sig_reset = false;
+
+		pr_info("triggered reset of all connections");
+
+		fastd_peer_reset_all();
+	}
+
+	if (sig_child) {
+		sig_child = false;
 		reap_zombies();
 	}
 }
@@ -640,7 +653,7 @@ static inline void cleanup(void) {
 int main(int argc, char *argv[]) {
 	init(argc, argv);
 
-	while (!terminate)
+	while (!sig_terminate)
 		run();
 
 	cleanup();

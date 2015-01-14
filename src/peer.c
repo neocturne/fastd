@@ -970,3 +970,19 @@ void fastd_peer_maintenance(void) {
 
 	eth_addr_cleanup();
 }
+
+/** Resets all peers */
+void fastd_peer_reset_all(void) {
+	size_t i;
+	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
+		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
+
+		if (fastd_peer_is_dynamic(peer)) {
+			fastd_peer_delete(peer);
+		}
+		else {
+			fastd_peer_reset(peer);
+			i++;
+		}
+	}
+}

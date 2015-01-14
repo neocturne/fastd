@@ -290,6 +290,7 @@ bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **pee
 
 void fastd_peer_handle_handshake_queue(void);
 void fastd_peer_maintenance(void);
+void fastd_peer_reset_all(void);
 
 /** Adds statistics for a single packet of a given size */
 static inline void fastd_stats_add(UNUSED fastd_peer_t *peer, UNUSED fastd_stat_type_t stat, UNUSED size_t bytes) {
