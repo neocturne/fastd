@@ -2,6 +2,10 @@
   Copyright (c) 2012-2014, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
+  Android port contributor:
+  Copyright (c) 2014-2015, Haofeng "Rick" Lei <ricklei@gmail.com>
+  All rights reserved.
+
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
 
@@ -239,6 +243,10 @@ struct fastd_config {
 	char *status_socket;			/**< The path of the status socket */
 #endif
 
+#ifdef __ANDROID__
+	bool android_integration;		/**< Enable Android GUI integration features */
+#endif
+
 	bool daemon;				/**< Set to make fastd fork to the background after initialization */
 	char *pid_file;				/**< A filename to write fastd's PID to */
 
@@ -296,6 +304,10 @@ struct fastd_context {
 
 	int tunfd;				/**< The file descriptor of the tunnel interface */
 
+#ifdef __ANDROID__
+	int android_ctrl_sock_fd;		/**< The unix domain socket for communicating with Android GUI */
+#endif
+
 	size_t n_socks;				/**< The number of sockets in socks */
 	fastd_socket_t *socks;			/**< Array of all sockets */
 
@@ -336,6 +348,12 @@ bool fastd_socket_handle_binds(void);
 fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af);
 void fastd_socket_close(fastd_socket_t *sock);
 void fastd_socket_error(fastd_socket_t *sock);
+
+#ifdef __ANDROID__
+int fastd_android_receive_tunfd(void);
+void fastd_android_send_pid(void);
+bool fastd_android_protect_socket(int fd);
+#endif
 
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 

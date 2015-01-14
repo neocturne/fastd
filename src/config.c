@@ -2,6 +2,10 @@
   Copyright (c) 2012-2014, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
+  Android port contributor:
+  Copyright (c) 2014-2015, Haofeng "Rick" Lei <ricklei@gmail.com>
+  All rights reserved.
+
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
 
@@ -382,6 +386,11 @@ static void configure_user(void) {
 	conf.uid = getuid();
 	conf.gid = getgid();
 
+#ifdef __ANDROID__
+	if (conf.user || conf.group) {
+		exit_error("config error: setting user/group is not supported on Android");
+	}
+#else
 	if (conf.user) {
 		struct passwd pwd, *pwdr;
 		size_t bufspace = 1024;
@@ -441,6 +450,7 @@ static void configure_user(void) {
 				conf.groups[i] = groups[i];
 		}
 	}
+#endif
 }
 
 /** Initializes global configuration that depends on the configured methods */

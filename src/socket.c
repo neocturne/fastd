@@ -152,6 +152,13 @@ static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 		goto error;
 	}
 
+#ifdef __ANDROID__
+	if (!fastd_android_protect_socket(fd)) {
+		pr_error("error protecting socket");
+		goto error;
+	}
+#endif
+
 	return fd;
 
  error:

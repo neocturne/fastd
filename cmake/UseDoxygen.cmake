@@ -57,13 +57,25 @@ macro(usedoxygen_set_default name value type docstring)
 	endif()
 endmacro()
 
-find_package(Doxygen)
+if(ANDROID)
+	find_host_package(Doxygen)
+else(ANDROID)
+	find_package(Doxygen)
+endif(ANDROID)
 
 if(DOXYGEN_FOUND)
+	if(ANDROID)
+		# android-cmake doesn't provide a find_host_file and here's the workaround
+		set(_save_root_path ${CMAKE_FIND_ROOT_PATH})
+		set(CMAKE_FIND_ROOT_PATH)
+	endif(ANDROID)
 	find_file(DOXYFILE_IN "Doxyfile.in"
 			PATHS "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_ROOT}/Modules/"
 			NO_DEFAULT_PATH
 			DOC "Path to the doxygen configuration template file")
+	if(ANDROID)
+		set(CMAKE_FIND_ROOT_PATH $_save_root_path)
+	endif(ANDROID)
 	set(DOXYFILE "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile")
 	include(FindPackageHandleStandardArgs)
 	find_package_handle_standard_args(DOXYFILE_IN DEFAULT_MSG "DOXYFILE_IN")

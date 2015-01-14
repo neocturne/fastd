@@ -2,6 +2,10 @@
   Copyright (c) 2012-2014, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
+  Android port contributor:
+  Copyright (c) 2014-2015, Haofeng "Rick" Lei <ricklei@gmail.com>
+  All rights reserved.
+
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
 
@@ -35,7 +39,6 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-
 #ifdef __linux__
 
 #include <linux/if_tun.h>
@@ -60,16 +63,15 @@ static const bool multiaf_tun = false;
 static const bool multiaf_tun = true;
 #endif
 
+#ifdef __linux__
 
-#if defined(__linux__)
-
-/** Opens the TUN/TAP device */
-void fastd_tuntap_open(void) {
-	struct ifreq ifr = {};
-
+/** Opens the TUN/TAP device helper shared by Android and Linux targets */
+static void tuntap_open_linux(const char * dev_name) {
 	pr_debug("initializing tun/tap device...");
 
-	if ((ctx.tunfd = open("/dev/net/tun", O_RDWR|O_NONBLOCK)) < 0)
+	struct ifreq ifr = {};
+
+	if ((ctx.tunfd = open(dev_name, O_RDWR|O_NONBLOCK)) < 0)
 		exit_errno("could not open tun/tap device file");
 
 	if (conf.ifname)
@@ -113,6 +115,40 @@ void fastd_tuntap_open(void) {
 	fastd_poll_set_fd_tuntap();
 
 	pr_debug("tun/tap device initialized.");
+}
+
+#endif
+
+#if defined(__ANDROID__)
+
+/** Opens the TUN/TAP device */
+void fastd_tuntap_open(void) {
+	pr_debug("initializing tun device...");
+
+	if (conf.android_integration) {
+		if (conf.mode != MODE_TUN) {
+			exit_error("Non root Android supports only TUN mode");
+		}
+
+		pr_debug("using android TUN fd");
+		ctx.tunfd = fastd_android_receive_tunfd();
+
+		fastd_android_send_pid();
+
+		fastd_poll_set_fd_tuntap();
+
+		pr_debug("tun device initialized.");
+	} else {
+		/* this requires root on Android */
+		tuntap_open_linux("/dev/tun");
+	}
+}
+
+#elif defined(__linux__)
+
+/** Opens the TUN/TAP device */
+void fastd_tuntap_open(void) {
+	tuntap_open_linux("/dev/net/tun");
 }
 
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)

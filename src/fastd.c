@@ -2,6 +2,10 @@
   Copyright (c) 2012-2014, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
+  Android port contributor:
+  Copyright (c) 2014-2015, Haofeng "Rick" Lei <ricklei@gmail.com>
+  All rights reserved.
+
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
 
@@ -246,6 +250,12 @@ static inline void write_pid(void) {
 	if (!conf.pid_file)
 		return;
 
+#ifdef __ANDROID__
+	if (conf.android_integration) {
+		pr_warn("fastd doesn't support pid file in GUI integration mode on Android");
+		return;
+	}
+#endif
 	uid_t uid = geteuid();
 	gid_t gid = getegid();
 
@@ -256,17 +266,17 @@ static inline void write_pid(void) {
 			pr_debug_errno("seteuid");
 	}
 
-	int fd = open(conf.pid_file, O_WRONLY|O_CREAT|O_TRUNC, 0666);
-	if (fd < 0) {
-		pr_error_errno("can't write PID file: open");
+	FILE *f = fopen(conf.pid_file, "w");
+	if (f == NULL) {
+		pr_error_errno("can't write PID file: fopen");
 		goto end;
 	}
 
-	if (dprintf(fd, "%u", (unsigned)getpid()) < 0)
-		pr_error_errno("can't write PID file: dprintf");
+	if (fprintf(f, "%u", (unsigned)getpid()) < 0)
+		pr_error_errno("can't write PID file: fprintf");
 
-	if (close(fd) < 0)
-		pr_warn_errno("close");
+	if (fclose(f) < 0)
+		pr_warn_errno("fclose");
 
  end:
 	if (seteuid(uid) < 0)

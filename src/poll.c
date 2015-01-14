@@ -81,7 +81,7 @@ static inline int epoll_wait_unblocked(int epfd, struct epoll_event *events, int
 
 
 void fastd_poll_init(void) {
-	ctx.epoll_fd = epoll_create1(0);
+	ctx.epoll_fd = epoll_create(1);
 	if (ctx.epoll_fd < 0)
 		exit_errno("epoll_create1");
 

@@ -50,7 +50,7 @@
 static inline uint64_t fastd_cpuid(void) {
 	unsigned eax, ebx, ecx, edx;
 
-	__asm__("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx) : "a" (1));
+	__asm__ __volatile__ ("mov %%ebx, %%edi;" "cpuid;" "xchgl %%ebx, %%edi;" : "=a" (eax), "=D" (ebx), "=c" (ecx), "=d" (edx) : "a" (1));
 
 	return ((uint64_t)ecx) << 32 | edx;
 }

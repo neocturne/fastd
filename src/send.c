@@ -2,6 +2,10 @@
   Copyright (c) 2012-2014, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
+  Android port contributor:
+  Copyright (c) 2014-2015, Haofeng "Rick" Lei <ricklei@gmail.com>
+  All rights reserved.
+
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
 
@@ -38,6 +42,11 @@
 
 /** Adds packet info to ancillary control messages */
 static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *local_addr) {
+#ifdef __ANDROID__
+	/* PKTINFO will mess with Android VpnService.protect(socket) */
+	if (conf.android_integration)
+		return;
+#endif
 	if (!local_addr)
 		return;
 

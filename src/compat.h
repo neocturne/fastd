@@ -94,7 +94,7 @@ struct ethhdr {
 /** Replacement function for *BSD systems not supporting get_current_dir_name() */
 static inline char *get_current_dir_name(void) {
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__APPLE__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__APPLE__) || defined(__ANDROID__)
 
 	return getcwd(NULL, 0);
 

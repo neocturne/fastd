@@ -4,9 +4,14 @@ if(NOT DARWIN)
   set(PTHREAD_LDFLAGS -pthread)
 endif(NOT DARWIN)
 
+if(ANDROID)
+  find_host_package(BISON 2.5 REQUIRED)
+  find_host_package(PkgConfig REQUIRED)
+else(ANDROID)
+  find_package(BISON 2.5 REQUIRED)
+  find_package(PkgConfig REQUIRED)
+endif(ANDROID)
 
-find_package(BISON 2.5 REQUIRED)
-find_package(PkgConfig REQUIRED)
 pkg_check_modules(UECC REQUIRED libuecc>=3)
 
 
