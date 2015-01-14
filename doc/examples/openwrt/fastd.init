@@ -219,7 +219,7 @@ generate_peer_group_config() {
 	if [ -z "$update_only" ]; then
 		generate_option "$group" config_string_peer_group
 		append_options "$group" config \
-			config config_peer config_peer_dir peer_limit
+			config config_peer config_peer_dir method peer_limit
 	fi
 
 	update_peer_group "$net" "$group_dir" "$group" "$update_only"
