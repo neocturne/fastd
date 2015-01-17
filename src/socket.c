@@ -242,12 +242,19 @@ fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 
 	const fastd_bind_address_t *bind_address;
 
-	if (af == AF_INET && conf.bind_addr_default_v4)
+	if (af == AF_INET && conf.bind_addr_default_v4) {
 		bind_address = conf.bind_addr_default_v4;
-	else if (af == AF_INET6 && conf.bind_addr_default_v6)
+	}
+	else if (af == AF_INET6 && conf.bind_addr_default_v6) {
 		bind_address = conf.bind_addr_default_v6;
-	else
+	}
+	else if (!conf.bind_addr_default_v4 && !conf.bind_addr_default_v6) {
 		bind_address = &any_address;
+	}
+	else {
+		pr_debug("not opening an %s socket for peer %P (no bind address with matching address family)", (af == AF_INET6) ? "IPv6" : "IPv4", peer);
+		return NULL;
+	}
 
 	int fd = bind_socket(bind_address, true);
 	if (fd < 0)
