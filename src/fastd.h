@@ -320,8 +320,8 @@ struct fastd_context {
 
 	VECTOR(fastd_peer_eth_addr_t) eth_addrs; /**< Sorted vector of all known ethernet addresses with associated peers and timeouts */
 
-	size_t unknown_handshake_pos;		/**< Current start position in the ring buffer unknown_handshakes */
-	fastd_handshake_timeout_t unknown_handshakes[8]; /**< Ring buffer of unknown addresses handshakes have been received from */
+	uint32_t unknown_handshake_seed;	/**< Hash seed for the unknown handshake hashtables */
+	fastd_handshake_timeout_t *unknown_handshakes[UNKNOWN_TABLES]; /**< Hash tables unknown addresses handshakes have been sent to */
 
 	fastd_protocol_state_t *protocol_state;	/**< Protocol-specific state */
 };
@@ -341,6 +341,8 @@ void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_ad
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
 void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source);
 
+void fastd_receive_unknown_init(void);
+void fastd_receive_unknown_free(void);
 void fastd_receive(fastd_socket_t *sock);
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reordered);
 

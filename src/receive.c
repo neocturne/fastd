@@ -32,6 +32,7 @@
 
 #include "fastd.h"
 #include "handshake.h"
+#include "hash.h"
 #include "peer.h"
 #include "peer_hashtable.h"
 
@@ -86,34 +87,74 @@ static inline void handle_socket_control(struct msghdr *message, const fastd_soc
 	}
 }
 
+/** Initializes the hashtables used to keep track of handshakes sent to unknown peers */
+void fastd_receive_unknown_init(void) {
+	size_t i, j;
+	for (i = 0; i < UNKNOWN_TABLES; i++) {
+		ctx.unknown_handshakes[i] = fastd_new0_array(UNKNOWN_ENTRIES, fastd_handshake_timeout_t);
+
+		for (j = 0; j < UNKNOWN_ENTRIES; j++)
+			ctx.unknown_handshakes[i][j].timeout = ctx.now;
+	}
+
+	fastd_random_bytes(&ctx.unknown_handshake_seed, sizeof(ctx.unknown_handshake_seed), false);
+}
+
+/** Frees the hashtables used to keep track of handshakes sent to unknown peers */
+void fastd_receive_unknown_free(void) {
+	size_t i;
+	for (i = 0; i < UNKNOWN_TABLES; i++)
+		free(ctx.unknown_handshakes[i]);
+}
+
+/** Returns the i'th hash bucket for a peer address */
+fastd_handshake_timeout_t * unknown_hash_entry(int64_t base, size_t i, const fastd_peer_address_t *addr) {
+	int64_t slice = base - i;
+	uint32_t hash = ctx.unknown_handshake_seed;
+	fastd_hash(&hash, &slice, sizeof(slice));
+	fastd_peer_address_hash(&hash, addr);
+	fastd_hash_final(&hash);
+
+	return &ctx.unknown_handshakes[(size_t)slice % UNKNOWN_TABLES][hash % UNKNOWN_ENTRIES];
+}
+
+
 /**
    Checks if a handshake should be sent after an unexpected payload packet has been received
 
    backoff_unknown() tries to avoid flooding hosts with handshakes.
 */
 static bool backoff_unknown(const fastd_peer_address_t *addr) {
-	size_t i;
-	for (i = 0; i < array_size(ctx.unknown_handshakes); i++) {
-		const fastd_handshake_timeout_t *t = &ctx.unknown_handshakes[(ctx.unknown_handshake_pos + i) % array_size(ctx.unknown_handshakes)];
+	static const size_t table_interval = MIN_HANDSHAKE_INTERVAL / (UNKNOWN_TABLES - 1);
 
-		if (fastd_timed_out(t->timeout))
-			break;
+	int64_t base = ctx.now / table_interval;
+	size_t first_empty = UNKNOWN_TABLES, i;
 
-		if (fastd_peer_address_equal(addr, &t->address)) {
-			pr_debug2("sent a handshake to unknown address %I a short time ago, not sending again", addr);
-			return true;
+	for (i = 0; i < UNKNOWN_TABLES; i++) {
+		const fastd_handshake_timeout_t *t = unknown_hash_entry(base, i, addr);
+
+		if (fastd_timed_out(t->timeout)) {
+			if (first_empty == UNKNOWN_TABLES)
+				first_empty = i;
+
+			continue;
 		}
+
+		if (!fastd_peer_address_equal(addr, &t->address))
+			continue;
+
+		pr_debug2("sent a handshake to unknown address %I a short time ago, not sending again", addr);
+		return true;
 	}
 
-	if (ctx.unknown_handshake_pos == 0)
-		ctx.unknown_handshake_pos = array_size(ctx.unknown_handshakes)-1;
-	else
-		ctx.unknown_handshake_pos--;
+	/* We didn't find the address in any of the hashtables, now insert it */
+	if (first_empty == UNKNOWN_TABLES)
+		first_empty = fastd_rand(0, UNKNOWN_TABLES);
 
-	fastd_handshake_timeout_t *t = &ctx.unknown_handshakes[ctx.unknown_handshake_pos];
+	fastd_handshake_timeout_t *t = unknown_hash_entry(base, first_empty, addr);
 
 	t->address = *addr;
-	t->timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
+	t->timeout = ctx.now + MIN_HANDSHAKE_INTERVAL - first_empty * table_interval;
 
 	return false;
 }

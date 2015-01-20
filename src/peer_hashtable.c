@@ -31,9 +31,6 @@
 
 
 #include "peer_hashtable.h"
-#include "fastd.h"
-#include "hash.h"
-#include "peer.h"
 
 
 /** Initializes the hashtable */
@@ -75,24 +72,7 @@ static void resize_hashtable(void) {
 /** Gets the hash bucket used for an address */
 static size_t peer_address_bucket(const fastd_peer_address_t *addr) {
 	uint32_t hash = ctx.peer_addr_ht_seed;
-
-	switch(addr->sa.sa_family) {
-	case AF_INET:
-		fastd_hash(&hash, &addr->in.sin_addr.s_addr, sizeof(addr->in.sin_addr.s_addr));
-		fastd_hash(&hash, &addr->in.sin_port, sizeof(addr->in.sin_port));
-		break;
-
-	case AF_INET6:
-		fastd_hash(&hash, &addr->in6.sin6_addr, sizeof(addr->in6.sin6_addr));
-		fastd_hash(&hash, &addr->in6.sin6_port, sizeof(addr->in6.sin6_port));
-		if (IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr))
-			fastd_hash(&hash, &addr->in6.sin6_scope_id, sizeof(addr->in6.sin6_scope_id));
-		break;
-
-	default:
-		exit_bug("peer_address_bucket: unknown address family");
-	}
-
+	fastd_peer_address_hash(&hash, addr);
 	fastd_hash_final(&hash);
 
 	return hash % ctx.peer_addr_ht_size;

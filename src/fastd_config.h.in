@@ -146,6 +146,13 @@
 /** The minimum interval between two resolves of the same remote */
 #define MIN_RESOLVE_INTERVAL 15000	/* 15 seconds */
 
+/** The number of hash tables for backoff_unknown() */
+#define UNKNOWN_TABLES 16
+
+/** The number of entries per unknown peer table */
+#define UNKNOWN_ENTRIES 64
+
+
 
 /** How long a session stays valid after a key is negotiated */
 #define KEY_VALID 3600000		/* 60 minutes */

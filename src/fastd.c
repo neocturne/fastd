@@ -489,7 +489,8 @@ static inline void init(int argc, char *argv[]) {
 
 	fastd_update_time();
 	ctx.next_maintenance = ctx.now + MAINTENANCE_INTERVAL;
-	ctx.unknown_handshakes[0].timeout = ctx.now;
+
+	fastd_receive_unknown_init();
 
 #ifdef WITH_DYNAMIC_PEERS
 	fastd_sem_init(&ctx.verify_limit, VERIFY_LIMIT);
@@ -662,6 +663,8 @@ static inline void cleanup(void) {
 	EVP_cleanup();
 	ERR_free_strings();
 #endif
+
+	fastd_receive_unknown_free();
 
 	close_log();
 	fastd_config_release();
