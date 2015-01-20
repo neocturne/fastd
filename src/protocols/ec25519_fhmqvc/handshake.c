@@ -627,7 +627,7 @@ static inline fastd_peer_t * add_dynamic(UNUSED fastd_socket_t *sock, const fast
 
 /** Handles a received handshake packet */
 void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-						    fastd_peer_t *peer, const fastd_handshake_t *handshake, const fastd_method_info_t *method) {
+						    fastd_peer_t *peer, const fastd_handshake_t *handshake) {
 	fastd_protocol_ec25519_fhmqvc_maintenance();
 
 	if (!has_field(handshake, RECORD_SENDER_KEY, PUBLICKEYBYTES)) {
@@ -676,6 +676,8 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		}
 	}
 
+	const fastd_method_info_t *method = fastd_handshake_get_method(peer, handshake);
+
 #ifdef WITH_DYNAMIC_PEERS
 	if (fastd_peer_is_dynamic(peer)) {
 		if (!handle_dynamic(sock, local_addr, remote_addr, peer, handshake, method))
@@ -698,6 +700,11 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		peer->last_handshake_response_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 		peer->last_handshake_response_address = *remote_addr;
 		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key, method, handshake->little_endian);
+		return;
+	}
+
+	if (!method) {
+		fastd_handshake_send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_METHOD_LIST);
 		return;
 	}
 

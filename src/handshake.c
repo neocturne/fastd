@@ -265,7 +265,7 @@ static void print_error(const char *prefix, const fastd_peer_address_t *remote_a
 }
 
 /** Sends an error reply to a peer */
-static void send_error(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint16_t error_detail) {
+void fastd_handshake_send_error(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint16_t error_detail) {
 	print_error("sending", remote_addr, reply_code, error_detail);
 
 	fastd_handshake_buffer_t buffer = {
@@ -354,14 +354,14 @@ static inline void print_error_reply(const fastd_peer_address_t *remote_addr, co
 static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake) {
 	if (handshake->records[RECORD_PROTOCOL_NAME].data) {
 		if (!record_equal(conf.protocol->name, &handshake->records[RECORD_PROTOCOL_NAME])) {
-			send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_PROTOCOL_NAME);
+			fastd_handshake_send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_PROTOCOL_NAME);
 			return false;
 		}
 	}
 
 	if (handshake->records[RECORD_MODE].data) {
 		if (handshake->records[RECORD_MODE].length != 1 || as_uint8(&handshake->records[RECORD_MODE]) != conf.mode) {
-			send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MODE);
+			fastd_handshake_send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MODE);
 			return false;
 		}
 	}
@@ -369,7 +369,7 @@ static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_
 	if (!conf.secure_handshakes || handshake->type > 1) {
 		if (handshake->records[RECORD_MTU].length == 2) {
 			if (as_uint16_endian(&handshake->records[RECORD_MTU], handshake->little_endian) != conf.mtu) {
-				send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MTU);
+				fastd_handshake_send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MTU);
 				return false;
 			}
 		}
@@ -403,7 +403,9 @@ static inline const fastd_method_info_t * get_method_by_name(const fastd_string_
 }
 
 /** Returns the most appropriate method to negotiate with a peer a handshake was received from */
-static inline const fastd_method_info_t * get_method(const fastd_string_stack_t *methods, const fastd_handshake_t *handshake) {
+const fastd_method_info_t * fastd_handshake_get_method(const fastd_peer_t *peer, const fastd_handshake_t *handshake) {
+	const fastd_string_stack_t *methods = fastd_peer_get_methods(peer);
+
 	if (handshake->records[RECORD_METHOD_LIST].data && handshake->records[RECORD_METHOD_LIST].length) {
 		fastd_string_stack_t *method_list = parse_string_list(handshake->records[RECORD_METHOD_LIST].data, handshake->records[RECORD_METHOD_LIST].length);
 
@@ -433,7 +435,6 @@ static inline const fastd_method_info_t * get_method(const fastd_string_stack_t 
 /** Handles a handshake packet */
 void fastd_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
 	char *peer_version = NULL;
-	const fastd_method_info_t *method = NULL;
 
 	fastd_handshake_t handshake = parse_tlvs(&buffer);
 
@@ -453,18 +454,11 @@ void fastd_handshake_handle(fastd_socket_t *sock, const fastd_peer_address_t *lo
 		goto end_free;
 
 	if (!conf.secure_handshakes || handshake.type > 1) {
-		method = get_method(fastd_peer_get_methods(peer), &handshake);
-
 		if (handshake.records[RECORD_VERSION_NAME].data)
 			handshake.peer_version = peer_version = fastd_strndup((const char *)handshake.records[RECORD_VERSION_NAME].data, handshake.records[RECORD_VERSION_NAME].length);
 	}
 
-	if (handshake.type > 1 && !method) {
-		send_error(sock, local_addr, remote_addr, peer, &handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_METHOD_LIST);
-		goto end_free;
-	}
-
-	conf.protocol->handshake_handle(sock, local_addr, remote_addr, peer, &handshake, method);
+	conf.protocol->handshake_handle(sock, local_addr, remote_addr, peer, &handshake);
 
  end_free:
 	free(peer_version);
