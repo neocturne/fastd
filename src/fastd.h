@@ -472,7 +472,7 @@ static inline const char * fastd_string_stack_get(const fastd_string_stack_t *st
 	return stack ? stack->str : NULL;
 }
 
-/**  */
+/** Checks if a string is contained in a string stack */
 static inline bool fastd_string_stack_contains(const fastd_string_stack_t *stack, const char *str) {
 	while (stack) {
 		if (strcmp(stack->str, str) == 0)
