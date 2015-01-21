@@ -84,7 +84,7 @@ bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uin
 */
 fastd_tristate_t fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age) {
 	if (age < 0) {
-		size_t shift = age < (-64) ? 64 : ((size_t)-age);
+		size_t shift = -age;
 
 		if (shift >= 64)
 			session->receive_reorder_seen = 0;
@@ -98,13 +98,13 @@ fastd_tristate_t fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_com
 		session->reorder_timeout = ctx.now + REORDER_TIME;
 		return fastd_tristate_false;
 	}
-	else if (age == 0 || session->receive_reorder_seen & (1 << (age-1))) {
+	else if (age == 0 || session->receive_reorder_seen & ((uint64_t)1 << (age-1))) {
 		pr_debug("dropping duplicate packet from %P (age %u)", peer, (unsigned)age);
 		return fastd_tristate_undef;
 	}
 	else {
 		pr_debug2("accepting reordered packet from %P (age %u)", peer, (unsigned)age);
-		session->receive_reorder_seen |= (1 << (age-1));
+		session->receive_reorder_seen |= ((uint64_t)1 << (age-1));
 		return fastd_tristate_true;
 	}
 }
