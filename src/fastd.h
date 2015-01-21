@@ -199,7 +199,6 @@ struct fastd_config {
 
 	uint32_t packet_mark;			/**< The configured packet mark (or 0) */
 	bool forward;				/**< Specifies if packet forwarding is enable */
-	fastd_tristate_t pmtu;			/**< Can be set to explicitly enable or disable PMTU detection */
 	bool secure_handshakes;			/**< Can be set to false to support connections with fastd versions before v11 */
 
 	fastd_drop_caps_t drop_caps;		/**< Specifies if and when to drop capabilities */

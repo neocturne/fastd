@@ -102,12 +102,10 @@ static int bind_socket(const fastd_bind_address_t *addr, bool warn) {
 #endif
 
 #ifdef USE_PMTU
-	if (conf.pmtu.set) {
-		int pmtu = conf.pmtu.state ? IP_PMTUDISC_DO : IP_PMTUDISC_DONT;
-		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
-			pr_error_errno("setsockopt: unable to set PMTU discovery");
-			goto error;
-		}
+	int pmtu = IP_PMTUDISC_DONT;
+	if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+		pr_error_errno("setsockopt: unable to disable PMTU discovery");
+		goto error;
 	}
 #endif
 

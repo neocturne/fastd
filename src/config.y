@@ -369,7 +369,7 @@ mtu:		TOK_UINT {
 		}
 	;
 
-pmtu:		autobool	{ conf.pmtu = $1; }
+pmtu:		autobool
 	;
 
 mode:		TOK_TAP		{ conf.mode = MODE_TAP; }
