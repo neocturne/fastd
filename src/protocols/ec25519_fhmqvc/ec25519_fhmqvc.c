@@ -163,7 +163,7 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	}
 
 	if (!ok) {
-		pr_verbose("verification failed for packet received from %P", peer);
+		pr_debug2("verification failed for packet received from %P", peer);
 		goto fail;
 	}
 
