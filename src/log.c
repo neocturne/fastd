@@ -107,6 +107,15 @@ static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *pe
 	return snprintf_safe(buffer, size, "(null)");
 }
 
+/** Add a hexdump to a string buffer */
+static size_t snprint_hexdump(char *buffer, size_t size, const uint8_t *d, size_t len) {
+	size_t n = 0, i;
+	for (i = 0; i < len && n < size; i++)
+		n += snprintf_safe(buffer+n, size-n, "%02x", d[i]);
+
+	return n;
+}
+
 /** vsnprintf-like function using different conversion specifiers */
 static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_list ap) {
 	char *buffer_start = buffer;
@@ -169,6 +178,11 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 
 		case 'P':
 			buffer += snprint_peer_str(buffer, buffer_end-buffer, va_arg(ap, const fastd_peer_t *));
+			break;
+
+		case 'H':
+			p = va_arg(ap, const uint8_t *);
+			buffer += snprint_hexdump(buffer, buffer_end-buffer, p, va_arg(ap, size_t));
 			break;
 
 		case 'I':
