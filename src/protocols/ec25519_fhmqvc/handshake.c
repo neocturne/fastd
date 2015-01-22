@@ -224,14 +224,14 @@ static bool make_shared_handshake_key(bool initiator, const keypair_t *handshake
 		ecc_25519_gf_mult(&da, &d, &conf.protocol_config->key.secret);
 		ecc_25519_gf_add(&s, &da, &handshake_key->secret);
 
-		ecc_25519_scalarmult(&work, &e, &peer_key->unpacked);
+		ecc_25519_scalarmult_bits(&work, &e, &peer_key->unpacked, 128);
 	}
 	else {
 		ecc_int256_t eb;
 		ecc_25519_gf_mult(&eb, &e, &conf.protocol_config->key.secret);
 		ecc_25519_gf_add(&s, &eb, &handshake_key->secret);
 
-		ecc_25519_scalarmult(&work, &d, &peer_key->unpacked);
+		ecc_25519_scalarmult_bits(&work, &d, &peer_key->unpacked, 128);
 	}
 
 	ecc_25519_add(&work, &workXY, &work);
