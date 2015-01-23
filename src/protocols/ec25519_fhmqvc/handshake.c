@@ -546,7 +546,7 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 	}
 
 	if (find_key(key, NULL)) {
-		pr_debug("ignoring handshake from %I (disabled key)", addr);
+		pr_debug("ignoring handshake from %I (disabled key %H)", addr, KEY_PRINT(key));
 		return NULL;
 	}
 
@@ -639,7 +639,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 	if (!peer) {
 		switch (errno) {
 		case EPERM:
-			pr_debug("ignoring handshake from %I (incorrect source address)", remote_addr);
+			pr_debug("ignoring handshake from %I with key %H (incorrect source address)", remote_addr, KEY_PRINT(handshake->records[RECORD_SENDER_KEY].data));
 			return;
 
 		case ENOENT:
