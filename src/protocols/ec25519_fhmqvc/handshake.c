@@ -49,6 +49,7 @@
 #endif
 
 
+/** Provides the proper arguments for passing a key for the %H log format */
 #define KEY_PRINT(k) (const uint8_t *)(k), (size_t)PUBLICKEYBYTES
 
 
