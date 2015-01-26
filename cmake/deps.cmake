@@ -12,7 +12,7 @@ else(ANDROID)
   find_package(PkgConfig REQUIRED)
 endif(ANDROID)
 
-pkg_check_modules(UECC REQUIRED libuecc>=3)
+pkg_check_modules(UECC REQUIRED libuecc>=5)
 
 
 set(NACL_INCLUDE_DIRS "")
