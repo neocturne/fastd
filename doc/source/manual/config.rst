@@ -230,17 +230,8 @@ Example config:
 
 | ``pmtu yes|no|auto;``
 
-  Enables or disables Path MTU detection for IPv4. If enabled, all packets are sent with DF set, and all
-  fragmentation happens on the sending host itself. If disabled, routers may fragment the packets themselves,
-  possibly leading to multiple fragmentation. In general, disabling this should not be necessary, but in some
-  networks ICMP MTU Too Big packets are lost, so PMTU detection doesn't work correctly.
-
-  If possible, fastd's mtu setting should be adjusted so the packets aren't fragmented at all instead of
-  relying on this option.
-
-  The default is auto, which uses the system default as specified in /proc/sys/net/ipv4/ip_no_pmtu_disc.
-
-  The pmtu option is available on Linux platforms only.
+  Does nothing; the ``pmtu`` option is only supported for compatiblity
+  with older versions of fastd.
 
 | ``protocol "<protocol>";``
 

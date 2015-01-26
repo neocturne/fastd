@@ -2,8 +2,8 @@ MTU configuration
 =================
 The default MTU of fastd is 1500. This allows briding the fastd interface in TAP
 mode with other interface with the same MTU, but will usually cause fastd's UDP
-packets to be fragmented (see also the option :ref:`pmtu <option-pmtu>`). Fragmentation can lower the
-performance or even cause connectivty problems when broken routers filter ICMP packets,
+packets to be fragmented. Fragmentation can lower the
+performance or even cause connectivity problems when broken routers filter ICMP packets,
 so if possible the MTU should be chosed small enough so that IP fragmentation can be avoided.
 Unlike OpenVPN, fastd doesn't support fragmentation itself, but relies on the IP stack to fragment packets when necessary.
 
