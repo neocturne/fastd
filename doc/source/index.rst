@@ -39,4 +39,5 @@ Developer documentation
 .. toctree::
    :maxdepth: 2
 
+   devel/building
    devel/protocol
