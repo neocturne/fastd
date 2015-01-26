@@ -71,7 +71,7 @@ Other changes
 * Better debug messages
 
   The sender's public key will now be printed with
-  more messages regarding handshake issues. Some
+  more messages regarding handshake issues.
 
 * New handshake format
 
