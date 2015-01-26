@@ -1,0 +1,90 @@
+fastd v17
+=========
+
+New features
+~~~~~~~~~~~~
+* Per-peer-group method specification
+
+  It is now possible to override the supported
+  crypto methods per peer group.
+
+* Connection reset via SIGUSR2
+
+  Sending a SIGUSR2 to the fastd process will
+  reset all connections.
+
+* Support for Android 4.1+
+
+  Contributed by Rick Lei. See ``doc/README-Android.md``.
+
+* Faster handshake
+
+  fastd's handshake should now take significantly less time (about
+  30-50%, not regarding the network latency). Due tue this change fastd
+  depends on libuecc v5 (which is released together with fastd v17) now.
+
+Bugfixes
+~~~~~~~~
+* Removed broken ``pmtu`` option
+
+  The ``pmtu`` option was changed into a no-op (and fastd's behaviour was changed to
+  what was ``pmtu no`` before) as fastd didn't handle a potentially discovered smaller
+  path MTU correctly. It will probably return in a future version of fastd.
+
+* Improve handling of incoming packets from many peers after restarting fastd
+
+  fastd will generate only one handshake per peer every 15 seconds now
+  instead of one handshake per incoming packet.
+
+* Added a missing security check during handshake
+
+  While I don't think this issue allowed an attacker to impersonate a legitimate peer or
+  perform a man-in-the-middle attack, fastd did accept some weird keys
+  (the identity point) as valid keys, which shouldn't be possible.
+
+* Fixed handling of severely reordered packets
+
+  While fastd is supposed to handle reordered packets up to
+  64 sequence numbers, a bug would cause it to drop all older
+  packets after a packet with a sequence number more than 64
+  packets in the future was received.
+
+  The "verification failed" message has been downgraded from the "verbose"
+  to the "debug2" level as it will cause a lot of log spam when there is
+  extreme reordering.
+
+* x86 uClibc workaround
+
+  A workaround has been added for systems without or with broken ``epoll_pwait`` libc
+  wrappers. One libc with such a broken wrapper is the uClibc version used in OpenWrt on x86,
+  which made fastd fail on OpenWrt x86 systems.
+
+* Only send packets from configured bind addresses
+
+  When a configuration file contains only an IPv4 bind address and fastd tried to connect to an IPv6
+  remote address, it would use a random source port instead of falling back to IPv4 (and vice-versa).
+
+  The behaviour without any bind addresses in the configuration hasn't been changed.
+
+Other changes
+~~~~~~~~~~~~~
+* Better debug messages
+
+  The sender's public key will now be printed with
+  more messages regarding handshake issues. Some
+
+* New handshake format
+
+  Some parts of the handshake had been submitted as little endian for historical reasons.
+  As the normal network byte order is big endian, support for a new handshake format using
+  big endian has been added.
+
+  fastd will continue to send its handshake the old format for the next versions to maintain
+  compatiblity, but it does also understand the new format and will thus also work with future
+  fastd versions which use the new handshake.
+
+* MTU mismatch is fatal
+
+  fastd will now refuse to perform a handshake instead of just printing a warning when its configured MTU
+  doesn't match the peer's one. Such a configuration is always broken and will lead to issues with
+  big packets.
