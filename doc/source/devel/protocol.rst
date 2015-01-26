@@ -15,8 +15,10 @@ values are reserved for future use and must be ignored by current implementation
 
 Handshake format
 ~~~~~~~~~~~~~~~~
-For historical reasons, all multi-byte values mentioned in the handshake specification are transmitted in Little Endian byte order
-unless specified otherwise.
+For historical reasons, there are two different TLV encodings: all multi-byte values mentioned in the handshake specification
+may be transmitted either in big endian or in little endian byte order. As fastd versions before v17 only understand the old
+little endian format, fastd will always transmit its handshake as little endian to maintain compatiblity, but it can also
+understand and correctly handle the new big endian format to support future fastd versions which will use the new format.
 
 The initial ``0x01`` byte together with the next three bytes form the 4-byte handshake header; the rest of
 the packet after the header consists of a list of TLV records. The second header byte is reserved and must
