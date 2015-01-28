@@ -439,9 +439,12 @@ static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr)
 
 /** Duplicates a string, creating a one-element string stack */
 static inline fastd_string_stack_t * fastd_string_stack_dup(const char *str) {
-	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
+	size_t str_len = strlen(str);
+	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
+
 	ret->next = NULL;
-	strcpy(ret->str, str);
+
+	memcpy(ret->str, str, str_len + 1);
 
 	return ret;
 }
@@ -450,8 +453,10 @@ static inline fastd_string_stack_t * fastd_string_stack_dup(const char *str) {
 static inline fastd_string_stack_t * fastd_string_stack_dupn(const char *str, size_t len) {
 	size_t str_len = strnlen(str, len);
 	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
+
 	ret->next = NULL;
-	strncpy(ret->str, str, str_len);
+
+	memcpy(ret->str, str, str_len);
 	ret->str[str_len] = 0;
 
 	return ret;
