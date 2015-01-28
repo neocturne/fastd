@@ -35,23 +35,30 @@ Example config:
   include peers from "peers";
 
 
-| ``bind <IPv4 address>:<port> [ interface "<interface>" ] [ default [ ipv4 ] ];``
-| ``bind <IPv6 address>:<port> [ interface "<interface>" ] [ default [ ipv6 ] ];``
-| ``bind any:<port> [ interface "<interface>" ] [ default [ ipv4|ipv6 ] ];``
-| ``bind <IPv4 address> port <port> [ interface "<interface>" ] [ default [ ipv4 ] ];``
-| ``bind <IPv6 address> port <port> [ interface "<interface>" ] [ default [ ipv6 ] ];``
-| ``bind any port <port> [ interface "<interface>" ] [ default [ ipv4|ipv6 ] ];``
+| ``bind <IPv4 address>[:<port>] [ interface "<interface>" ] [ default [ ipv4 ] ];``
+| ``bind <IPv6 address>[:<port>] [ interface "<interface>" ] [ default [ ipv6 ] ];``
+| ``bind any[:<port>] [ interface "<interface>" ] [ default [ ipv4|ipv6 ] ];``
+| ``bind <IPv4 address> [port <port>] [ interface "<interface>" ] [ default [ ipv4 ] ];``
+| ``bind <IPv6 address> [port <port>] [ interface "<interface>" ] [ default [ ipv6 ] ];``
+| ``bind any [port <port>] [ interface "<interface>" ] [ default [ ipv4|ipv6 ] ];``
 
   Sets the bind address, port and possibly interface. May be specified multiple times. The keyword
-  any makes fastd bind to the unspecified address for both IPv4 and IPv6. When
-  no bind address is configured at all, for each outgoing connection a new socket with a random
-  port is created.
+  any makes fastd bind to the unspecified address for both IPv4 and IPv6.
 
   IPv6 address must be put in square brackets. It is possible to specify an IPv6 link-local address
   with an interface in the usual notation (e.g. [fe80::1%eth0]).
 
   The default option makes it the default address for outgoing connections
   for IPv4, IPv6 or both.
+
+  When an address without port or with port 0 is configured, a new socket with a random
+  port will be created for each outgoing connection. This has the side effect that the
+  options for packet marks and interface-specific binds (except IPv6 link-local addresses) will only work with the
+  ``CAP_NET_ADMIN`` capability (option ``drop capabilities no`` when fastd is built with
+  capability support, root privileges otherwise).
+
+  Configuring no bind address at all is equivalent to the setting ``bind any``, meaning fastd
+  will use a random port for each outgoing connection both for IPv4 and IPv6.
 
 
 | ``cipher "<cipher>" use "<implementation>";``
