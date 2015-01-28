@@ -548,11 +548,6 @@ static void config_check_base(void) {
 			exit_error("config error: in TUN mode exactly one peer must be configured");
 	}
 
-#ifndef USE_PMTU
-	if (conf.pmtu.set)
-		exit_error("config error: setting pmtu is not supported on this system");
-#endif
-
 #ifndef USE_PACKET_MARK
 	if (conf.packet_mark)
 		exit_error("config error: setting a packet mark is not supported on this system");
