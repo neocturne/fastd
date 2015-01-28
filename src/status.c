@@ -220,14 +220,15 @@ void fastd_status_init(void) {
 		exit_errno("fastd_status_init: socket");
 
 
-	size_t len = offsetof(struct sockaddr_un, sun_path) + strlen(conf.status_socket) + 1;
+	size_t status_socket_len = strlen(conf.status_socket);
+	size_t len = offsetof(struct sockaddr_un, sun_path) + status_socket_len + 1;
 	uint8_t buf[len];
 	memset(buf, 0, len);
 
 	struct sockaddr_un *sa = (void*)buf;
 
 	sa->sun_family = AF_UNIX;
-	strcpy(sa->sun_path, conf.status_socket);
+	memcpy(sa->sun_path, conf.status_socket, status_socket_len+1);
 
 	if (bind(ctx.status_fd, (struct sockaddr*)sa, len)) {
 		switch (errno) {

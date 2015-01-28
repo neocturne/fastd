@@ -491,10 +491,11 @@ peer_remote:	maybe_ipv4 TOK_ADDR4 port {
 			addrlen = strlen(addrbuf);
 
 			fastd_remote_t remote = {};
-			remote.hostname = fastd_alloc(addrlen + strlen($2.ifname) + 2);
+			size_t ifname_len = strlen($2.ifname);
+			remote.hostname = fastd_alloc(addrlen + ifname_len + 2);
 			memcpy(remote.hostname, addrbuf, addrlen);
 			remote.hostname[addrlen] = '%';
-			strcpy(remote.hostname+addrlen+1, $2.ifname);
+			memcpy(remote.hostname+addrlen+1, $2.ifname, ifname_len+1);
 
 			remote.address.sa.sa_family = AF_INET6;
 			remote.address.in.sin_port = htons($3);

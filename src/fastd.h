@@ -464,9 +464,12 @@ static inline fastd_string_stack_t * fastd_string_stack_dupn(const char *str, si
 
 /** Pushes the copy of a string onto the top of a string stack */
 static inline fastd_string_stack_t * fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
-	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + strlen(str) + 1, 8));
+	size_t str_len = strlen(str);
+	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
+
 	ret->next = stack;
-	strcpy(ret->str, str);
+
+	memcpy(ret->str, str, str_len + 1);
 
 	return ret;
 }
