@@ -17,10 +17,13 @@ echo "Hit ctrl-c now if you don't have all needed stuff yet."
 read
 
 SODIUM_VER=1.0.1
-UECC_VER=4
+UECC_VER=5
+LIBUECC_DOWNLOAD_ID=80
 LIBSODIUM_PATH=libsodium-${SODIUM_VER}
 LIBUECC_PATH=libuecc-${UECC_VER}
 ANDROID_NATIVE_LEVEL=16
+ARM_TOOLCHAIN=arm-linux-androideabi-4.9
+X86_TOOLCHAIN=x86-4.9
 
 if [ x$ANDROID_NDK_HOME == x ]; then
     echo "Set ANDROID_NDK_HOME first"; exit 1;
@@ -44,16 +47,17 @@ pushd ${LIBSODIUM_PATH} > /dev/null
 if [ ! -f "dist-build/android-armv7.sh" ]; then
     echo "Patching libsodium build scripts..."
     sed -i.bak 's/--enable-minimal//' dist-build/android-build.sh
+    sed -i "" 's/--arch=/--toolchain="$NDK_TOOLCHAIN" --arch=/' dist-build/android-build.sh
     sed -e 's/-mthumb -marm -march=armv6/-march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16/' dist-build/android-arm.sh > dist-build/android-armv7.sh
     chmod +x dist-build/android-armv7.sh
 fi
 if [ ! -d "libsodium-android-arm" ]; then
-    dist-build/android-armv7.sh || exit 2
+    NDK_PLATFORM=android-${ANDROID_NATIVE_LEVEL} NDK_TOOLCHAIN=${ARM_TOOLCHAIN} dist-build/android-armv7.sh || exit 2
     # for static link using cmake
     rm libsodium-android-arm/lib/libsodium.so
 fi
 if [ ! -d "libsodium-android-x86" ]; then
-    dist-build/android-x86.sh || exit 2
+    NDK_PLATFORM=android-${ANDROID_NATIVE_LEVEL} NDK_TOOLCHAIN=${X86_TOOLCHAIN} dist-build/android-x86.sh || exit 2
     # for static link using cmake
     rm libsodium-android-x86/lib/libsodium.so
 fi
@@ -74,7 +78,7 @@ CMAKE_COMMON_DEFS="-DCMAKE_BUILD_TYPE=Release -DANDROID_NDK=${ANDROID_NDK_HOME} 
 if [ -d "${LIBUECC_PATH}" ]; then
     echo "It seems you already have libuecc downloaded.";
 else
-    curl -k -L https://projects.universe-factory.net/attachments/download/71/libuecc-${UECC_VER}.tar.xz | tar Jxf - || exit 4
+    curl -k -L https://projects.universe-factory.net/attachments/download/${LIBUECC_DOWNLOAD_ID}/libuecc-${UECC_VER}.tar.xz | tar Jxf - || exit 4
 fi
 for ARCH in arm x86; do
     BUILD_DIR=libuecc-${ARCH}
@@ -105,8 +109,8 @@ if [ ! -d "pkgconfig" ]; then
 fi
 
 # detect HomeBrew installed bison for OS X
-HOMEBREW_BISON_PATH=`find /usr/local/Cellar/bison -name bin`
-if [ x${HOMEBREW_BISON_PATH} != x ]; then
+HOMEBREW_BISON_PATH="/usr/local/opt/bison/bin"
+if [ -x "${HOMEBREW_BISON_PATH}/bison" ]; then
     USE_PATH=${HOMEBREW_BISON_PATH}:$PATH
 else
     USE_PATH=$PATH
@@ -133,11 +137,11 @@ for ARCH in arm x86; do
             ${ANDROID_CMAKE} \
             -DANDROID_ABI="$_USE_ABI" ${CMAKE_COMMON_DEFS} \
             ${FASTD_ANDROID_DEFS} \
-            ${ADD_DEFS} -DEXECUTABLE_OUTPUT_PATH=`pwd` \
+            ${ADD_DEFS} -DEXECUTABLE_OUTPUT_PATH=`pwd`/src -DCMAKE_INSTALL_PREFIX=`pwd` \
             ../.. || exit 7
     fi
 
-    make && echo ">> fastd ${ARCH} build ready in build/${BUILD_DIR}"
+    make install/strip && echo ">> fastd ${ARCH} build ready in build/${BUILD_DIR}/bin"
     popd > /dev/null
 done
 
