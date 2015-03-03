@@ -38,7 +38,7 @@
 #include "method.h"
 #include "peer.h"
 
-#include <json.h>
+#include <json-c/json.h>
 #include <sys/un.h>
 
 
