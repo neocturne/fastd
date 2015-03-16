@@ -48,7 +48,7 @@
 
 /** Returns the ECX and EDX return values of CPUID function 1 as a single uint64 */
 static inline uint64_t fastd_cpuid(void) {
-	uint32_t ecx, edx;
+	unsigned long cx, dx;
 
 #if defined (__i386__)
 #define REG_PFX "e"
@@ -56,12 +56,13 @@ static inline uint64_t fastd_cpuid(void) {
 #define REG_PFX "r"
 #endif
 
-	__asm__ __volatile__ ("mov %%"REG_PFX"bx, %%"REG_PFX"di \n\t"
+	__asm__ __volatile__ ("mov $1, %%eax \n\t"
+			      "mov %%"REG_PFX"bx, %%"REG_PFX"di \n\t"
 			      "cpuid \n\t"
 			      "mov %%"REG_PFX"di, %%"REG_PFX"bx \n\t"
-			      : "=c" (ecx), "=d" (edx) : "a" (1) : REG_PFX"ax", REG_PFX"di");
+			      : "=c" (cx), "=d" (dx) : : REG_PFX"ax", REG_PFX"di");
 
-	return ((uint64_t)ecx) << 32 | edx;
+	return ((uint64_t)cx) << 32 | (uint32_t)dx;
 }
 
 #undef REG_PFX
