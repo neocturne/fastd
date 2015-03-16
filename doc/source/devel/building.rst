@@ -27,7 +27,7 @@ fastd uses the CMake build system. The libuecc build works the same.
     # Create a build dir
     mkdir fastd-build
     cd fastd-build
-    cmake ../fastd
+    cmake ../fastd -DCMAKE_BUILD_TYPE=RELEASE # Set DEBUG instead of RELEASE if you plan to develop on fastd
 
     # Build fastd, binary can be found in the src subdir of the build dir
     make
@@ -40,8 +40,7 @@ if it is installed (in package ``cmake-curses-gui`` on Debian).
 
 CMake variables
 ~~~~~~~~~~~~~~~
-
-There are a few option that can be given to cmake with ``-DVARIABLE=VALUE``:
+There are a few more options besides ``CMAKE_BUILD_TYPE`` that can be given to cmake with ``-DVARIABLE=VALUE``:
 
 * If you have a recent enough toolchain (GCC 4.8 or higher recommended), you can enable link-time optimization with ENABLE_LTO=ON to get slightly better optimized binaries
 * By default, fastd will try to build against libsodium. If you want to use NaCl instead, set ENABLE_LIBSODIUM=OFF
