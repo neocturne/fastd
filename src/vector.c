@@ -59,8 +59,6 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 
 	while (alloc < n)
 		alloc <<= 1;
-	while (alloc > n*3 && alloc > MIN_VECTOR_ALLOC)
-		alloc >>= 1;
 
 	if (alloc != desc->allocated) {
 		desc->allocated = alloc;
