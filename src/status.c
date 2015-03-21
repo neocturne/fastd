@@ -199,7 +199,7 @@ static void dump_status(int fd) {
 /** Initialized the status socket */
 void fastd_status_init(void) {
 	if (!conf.status_socket) {
-		ctx.status_fd = -1;
+		ctx.status_fd.fd = -1;
 		return;
 	}
 
@@ -215,8 +215,8 @@ void fastd_status_init(void) {
 	}
 #endif
 
-	ctx.status_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (ctx.status_fd < 0)
+	ctx.status_fd = FASTD_POLL_FD(POLL_TYPE_STATUS, socket(AF_UNIX, SOCK_STREAM, 0));
+	if (ctx.status_fd.fd < 0)
 		exit_errno("fastd_status_init: socket");
 
 
@@ -230,7 +230,7 @@ void fastd_status_init(void) {
 	sa->sun_family = AF_UNIX;
 	memcpy(sa->sun_path, conf.status_socket, status_socket_len+1);
 
-	if (bind(ctx.status_fd, (struct sockaddr*)sa, len)) {
+	if (bind(ctx.status_fd.fd, (struct sockaddr*)sa, len)) {
 		switch (errno) {
 		case EADDRINUSE:
 			exit_error("unable to create status socket: the path `%s' already exists", conf.status_socket);
@@ -240,7 +240,7 @@ void fastd_status_init(void) {
 		}
 	}
 
-	if (listen(ctx.status_fd, 4))
+	if (listen(ctx.status_fd.fd, 4))
 		exit_errno("fastd_status_init: listen");
 
 
@@ -250,6 +250,8 @@ void fastd_status_init(void) {
 	if (setegid(gid) < 0)
 		pr_debug_errno("setegid");
 #endif
+
+	fastd_poll_fd_register(&ctx.status_fd);
 }
 
 /** Closes the status socket */
@@ -257,7 +259,7 @@ void fastd_status_close(void) {
 	if (!conf.status_socket)
 		return;
 
-	if (close(ctx.status_fd))
+	if (!fastd_poll_fd_close(&ctx.status_fd))
 		pr_warn_errno("fastd_status_cleanup: close");
 
 	if (unlink(conf.status_socket))
@@ -266,7 +268,7 @@ void fastd_status_close(void) {
 
 /** Handles a single connection on the status socket */
 void fastd_status_handle(void) {
-	int fd = accept(ctx.status_fd, NULL, NULL);
+	int fd = accept(ctx.status_fd.fd, NULL, NULL);
 
 	if (fd < 0) {
 		pr_warn_errno("fastd_status_handle: accept");

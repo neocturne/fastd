@@ -56,8 +56,10 @@ void fastd_async_init(void) {
 	fastd_setnonblock(fds[1]);
 #endif
 
-	ctx.async_rfd = fds[0];
+	ctx.async_rfd = FASTD_POLL_FD(POLL_TYPE_ASYNC, fds[0]);
 	ctx.async_wfd = fds[1];
+
+	fastd_poll_fd_register(&ctx.async_rfd);
 }
 
 /** Handles a DNS resolver response */
@@ -104,7 +106,7 @@ void fastd_async_handle(void) {
 		.msg_iovlen = 1,
 	};
 
-	if (recvmsg(ctx.async_rfd, &msg, MSG_PEEK) < 0)
+	if (recvmsg(ctx.async_rfd.fd, &msg, MSG_PEEK) < 0)
 		exit_errno("fastd_async_handle: recvmsg");
 
 	uint8_t buf[header.len] __attribute__((aligned(8)));
@@ -112,7 +114,7 @@ void fastd_async_handle(void) {
 	vec[1].iov_len = sizeof(buf);
 	msg.msg_iovlen = 2;
 
-	if (recvmsg(ctx.async_rfd, &msg, 0) < 0)
+	if (recvmsg(ctx.async_rfd.fd, &msg, 0) < 0)
 		exit_errno("fastd_async_handle: recvmsg");
 
 	switch (header.type) {

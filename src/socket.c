@@ -180,7 +180,7 @@ static bool set_bound_address(fastd_socket_t *sock) {
 	fastd_peer_address_t addr = {};
 	socklen_t len = sizeof(addr);
 
-	if (getsockname(sock->fd, &addr.sa, &len) < 0) {
+	if (getsockname(sock->fd.fd, &addr.sa, &len) < 0) {
 		pr_error_errno("getsockname");
 		return false;
 	}
@@ -201,21 +201,19 @@ bool fastd_socket_handle_binds(void) {
 	size_t i;
 
 	for (i = 0; i < ctx.n_socks; i++) {
-		if (ctx.socks[i].fd >= 0)
+		if (ctx.socks[i].fd.fd >= 0)
 			continue;
 
 		if (!ctx.socks[i].addr)
 			continue;
 
-		ctx.socks[i].fd = bind_socket(ctx.socks[i].addr, ctx.socks[i].fd < -1);
+		ctx.socks[i].fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, bind_socket(ctx.socks[i].addr, ctx.socks[i].fd.fd < -1));
 
-		if (ctx.socks[i].fd >= 0) {
+		if (ctx.socks[i].fd.fd >= 0) {
 			if (!set_bound_address(&ctx.socks[i])) {
 				fastd_socket_close(&ctx.socks[i]);
 				continue;
 			}
-
-			fastd_poll_set_fd_sock(i);
 
 			fastd_peer_address_t bound_addr = *ctx.socks[i].bound_addr;
 			if (!ctx.socks[i].addr->addr.sa.sa_family)
@@ -225,10 +223,12 @@ bool fastd_socket_handle_binds(void) {
 				pr_info("successfully bound to %B on `%s'", &bound_addr, ctx.socks[i].addr->bindtodev);
 			else
 				pr_info("successfully bound to %B", &bound_addr);
+
+			fastd_poll_fd_register(&ctx.socks[i].fd);
 		}
 	}
 
-	if ((ctx.sock_default_v4 && ctx.sock_default_v4->fd < 0) || (ctx.sock_default_v6 && ctx.sock_default_v6->fd < 0))
+	if ((ctx.sock_default_v4 && ctx.sock_default_v4->fd.fd < 0) || (ctx.sock_default_v6 && ctx.sock_default_v6->fd.fd < 0))
 		return false;
 
 	return true;
@@ -260,7 +260,7 @@ fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 
 	fastd_socket_t *sock = fastd_new(fastd_socket_t);
 
-	sock->fd = fd;
+	sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, fd);
 	sock->addr = NULL;
 	sock->bound_addr = NULL;
 	sock->peer = peer;
@@ -271,16 +271,18 @@ fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 		return NULL;
 	}
 
+	fastd_poll_fd_register(&sock->fd);
+
 	return sock;
 }
 
 /** Closes a socket */
 void fastd_socket_close(fastd_socket_t *sock) {
-	if (sock->fd >= 0) {
-		if(close(sock->fd))
+	if (sock->fd.fd >= 0) {
+		if (!fastd_poll_fd_close(&sock->fd))
 			pr_error_errno("closing socket: close");
 
-		sock->fd = -2;
+		sock->fd.fd = -2;
 	}
 
 	if (sock->bound_addr) {

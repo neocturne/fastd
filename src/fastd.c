@@ -178,7 +178,7 @@ static void init_sockets(void) {
 	fastd_bind_address_t *addr = conf.bind_addrs;
 	for (i = 0; i < conf.n_bind_addrs; i++) {
 		if (get_bind_port(addr)) {
-			ctx.socks[i] = (fastd_socket_t){ .fd = -2, .addr = addr };
+			ctx.socks[i] = (fastd_socket_t){ .fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, -2), .addr = addr };
 
 			if (addr == conf.bind_addr_default_v4)
 				ctx.sock_default_v4 = &ctx.socks[i];
@@ -187,7 +187,7 @@ static void init_sockets(void) {
 				ctx.sock_default_v6 = &ctx.socks[i];
 		}
 		else {
-			ctx.socks[i] = (fastd_socket_t){ .fd = -1, .addr = NULL };
+			ctx.socks[i] = (fastd_socket_t){ .fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, -1), .addr = NULL };
 		}
 
 		addr = addr->next;
@@ -508,10 +508,12 @@ static inline void init(int argc, char *argv[]) {
 
 	fastd_cap_init();
 
+	fastd_poll_init();
+
 	init_sockets();
+
 	fastd_status_init();
 	fastd_async_init();
-	fastd_poll_init();
 
 	if (!fastd_socket_handle_binds())
 		exit_error("unable to bind default socket");

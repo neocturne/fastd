@@ -75,12 +75,22 @@ typedef enum fastd_drop_caps {
 	DROP_CAPS_EARLY,	/**< The capabilities are dropped before executing the on-up command */
 } fastd_drop_caps_t;
 
+/** Types of file descriptors to poll on */
+typedef enum fastd_poll_type {
+	POLL_TYPE_UNSPEC = 0,
+	POLL_TYPE_ASYNC,
+	POLL_TYPE_STATUS,
+	POLL_TYPE_IFACE,
+	POLL_TYPE_SOCKET,
+} fastd_poll_type_t;
+
 
 /** A timestamp used as a timeout */
 typedef int64_t fastd_timeout_t;
 
 
 typedef struct fastd_buffer fastd_buffer_t;
+typedef struct fastd_poll_fd fastd_poll_fd_t;
 
 typedef union fastd_peer_address fastd_peer_address_t;
 typedef struct fastd_bind_address fastd_bind_address_t;

@@ -260,7 +260,7 @@ void fastd_receive(fastd_socket_t *sock) {
 		.msg_controllen = sizeof(cbuf),
 	};
 
-	ssize_t len = recvmsg(sock->fd, &message, 0);
+	ssize_t len = recvmsg(sock->fd.fd, &message, 0);
 	if (len <= 0) {
 		if (len < 0)
 			pr_warn_errno("recvmsg");

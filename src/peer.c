@@ -183,13 +183,9 @@ static void free_socket_by_id(size_t i) {
 
 		fastd_socket_close(peer->sock);
 		free(peer->sock);
+	}
 
-		peer->sock = NULL;
-		fastd_poll_set_fd_peer(i);
-	}
-	else {
-		peer->sock = NULL;
-	}
+	peer->sock = NULL;
 }
 
 /** Closes and frees a peer's dynamic socket */
@@ -245,8 +241,6 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 
 	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
 		return;
-
-	fastd_poll_set_fd_peer(i);
 }
 
 /**
@@ -446,7 +440,6 @@ static void delete_peer(fastd_peer_t *peer) {
 
 	size_t i = peer_index(peer);
 	VECTOR_DELETE(ctx.peers, i);
-	fastd_poll_delete_peer(i);
 
 	conf.protocol->free_peer_state(peer);
 
@@ -741,7 +734,6 @@ bool fastd_peer_add(fastd_peer_t *peer) {
 	peer->id = ctx.next_peer_id++;
 
 	VECTOR_ADD(ctx.peers, peer);
-	fastd_poll_add_peer();
 
 	conf.protocol->init_peer_state(peer);
 

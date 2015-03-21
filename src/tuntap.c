@@ -71,7 +71,8 @@ static void tuntap_open_linux(const char * dev_name) {
 
 	struct ifreq ifr = {};
 
-	if ((ctx.tunfd = open(dev_name, O_RDWR|O_NONBLOCK)) < 0)
+	ctx.tunfd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(dev_name, O_RDWR|O_NONBLOCK));
+	if (ctx.tunfd.fd < 0)
 		exit_errno("could not open tun/tap device file");
 
 	if (conf.ifname)
@@ -91,7 +92,7 @@ static void tuntap_open_linux(const char * dev_name) {
 	}
 
 	ifr.ifr_flags |= IFF_NO_PI;
-	if (ioctl(ctx.tunfd, TUNSETIFF, &ifr) < 0)
+	if (ioctl(ctx.tunfd.fd, TUNSETIFF, &ifr) < 0)
 		exit_errno("TUNSETIFF ioctl failed");
 
 	ctx.ifname = fastd_strndup(ifr.ifr_name, IFNAMSIZ-1);
@@ -112,7 +113,7 @@ static void tuntap_open_linux(const char * dev_name) {
 	if (close(ctl_sock))
 		pr_error_errno("close");
 
-	fastd_poll_set_fd_tuntap();
+	fastd_poll_fd_register(&ctx.tunfd);
 
 	pr_debug("tun/tap device initialized.");
 }
@@ -131,11 +132,11 @@ void fastd_tuntap_open(void) {
 		}
 
 		pr_debug("using android TUN fd");
-		ctx.tunfd = fastd_android_receive_tunfd();
+		ctx.tunfd = FASTD_POLL_FD(POLL_TYPE_IFACE(fastd_android_receive_tunfd()));
 
 		fastd_android_send_pid();
 
-		fastd_poll_set_fd_tuntap();
+		fastd_poll_fd_register(&ctx.tunfd);
 
 		pr_debug("tun device initialized.");
 	} else {
@@ -157,12 +158,12 @@ void fastd_tuntap_open(void) {
 static void set_tun_mtu(void) {
 	struct tuninfo tuninfo;
 
-	if (ioctl(ctx.tunfd, TUNGIFINFO, &tuninfo) < 0)
+	if (ioctl(ctx.tunfd.fd, TUNGIFINFO, &tuninfo) < 0)
 		exit_errno("TUNGIFINFO ioctl failed");
 
 	tuninfo.mtu = conf.mtu;
 
-	if (ioctl(ctx.tunfd, TUNSIFINFO, &tuninfo) < 0)
+	if (ioctl(ctx.tunfd.fd, TUNSIFINFO, &tuninfo) < 0)
 		exit_errno("TUNSIFINFO ioctl failed");
 }
 
@@ -173,19 +174,19 @@ static void set_tun_mtu(void) {
 static void set_tap_mtu(void) {
 	struct tapinfo tapinfo;
 
-	if (ioctl(ctx.tunfd, TAPGIFINFO, &tapinfo) < 0)
+	if (ioctl(ctx.tunfd.fd, TAPGIFINFO, &tapinfo) < 0)
 		exit_errno("TAPGIFINFO ioctl failed");
 
 	tapinfo.mtu = conf.mtu;
 
-	if (ioctl(ctx.tunfd, TAPSIFINFO, &tapinfo) < 0)
+	if (ioctl(ctx.tunfd.fd, TAPSIFINFO, &tapinfo) < 0)
 		exit_errno("TAPSIFINFO ioctl failed");
 }
 
 /** Sets up the TUN device */
 static void setup_tun(void) {
 	int one = 1;
-	if (ioctl(ctx.tunfd, TUNSIFHEAD, &one) < 0)
+	if (ioctl(ctx.tunfd.fd, TUNSIFHEAD, &one) < 0)
 		exit_errno("TUNSIFHEAD ioctl failed");
 
 	set_tun_mtu();
@@ -195,7 +196,7 @@ static void setup_tun(void) {
 static void setup_tap(void) {
 	struct ifreq ifr = {};
 
-	if (ioctl(ctx.tunfd, TAPGIFNAME, &ifr) < 0)
+	if (ioctl(ctx.tunfd.fd, TAPGIFNAME, &ifr) < 0)
 		exit_errno("TAPGIFNAME ioctl failed");
 
 	free(ctx.ifname);
@@ -234,10 +235,11 @@ void fastd_tuntap_open(void) {
 		strncat(ifname, type, IFNAMSIZ-1);
 	}
 
-	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
+	ctx.tunfd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(ifname, O_RDWR|O_NONBLOCK));
+	if (ctx.tunfd.fd < 0)
 		exit_errno("could not open tun/tap device file");
 
-	if (!(ctx.ifname = fdevname_r(ctx.tunfd, fastd_alloc(IFNAMSIZ), IFNAMSIZ)))
+	if (!(ctx.ifname = fdevname_r(ctx.tunfd.fd, fastd_alloc(IFNAMSIZ), IFNAMSIZ)))
 		exit_errno("could not get tun/tap interface name");
 
 	switch (conf.mode) {
@@ -253,7 +255,7 @@ void fastd_tuntap_open(void) {
 		exit_bug("invalid mode");
 	}
 
-	fastd_poll_set_fd_tuntap();
+	fastd_poll_fd_register(&ctx.tunfd);
 
 	pr_debug("tun/tap device initialized.");
 }
@@ -307,7 +309,8 @@ void fastd_tuntap_open(void) {
 
 	pr_debug("initializing tun device...");
 
-	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
+	ctx.tunfd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(ifname, O_RDWR|O_NONBLOCK));
+	if (ctx.tunfd.fd < 0)
 		exit_errno("could not open tun device file");
 
 	ctx.ifname = fastd_strndup(conf.ifname, IFNAMSIZ-1);
@@ -325,7 +328,7 @@ void fastd_tuntap_open(void) {
 		exit_bug("invalid mode");
 	}
 
-	fastd_poll_set_fd_tuntap();
+	fastd_poll_fd_register(&ctx.tunfd);
 
 	pr_debug("tun device initialized.");
 }
@@ -360,7 +363,8 @@ void fastd_tuntap_open(void) {
 
 	pr_debug("initializing tun device...");
 
-	if ((ctx.tunfd = open(ifname, O_RDWR|O_NONBLOCK)) < 0)
+	ctx.tunfd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(ifname, O_RDWR|O_NONBLOCK));
+	if (ctx.tunfd.fd < 0)
 		exit_errno("could not open tun device file");
 
 	ctx.ifname = fastd_strndup(conf.ifname, IFNAMSIZ-1);
@@ -378,7 +382,7 @@ void fastd_tuntap_open(void) {
 	if (close(ctl_sock))
 		pr_error_errno("close");
 
-	fastd_poll_set_fd_tuntap();
+	fastd_poll_fd_register(&ctx.tunfd);
 
 	pr_debug("tun device initialized.");
 }
@@ -400,7 +404,7 @@ void fastd_tuntap_handle(void) {
 	else
 		buffer = fastd_buffer_alloc(max_len, conf.min_encrypt_head_space, conf.min_encrypt_tail_space);
 
-	ssize_t len = read(ctx.tunfd, buffer.data, max_len);
+	ssize_t len = read(ctx.tunfd.fd, buffer.data, max_len);
 	if (len < 0)
 		exit_errno("read");
 
@@ -436,12 +440,12 @@ void fastd_tuntap_write(fastd_buffer_t buffer) {
 		memcpy(buffer.data, &af, 4);
 	}
 
-	if (write(ctx.tunfd, buffer.data, buffer.len) < 0)
+	if (write(ctx.tunfd.fd, buffer.data, buffer.len) < 0)
 		pr_debug2_errno("write");
 }
 
 /** Closes the TUN/TAP device */
 void fastd_tuntap_close(void) {
-	if (close(ctx.tunfd))
+	if (!fastd_poll_fd_close(&ctx.tunfd))
 		pr_warn_errno("closing tun/tap: close");
 }

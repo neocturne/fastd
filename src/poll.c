@@ -66,6 +66,47 @@ static inline int handshake_timeout(void) {
 }
 
 
+/** Handles a file descriptor that was selected on */
+static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
+	switch (fd->type) {
+	case POLL_TYPE_ASYNC:
+		if (input)
+			fastd_async_handle();
+		break;
+
+#ifdef WITH_STATUS_SOCKET
+	case POLL_TYPE_STATUS:
+		if (input)
+			fastd_status_handle();
+		break;
+#endif
+
+	case POLL_TYPE_IFACE:
+		if (input)
+			fastd_tuntap_handle();
+		break;
+
+	case POLL_TYPE_SOCKET:
+	{
+		fastd_socket_t *sock = container_of(fd, fastd_socket_t, fd);
+		if (error) {
+			if (sock->peer)
+				fastd_peer_reset_socket(sock->peer);
+			else
+				fastd_socket_error(sock);
+		}
+		else if (input) {
+			fastd_receive(sock);
+		}
+	}
+	break;
+
+	default:
+		exit_bug("unknown FD type");
+	}
+}
+
+
 #ifdef USE_EPOLL
 
 
@@ -84,25 +125,6 @@ void fastd_poll_init(void) {
 	ctx.epoll_fd = epoll_create(1);
 	if (ctx.epoll_fd < 0)
 		exit_errno("epoll_create1");
-
-	struct epoll_event event_async = {
-		.events = EPOLLIN,
-		.data.ptr = &ctx.async_rfd,
-	};
-	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.async_rfd, &event_async) < 0)
-		exit_errno("epoll_ctl");
-
-#ifdef WITH_STATUS_SOCKET
-	if (ctx.status_fd >= 0) {
-		struct epoll_event event_status = {
-			.events = EPOLLIN,
-			.data.ptr = &ctx.status_fd,
-		};
-
-		if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.status_fd, &event_status) < 0)
-			exit_errno("epoll_ctl");
-	}
-#endif
 }
 
 void fastd_poll_free(void) {
@@ -110,42 +132,25 @@ void fastd_poll_free(void) {
 		pr_warn_errno("closing EPOLL: close");
 }
 
-void fastd_poll_set_fd_tuntap(void) {
-	struct epoll_event event = {
-		.events = EPOLLIN,
-		.data.ptr = &ctx.tunfd,
-	};
-	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.tunfd, &event) < 0)
-		exit_errno("epoll_ctl");
-}
 
-void fastd_poll_set_fd_sock(size_t i) {
-	struct epoll_event event = {
-		.events = EPOLLIN,
-		.data.ptr = &ctx.socks[i],
-	};
-	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.socks[i].fd, &event) < 0)
-		exit_errno("epoll_ctl");
-}
-
-void fastd_poll_set_fd_peer(size_t i) {
-	fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
-	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
-		return;
+void fastd_poll_fd_register(fastd_poll_fd_t *fd) {
+	if (fd->fd < 0)
+		exit_bug("fastd_poll_fd_register: invalid FD");
 
 	struct epoll_event event = {
 		.events = EPOLLIN,
-		.data.ptr = peer->sock,
+		.data.ptr = fd,
 	};
-	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, peer->sock->fd, &event) < 0)
+
+	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, fd->fd, &event) < 0)
 		exit_errno("epoll_ctl");
 }
 
-void fastd_poll_add_peer(void) {
-}
+bool fastd_poll_fd_close(fastd_poll_fd_t *fd) {
+	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_DEL, fd->fd, NULL) < 0)
+		exit_errno("epoll_ctl");
 
-void fastd_poll_delete_peer(UNUSED size_t i) {
+	return (close(fd->fd) == 0);
 }
 
 
@@ -170,115 +175,44 @@ void fastd_poll_handle(void) {
 		return;
 
 	size_t i;
-	for (i = 0; i < (size_t)ret; i++) {
-		if (events[i].data.ptr == &ctx.tunfd) {
-			if (events[i].events & EPOLLIN)
-				fastd_tuntap_handle();
-		}
-		else if (events[i].data.ptr == &ctx.async_rfd) {
-			if (events[i].events & EPOLLIN)
-				fastd_async_handle();
-		}
-#ifdef WITH_STATUS_SOCKET
-		else if (events[i].data.ptr == &ctx.status_fd) {
-			if (events[i].events & EPOLLIN)
-				fastd_status_handle();
-		}
-#endif
-		else {
-			fastd_socket_t *sock = events[i].data.ptr;
-
-			if (events[i].events & (EPOLLERR|EPOLLHUP)) {
-				if (sock->peer)
-					fastd_peer_reset_socket(sock->peer);
-				else
-					fastd_socket_error(sock);
-			}
-			else if (events[i].events & EPOLLIN) {
-				fastd_receive(sock);
-			}
-		}
-	}
+	for (i = 0; i < (size_t)ret; i++)
+		handle_fd(events[i].data.ptr,
+			  events[i].events & EPOLLIN,
+			  events[i].events & (EPOLLERR|EPOLLHUP));
 }
 
 #else
 
 void fastd_poll_init(void) {
-	VECTOR_RESIZE(ctx.pollfds, 3 + ctx.n_socks + VECTOR_LEN(ctx.peers));
-
-	VECTOR_INDEX(ctx.pollfds, 0) = (struct pollfd) {
-		.fd = -1,
-		.events = POLLIN,
-		.revents = 0,
-	};
-
-	VECTOR_INDEX(ctx.pollfds, 1) = (struct pollfd) {
-		.fd = ctx.async_rfd,
-		.events = POLLIN,
-		.revents = 0,
-	};
-
-	VECTOR_INDEX(ctx.pollfds, 2) = (struct pollfd) {
-#ifdef WITH_STATUS_SOCKET
-		.fd = ctx.status_fd,
-#else
-		.fd = -1,
-#endif
-		.events = POLLIN,
-		.revents = 0,
-	};
-
-	size_t i;
-	for (i = 0; i < ctx.n_socks + VECTOR_LEN(ctx.peers); i++) {
-		VECTOR_INDEX(ctx.pollfds, 3+i) = (struct pollfd) {
-			.fd = -1,
-			.events = POLLIN,
-			.revents = 0,
-		};
-	}
 }
 
 void fastd_poll_free(void) {
+	VECTOR_FREE(ctx.fds);
 	VECTOR_FREE(ctx.pollfds);
 }
 
 
-void fastd_poll_set_fd_tuntap(void) {
-	VECTOR_INDEX(ctx.pollfds, 0).fd = ctx.tunfd;
+void fastd_poll_fd_register(fastd_poll_fd_t *fd) {
+	if (fd->fd < 0)
+		exit_bug("fastd_poll_fd_register: invalid FD");
+
+	while (VECTOR_LEN(ctx.fds) <= (size_t)fd->fd)
+		VECTOR_ADD(ctx.fds, NULL);
+
+	VECTOR_INDEX(ctx.fds, fd->fd) = fd;
+
+	VECTOR_RESIZE(ctx.pollfds, 0);
 }
 
-void fastd_poll_set_fd_sock(size_t i) {
-	VECTOR_INDEX(ctx.pollfds, 3+i).fd = ctx.socks[i].fd;
-}
+bool fastd_poll_fd_close(fastd_poll_fd_t *fd) {
+	if (fd->fd < 0 || (size_t)fd->fd >= VECTOR_LEN(ctx.fds))
+		exit_bug("fastd_poll_fd_close: invalid FD");
 
-void fastd_poll_set_fd_peer(size_t i) {
-	if (!VECTOR_LEN(ctx.pollfds))
-		exit_bug("fastd_poll_set_fd_peer: polling not initialized yet");
+	VECTOR_INDEX(ctx.fds, fd->fd) = NULL;
 
-	fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
+	VECTOR_RESIZE(ctx.pollfds, 0);
 
-	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
-		VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).fd = -1;
-	else
-		VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).fd = peer->sock->fd;
-}
-
-void fastd_poll_add_peer(void) {
-	if (!VECTOR_LEN(ctx.pollfds))
-		/* Polling is not initialized yet */
-		return;
-
-	struct pollfd pollfd = {
-		.fd = -1,
-		.events = POLLIN,
-		.revents = 0,
-	};
-
-	VECTOR_ADD(ctx.pollfds, pollfd);
-}
-
-void fastd_poll_delete_peer(size_t i) {
-	VECTOR_DELETE(ctx.pollfds, 3+ctx.n_socks+i);
+	return (close(fd->fd) == 0);
 }
 
 
@@ -294,8 +228,20 @@ void fastd_poll_handle(void) {
 	if (timeout < 0 || timeout > maintenance_timeout)
 		timeout = maintenance_timeout;
 
-	if (VECTOR_LEN(ctx.pollfds) != 3 + ctx.n_socks + VECTOR_LEN(ctx.peers))
-		exit_bug("fd count mismatch");
+	if (!VECTOR_LEN(ctx.pollfds)) {
+		for (i = 0; i < VECTOR_LEN(ctx.fds); i++) {
+			fastd_poll_fd_t *fd = VECTOR_INDEX(ctx.fds, i);
+			if (!fd)
+				continue;
+
+			struct pollfd pollfd = {
+				.fd = fd->fd,
+				.events = POLLIN,
+				.revents = 0,
+			};
+			VECTOR_ADD(ctx.pollfds, pollfd);
+		}
+	}
 
 	sigset_t set, oldset;
 	sigemptyset(&set);
@@ -334,6 +280,8 @@ void fastd_poll_handle(void) {
 	}
 
 	if (ret > 0) {
+		ret = 0;
+
 		for (i = 0; i < VECTOR_LEN(ctx.pollfds); i++) {
 			struct pollfd *pollfd = &VECTOR_INDEX(ctx.pollfds, i);
 			pollfd->revents = 0;
@@ -345,6 +293,9 @@ void fastd_poll_handle(void) {
 				pollfd->revents |= POLLIN;
 			if (FD_ISSET(pollfd->fd, &errfds))
 				pollfd->revents |= POLLERR;
+
+			if (pollfd->revents)
+				ret++;
 		}
 	}
 
@@ -360,39 +311,14 @@ void fastd_poll_handle(void) {
 	if (ret <= 0)
 		return;
 
-	if (VECTOR_INDEX(ctx.pollfds, 0).revents & POLLIN)
-		fastd_tuntap_handle();
-	if (VECTOR_INDEX(ctx.pollfds, 1).revents & POLLIN)
-		fastd_async_handle();
+	for (i = 0; i < VECTOR_LEN(ctx.pollfds) && ret > 0; i++) {
+		struct pollfd *pollfd = &VECTOR_INDEX(ctx.pollfds, i);
 
-#ifdef WITH_STATUS_SOCKET
-	if (VECTOR_INDEX(ctx.pollfds, 2).revents & POLLIN)
-		fastd_status_handle();
-#endif
+		if (pollfd->revents)
+			ret--;
 
-	for (i = 0; i < ctx.n_socks; i++) {
-		if (VECTOR_INDEX(ctx.pollfds, 3+i).revents & (POLLERR|POLLHUP|POLLNVAL)) {
-			fastd_socket_error(&ctx.socks[i]);
-			VECTOR_INDEX(ctx.pollfds, 3+i).fd = -1;
-		}
-		else if (VECTOR_INDEX(ctx.pollfds, 3+i).revents & POLLIN) {
-			fastd_receive(&ctx.socks[i]);
-		}
+		handle_fd(VECTOR_INDEX(ctx.fds, pollfd->fd), pollfd->revents & POLLIN, pollfd->revents & (POLLERR|POLLHUP|POLLNVAL));
 	}
-
-	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
-		if (VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).revents & (POLLERR|POLLHUP|POLLNVAL)) {
-			fastd_peer_reset_socket(peer);
-		}
-		else if (VECTOR_INDEX(ctx.pollfds, 3+ctx.n_socks+i).revents & POLLIN) {
-			fastd_receive(peer->sock);
-		}
-	}
-
-	if (VECTOR_LEN(ctx.pollfds) != 3 + ctx.n_socks + VECTOR_LEN(ctx.peers))
-		exit_bug("fd count mismatch");
 }
 
 #endif

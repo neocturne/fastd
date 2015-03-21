@@ -39,6 +39,7 @@
 #include "dlist.h"
 #include "buffer.h"
 #include "log.h"
+#include "poll.h"
 #include "sem.h"
 #include "shell.h"
 #include "util.h"
@@ -147,7 +148,7 @@ struct fastd_bind_address {
 
 /** A socket descriptor */
 struct fastd_socket {
-	int fd;					/**< The file descriptor for the socket */
+	fastd_poll_fd_t fd;			/**< The file descriptor for the socket */
 	const fastd_bind_address_t *addr;	/**< The address this socket is supposed to be bound to (or NULL) */
 	fastd_peer_address_t *bound_addr;	/**< The actual address that was bound to (may differ from addr when addr has a random port) */
 	fastd_peer_t *peer;			/**< If the socket belongs to a single peer (as it was create dynamically when sending a handshake), contains that peer */
@@ -280,11 +281,12 @@ struct fastd_context {
 #ifdef USE_EPOLL
 	int epoll_fd;				/**< The file descriptor for the epoll facility */
 #else
+	VECTOR(fastd_poll_fd_t *) fds;		/**< Vector of file descriptors to poll on, indexed by the FD itself */
 	VECTOR(struct pollfd) pollfds;		/**< The vector of pollfds for all file descriptors */
 #endif
 
 #ifdef WITH_STATUS_SOCKET
-	int status_fd;				/**< The file descriptor of the status socket */
+	fastd_poll_fd_t status_fd;		/**< The file descriptor of the status socket */
 #endif
 
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
@@ -298,12 +300,12 @@ struct fastd_context {
 	fastd_timeout_t next_maintenance;	/**< The time of the next maintenance call */
 
 	VECTOR(pid_t) async_pids;		/**< PIDs of asynchronously executed commands which still have to be reaped */
-	int async_rfd;				/**< The read side of the pipe used to send data from other threads to the main thread */
+	fastd_poll_fd_t async_rfd;		/**< The read side of the pipe used to send data from other threads to the main thread */
 	int async_wfd;				/**< The write side of the pipe used to send data from other threads to the main thread */
 
 	pthread_attr_t detached_thread;		/**< pthread_attr_t for creating detached threads */
 
-	int tunfd;				/**< The file descriptor of the tunnel interface */
+	fastd_poll_fd_t tunfd;			/**< The file descriptor of the tunnel interface */
 
 #ifdef __ANDROID__
 	int android_ctrl_sock_fd;		/**< The unix domain socket for communicating with Android GUI */
