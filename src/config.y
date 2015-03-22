@@ -109,6 +109,7 @@
 %token TOK_PACKET
 %token TOK_PEER
 %token TOK_PEERS
+%token TOK_PERSIST
 %token TOK_PMTU
 %token TOK_PORT
 %token TOK_POST_DOWN
@@ -189,6 +190,7 @@ statement:	peer_group_statement
 	|	TOK_MTU mtu ';'
 	|	TOK_PMTU pmtu ';'
 	|	TOK_MODE mode ';'
+	|	TOK_PERSIST persist ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_PRE_UP on_pre_up ';'
@@ -275,6 +277,11 @@ log:		TOK_LEVEL log_level {
 			conf.log_syslog_ident = fastd_strdup($4->str);
 
 			conf.log_syslog_level = $5;
+		}
+	;
+
+persist:	TOK_INTERFACE boolean {
+			conf.iface_persist = $2;
 		}
 	;
 
