@@ -104,6 +104,20 @@ static inline uint32_t as_uint(const fastd_handshake_record_t *record) {
 }
 
 
+/** Returns the mode ID to use in the handshake TLVs */
+static inline uint8_t get_mode_id(void) {
+	switch (conf.mode) {
+	case MODE_TAP:
+		return 0;
+
+	case MODE_TUN:
+		return 1;
+
+	default:
+		exit_bug("get_mode_id: invalid mode");
+	}
+}
+
 /** Generates a zero-separated list of supported methods */
 static uint8_t * create_method_list(const fastd_string_stack_t *methods, size_t *len) {
 	size_t n = 0, i;
@@ -188,7 +202,7 @@ static fastd_handshake_buffer_t new_handshake(uint8_t type, bool little_endian, 
 	packet->tlv_len = 0;
 
 	fastd_handshake_add_uint8(&buffer, RECORD_HANDSHAKE_TYPE, type);
-	fastd_handshake_add_uint8(&buffer, RECORD_MODE, conf.mode);
+	fastd_handshake_add_uint8(&buffer, RECORD_MODE, get_mode_id());
 	fastd_handshake_add_uint16_endian(&buffer, RECORD_MTU, conf.mtu);
 
 	fastd_handshake_add(&buffer, RECORD_VERSION_NAME, version_len, FASTD_VERSION);
@@ -360,7 +374,7 @@ static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_
 	}
 
 	if (handshake->records[RECORD_MODE].data) {
-		if (handshake->records[RECORD_MODE].length != 1 || as_uint8(&handshake->records[RECORD_MODE]) != conf.mode) {
+		if (handshake->records[RECORD_MODE].length != 1 || as_uint8(&handshake->records[RECORD_MODE]) != get_mode_id()) {
 			fastd_handshake_send_error(sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_MODE);
 			return false;
 		}
