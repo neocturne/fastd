@@ -412,6 +412,11 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 
 /** Writes a packet to the TUN/TAP device */
 void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
+	if (!buffer.len) {
+		pr_debug("fastd_iface_write: truncated packet");
+		return;
+	}
+
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN) {
 		uint8_t version = *((uint8_t *)buffer.data) >> 4;
 		uint32_t af;
@@ -426,7 +431,7 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 			break;
 
 		default:
-			pr_warn("fastd_iface_write: unknown IP version %u", version);
+			pr_debug("fastd_iface_write: unknown IP version %u", version);
 			return;
 		}
 
