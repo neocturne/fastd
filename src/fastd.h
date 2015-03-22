@@ -195,6 +195,7 @@ struct fastd_config {
 	char *log_syslog_ident;			/**< The identification string for messages sent to syslog (default: "fastd") */
 
 	char *ifname;				/**< The configured interface name */
+	bool iface_persist;			/**< Configures if peer-specific interfaces should exist always, or only when there's an established connection */
 
 	size_t n_bind_addrs;			/**< Number of elements in bind_addrs */
 	fastd_bind_address_t *bind_addrs;	/**< Configured bind addresses */
