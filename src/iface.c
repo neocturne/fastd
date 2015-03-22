@@ -125,6 +125,7 @@ static void open_iface(fastd_iface_t *iface) {
 
 		pr_debug("using android TUN fd");
 		iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, fastd_android_receive_tunfd());
+		iface->name = NULL;
 
 		fastd_android_send_pid();
 	} else {
