@@ -154,6 +154,13 @@ struct fastd_socket {
 	fastd_peer_t *peer;			/**< If the socket belongs to a single peer (as it was create dynamically when sending a handshake), contains that peer */
 };
 
+/** A TUN/TAP interface */
+struct fastd_iface {
+	fastd_poll_fd_t fd;			/**< The file descriptor of the tunnel interface */
+	char *name;				/**< The interface name */
+	fastd_peer_t *peer;			/**< The peer associated with the interface (if any) */
+};
+
 
 /** Type of a traffic stat counter */
 typedef enum fastd_stat_type {
@@ -261,15 +268,16 @@ struct fastd_config {
 	bool verify_config;			/**< Does basic verification of the configuration and exits */
 };
 
+
 /** The dynamic state of \em fastd */
 struct fastd_context {
 	bool log_initialized;			/**< true if the logging facilities have been properly initialized */
 
-	char *ifname;				/**< The actual interface name */
-
 	int64_t started;			/**< The timestamp when fastd was started */
 
 	int64_t now;				/**< The current monotonous timestamp in microseconds after an arbitrary point in time */
+
+	fastd_iface_t *iface;			/**< The default tunnel interface */
 
 	uint64_t next_peer_id;			/**< An monotonously increasing ID peers are identified with in some components */
 	VECTOR(fastd_peer_t *) peers;		/**< The currectly active peers */
@@ -304,8 +312,6 @@ struct fastd_context {
 	int async_wfd;				/**< The write side of the pipe used to send data from other threads to the main thread */
 
 	pthread_attr_t detached_thread;		/**< pthread_attr_t for creating detached threads */
-
-	fastd_poll_fd_t tunfd;			/**< The file descriptor of the tunnel interface */
 
 #ifdef __ANDROID__
 	int android_ctrl_sock_fd;		/**< The unix domain socket for communicating with Android GUI */
@@ -362,10 +368,10 @@ bool fastd_android_protect_socket(int fd);
 
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
-void fastd_tuntap_open(void);
-void fastd_tuntap_handle(void);
-void fastd_tuntap_write(fastd_buffer_t buffer);
-void fastd_tuntap_close(void);
+fastd_iface_t * fastd_tuntap_open(fastd_peer_t *peer);
+void fastd_tuntap_handle(fastd_iface_t *iface);
+void fastd_tuntap_write(fastd_iface_t *iface, fastd_buffer_t buffer);
+void fastd_tuntap_close(fastd_iface_t *iface);
 
 void fastd_cap_init(void);
 void fastd_cap_drop(void);

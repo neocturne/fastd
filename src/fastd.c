@@ -211,13 +211,19 @@ static inline void on_pre_up(void) {
 }
 
 /** Calls the on-up command */
-static inline void on_up(void) {
-	fastd_shell_command_exec(&conf.on_up, NULL);
+static inline void on_up(fastd_iface_t *iface) {
+	fastd_shell_env_t *env = fastd_shell_env_alloc();
+	fastd_shell_env_set_iface(env, iface);
+	fastd_shell_command_exec(&conf.on_up, env);
+	fastd_shell_env_free(env);
 }
 
 /** Calls the on-down command */
-static inline void on_down(void) {
-	fastd_shell_command_exec(&conf.on_down, NULL);
+static inline void on_down(fastd_iface_t *iface) {
+	fastd_shell_env_t *env = fastd_shell_env_alloc();
+	fastd_shell_env_set_iface(env, iface);
+	fastd_shell_command_exec(&conf.on_down, env);
+	fastd_shell_env_free(env);
 }
 
 /** Calls the on-post-down command */
@@ -520,7 +526,7 @@ static inline void init(int argc, char *argv[]) {
 
 	on_pre_up();
 
-	fastd_tuntap_open();
+	ctx.iface = fastd_tuntap_open(NULL);
 
 	/* change groups before trying to write the PID file as they can be relevant for file access */
 	set_groups();
@@ -541,7 +547,7 @@ static inline void init(int argc, char *argv[]) {
 	if (conf.drop_caps == DROP_CAPS_EARLY)
 		drop_caps();
 
-	on_up();
+	on_up(ctx.iface);
 
 	if (conf.drop_caps == DROP_CAPS_ON)
 		drop_caps();
@@ -632,17 +638,17 @@ static void delete_peers(void) {
    Performs cleanup of resources used by fastd
 
    Besides running the on-down scripts and closing the TUN/TAP interface, this
-   also frees all memory allocatedby fastd to make debugging memory leaks with
+   also frees all memory allocated by fastd to make debugging memory leaks with
    valgrind as easy as possible.
 */
 static inline void cleanup(void) {
 	pr_info("terminating fastd");
 
-	on_down();
-
 	delete_peers();
 
-	fastd_tuntap_close();
+	on_down(ctx.iface);
+	fastd_tuntap_close(ctx.iface);
+
 	fastd_status_close();
 	close_sockets();
 	fastd_poll_free();
@@ -658,7 +664,6 @@ static inline void cleanup(void) {
 	VECTOR_FREE(ctx.eth_addrs);
 
 	free(ctx.protocol_state);
-	free(ctx.ifname);
 
 #ifdef ENABLE_OPENSSL
 	CONF_modules_free();

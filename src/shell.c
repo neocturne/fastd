@@ -75,6 +75,13 @@ void fastd_shell_env_free(fastd_shell_env_t *env) {
 	free(env);
 }
 
+void fastd_shell_env_set_iface(fastd_shell_env_t *env, const fastd_iface_t *iface) {
+	if (iface)
+		fastd_shell_env_set(env, "INTERFACE", iface->name);
+	else
+		fastd_shell_env_set(env, "INTERFACE", NULL);
+}
+
 /** Applies a shell environment to the current process */
 static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
 	char buf[20];
@@ -83,21 +90,6 @@ static void shell_command_setenv(pid_t pid, const fastd_shell_env_t *env) {
 
 	snprintf(buf, sizeof(buf), "%u", (unsigned)pid);
 	setenv("FASTD_PID", buf, 1);
-
-	if (ctx.ifname) {
-		setenv("INTERFACE", ctx.ifname, 1);
-	}
-	else if (conf.ifname) {
-		char ifname[IF_NAMESIZE];
-
-		strncpy(ifname, conf.ifname, sizeof(ifname)-1);
-		ifname[sizeof(ifname)-1] = 0;
-
-		setenv("INTERFACE", ifname, 1);
-	}
-	else {
-		unsetenv("INTERFACE");
-	}
 
 	snprintf(buf, sizeof(buf), "%u", conf.mtu);
 	setenv("INTERFACE_MTU", buf, 1);

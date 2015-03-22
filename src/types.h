@@ -94,6 +94,7 @@ typedef struct fastd_poll_fd fastd_poll_fd_t;
 
 typedef union fastd_peer_address fastd_peer_address_t;
 typedef struct fastd_bind_address fastd_bind_address_t;
+typedef struct fastd_iface fastd_iface_t;
 typedef struct fastd_socket fastd_socket_t;
 typedef struct fastd_peer_group fastd_peer_group_t;
 typedef struct fastd_eth_addr fastd_eth_addr_t;

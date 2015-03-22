@@ -44,6 +44,8 @@ void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, 
 
 	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->name : NULL);
 
+	fastd_shell_env_set_iface(env, peer->iface ?: ctx.iface);
+
 	switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
 	case AF_INET:
 		inet_ntop(AF_INET, &local_addr->in.sin_addr, buf, sizeof(buf));

@@ -82,8 +82,12 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 #endif
 
 	case POLL_TYPE_IFACE:
+	{
+		fastd_iface_t *iface = container_of(fd, fastd_iface_t, fd);
+
 		if (input)
-			fastd_tuntap_handle();
+			fastd_tuntap_handle(iface);
+	}
 		break;
 
 	case POLL_TYPE_SOCKET:
