@@ -63,6 +63,29 @@ static const bool multiaf_tun = false;
 static const bool multiaf_tun = true;
 #endif
 
+
+/** The actual interface type */
+typedef enum fastd_iface_type {
+	IFACE_TYPE_UNSPEC = 0,	/**< Unknown interface */
+	IFACE_TYPE_TAP,		/**< TAP interface */
+	IFACE_TYPE_TUN,		/**< TUN interface */
+} fastd_iface_type_t;
+
+/** Returns the interface type for the configured mode of operation */
+static inline fastd_iface_type_t get_iface_type(void) {
+	switch (conf.mode) {
+	case MODE_TAP:
+		return IFACE_TYPE_TAP;
+
+	case MODE_TUN:
+		return IFACE_TYPE_TUN;
+
+	default:
+		return IFACE_TYPE_UNSPEC;
+	}
+}
+
+
 #ifdef __linux__
 
 /** Opens the TUN/TAP device helper shared by Android and Linux targets */
@@ -76,12 +99,12 @@ static void open_iface_linux(fastd_iface_t *iface, const char *dev_name) {
 	if (conf.ifname)
 		strncpy(ifr.ifr_name, conf.ifname, IFNAMSIZ-1);
 
-	switch (conf.mode) {
-	case MODE_TAP:
+	switch (get_iface_type()) {
+	case IFACE_TYPE_TAP:
 		ifr.ifr_flags = IFF_TAP;
 		break;
 
-	case MODE_TUN:
+	case IFACE_TYPE_TUN:
 		ifr.ifr_flags = IFF_TUN;
 		break;
 
@@ -120,7 +143,7 @@ static void open_iface_linux(fastd_iface_t *iface, const char *dev_name) {
 /** Opens the TUN/TAP device */
 static void open_iface(fastd_iface_t *iface) {
 	if (conf.android_integration) {
-		if (conf.mode != MODE_TUN)
+		if (get_iface_type() != IFACE_TYPE_TUN)
 			exit_error("Non root Android supports only TUN mode");
 
 		pr_debug("using android TUN fd");
@@ -199,12 +222,12 @@ static void open_iface(fastd_iface_t *iface) {
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	const char *type;
 
-	switch (conf.mode) {
-	case MODE_TAP:
+	switch (get_iface_type()) {
+	case IFACE_TYPE_TAP:
 		type = "tap";
 		break;
 
-	case MODE_TUN:
+	case IFACE_TYPE_TUN:
 		type = "tun";
 		break;
 
@@ -229,12 +252,12 @@ static void open_iface(fastd_iface_t *iface) {
 	if (!(iface->name = fdevname_r(iface->fd.fd, fastd_alloc(IFNAMSIZ), IFNAMSIZ)))
 		exit_errno("could not get tun/tap interface name");
 
-	switch (conf.mode) {
-	case MODE_TAP:
+	switch (get_iface_type()) {
+	case IFACE_TYPE_TAP:
 		setup_tap(iface);
 		break;
 
-	case MODE_TUN:
+	case IFACE_TYPE_TUN:
 		setup_tun(iface);
 		break;
 
@@ -296,12 +319,12 @@ static void open_iface(fastd_iface_t *iface) {
 
 	iface->name = fastd_strndup(conf.ifname, IFNAMSIZ-1);
 
-	switch (conf.mode) {
-	case MODE_TAP:
+	switch (get_iface_type()) {
+	case IFACE_TYPE_TAP:
 		setup_tap(iface);
 		break;
 
-	case MODE_TUN:
+	case IFACE_TYPE_TUN:
 		setup_tun(iface);
 		break;
 
@@ -317,12 +340,12 @@ static void open_iface(fastd_iface_t *iface) {
 /** Opens the TUN/TAP device */
 static void open_iface(fastd_iface_t *iface) {
 	const char *devtype;
-	switch (conf.mode) {
-	case MODE_TAP:
+	switch (get_iface_type()) {
+	case IFACE_TYPE_TAP:
 		devtype = "tap";
 		break;
 
-	case MODE_TUN:
+	case IFACE_TYPE_TUN:
 		devtype = "tun";
 		break;
 
@@ -370,7 +393,7 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 	size_t max_len = fastd_max_payload();
 
 	fastd_buffer_t buffer;
-	if (multiaf_tun && conf.mode == MODE_TUN)
+	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
 		buffer = fastd_buffer_alloc(max_len+4, conf.min_encrypt_head_space+12, conf.min_encrypt_tail_space);
 	else
 		buffer = fastd_buffer_alloc(max_len, conf.min_encrypt_head_space, conf.min_encrypt_tail_space);
@@ -381,7 +404,7 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 
 	buffer.len = len;
 
-	if (multiaf_tun && conf.mode == MODE_TUN)
+	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
 		fastd_buffer_push_head(&buffer, 4);
 
 	fastd_send_data(buffer, iface->peer);
@@ -389,7 +412,7 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 
 /** Writes a packet to the TUN/TAP device */
 void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
-	if (multiaf_tun && conf.mode == MODE_TUN) {
+	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN) {
 		uint8_t version = *((uint8_t *)buffer.data) >> 4;
 		uint32_t af;
 
@@ -415,6 +438,7 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 		pr_debug2_errno("write");
 }
 
+/** Opens a new TUN/TAP interface, optionally associated with a specific peer */
 fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 	fastd_iface_t *iface = fastd_new(fastd_iface_t);
 	iface->peer = peer;
