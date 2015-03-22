@@ -75,6 +75,7 @@ void fastd_shell_env_free(fastd_shell_env_t *env) {
 	free(env);
 }
 
+/** Adds an interface name to a shell environment */
 void fastd_shell_env_set_iface(fastd_shell_env_t *env, const fastd_iface_t *iface) {
 	if (iface)
 		fastd_shell_env_set(env, "INTERFACE", iface->name);

@@ -77,11 +77,11 @@ typedef enum fastd_drop_caps {
 
 /** Types of file descriptors to poll on */
 typedef enum fastd_poll_type {
-	POLL_TYPE_UNSPEC = 0,
-	POLL_TYPE_ASYNC,
-	POLL_TYPE_STATUS,
-	POLL_TYPE_IFACE,
-	POLL_TYPE_SOCKET,
+	POLL_TYPE_UNSPEC = 0,	/**< Unspecified file descriptor type */
+	POLL_TYPE_ASYNC,	/**< The async action socket */
+	POLL_TYPE_STATUS,	/**< The status socket */
+	POLL_TYPE_IFACE,	/**< A TUN/TAP interface */
+	POLL_TYPE_SOCKET,	/**< A network socket */
 } fastd_poll_type_t;
 
 
