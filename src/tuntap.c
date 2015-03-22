@@ -67,8 +67,6 @@ static const bool multiaf_tun = true;
 
 /** Opens the TUN/TAP device helper shared by Android and Linux targets */
 static void tuntap_open_linux(fastd_iface_t *iface, const char *dev_name) {
-	pr_debug("initializing tun/tap device...");
-
 	struct ifreq ifr = {};
 
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(dev_name, O_RDWR|O_NONBLOCK));
@@ -113,9 +111,6 @@ static void tuntap_open_linux(fastd_iface_t *iface, const char *dev_name) {
 	if (close(ctl_sock))
 		pr_error_errno("close");
 
-	fastd_poll_fd_register(&iface->fd);
-
-	pr_debug("tun/tap device initialized.");
 }
 
 #endif
@@ -124,21 +119,14 @@ static void tuntap_open_linux(fastd_iface_t *iface, const char *dev_name) {
 
 /** Opens the TUN/TAP device */
 static void tuntap_open(fastd_iface_t *iface) {
-	pr_debug("initializing tun device...");
-
 	if (conf.android_integration) {
-		if (conf.mode != MODE_TUN) {
+		if (conf.mode != MODE_TUN)
 			exit_error("Non root Android supports only TUN mode");
-		}
 
 		pr_debug("using android TUN fd");
 		iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, fastd_android_receive_tunfd());
 
 		fastd_android_send_pid();
-
-		fastd_poll_fd_register(&iface->fd);
-
-		pr_debug("tun device initialized.");
 	} else {
 		/* this requires root on Android */
 		tuntap_open_linux(iface, "/dev/tun");
@@ -207,8 +195,6 @@ static void setup_tap(fastd_iface_t *iface) {
 
 /** Opens the TUN/TAP device */
 static void tuntap_open(fastd_iface_t *iface) {
-	pr_debug("initializing tun/tap device...");
-
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	const char *type;
 
@@ -254,10 +240,6 @@ static void tuntap_open(fastd_iface_t *iface) {
 	default:
 		exit_bug("invalid mode");
 	}
-
-	fastd_poll_fd_register(&iface->fd);
-
-	pr_debug("tun/tap device initialized.");
 }
 
 #else /* __OpenBSD__ */
@@ -307,8 +289,6 @@ static void tuntap_open(fastd_iface_t *iface) {
 	else
 		strncat(ifname, conf.ifname, IFNAMSIZ-1);
 
-	pr_debug("initializing tun device...");
-
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(ifname, O_RDWR|O_NONBLOCK));
 	if (iface->fd.fd < 0)
 		exit_errno("could not open tun device file");
@@ -327,10 +307,6 @@ static void tuntap_open(fastd_iface_t *iface) {
 	default:
 		exit_bug("invalid mode");
 	}
-
-	fastd_poll_fd_register(&iface->fd);
-
-	pr_debug("tun device initialized.");
 }
 
 #endif
@@ -361,8 +337,6 @@ static void tuntap_open(fastd_iface_t *iface) {
 	else
 		strncat(ifname, conf.ifname, IFNAMSIZ-1);
 
-	pr_debug("initializing tun device...");
-
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(ifname, O_RDWR|O_NONBLOCK));
 	if (iface->fd.fd < 0)
 		exit_errno("could not open tun device file");
@@ -381,10 +355,6 @@ static void tuntap_open(fastd_iface_t *iface) {
 
 	if (close(ctl_sock))
 		pr_error_errno("close");
-
-	fastd_poll_fd_register(&iface->fd);
-
-	pr_debug("tun device initialized.");
 }
 
 #else
@@ -448,7 +418,15 @@ fastd_iface_t * fastd_tuntap_open(fastd_peer_t *peer) {
 	fastd_iface_t *iface = fastd_new(fastd_iface_t);
 	iface->peer = peer;
 
+	pr_debug("initializing tun/tap device...");
 	tuntap_open(iface);
+
+	if (iface->name)
+		pr_debug("tun/tap device `%s' initialized.", iface->name);
+	else
+		pr_debug("tun/tap device initialized.");
+
+	fastd_poll_fd_register(&iface->fd);
 
 	return iface;
 }
