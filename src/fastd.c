@@ -548,6 +548,7 @@ static inline void init(int argc, char *argv[]) {
 		drop_caps();
 
 	on_up(ctx.iface);
+	fastd_configure_peers();
 
 	if (conf.drop_caps == DROP_CAPS_ON)
 		drop_caps();

@@ -592,7 +592,7 @@ static void peer_dirs_read_peer_group(fastd_peer_group_t *group) {
 }
 
 /** Initializes the configured peers */
-static void configure_peers(void) {
+void fastd_configure_peers(void) {
 	ctx.has_floating = false;
 
 	ssize_t i;
@@ -643,7 +643,7 @@ void fastd_config_load_peer_dirs(void) {
 	}
 
 	peer_dirs_read_peer_group(conf.peer_group);
-	configure_peers();
+	fastd_configure_peers();
 }
 
 /** Frees all resources used by the global configuration */

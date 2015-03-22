@@ -60,6 +60,7 @@ void fastd_config_peer_group_pop(fastd_parser_state_t *state);
 void fastd_config_add_peer_dir(fastd_peer_group_t *group, const char *dir);
 
 void fastd_configure(int argc, char *const argv[]);
+void fastd_configure_peers(void);
 void fastd_config_check(void);
 void fastd_config_load_peer_dirs(void);
 
