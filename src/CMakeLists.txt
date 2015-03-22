@@ -25,6 +25,7 @@ add_executable(fastd
   handshake.c
   hkdf_sha256.c
   fastd.c
+  iface.c
   lex.c
   log.c
   options.c
@@ -39,7 +40,6 @@ add_executable(fastd
   shell.c
   socket.c
   status.c
-  tuntap.c
   vector.c
   verify.c
   ${BISON_fastd_config_parse_OUTPUTS}

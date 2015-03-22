@@ -306,7 +306,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reorde
 	if (reordered)
 		fastd_stats_add(peer, STAT_RX_REORDERED, buffer.len);
 
-	fastd_tuntap_write(peer->iface ?: ctx.iface, buffer);
+	fastd_iface_write(peer->iface ?: ctx.iface, buffer);
 
 	if (conf.mode == MODE_TAP && conf.forward) {
 		fastd_send_data(buffer, peer);

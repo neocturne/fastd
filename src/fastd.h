@@ -368,10 +368,10 @@ bool fastd_android_protect_socket(int fd);
 
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
-fastd_iface_t * fastd_tuntap_open(fastd_peer_t *peer);
-void fastd_tuntap_handle(fastd_iface_t *iface);
-void fastd_tuntap_write(fastd_iface_t *iface, fastd_buffer_t buffer);
-void fastd_tuntap_close(fastd_iface_t *iface);
+fastd_iface_t * fastd_iface_open(fastd_peer_t *peer);
+void fastd_iface_handle(fastd_iface_t *iface);
+void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer);
+void fastd_iface_close(fastd_iface_t *iface);
 
 void fastd_cap_init(void);
 void fastd_cap_drop(void);

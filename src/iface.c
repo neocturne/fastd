@@ -66,7 +66,7 @@ static const bool multiaf_tun = true;
 #ifdef __linux__
 
 /** Opens the TUN/TAP device helper shared by Android and Linux targets */
-static void tuntap_open_linux(fastd_iface_t *iface, const char *dev_name) {
+static void open_iface_linux(fastd_iface_t *iface, const char *dev_name) {
 	struct ifreq ifr = {};
 
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(dev_name, O_RDWR|O_NONBLOCK));
@@ -118,7 +118,7 @@ static void tuntap_open_linux(fastd_iface_t *iface, const char *dev_name) {
 #if defined(__ANDROID__)
 
 /** Opens the TUN/TAP device */
-static void tuntap_open(fastd_iface_t *iface) {
+static void open_iface(fastd_iface_t *iface) {
 	if (conf.android_integration) {
 		if (conf.mode != MODE_TUN)
 			exit_error("Non root Android supports only TUN mode");
@@ -129,15 +129,15 @@ static void tuntap_open(fastd_iface_t *iface) {
 		fastd_android_send_pid();
 	} else {
 		/* this requires root on Android */
-		tuntap_open_linux(iface, "/dev/tun");
+		open_iface_linux(iface, "/dev/tun");
 	}
 }
 
 #elif defined(__linux__)
 
 /** Opens the TUN/TAP device */
-static void tuntap_open(fastd_iface_t *iface) {
-	tuntap_open_linux(iface, "/dev/net/tun");
+static void open_iface(fastd_iface_t *iface) {
+	open_iface_linux(iface, "/dev/net/tun");
 }
 
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
@@ -194,7 +194,7 @@ static void setup_tap(fastd_iface_t *iface) {
 }
 
 /** Opens the TUN/TAP device */
-static void tuntap_open(fastd_iface_t *iface) {
+static void open_iface(fastd_iface_t *iface) {
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	const char *type;
 
@@ -280,7 +280,7 @@ static void setup_tap(fastd_iface_t *iface) {
 }
 
 /** Opens the TUN/TAP device */
-static void tuntap_open(fastd_iface_t *iface) {
+static void open_iface(fastd_iface_t *iface) {
 	char ifname[5+IFNAMSIZ] = "/dev/";
 	if (!conf.ifname)
 		exit_error("config error: no interface name given.");
@@ -314,7 +314,7 @@ static void tuntap_open(fastd_iface_t *iface) {
 #elif __APPLE__
 
 /** Opens the TUN/TAP device */
-static void tuntap_open(fastd_iface_t *iface) {
+static void open_iface(fastd_iface_t *iface) {
 	const char *devtype;
 	switch (conf.mode) {
 	case MODE_TAP:
@@ -365,7 +365,7 @@ static void tuntap_open(fastd_iface_t *iface) {
 
 
 /** Reads a packet from the TUN/TAP device */
-void fastd_tuntap_handle(fastd_iface_t *iface) {
+void fastd_iface_handle(fastd_iface_t *iface) {
 	size_t max_len = fastd_max_payload();
 
 	fastd_buffer_t buffer;
@@ -387,7 +387,7 @@ void fastd_tuntap_handle(fastd_iface_t *iface) {
 }
 
 /** Writes a packet to the TUN/TAP device */
-void fastd_tuntap_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
+void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 	if (multiaf_tun && conf.mode == MODE_TUN) {
 		uint8_t version = *((uint8_t *)buffer.data) >> 4;
 		uint32_t af;
@@ -402,7 +402,7 @@ void fastd_tuntap_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 			break;
 
 		default:
-			pr_warn("fastd_tuntap_write: unknown IP version %u", version);
+			pr_warn("fastd_iface_write: unknown IP version %u", version);
 			return;
 		}
 
@@ -414,12 +414,12 @@ void fastd_tuntap_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 		pr_debug2_errno("write");
 }
 
-fastd_iface_t * fastd_tuntap_open(fastd_peer_t *peer) {
+fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 	fastd_iface_t *iface = fastd_new(fastd_iface_t);
 	iface->peer = peer;
 
 	pr_debug("initializing tun/tap device...");
-	tuntap_open(iface);
+	open_iface(iface);
 
 	if (iface->name)
 		pr_debug("tun/tap device `%s' initialized.", iface->name);
@@ -432,7 +432,7 @@ fastd_iface_t * fastd_tuntap_open(fastd_peer_t *peer) {
 }
 
 /** Closes the TUN/TAP device */
-void fastd_tuntap_close(fastd_iface_t *iface) {
+void fastd_iface_close(fastd_iface_t *iface) {
 	if (!fastd_poll_fd_close(&iface->fd))
 		pr_warn_errno("closing tun/tap: close");
 

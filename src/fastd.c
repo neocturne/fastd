@@ -526,7 +526,7 @@ static inline void init(int argc, char *argv[]) {
 
 	on_pre_up();
 
-	ctx.iface = fastd_tuntap_open(NULL);
+	ctx.iface = fastd_iface_open(NULL);
 
 	/* change groups before trying to write the PID file as they can be relevant for file access */
 	set_groups();
@@ -647,7 +647,7 @@ static inline void cleanup(void) {
 	delete_peers();
 
 	on_down(ctx.iface);
-	fastd_tuntap_close(ctx.iface);
+	fastd_iface_close(ctx.iface);
 
 	fastd_status_close();
 	close_sockets();
