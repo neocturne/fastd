@@ -132,7 +132,7 @@ void fastd_tuntap_open(void) {
 		}
 
 		pr_debug("using android TUN fd");
-		ctx.tunfd = FASTD_POLL_FD(POLL_TYPE_IFACE(fastd_android_receive_tunfd()));
+		ctx.tunfd = FASTD_POLL_FD(POLL_TYPE_IFACE, fastd_android_receive_tunfd());
 
 		fastd_android_send_pid();
 
