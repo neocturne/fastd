@@ -407,7 +407,7 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
 		fastd_buffer_push_head(&buffer, 4);
 
-	fastd_send_data(buffer, iface->peer);
+	fastd_send_data(buffer, NULL, iface->peer);
 }
 
 /** Writes a packet to the TUN/TAP device */

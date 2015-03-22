@@ -347,7 +347,7 @@ extern fastd_config_t conf;
 
 void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
 void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer);
-void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source);
+void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source, fastd_peer_t *dest);
 
 void fastd_receive_unknown_init(void);
 void fastd_receive_unknown_free(void);

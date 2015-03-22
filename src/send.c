@@ -242,7 +242,12 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
 }
 
 /** Sends a buffer of payload data to other peers */
-void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source) {
+void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source, fastd_peer_t *dest) {
+	if (dest) {
+		conf.protocol->send(dest, buffer);
+		return;
+	}
+
 	if (send_data_tap_single(buffer, source))
 		return;
 

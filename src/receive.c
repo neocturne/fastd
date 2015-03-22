@@ -309,7 +309,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reorde
 	fastd_iface_write(peer->iface ?: ctx.iface, buffer);
 
 	if (conf.mode == MODE_TAP && conf.forward) {
-		fastd_send_data(buffer, peer);
+		fastd_send_data(buffer, peer, NULL);
 		return;
 	}
 
