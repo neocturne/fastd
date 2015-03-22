@@ -44,7 +44,7 @@ void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, 
 
 	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->name : NULL);
 
-	fastd_shell_env_set_iface(env, peer->iface ?: ctx.iface);
+	fastd_shell_env_set_iface(env, peer->iface);
 
 	switch(local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
 	case AF_INET:
@@ -377,6 +377,8 @@ static void setup_peer(fastd_peer_t *peer) {
 	peer->verify_timeout = ctx.now;
 	peer->verify_valid_timeout = ctx.now;
 #endif
+
+	peer->iface = ctx.iface;
 
 	if (!fastd_peer_is_enabled(peer))
 		/* Keep the peer in STATE_INACTIVE */
