@@ -151,7 +151,6 @@ static size_t peer_index_find_by_id(uint64_t id) {
 		exit_bug("peer_index_find_by_id: not found");
 
 	return ret - VECTOR_DATA(ctx.peers);
-
 }
 
 /** Finds the index of a peer in the array \e ctx.peers */
@@ -170,10 +169,8 @@ fastd_peer_t * fastd_peer_find_by_id(uint64_t id) {
 
 }
 
-/** Closes and frees the dynamic socket of the peer with a specified ID */
-static void free_socket_by_id(size_t i) {
-	fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
+/** Closes and frees a peer's dynamic socket */
+static inline void free_socket(fastd_peer_t *peer) {
 	if (!peer->sock)
 		return;
 
@@ -186,11 +183,6 @@ static void free_socket_by_id(size_t i) {
 	}
 
 	peer->sock = NULL;
-}
-
-/** Closes and frees a peer's dynamic socket */
-static inline void free_socket(fastd_peer_t *peer) {
-	free_socket_by_id(peer_index(peer));
 }
 
 /** Checks if a peer group has any contraints which might cause connection attempts to be rejected */
@@ -210,10 +202,8 @@ static inline bool has_group_config_constraints(const fastd_peer_group_t *group)
    or a default socket is used.
 */
 void fastd_peer_reset_socket(fastd_peer_t *peer) {
-	size_t i = peer_index(peer);
-
 	if (peer->address.sa.sa_family == AF_UNSPEC) {
-		free_socket_by_id(i);
+		free_socket(peer);
 		return;
 	}
 
@@ -222,7 +212,7 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 
 	pr_debug("resetting socket for peer %P", peer);
 
-	free_socket_by_id(i);
+	free_socket(peer);
 
 	switch (peer->address.sa.sa_family) {
 	case AF_INET:
