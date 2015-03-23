@@ -449,6 +449,7 @@ void fastd_peer_free(fastd_peer_t *peer) {
 
 	VECTOR_FREE(peer->remotes);
 
+	free(peer->ifname);
 	free(peer->name);
 	free(peer);
 }
