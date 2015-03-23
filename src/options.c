@@ -228,8 +228,7 @@ static void option_mode(const char *arg) {
 
 /** Handles the --interface option */
 static void option_interface(const char *arg) {
-	free(conf.ifname);
-	conf.ifname = fastd_strdup(arg);
+	fastd_config_ifname(NULL, arg);
 }
 
 /** Handles the --mtu option */

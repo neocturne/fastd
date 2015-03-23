@@ -98,6 +98,18 @@ void fastd_config_method(fastd_peer_group_t *group, const char *name) {
 	*method = fastd_string_stack_dup(name);
 }
 
+bool fastd_config_ifname(fastd_peer_t *peer, const char *ifname) {
+	if (strchr(ifname, '/'))
+		return false;
+
+	char **name = peer ? &peer->ifname : &conf.ifname;
+
+	free(*name);
+	*name = fastd_strdup(ifname);
+
+	return true;
+}
+
 /** Handles the configuration of a cipher implementation */
 void fastd_config_cipher(const char *name, const char *impl) {
 	if (!fastd_cipher_config(name, impl))
@@ -533,11 +545,6 @@ void fastd_configure(int argc, char *const argv[]) {
 
 /** Performs some basic checks on the configuration */
 static void config_check_base(void) {
-	if (conf.ifname) {
-		if (strchr(conf.ifname, '/'))
-			exit_error("config error: invalid interface name");
-	}
-
 #ifndef USE_PACKET_MARK
 	if (conf.packet_mark)
 		exit_error("config error: setting a packet mark is not supported on this system");

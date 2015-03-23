@@ -302,7 +302,12 @@ log_level:	TOK_FATAL	{ $$ = LL_FATAL; }
 	|	TOK_DEBUG2	{ $$ = LL_DEBUG2; }
 	;
 
-interface:	TOK_STRING	{ free(conf.ifname); conf.ifname = fastd_strdup($1->str); }
+interface:	TOK_STRING	{
+			if (!fastd_config_ifname(NULL, $1->str)) {
+				fastd_config_error(&@$, state, "invalid interface name");
+				YYERROR;
+			}
+		}
 	;
 
 bind:		bind_address maybe_bind_interface maybe_bind_default {
@@ -528,8 +533,10 @@ peer_key:	TOK_STRING {
 	;
 
 peer_interface:	TOK_STRING {
-			free(state->peer->ifname);
-			state->peer->ifname = fastd_strdup($1->str);
+			if (!fastd_config_ifname(state->peer, $1->str)) {
+				fastd_config_error(&@$, state, "invalid interface name");
+				YYERROR;
+			}
 		}
 	;
 
