@@ -382,7 +382,7 @@ static void setup_peer(fastd_peer_t *peer) {
 		peer->iface = ctx.iface;
 	}
 	else if (conf.iface_persist && !peer->iface) {
-		peer->iface = fastd_iface_open(peer);
+		peer->iface = fastd_iface_open(conf.ifname, peer);
 		if (peer->iface)
 			fastd_on_up(peer->iface);
 		else if (!peer->config_source_dir)

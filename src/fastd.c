@@ -501,7 +501,7 @@ static inline void init(int argc, char *argv[]) {
 	fastd_on_pre_up();
 
 	if (conf.mode == MODE_TAP) {
-		ctx.iface = fastd_iface_open(NULL);
+		ctx.iface = fastd_iface_open(conf.ifname, NULL);
 		if (!ctx.iface)
 			exit(1); /* An error message has already been printed by fastd_iface_open() */
 	}
