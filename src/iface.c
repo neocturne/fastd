@@ -75,6 +75,7 @@ typedef enum fastd_iface_type {
 static inline fastd_iface_type_t get_iface_type(void) {
 	switch (conf.mode) {
 	case MODE_TAP:
+	case MODE_MULTITAP:
 		return IFACE_TYPE_TAP;
 
 	case MODE_TUN:

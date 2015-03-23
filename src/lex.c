@@ -100,6 +100,7 @@ static const keyword_t keywords[] = {
 	{ "method", TOK_METHOD },
 	{ "mode", TOK_MODE },
 	{ "mtu", TOK_MTU },
+	{ "multitap", TOK_MULTITAP },
 	{ "no", TOK_NO },
 	{ "on", TOK_ON },
 	{ "packet", TOK_PACKET },

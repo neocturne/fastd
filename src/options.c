@@ -218,6 +218,8 @@ static void option_hide_mac_addresses(void) {
 static void option_mode(const char *arg) {
 	if (!strcmp(arg, "tap"))
 		conf.mode = MODE_TAP;
+	else if (!strcmp(arg, "multitap"))
+		conf.mode = MODE_MULTITAP;
 	else if (!strcmp(arg, "tun"))
 		conf.mode = MODE_TUN;
 	else

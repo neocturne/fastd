@@ -417,6 +417,7 @@ static inline void fastd_setnonblock(int fd) {
 static inline size_t fastd_max_payload(void) {
 	switch (conf.mode) {
 	case MODE_TAP:
+	case MODE_MULTITAP:
 		return conf.mtu+ETH_HLEN;
 	case MODE_TUN:
 		return conf.mtu;

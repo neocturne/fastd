@@ -65,6 +65,7 @@ typedef enum fastd_packet_type {
 /** The supported modes of operation */
 typedef enum fastd_mode {
 	MODE_TAP,		/**< TAP (Layer 2/Ethernet mode) */
+	MODE_MULTITAP,		/**< TAP (Layer 2/Ethernet mode, one interface per peer) */
 	MODE_TUN,		/**< TUN (Layer 3/IP mode) */
 } fastd_mode_t;
 

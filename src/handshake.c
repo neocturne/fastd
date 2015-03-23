@@ -108,6 +108,7 @@ static inline uint32_t as_uint(const fastd_handshake_record_t *record) {
 static inline uint8_t get_mode_id(void) {
 	switch (conf.mode) {
 	case MODE_TAP:
+	case MODE_MULTITAP:
 		return 0;
 
 	case MODE_TUN:

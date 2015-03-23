@@ -103,6 +103,7 @@
 %token TOK_METHOD
 %token TOK_MODE
 %token TOK_MTU
+%token TOK_MULTITAP
 %token TOK_NO
 %token TOK_ON
 %token TOK_PACKET
@@ -373,6 +374,7 @@ pmtu:		autobool
 	;
 
 mode:		TOK_TAP		{ conf.mode = MODE_TAP; }
+	|	TOK_MULTITAP	{ conf.mode = MODE_MULTITAP; }
 	|	TOK_TUN		{ conf.mode = MODE_TUN; }
 	;
 
