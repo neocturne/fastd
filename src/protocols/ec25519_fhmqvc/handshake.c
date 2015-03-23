@@ -562,7 +562,6 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 
 	fastd_peer_t *peer = fastd_new0(fastd_peer_t);
 	peer->group = conf.peer_group;
-	peer->iface = ctx.iface;
 	peer->config_state = CONFIG_DYNAMIC;
 
 	peer->key = fastd_new(fastd_protocol_key_t);
@@ -573,6 +572,8 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 
 	/* Ugly hack */
 	peer->protocol_state->last_serial--;
+
+	fastd_peer_reset(peer);
 
 	return peer;
 }
