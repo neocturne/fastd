@@ -560,6 +560,7 @@ void fastd_config_check(void) {
 	configure_methods();
 }
 
+/** Determines if the configuration will never create more than a single interface */
 bool fastd_config_single_iface(void) {
 	if (conf.mode == MODE_TAP)
 		return true;
