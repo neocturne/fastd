@@ -576,6 +576,16 @@ void fastd_config_check(void) {
 	configure_methods();
 }
 
+bool fastd_config_single_iface(void) {
+	if (conf.mode == MODE_TAP)
+		return true;
+
+	if (has_peer_group_peer_dirs(conf.peer_group))
+		return false;
+
+	return (VECTOR_LEN(ctx.peers) == 1);
+}
+
 /** Performs the verify-config checks */
 void fastd_config_verify(void) {
 	config_check_base();

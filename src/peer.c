@@ -30,6 +30,7 @@
 */
 
 #include "peer.h"
+#include "config.h"
 #include "peer_hashtable.h"
 #include "poll.h"
 
@@ -382,7 +383,12 @@ static void setup_peer(fastd_peer_t *peer) {
 		peer->iface = ctx.iface;
 	}
 	else if (conf.iface_persist && !peer->iface) {
-		peer->iface = fastd_iface_open(conf.ifname, peer);
+		const char *ifname = peer->ifname;
+
+		if (!ifname && fastd_config_single_iface())
+			ifname = conf.ifname;
+
+		peer->iface = fastd_iface_open(ifname, peer);
 		if (peer->iface)
 			fastd_on_up(peer->iface);
 		else if (!peer->config_source_dir)

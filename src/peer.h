@@ -72,10 +72,11 @@ struct fastd_peer {
 	fastd_protocol_key_t *key;			/**< The peer's public key */
 	fastd_protocol_peer_state_t *protocol_state;	/**< Protocol-specific peer state */
 
-	fastd_iface_t *iface;				/**< The interface this peer is associated with */
+	char *ifname;				/**< Peer-specific interface name */
 
 	/* Starting here, more dynamic fields follow: */
 
+	fastd_iface_t *iface;				/**< The interface this peer is associated with */
 	/** The socket used by the peer. This can either be a common bound socket or a
 	    dynamic, unbound socket that is used exclusively by this peer */
 	fastd_socket_t *sock;

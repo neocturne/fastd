@@ -460,6 +460,7 @@ peer_conf:	peer_conf peer_statement
 peer_statement: TOK_REMOTE peer_remote ';'
 	|	TOK_FLOAT peer_float ';'
 	|	TOK_KEY peer_key ';'
+	|	TOK_INTERFACE peer_interface ';'
 	|	TOK_INCLUDE peer_include ';'
 	;
 
@@ -521,6 +522,12 @@ peer_float:	boolean {
 peer_key:	TOK_STRING {
 			free(state->peer->key);
 			state->peer->key = conf.protocol->read_key($1->str);
+		}
+	;
+
+peer_interface:	TOK_STRING {
+			free(state->peer->ifname);
+			state->peer->ifname = fastd_strdup($1->str);
 		}
 	;
 
