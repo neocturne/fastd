@@ -383,7 +383,12 @@ static void setup_peer(fastd_peer_t *peer) {
 	}
 	else if (conf.iface_persist && !peer->iface) {
 		peer->iface = fastd_iface_open(peer);
-		fastd_on_up(peer->iface);
+		if (peer->iface)
+			fastd_on_up(peer->iface);
+		else if (!peer->config_source_dir)
+			/* Fail for statically configured peers;
+			   an error message has already been printed by fastd_iface_open() */
+			exit(1);
 	}
 
 	if (!fastd_peer_is_enabled(peer))
