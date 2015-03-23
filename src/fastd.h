@@ -542,33 +542,6 @@ static inline bool fastd_allow_verify(void) {
 #endif
 }
 
-
-/** Calls the on-pre-up command */
-static inline void fastd_on_pre_up(void) {
-	fastd_shell_command_exec(&conf.on_pre_up, NULL);
-}
-
-/** Calls the on-up command */
-static inline void fastd_on_up(fastd_iface_t *iface) {
-	fastd_shell_env_t *env = fastd_shell_env_alloc();
-	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec(&conf.on_up, env);
-	fastd_shell_env_free(env);
-}
-
-/** Calls the on-down command */
-static inline void fastd_on_down(fastd_iface_t *iface) {
-	fastd_shell_env_t *env = fastd_shell_env_alloc();
-	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec(&conf.on_down, env);
-	fastd_shell_env_free(env);
-}
-
-/** Calls the on-post-down command */
-static inline void fastd_on_post_down(void) {
-	fastd_shell_command_exec(&conf.on_post_down, NULL);
-}
-
 /** Returns true if android integration is enabled */
 static inline bool fastd_use_android_integration(void) {
 #ifdef __ANDROID__

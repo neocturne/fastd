@@ -118,6 +118,16 @@ void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const f
 	fastd_shell_env_free(env);
 }
 
+/** Calls the on-up command */
+static inline void on_up(const fastd_peer_t *peer) {
+	fastd_peer_exec_shell_command(&conf.on_up, peer, NULL, NULL);
+}
+
+/** Calls the on-down command */
+static inline void on_down(const fastd_peer_t *peer) {
+	fastd_peer_exec_shell_command(&conf.on_down, peer, NULL, NULL);
+}
+
 /** Executes the on-establish command for a peer */
 static inline void on_establish(const fastd_peer_t *peer) {
 	fastd_peer_exec_shell_command(&conf.on_establish, peer, &peer->local_address, &peer->address);
@@ -316,7 +326,7 @@ static void reset_peer(fastd_peer_t *peer) {
 
 	if (!conf.iface_persist || peer->config_state == CONFIG_DISABLED) {
 		if (peer->iface && peer->iface->peer) {
-			fastd_on_down(peer->iface);
+			on_down(peer);
 			fastd_iface_close(peer->iface);
 		}
 
@@ -403,7 +413,7 @@ static void setup_peer(fastd_peer_t *peer) {
 
 		peer->iface = fastd_iface_open(ifname, peer);
 		if (peer->iface)
-			fastd_on_up(peer->iface);
+			on_up(peer);
 		else if (!peer->config_source_dir)
 			/* Fail for statically configured peers;
 			   an error message has already been printed by fastd_iface_open() */
@@ -465,7 +475,7 @@ static void delete_peer(fastd_peer_t *peer) {
 	conf.protocol->free_peer_state(peer);
 
 	if (peer->iface && peer->iface->peer) {
-		fastd_on_down(peer->iface);
+		on_down(peer);
 		fastd_iface_close(peer->iface);
 	}
 

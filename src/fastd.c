@@ -205,6 +205,32 @@ static void close_sockets(void) {
 	free(ctx.socks);
 }
 
+/** Calls the on-pre-up command */
+static inline void on_pre_up(void) {
+	fastd_shell_command_exec(&conf.on_pre_up, NULL);
+}
+
+/** Calls the on-up command */
+static inline void on_up(fastd_iface_t *iface) {
+	fastd_shell_env_t *env = fastd_shell_env_alloc();
+	fastd_shell_env_set_iface(env, iface);
+	fastd_shell_command_exec(&conf.on_up, env);
+	fastd_shell_env_free(env);
+}
+
+/** Calls the on-down command */
+static inline void on_down(fastd_iface_t *iface) {
+	fastd_shell_env_t *env = fastd_shell_env_alloc();
+	fastd_shell_env_set_iface(env, iface);
+	fastd_shell_command_exec(&conf.on_down, env);
+	fastd_shell_env_free(env);
+}
+
+/** Calls the on-post-down command */
+static inline void on_post_down(void) {
+	fastd_shell_command_exec(&conf.on_post_down, NULL);
+}
+
 
 /** Closes all open FDs except stdin, stdout and stderr */
 void fastd_close_all_fds(void) {
@@ -498,7 +524,7 @@ static inline void init(int argc, char *argv[]) {
 	if (!fastd_socket_handle_binds())
 		exit_error("unable to bind default socket");
 
-	fastd_on_pre_up();
+	on_pre_up();
 
 	if (conf.mode == MODE_TAP || fastd_use_android_integration()) {
 		ctx.iface = fastd_iface_open(conf.ifname, NULL);
@@ -526,7 +552,7 @@ static inline void init(int argc, char *argv[]) {
 		drop_caps();
 
 	if (ctx.iface)
-		fastd_on_up(ctx.iface);
+		on_up(ctx.iface);
 
 	fastd_configure_peers();
 
@@ -628,7 +654,7 @@ static inline void cleanup(void) {
 	delete_peers();
 
 	if (ctx.iface) {
-		fastd_on_down(ctx.iface);
+		on_down(ctx.iface);
 		fastd_iface_close(ctx.iface);
 	}
 
@@ -636,7 +662,7 @@ static inline void cleanup(void) {
 	close_sockets();
 	fastd_poll_free();
 
-	fastd_on_post_down();
+	on_post_down();
 
 	fastd_peer_hashtable_free();
 
