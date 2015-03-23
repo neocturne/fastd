@@ -538,17 +538,6 @@ static void config_check_base(void) {
 			exit_error("config error: invalid interface name");
 	}
 
-	if (conf.mode == MODE_TUN) {
-		if (has_peer_group_peer_dirs(conf.peer_group))
-			exit_error("config error: in TUN mode peer directories can't be used");
-
-		if (conf.peer_group->children)
-			exit_error("config error: in TUN mode peer groups can't be used");
-
-		if (VECTOR_LEN(ctx.peers) != 1)
-			exit_error("config error: in TUN mode exactly one peer must be configured");
-	}
-
 #ifndef USE_PACKET_MARK
 	if (conf.packet_mark)
 		exit_error("config error: setting a packet mark is not supported on this system");
@@ -558,11 +547,6 @@ static void config_check_base(void) {
 /** Performs more checks on the configuration */
 void fastd_config_check(void) {
 	config_check_base();
-
-	if (conf.mode == MODE_TUN) {
-		if (!VECTOR_LEN(ctx.peers))
-			exit_error("config error: in TUN mode exactly one peer must be configured");
-	}
 
 	if (!VECTOR_LEN(ctx.peers) && !has_peer_group_peer_dirs(conf.peer_group))
 		exit_error("config error: neither fixed peers nor peer dirs have been configured");
