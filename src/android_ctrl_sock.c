@@ -176,10 +176,11 @@ int fastd_android_receive_tunfd(void) {
 
 	int handle;
 	if (ancil_recv_fd(ctx.android_ctrl_sock_fd, &handle)) {
-		exit_errno("could not receive TUN handle from Android");
-	} else {
-		pr_debug("received fd: %u", handle);
+		pr_error("could not receive TUN handle from Android");
+		return -1;
 	}
+
+	pr_debug("received fd: %u", handle);
 
 	return handle;
 }

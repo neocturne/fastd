@@ -85,16 +85,19 @@ static inline fastd_iface_type_t get_iface_type(void) {
 	}
 }
 
+static void open_iface(fastd_iface_t *iface);
+
 
 #ifdef __linux__
 
 /** Opens the TUN/TAP device helper shared by Android and Linux targets */
 static void open_iface_linux(fastd_iface_t *iface, const char *dev_name) {
+	int ctl_sock = -1;
 	struct ifreq ifr = {};
 
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(dev_name, O_RDWR|O_NONBLOCK));
 	if (iface->fd.fd < 0)
-		exit_errno("could not open tun/tap device file");
+		exit_errno("could not open TUN/TAP device file");
 
 	if (conf.ifname)
 		strncpy(ifr.ifr_name, conf.ifname, IFNAMSIZ-1);
@@ -113,12 +116,14 @@ static void open_iface_linux(fastd_iface_t *iface, const char *dev_name) {
 	}
 
 	ifr.ifr_flags |= IFF_NO_PI;
-	if (ioctl(iface->fd.fd, TUNSETIFF, &ifr) < 0)
-		exit_errno("TUNSETIFF ioctl failed");
+	if (ioctl(iface->fd.fd, TUNSETIFF, &ifr) < 0) {
+		pr_error_errno("unable to open TUN/TAP interface: TUNSETIFF ioctl failed");
+		goto error;
+	}
 
 	iface->name = fastd_strndup(ifr.ifr_name, IFNAMSIZ-1);
 
-	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (ctl_sock < 0)
 		exit_errno("socket");
 
@@ -127,13 +132,25 @@ static void open_iface_linux(fastd_iface_t *iface, const char *dev_name) {
 
 	if (ifr.ifr_mtu != conf.mtu) {
 		ifr.ifr_mtu = conf.mtu;
-		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
-			exit_errno("SIOCSIFMTU ioctl failed");
+		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0) {
+			pr_error_errno("unable to set TUN/TAP interface MTU: SIOCSIFMTU ioctl failed");
+			goto error;
+		}
 	}
 
 	if (close(ctl_sock))
 		pr_error_errno("close");
 
+	return;
+
+  error:
+	if (ctl_sock >= 0) {
+		if (close(ctl_sock))
+			pr_error_errno("close");
+	}
+
+	close(iface->fd.fd);
+	iface->fd.fd = -1;
 }
 
 #endif
@@ -247,10 +264,10 @@ static void open_iface(fastd_iface_t *iface) {
 
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(ifname, O_RDWR|O_NONBLOCK));
 	if (iface->fd.fd < 0)
-		exit_errno("could not open tun/tap device file");
+		exit_errno("could not open TUN/TAP device file");
 
 	if (!(iface->name = fdevname_r(iface->fd.fd, fastd_alloc(IFNAMSIZ), IFNAMSIZ)))
-		exit_errno("could not get tun/tap interface name");
+		exit_errno("could not get TUN/TAP interface name");
 
 	switch (get_iface_type()) {
 	case IFACE_TYPE_TAP:
@@ -383,7 +400,7 @@ static void open_iface(fastd_iface_t *iface) {
 
 #else
 
-#error unknown tun/tap implementation
+#error unknown TUN/TAP implementation
 
 #endif
 
@@ -448,13 +465,18 @@ fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 	fastd_iface_t *iface = fastd_new(fastd_iface_t);
 	iface->peer = peer;
 
-	pr_debug("initializing tun/tap device...");
+	pr_debug("initializing TUN/TAP device...");
 	open_iface(iface);
 
+	if (iface->fd.fd < 0) {
+		free(iface);
+		return NULL;
+	}
+
 	if (iface->name)
-		pr_debug("tun/tap device `%s' initialized.", iface->name);
+		pr_debug("TUN/TAP device `%s' initialized.", iface->name);
 	else
-		pr_debug("tun/tap device initialized.");
+		pr_debug("TUN/TAP device initialized.");
 
 	fastd_poll_fd_register(&iface->fd);
 
@@ -464,7 +486,7 @@ fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 /** Closes the TUN/TAP device */
 void fastd_iface_close(fastd_iface_t *iface) {
 	if (!fastd_poll_fd_close(&iface->fd))
-		pr_warn_errno("closing tun/tap: close");
+		pr_warn_errno("closing TUN/TAP: close");
 
 	free(iface->name);
 	free(iface);
