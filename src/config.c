@@ -545,10 +545,6 @@ void fastd_configure(int argc, char *const argv[]) {
 
 /** Performs some basic checks on the configuration */
 static void config_check_base(void) {
-#ifndef USE_PACKET_MARK
-	if (conf.packet_mark)
-		exit_error("config error: setting a packet mark is not supported on this system");
-#endif
 }
 
 /** Performs more checks on the configuration */

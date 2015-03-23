@@ -362,7 +362,12 @@ bind_default:
 	;
 
 packet_mark:	TOK_UINT {
+#ifdef USE_PACKET_MARK
 			conf.packet_mark = $1;
+#else
+			fastd_config_error(&@$, state, "setting a packet mark is not supported on this system");
+			YYERROR;
+#endif
 		}
 
 mtu:		TOK_UINT {

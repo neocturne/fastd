@@ -206,7 +206,9 @@ struct fastd_config {
 	uint16_t mtu;				/**< The configured MTU */
 	fastd_mode_t mode;			/**< The configured mode of operation */
 
+#ifdef USE_PACKET_MARK
 	uint32_t packet_mark;			/**< The configured packet mark (or 0) */
+#endif
 	bool forward;				/**< Specifies if packet forwarding is enable */
 	bool secure_handshakes;			/**< Can be set to false to support connections with fastd versions before v11 */
 
