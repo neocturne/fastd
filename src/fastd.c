@@ -205,32 +205,6 @@ static void close_sockets(void) {
 	free(ctx.socks);
 }
 
-/** Calls the on-pre-up command */
-static inline void on_pre_up(void) {
-	fastd_shell_command_exec(&conf.on_pre_up, NULL);
-}
-
-/** Calls the on-up command */
-static inline void on_up(fastd_iface_t *iface) {
-	fastd_shell_env_t *env = fastd_shell_env_alloc();
-	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec(&conf.on_up, env);
-	fastd_shell_env_free(env);
-}
-
-/** Calls the on-down command */
-static inline void on_down(fastd_iface_t *iface) {
-	fastd_shell_env_t *env = fastd_shell_env_alloc();
-	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec(&conf.on_down, env);
-	fastd_shell_env_free(env);
-}
-
-/** Calls the on-post-down command */
-static inline void on_post_down(void) {
-	fastd_shell_command_exec(&conf.on_post_down, NULL);
-}
-
 
 /** Closes all open FDs except stdin, stdout and stderr */
 void fastd_close_all_fds(void) {
@@ -524,9 +498,10 @@ static inline void init(int argc, char *argv[]) {
 	if (!fastd_socket_handle_binds())
 		exit_error("unable to bind default socket");
 
-	on_pre_up();
+	fastd_on_pre_up();
 
-	ctx.iface = fastd_iface_open(NULL);
+	if (conf.mode == MODE_TAP)
+		ctx.iface = fastd_iface_open(NULL);
 
 	/* change groups before trying to write the PID file as they can be relevant for file access */
 	set_groups();
@@ -547,7 +522,9 @@ static inline void init(int argc, char *argv[]) {
 	if (conf.drop_caps == DROP_CAPS_EARLY)
 		drop_caps();
 
-	on_up(ctx.iface);
+	if (ctx.iface)
+		fastd_on_up(ctx.iface);
+
 	fastd_configure_peers();
 
 	if (conf.drop_caps == DROP_CAPS_ON)
@@ -647,14 +624,16 @@ static inline void cleanup(void) {
 
 	delete_peers();
 
-	on_down(ctx.iface);
-	fastd_iface_close(ctx.iface);
+	if (ctx.iface) {
+		fastd_on_down(ctx.iface);
+		fastd_iface_close(ctx.iface);
+	}
 
 	fastd_status_close();
 	close_sockets();
 	fastd_poll_free();
 
-	on_post_down();
+	fastd_on_post_down();
 
 	fastd_peer_hashtable_free();
 

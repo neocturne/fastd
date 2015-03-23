@@ -378,7 +378,13 @@ static void setup_peer(fastd_peer_t *peer) {
 	peer->verify_valid_timeout = ctx.now;
 #endif
 
-	peer->iface = ctx.iface;
+	if (ctx.iface) {
+		peer->iface = ctx.iface;
+	}
+	else if (conf.iface_persist && !peer->iface) {
+		peer->iface = fastd_iface_open(peer);
+		fastd_on_up(peer->iface);
+	}
 
 	if (!fastd_peer_is_enabled(peer))
 		/* Keep the peer in STATE_INACTIVE */
@@ -436,6 +442,11 @@ static void delete_peer(fastd_peer_t *peer) {
 	VECTOR_DELETE(ctx.peers, i);
 
 	conf.protocol->free_peer_state(peer);
+
+	if (peer->iface && peer->iface->peer) {
+		fastd_on_down(peer->iface);
+		fastd_iface_close(peer->iface);
+	}
 
 	fastd_peer_free(peer);
 }
