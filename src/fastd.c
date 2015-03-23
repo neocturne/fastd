@@ -535,7 +535,7 @@ static inline void init(int argc, char *argv[]) {
 	else if (conf.drop_caps == DROP_CAPS_OFF)
 		set_user();
 
-	fastd_config_load_peer_dirs();
+	fastd_config_load_peer_dirs(true);
 }
 
 
@@ -582,7 +582,7 @@ static inline void handle_signals(void) {
 
 		pr_info("reconfigure triggered");
 
-		fastd_config_load_peer_dirs();
+		fastd_config_load_peer_dirs(false);
 	}
 
 	if (sig_reset) {

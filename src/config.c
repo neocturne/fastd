@@ -592,7 +592,7 @@ static void peer_dirs_read_peer_group(fastd_peer_group_t *group) {
 }
 
 /** Initializes the configured peers */
-void fastd_configure_peers(void) {
+static void configure_peers(bool dirs_only) {
 	ctx.has_floating = false;
 
 	ssize_t i;
@@ -621,13 +621,20 @@ void fastd_configure_peers(void) {
 
 		peer->config_state = CONFIG_STATIC;
 
-		if (!fastd_peer_is_established(peer))
-			fastd_peer_reset(peer);
+		if (!fastd_peer_is_established(peer)) {
+			if (peer->config_source_dir || !dirs_only)
+				fastd_peer_reset(peer);
+		}
 	}
 }
 
+/** Initialized the peers not configured through peer directories */
+void fastd_configure_peers(void) {
+	configure_peers(false);
+}
+
 /** Refreshes the peer configurations from the configured peer dirs */
-void fastd_config_load_peer_dirs(void) {
+void fastd_config_load_peer_dirs(bool dirs_only) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
@@ -643,7 +650,7 @@ void fastd_config_load_peer_dirs(void) {
 	}
 
 	peer_dirs_read_peer_group(conf.peer_group);
-	fastd_configure_peers();
+	configure_peers(dirs_only);
 }
 
 /** Frees all resources used by the global configuration */
