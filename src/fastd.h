@@ -568,3 +568,12 @@ static inline void fastd_on_down(fastd_iface_t *iface) {
 static inline void fastd_on_post_down(void) {
 	fastd_shell_command_exec(&conf.on_post_down, NULL);
 }
+
+/** Returns true if android integration is enabled */
+static inline bool fastd_use_android_integration(void) {
+#ifdef __ANDROID__
+	return conf.android_integration;
+#else
+	return false;
+#endif
+}

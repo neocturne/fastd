@@ -162,7 +162,7 @@ static void open_iface_linux(fastd_iface_t *iface, const char *ifname, const cha
 static void open_iface(fastd_iface_t *iface, const char *ifname) {
 	if (conf.android_integration) {
 		if (get_iface_type() != IFACE_TYPE_TUN)
-			exit_error("Non root Android supports only TUN mode");
+			exit_bug("Non-TUN iface type with Android integration");
 
 		pr_debug("using android TUN fd");
 		iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, fastd_android_receive_tunfd());

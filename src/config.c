@@ -545,6 +545,13 @@ void fastd_configure(int argc, char *const argv[]) {
 
 /** Performs some basic checks on the configuration */
 static void config_check_base(void) {
+	if (fastd_use_android_integration()) {
+		if (conf.mode != MODE_TUN)
+			exit_error("In Android integration mode only TUN interfaces are supported");
+
+		if (!fastd_config_single_iface())
+			exit_error("In Android integration mode exactly one peer must be configured");
+	}
 }
 
 /** Performs more checks on the configuration */
