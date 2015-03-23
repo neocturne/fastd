@@ -156,9 +156,13 @@ static bool establish(fastd_peer_t *peer, const fastd_method_info_t *method, fas
 		return false;
 	}
 
+	if (!fastd_peer_set_established(peer)) {
+		fastd_peer_reset(peer);
+		return false;
+	}
+
 	peer->establish_handshake_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 	fastd_peer_seen(peer);
-	fastd_peer_set_established(peer);
 
 	pr_verbose("new session with %P established using method `%s'%s.", peer, method->name, salt ? "" : " (compat mode)");
 

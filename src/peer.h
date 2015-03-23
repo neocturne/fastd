@@ -169,7 +169,7 @@ bool fastd_peer_add(fastd_peer_t *peer);
 void fastd_peer_reset(fastd_peer_t *peer);
 void fastd_peer_delete(fastd_peer_t *peer);
 void fastd_peer_free(fastd_peer_t *peer);
-void fastd_peer_set_established(fastd_peer_t *peer);
+bool fastd_peer_set_established(fastd_peer_t *peer);
 bool fastd_peer_may_connect(fastd_peer_t *peer);
 void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);
 bool fastd_peer_owns_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr);

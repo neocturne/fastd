@@ -871,14 +871,29 @@ void fastd_peer_handle_handshake_queue(void) {
 }
 
 /** Marks a peer as established */
-void fastd_peer_set_established(fastd_peer_t *peer) {
+bool fastd_peer_set_established(fastd_peer_t *peer) {
 	if (fastd_peer_is_established(peer))
-		return;
+		return true;
+
+	if (!peer->iface) {
+		const char *ifname = peer->ifname;
+
+		if (!ifname && fastd_config_single_iface())
+			ifname = conf.ifname;
+
+		peer->iface = fastd_iface_open(ifname, peer);
+		if (peer->iface)
+			on_up(peer, false);
+		else
+			return false;
+	}
 
 	peer->state = STATE_ESTABLISHED;
 	peer->established = ctx.now;
 	on_establish(peer);
 	pr_info("connection with %P established.", peer);
+
+	return true;
 }
 
 /** Compares two MAC addresses */
