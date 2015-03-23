@@ -72,7 +72,7 @@ struct fastd_peer {
 	fastd_protocol_key_t *key;			/**< The peer's public key */
 	fastd_protocol_peer_state_t *protocol_state;	/**< Protocol-specific peer state */
 
-	char *ifname;				/**< Peer-specific interface name */
+	char *ifname;					/**< Peer-specific interface name */
 
 	/* Starting here, more dynamic fields follow: */
 
