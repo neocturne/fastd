@@ -527,7 +527,7 @@ static inline void init(int argc, char *argv[]) {
 	on_pre_up();
 
 	if (conf.mode == MODE_TAP || fastd_use_android_integration()) {
-		ctx.iface = fastd_iface_open(conf.ifname, NULL);
+		ctx.iface = fastd_iface_open(NULL);
 		if (!ctx.iface)
 			exit(1); /* An error message has already been printed by fastd_iface_open() */
 	}

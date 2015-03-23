@@ -33,7 +33,8 @@
    Management of the TUN/TAP interface
 */
 
-#include "fastd.h"
+#include "config.h"
+#include "peer.h"
 #include "poll.h"
 
 #include <net/if.h>
@@ -462,9 +463,18 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 }
 
 /** Opens a new TUN/TAP interface, optionally associated with a specific peer */
-fastd_iface_t * fastd_iface_open(const char *ifname, fastd_peer_t *peer) {
+fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 	fastd_iface_t *iface = fastd_new(fastd_iface_t);
 	iface->peer = peer;
+
+	const char *ifname = conf.ifname;
+
+	if (peer) {
+		if (peer->ifname)
+			ifname = peer->ifname;
+		else if (!fastd_config_single_iface())
+			ifname = NULL;
+	}
 
 	pr_debug("initializing TUN/TAP device...");
 	open_iface(iface, ifname);
