@@ -313,6 +313,15 @@ static void reset_peer(fastd_peer_t *peer) {
 	peer->address.sa.sa_family = AF_UNSPEC;
 	peer->local_address.sa.sa_family = AF_UNSPEC;
 	peer->state = STATE_INACTIVE;
+
+	if (!conf.iface_persist || peer->config_state == CONFIG_DISABLED) {
+		if (peer->iface && peer->iface->peer) {
+			fastd_on_down(peer->iface);
+			fastd_iface_close(peer->iface);
+		}
+
+		peer->iface = NULL;
+	}
 }
 
 /**
@@ -379,6 +388,10 @@ static void setup_peer(fastd_peer_t *peer) {
 	peer->verify_valid_timeout = ctx.now;
 #endif
 
+	if (!fastd_peer_is_enabled(peer))
+		/* Keep the peer in STATE_INACTIVE */
+		return;
+
 	if (ctx.iface) {
 		peer->iface = ctx.iface;
 	}
@@ -396,10 +409,6 @@ static void setup_peer(fastd_peer_t *peer) {
 			   an error message has already been printed by fastd_iface_open() */
 			exit(1);
 	}
-
-	if (!fastd_peer_is_enabled(peer))
-		/* Keep the peer in STATE_INACTIVE */
-		return;
 
 	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
 	if (next_remote) {
