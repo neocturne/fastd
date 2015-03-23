@@ -180,7 +180,7 @@ void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay);
 fastd_peer_t * fastd_peer_find_by_id(uint64_t id);
 
 void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
-void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
+void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, bool sync);
 
 /**
    Schedules a handshake with the default delay and jitter

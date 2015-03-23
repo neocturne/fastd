@@ -158,8 +158,6 @@
 %type <uint64> drop_capabilities_enabled
 %type <tristate> autobool
 %type <boolean> sync
-%type <boolean> sync_def_sync
-%type <boolean> sync_def_async
 
 %%
 start:		START_CONFIG config
@@ -396,42 +394,42 @@ protocol:	TOK_STRING {
 secret:		TOK_STRING	{ free(conf.secret); conf.secret = fastd_strdup($1->str); }
 	;
 
-on_pre_up:	sync_def_sync TOK_STRING {
-			fastd_shell_command_set(&conf.on_pre_up, $2->str, $1);
+on_pre_up:	TOK_STRING {
+			fastd_shell_command_set(&conf.on_pre_up, $1->str, true);
 		}
 	;
 
-on_up:		sync_def_sync TOK_STRING {
+on_up:		sync TOK_STRING {
 			fastd_shell_command_set(&conf.on_up, $2->str, $1);
 		}
 	;
 
-on_down:	sync_def_sync TOK_STRING {
+on_down:	sync TOK_STRING {
 			fastd_shell_command_set(&conf.on_down, $2->str, $1);
 		}
 	;
 
-on_post_down:	sync_def_sync TOK_STRING {
-			fastd_shell_command_set(&conf.on_post_down, $2->str, $1);
+on_post_down:	TOK_STRING {
+			fastd_shell_command_set(&conf.on_post_down, $1->str, true);
 		}
 	;
 
-on_connect:	sync_def_async TOK_STRING {
+on_connect:	sync TOK_STRING {
 			fastd_shell_command_set(&conf.on_connect, $2->str, $1);
 		}
 	;
 
-on_establish:	sync_def_async TOK_STRING {
+on_establish:	sync TOK_STRING {
 			fastd_shell_command_set(&conf.on_establish, $2->str, $1);
 		}
 	;
 
-on_disestablish: sync_def_async TOK_STRING {
+on_disestablish: sync TOK_STRING {
 			fastd_shell_command_set(&conf.on_disestablish, $2->str, $1);
 		}
 	;
 
-on_verify:	sync_def_async TOK_STRING {
+on_verify:	sync TOK_STRING {
 #ifdef WITH_DYNAMIC_PEERS
 			fastd_shell_command_set(&conf.on_verify, $2->str, $1);
 #else
@@ -627,16 +625,9 @@ maybe_ipv6:	TOK_IPV6
 	|
 	;
 
-sync_def_sync:	sync		{ $$ = $1; }
-	|			{ $$ = true; }
-	;
-
-sync_def_async: sync		{ $$ = $1; }
-	|			{ $$ = false; }
-	;
-
 sync:		TOK_SYNC	{ $$ = true; }
 	|	TOK_ASYNC	{ $$ = false; }
+	|			{ $$ = false; }
 
 boolean:	TOK_YES		{ $$ = true; }
 	|	TOK_NO		{ $$ = false; }

@@ -207,14 +207,14 @@ static void close_sockets(void) {
 
 /** Calls the on-pre-up command */
 static inline void on_pre_up(void) {
-	fastd_shell_command_exec(&conf.on_pre_up, NULL);
+	fastd_shell_command_exec_sync(&conf.on_pre_up, NULL, NULL);
 }
 
 /** Calls the on-up command */
 static inline void on_up(fastd_iface_t *iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec(&conf.on_up, env);
+	fastd_shell_command_exec_sync(&conf.on_up, env, NULL);
 	fastd_shell_env_free(env);
 }
 
@@ -222,7 +222,7 @@ static inline void on_up(fastd_iface_t *iface) {
 static inline void on_down(fastd_iface_t *iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec(&conf.on_down, env);
+	fastd_shell_command_exec_sync(&conf.on_down, env, NULL);
 	fastd_shell_env_free(env);
 }
 

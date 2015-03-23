@@ -111,31 +111,36 @@ void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, 
 }
 
 /** Executes a shell command, providing peer-specific enviroment fields */
-void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
+void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, bool sync) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_peer_set_shell_env(env, peer, local_addr, peer_addr);
-	fastd_shell_command_exec(command, env);
+
+	if (sync)
+		fastd_shell_command_exec_sync(command, env, NULL);
+	else
+		fastd_shell_command_exec(command, env);
+
 	fastd_shell_env_free(env);
 }
 
 /** Calls the on-up command */
-static inline void on_up(const fastd_peer_t *peer) {
-	fastd_peer_exec_shell_command(&conf.on_up, peer, NULL, NULL);
+static inline void on_up(const fastd_peer_t *peer, bool sync) {
+	fastd_peer_exec_shell_command(&conf.on_up, peer, NULL, NULL, sync);
 }
 
 /** Calls the on-down command */
-static inline void on_down(const fastd_peer_t *peer) {
-	fastd_peer_exec_shell_command(&conf.on_down, peer, NULL, NULL);
+static inline void on_down(const fastd_peer_t *peer, bool sync) {
+	fastd_peer_exec_shell_command(&conf.on_down, peer, NULL, NULL, sync);
 }
 
 /** Executes the on-establish command for a peer */
 static inline void on_establish(const fastd_peer_t *peer) {
-	fastd_peer_exec_shell_command(&conf.on_establish, peer, &peer->local_address, &peer->address);
+	fastd_peer_exec_shell_command(&conf.on_establish, peer, &peer->local_address, &peer->address, false);
 }
 
 /** Executes the on-disestablish command for a peer */
 static inline void on_disestablish(const fastd_peer_t *peer) {
-	fastd_peer_exec_shell_command(&conf.on_disestablish, peer, &peer->local_address, &peer->address);
+	fastd_peer_exec_shell_command(&conf.on_disestablish, peer, &peer->local_address, &peer->address, false);
 }
 
 /** Compares two peers by their peer ID */
@@ -324,9 +329,9 @@ static void reset_peer(fastd_peer_t *peer) {
 	peer->local_address.sa.sa_family = AF_UNSPEC;
 	peer->state = STATE_INACTIVE;
 
-	if (!conf.iface_persist || peer->config_state == CONFIG_DISABLED) {
+	if (!conf.iface_persist || peer->config_state == CONFIG_DISABLED || fastd_peer_is_dynamic(peer)) {
 		if (peer->iface && peer->iface->peer) {
-			on_down(peer);
+			on_down(peer, false);
 			fastd_iface_close(peer->iface);
 		}
 
@@ -405,7 +410,7 @@ static void setup_peer(fastd_peer_t *peer) {
 	if (ctx.iface) {
 		peer->iface = ctx.iface;
 	}
-	else if (conf.iface_persist && !peer->iface) {
+	else if (conf.iface_persist && !peer->iface && !fastd_peer_is_dynamic(peer)) {
 		const char *ifname = peer->ifname;
 
 		if (!ifname && fastd_config_single_iface())
@@ -413,7 +418,7 @@ static void setup_peer(fastd_peer_t *peer) {
 
 		peer->iface = fastd_iface_open(ifname, peer);
 		if (peer->iface)
-			on_up(peer);
+			on_up(peer, true);
 		else if (!peer->config_source_dir)
 			/* Fail for statically configured peers;
 			   an error message has already been printed by fastd_iface_open() */
@@ -475,7 +480,7 @@ static void delete_peer(fastd_peer_t *peer) {
 	conf.protocol->free_peer_state(peer);
 
 	if (peer->iface && peer->iface->peer) {
-		on_down(peer);
+		on_down(peer, true);
 		fastd_iface_close(peer->iface);
 	}
 
