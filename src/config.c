@@ -102,6 +102,15 @@ bool fastd_config_ifname(fastd_peer_t *peer, const char *ifname) {
 	if (strchr(ifname, '/'))
 		return false;
 
+	const char *percent = strchr(ifname, '%');
+	if (percent) {
+		if (strrchr(ifname, '%') != percent)
+			return false; /* Multiple patterns */
+
+		if (percent[1] != 'n' && percent[1] != 'k')
+			return false;
+	}
+
 	char **name = peer ? &peer->ifname : &conf.ifname;
 
 	free(*name);

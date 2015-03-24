@@ -464,17 +464,56 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 
 /** Opens a new TUN/TAP interface, optionally associated with a specific peer */
 fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
-	fastd_iface_t *iface = fastd_new(fastd_iface_t);
-	iface->peer = peer;
-
 	const char *ifname = conf.ifname;
+	char ifnamebuf[IFNAMSIZ];
 
 	if (peer) {
 		if (peer->ifname)
 			ifname = peer->ifname;
-		else if (!fastd_config_single_iface())
+		else if (!fastd_config_single_iface() && !(ifname && strchr(ifname, '%')))
 			ifname = NULL;
 	}
+
+	const char *percent = ifname ? strchr(ifname, '%') : NULL;
+	if (percent) {
+		if (peer) {
+			char prefix[percent - ifname + 1];
+			memcpy(prefix, ifname, percent - ifname);
+			prefix[percent - ifname] = 0;
+
+			ifname = NULL;
+
+			switch (percent[1]) {
+			case 'n':
+				if (peer->name) {
+					snprintf(ifnamebuf, sizeof(ifnamebuf), "%s%s%s", prefix, peer->name, percent+2);
+					ifname = ifnamebuf;
+				}
+
+				break;
+
+			case 'k':
+			{
+				char buf[17];
+				if (conf.protocol->describe_peer(peer, buf, sizeof(buf))) {
+					snprintf(ifnamebuf, sizeof(ifnamebuf), "%s%s%s", prefix, buf, percent+2);
+					ifname = ifnamebuf;
+				}
+			}
+				break;
+
+			default:
+				exit_bug("fastd_iface_open: invalid interface pattern");
+			}
+		}
+		else {
+			pr_error("Invalid TUN/TAP device name: `%%n' and `%%k' patterns can't be used in TAP mode");
+			return NULL;
+		}
+	}
+
+	fastd_iface_t *iface = fastd_new(fastd_iface_t);
+	iface->peer = peer;
 
 	pr_debug("initializing TUN/TAP device...");
 	open_iface(iface, ifname);
