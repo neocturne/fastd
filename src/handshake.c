@@ -398,6 +398,7 @@ static inline bool check_records(fastd_socket_t *sock, const fastd_peer_address_
 	return true;
 }
 
+/** Checks if an MTU record of a handshake matches the configured MTU for a peer */
 bool fastd_handshake_check_mtu(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake) {
 	if (handshake->records[RECORD_MTU].length == 2) {
 		if (as_uint16_endian(&handshake->records[RECORD_MTU], handshake->little_endian) != fastd_peer_get_mtu(peer)) {

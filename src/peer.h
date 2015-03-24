@@ -284,6 +284,7 @@ static inline const fastd_string_stack_t * fastd_peer_get_methods(const fastd_pe
 	return NULL;
 }
 
+/** Returns the MTU to use for a peer */
 static inline uint16_t fastd_peer_get_mtu(const fastd_peer_t *peer) {
 	if (conf.mode == MODE_TAP)
 		return conf.mtu;

@@ -159,7 +159,7 @@ struct fastd_iface {
 	fastd_poll_fd_t fd;			/**< The file descriptor of the tunnel interface */
 	char *name;				/**< The interface name */
 	fastd_peer_t *peer;			/**< The peer associated with the interface (if any) */
-	uint16_t mtu;
+	uint16_t mtu;				/**< The MTU of the interface */
 };
 
 
