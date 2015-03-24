@@ -98,6 +98,7 @@ void fastd_config_method(fastd_peer_group_t *group, const char *name) {
 	*method = fastd_string_stack_dup(name);
 }
 
+/** Configures an interface name or name pattern */
 bool fastd_config_ifname(fastd_peer_t *peer, const char *ifname) {
 	if (strchr(ifname, '/'))
 		return false;
