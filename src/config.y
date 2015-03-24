@@ -478,6 +478,7 @@ peer_statement: TOK_REMOTE peer_remote ';'
 	|	TOK_FLOAT peer_float ';'
 	|	TOK_KEY peer_key ';'
 	|	TOK_INTERFACE peer_interface ';'
+	|	TOK_MTU peer_mtu ';'
 	|	TOK_INCLUDE peer_include ';'
 	;
 
@@ -550,6 +551,15 @@ peer_interface:	TOK_STRING {
 		}
 	;
 
+peer_mtu:	TOK_UINT {
+			if ($1 < 576 || $1 > 65535) {
+				fastd_config_error(&@$, state, "invalid MTU");
+				YYERROR;
+			}
+
+			state->peer->mtu = $1;
+		}
+	;
 peer_include:	TOK_STRING {
 			if (!fastd_config_read($1->str, state->peer_group, state->peer, state->depth))
 				YYERROR;

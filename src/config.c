@@ -609,6 +609,7 @@ static void peer_dirs_read_peer_group(fastd_peer_group_t *group) {
 /** Initializes the configured peers */
 static void configure_peers(bool dirs_only) {
 	ctx.has_floating = false;
+	ctx.max_mtu = conf.mtu;
 
 	ssize_t i;
 	for (i = VECTOR_LEN(ctx.peers)-1; i >= 0; i--) {
@@ -633,6 +634,9 @@ static void configure_peers(bool dirs_only) {
 
 		if (fastd_peer_is_floating(peer))
 			ctx.has_floating = true;
+
+		if (conf.mode != MODE_TAP && peer->mtu > ctx.max_mtu)
+			ctx.max_mtu = peer->mtu;
 
 		peer->config_state = CONFIG_STATIC;
 

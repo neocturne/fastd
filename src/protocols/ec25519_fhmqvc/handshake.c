@@ -314,7 +314,7 @@ static void respond_handshake(const fastd_socket_t *sock, const fastd_peer_addre
 	if (!update_shared_handshake_key(peer, handshake_key, peer_handshake_key))
 		return;
 
-	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(2, little_endian, method, fastd_peer_get_methods(peer), 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
+	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(2, little_endian, fastd_peer_get_mtu(peer), method, fastd_peer_get_methods(peer), 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 	fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
@@ -373,7 +373,7 @@ static void finish_handshake(fastd_socket_t *sock, const fastd_peer_address_t *l
 		       &peer->key->key, &sigma, compat ? NULL : shared_handshake_key.w, handshake_key->serial))
 		return;
 
-	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(3, handshake->little_endian, method, NULL, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
+	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(3, handshake->little_endian, fastd_peer_get_mtu(peer), method, NULL, 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 	fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
@@ -660,6 +660,9 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 			exit_bug("match_sender_key: unknown error");
 		}
 	}
+
+	if (!fastd_handshake_check_mtu(sock, local_addr, remote_addr, peer, handshake))
+		return;
 
 	if (!has_field(handshake, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES)) {
 		pr_debug("received handshake without sender handshake key from %P[%I]", peer, remote_addr);

@@ -73,6 +73,7 @@ struct fastd_peer {
 	fastd_protocol_peer_state_t *protocol_state;	/**< Protocol-specific peer state */
 
 	char *ifname;					/**< Peer-specific interface name */
+	uint16_t mtu;					/**< Peer-specific interface MTU */
 
 	/* Starting here, more dynamic fields follow: */
 
@@ -281,6 +282,16 @@ static inline const fastd_string_stack_t * fastd_peer_get_methods(const fastd_pe
 	}
 
 	return NULL;
+}
+
+static inline uint16_t fastd_peer_get_mtu(const fastd_peer_t *peer) {
+	if (conf.mode == MODE_TAP)
+		return conf.mtu;
+
+	if (peer && peer->mtu)
+		return peer->mtu;
+
+	return conf.mtu;
 }
 
 /** Checks if a MAC address is a normal unicast address */

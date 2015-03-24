@@ -87,13 +87,13 @@ static inline fastd_iface_type_t get_iface_type(void) {
 	}
 }
 
-static void open_iface(fastd_iface_t *iface, const char *ifname);
+static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu);
 
 
 #ifdef __linux__
 
 /** Opens the TUN/TAP device helper shared by Android and Linux targets */
-static void open_iface_linux(fastd_iface_t *iface, const char *ifname, const char *dev_name) {
+static void open_iface_linux(fastd_iface_t *iface, const char *ifname, uint16_t mtu, const char *dev_name) {
 	int ctl_sock = -1;
 	struct ifreq ifr = {};
 
@@ -132,8 +132,8 @@ static void open_iface_linux(fastd_iface_t *iface, const char *ifname, const cha
 	if (ioctl(ctl_sock, SIOCGIFMTU, &ifr) < 0)
 		exit_errno("SIOCGIFMTU ioctl failed");
 
-	if (ifr.ifr_mtu != conf.mtu) {
-		ifr.ifr_mtu = conf.mtu;
+	if (ifr.ifr_mtu != mtu) {
+		ifr.ifr_mtu = mtu;
 		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0) {
 			pr_error_errno("unable to set TUN/TAP interface MTU: SIOCSIFMTU ioctl failed");
 			goto error;
@@ -160,7 +160,7 @@ static void open_iface_linux(fastd_iface_t *iface, const char *ifname, const cha
 #if defined(__ANDROID__)
 
 /** Opens the TUN/TAP device */
-static void open_iface(fastd_iface_t *iface, const char *ifname) {
+static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	if (conf.android_integration) {
 		if (get_iface_type() != IFACE_TYPE_TUN)
 			exit_bug("Non-TUN iface type with Android integration");
@@ -172,27 +172,27 @@ static void open_iface(fastd_iface_t *iface, const char *ifname) {
 		fastd_android_send_pid();
 	} else {
 		/* this requires root on Android */
-		open_iface_linux(iface, ifname, "/dev/tun");
+		open_iface_linux(iface, ifname, mtu, "/dev/tun");
 	}
 }
 
 #elif defined(__linux__)
 
 /** Opens the TUN/TAP device */
-static void open_iface(fastd_iface_t *iface, const char *ifname) {
-	open_iface_linux(iface, ifname, "/dev/net/tun");
+static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
+	open_iface_linux(iface, ifname, mtu, "/dev/net/tun");
 }
 
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
 
 /** Sets the MTU of the TUN/TAP device */
-static void set_tun_mtu(fastd_iface_t *iface) {
+static void set_tun_mtu(fastd_iface_t *iface, uint16_t mtu) {
 	struct tuninfo tuninfo;
 
 	if (ioctl(iface->fd.fd, TUNGIFINFO, &tuninfo) < 0)
 		exit_errno("TUNGIFINFO ioctl failed");
 
-	tuninfo.mtu = conf.mtu;
+	tuninfo.mtu = mtu;
 
 	if (ioctl(iface->fd.fd, TUNSIFINFO, &tuninfo) < 0)
 		exit_errno("TUNSIFINFO ioctl failed");
@@ -202,29 +202,29 @@ static void set_tun_mtu(fastd_iface_t *iface) {
 #ifdef __FreeBSD__
 
 /** Sets the MTU of the TAP device */
-static void set_tap_mtu(fastd_iface_t *iface) {
+static void set_tap_mtu(fastd_iface_t *iface, uint16_t mtu) {
 	struct tapinfo tapinfo;
 
 	if (ioctl(iface->fd.fd, TAPGIFINFO, &tapinfo) < 0)
 		exit_errno("TAPGIFINFO ioctl failed");
 
-	tapinfo.mtu = conf.mtu;
+	tapinfo.mtu = mtu;
 
 	if (ioctl(iface->fd.fd, TAPSIFINFO, &tapinfo) < 0)
 		exit_errno("TAPSIFINFO ioctl failed");
 }
 
 /** Sets up the TUN device */
-static void setup_tun(fastd_iface_t *iface) {
+static void setup_tun(fastd_iface_t *iface, uint16_t mtu) {
 	int one = 1;
 	if (ioctl(iface->fd.fd, TUNSIFHEAD, &one) < 0)
 		exit_errno("TUNSIFHEAD ioctl failed");
 
-	set_tun_mtu(iface);
+	set_tun_mtu(iface, mtu);
 }
 
 /** Sets up the TAP device */
-static void setup_tap(fastd_iface_t *iface) {
+static void setup_tap(fastd_iface_t *iface, uint16_t mtu) {
 	struct ifreq ifr = {};
 
 	if (ioctl(iface->fd.fd, TAPGIFNAME, &ifr) < 0)
@@ -233,11 +233,11 @@ static void setup_tap(fastd_iface_t *iface) {
 	free(iface->name);
 	iface->name = fastd_strndup(ifr.ifr_name, IFNAMSIZ-1);
 
-	set_tap_mtu(iface);
+	set_tap_mtu(iface, mtu);
 }
 
 /** Opens the TUN/TAP device */
-static void open_iface(fastd_iface_t *iface, const char *ifname) {
+static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	char dev_name[5+IFNAMSIZ] = "/dev/";
 	const char *type;
 
@@ -273,11 +273,11 @@ static void open_iface(fastd_iface_t *iface, const char *ifname) {
 
 	switch (get_iface_type()) {
 	case IFACE_TYPE_TAP:
-		setup_tap(iface);
+		setup_tap(iface, mtu);
 		break;
 
 	case IFACE_TYPE_TUN:
-		setup_tun(iface);
+		setup_tun(iface, mtu);
 		break;
 
 	default:
@@ -311,19 +311,19 @@ static void set_link0(fastd_iface_t *iface, bool set) {
 }
 
 /** Sets up the TUN device */
-static void setup_tun(fastd_iface_t *iface) {
+static void setup_tun(fastd_iface_t *iface, uint16_t mtu) {
 	set_link0(iface, false);
-	set_tun_mtu(iface);
+	set_tun_mtu(iface, mtu);
 }
 
 /** Sets up the TAP device */
-static void setup_tap(fastd_iface_t *iface) {
+static void setup_tap(fastd_iface_t *iface, uint16_t mtu) {
 	set_link0(iface, true);
-	set_tun_mtu(iface);
+	set_tun_mtu(iface, mtu);
 }
 
 /** Opens the TUN/TAP device */
-static void open_iface(fastd_iface_t *iface, const char *ifname) {
+static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	char dev_name[5+IFNAMSIZ] = "/dev/";
 	if (!ifname)
 		exit_error("config error: no interface name given.");
@@ -340,11 +340,11 @@ static void open_iface(fastd_iface_t *iface, const char *ifname) {
 
 	switch (get_iface_type()) {
 	case IFACE_TYPE_TAP:
-		setup_tap(iface);
+		setup_tap(iface, mtu);
 		break;
 
 	case IFACE_TYPE_TUN:
-		setup_tun(iface);
+		setup_tun(iface, mtu);
 		break;
 
 	default:
@@ -357,7 +357,7 @@ static void open_iface(fastd_iface_t *iface, const char *ifname) {
 #elif __APPLE__
 
 /** Opens the TUN/TAP device */
-static void open_iface(fastd_iface_t *iface, const char *ifname) {
+static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	const char *devtype;
 	switch (get_iface_type()) {
 	case IFACE_TYPE_TAP:
@@ -392,7 +392,7 @@ static void open_iface(fastd_iface_t *iface, const char *ifname) {
 
 	struct ifreq ifr = {};
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ-1);
-	ifr.ifr_mtu = conf.mtu;
+	ifr.ifr_mtu = mtu;
 	if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
 		exit_errno("SIOCSIFMTU ioctl failed");
 
@@ -409,7 +409,7 @@ static void open_iface(fastd_iface_t *iface, const char *ifname) {
 
 /** Reads a packet from the TUN/TAP device */
 void fastd_iface_handle(fastd_iface_t *iface) {
-	size_t max_len = fastd_max_payload();
+	size_t max_len = fastd_max_payload(iface->mtu);
 
 	fastd_buffer_t buffer;
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
@@ -514,9 +514,10 @@ fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 
 	fastd_iface_t *iface = fastd_new(fastd_iface_t);
 	iface->peer = peer;
+	iface->mtu = fastd_peer_get_mtu(peer);
 
 	pr_debug("initializing TUN/TAP device...");
-	open_iface(iface, ifname);
+	open_iface(iface, ifname, iface->mtu);
 
 	if (iface->fd.fd < 0) {
 		free(iface);

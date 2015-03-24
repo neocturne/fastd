@@ -159,6 +159,7 @@ struct fastd_iface {
 	fastd_poll_fd_t fd;			/**< The file descriptor of the tunnel interface */
 	char *name;				/**< The interface name */
 	fastd_peer_t *peer;			/**< The peer associated with the interface (if any) */
+	uint16_t mtu;
 };
 
 
@@ -301,6 +302,7 @@ struct fastd_context {
 #endif
 
 	bool has_floating;			/**< Specifies if any of the configured peers have floating remotes */
+	uint16_t max_mtu;			/**< The maximum MTU of all peer-specific interfaces */
 
 	uint32_t peer_addr_ht_seed;		/**< The hash seed used for peer_addr_ht */
 	size_t peer_addr_ht_size;		/**< The number of hash buckets in the peer address hashtable */
@@ -416,13 +418,13 @@ static inline void fastd_setnonblock(int fd) {
 
 
 /** Returns the maximum payload size \em fastd is configured to transport */
-static inline size_t fastd_max_payload(void) {
+static inline size_t fastd_max_payload(uint16_t mtu) {
 	switch (conf.mode) {
 	case MODE_TAP:
 	case MODE_MULTITAP:
-		return conf.mtu+ETH_HLEN;
+		return mtu+ETH_HLEN;
 	case MODE_TUN:
-		return conf.mtu;
+		return mtu;
 	default:
 		exit_bug("invalid mode");
 	}
