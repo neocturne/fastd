@@ -1,0 +1,24 @@
+# Defines the following variables:
+#  LIBSODIUM_FOUND
+#  LIBSODIUM_INCLUDE_DIR
+#  LIBSODIUM_LIBRARIES
+#  LIBSODIUM_CFLAGS_OTHER
+#  LIBSODIUM_LDFLAGS_OTHER
+
+
+if(ANDROID)
+  find_host_package(PkgConfig REQUIRED QUIET)
+else(ANDROID)
+  find_package(PkgConfig REQUIRED QUIET)
+endif(ANDROID)
+
+pkg_check_modules(_LIBSODIUM libsodium)
+
+find_path(LIBSODIUM_INCLUDE_DIR NAMES sodium/crypto_stream.h HINTS ${_LIBSODIUM_INCLUDE_DIRS})
+find_library(LIBSODIUM_LIBRARIES NAMES sodium HINTS ${_LIBSODIUM_LIBRARY_DIRS})
+
+set(LIBSODIUM_CFLAGS_OTHER "${_LIBSODIUM_CFLAGS_OTHER}" CACHE STRING "Additional compiler flags for libsodium")
+set(LIBSODIUM_LDFLAGS_OTHER "${_LIBSODIUM_LDFLAGS_OTHER}" CACHE STRING "Additional linker flags for libsodium")
+
+find_package_handle_standard_args(libsodium REQUIRED_VARS LIBSODIUM_LIBRARIES LIBSODIUM_INCLUDE_DIR)
+mark_as_advanced(LIBSODIUM_INCLUDE_DIR LIBSODIUM_LIBRARIES LIBSODIUM_CFLAGS_OTHER LIBSODIUM_LDFLAGS_OTHER)

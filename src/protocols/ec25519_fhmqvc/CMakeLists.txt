@@ -1,3 +1,4 @@
+
 add_library(protocol_ec25519_fhmqvc OBJECT
   ec25519_fhmqvc.c
   handshake.c
@@ -5,4 +6,4 @@ add_library(protocol_ec25519_fhmqvc OBJECT
   util.c
 )
 set_property(TARGET protocol_ec25519_fhmqvc PROPERTY COMPILE_FLAGS "${FASTD_CFLAGS}")
-set_property(TARGET protocol_ec25519_fhmqvc APPEND PROPERTY INCLUDE_DIRECTORIES ${UECC_INCLUDE_DIRS})
+set_property(TARGET protocol_ec25519_fhmqvc APPEND PROPERTY INCLUDE_DIRECTORIES ${LIBUECC_INCLUDE_DIR})
