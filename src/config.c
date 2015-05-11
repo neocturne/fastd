@@ -568,7 +568,7 @@ static void config_check_base(void) {
 void fastd_config_check(void) {
 	config_check_base();
 
-	if (!VECTOR_LEN(ctx.peers) && !has_peer_group_peer_dirs(conf.peer_group))
+	if (!VECTOR_LEN(ctx.peers) && !has_peer_group_peer_dirs(conf.peer_group) && !fastd_allow_verify())
 		exit_error("config error: neither fixed peers nor peer dirs have been configured");
 
 	if (!conf.peer_group->methods) {
@@ -586,6 +586,9 @@ bool fastd_config_single_iface(void) {
 		return true;
 
 	if (has_peer_group_peer_dirs(conf.peer_group))
+		return false;
+
+	if (fastd_allow_verify())
 		return false;
 
 	return (VECTOR_LEN(ctx.peers) == 1);
