@@ -285,106 +285,13 @@
 
 # qhasm: stack32 ctarget
 
-# qhasm: enter crypto_stream_salsa2012_x86_xmm5
-.text
-.p2align 5
-.globl _crypto_stream_salsa2012_x86_xmm5
-.globl crypto_stream_salsa2012_x86_xmm5
-_crypto_stream_salsa2012_x86_xmm5:
-crypto_stream_salsa2012_x86_xmm5:
-mov %esp,%eax
-and $31,%eax
-add $704,%eax
-sub %eax,%esp
-
-# qhasm: eax_stack = eax
-# asm 1: movl <eax=int32#1,>eax_stack=stack32#1
-# asm 2: movl <eax=%eax,>eax_stack=0(%esp)
-movl %eax,0(%esp)
-
-# qhasm: ebx_stack = ebx
-# asm 1: movl <ebx=int32#4,>ebx_stack=stack32#2
-# asm 2: movl <ebx=%ebx,>ebx_stack=4(%esp)
-movl %ebx,4(%esp)
-
-# qhasm: esi_stack = esi
-# asm 1: movl <esi=int32#5,>esi_stack=stack32#3
-# asm 2: movl <esi=%esi,>esi_stack=8(%esp)
-movl %esi,8(%esp)
-
-# qhasm: edi_stack = edi
-# asm 1: movl <edi=int32#6,>edi_stack=stack32#4
-# asm 2: movl <edi=%edi,>edi_stack=12(%esp)
-movl %edi,12(%esp)
-
-# qhasm: ebp_stack = ebp
-# asm 1: movl <ebp=int32#7,>ebp_stack=stack32#5
-# asm 2: movl <ebp=%ebp,>ebp_stack=16(%esp)
-movl %ebp,16(%esp)
-
-# qhasm: bytes = arg2
-# asm 1: movl <arg2=stack32#-2,>bytes=int32#3
-# asm 2: movl <arg2=8(%esp,%eax),>bytes=%edx
-movl 8(%esp,%eax),%edx
-
-# qhasm: out = arg1
-# asm 1: movl <arg1=stack32#-1,>out=int32#6
-# asm 2: movl <arg1=4(%esp,%eax),>out=%edi
-movl 4(%esp,%eax),%edi
-
-# qhasm: m = out
-# asm 1: mov  <out=int32#6,>m=int32#5
-# asm 2: mov  <out=%edi,>m=%esi
-mov  %edi,%esi
-
-# qhasm: iv = arg4
-# asm 1: movl <arg4=stack32#-4,>iv=int32#4
-# asm 2: movl <arg4=16(%esp,%eax),>iv=%ebx
-movl 16(%esp,%eax),%ebx
-
-# qhasm: k = arg5
-# asm 1: movl <arg5=stack32#-5,>k=int32#7
-# asm 2: movl <arg5=20(%esp,%eax),>k=%ebp
-movl 20(%esp,%eax),%ebp
-
-# qhasm:               unsigned>? bytes - 0
-# asm 1: cmp  $0,<bytes=int32#3
-# asm 2: cmp  $0,<bytes=%edx
-cmp  $0,%edx
-# comment:fp stack unchanged by jump
-
-# qhasm: goto done if !unsigned>
-jbe ._done
-
-# qhasm: a = 0
-# asm 1: mov  $0,>a=int32#1
-# asm 2: mov  $0,>a=%eax
-mov  $0,%eax
-
-# qhasm: i = bytes
-# asm 1: mov  <bytes=int32#3,>i=int32#2
-# asm 2: mov  <bytes=%edx,>i=%ecx
-mov  %edx,%ecx
-
-# qhasm: while (i) { *out++ = a; --i }
-rep stosb
-
-# qhasm: out -= bytes
-# asm 1: subl <bytes=int32#3,<out=int32#6
-# asm 2: subl <bytes=%edx,<out=%edi
-subl %edx,%edi
-# comment:fp stack unchanged by jump
-
-# qhasm: goto start
-jmp ._start
-
 # qhasm: enter crypto_stream_salsa2012_x86_xmm5_xor
 .text
 .p2align 5
-.globl _crypto_stream_salsa2012_x86_xmm5_xor
-.globl crypto_stream_salsa2012_x86_xmm5_xor
-_crypto_stream_salsa2012_x86_xmm5_xor:
-crypto_stream_salsa2012_x86_xmm5_xor:
+.globl _fastd_salsa2012_xmm_xor
+.globl fastd_salsa2012_xmm_xor
+_fastd_salsa2012_xmm_xor:
+fastd_salsa2012_xmm_xor:
 mov %esp,%eax
 and $31,%eax
 add $704,%eax

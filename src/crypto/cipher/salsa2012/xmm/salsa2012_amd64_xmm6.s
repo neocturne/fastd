@@ -333,116 +333,13 @@
 
 # qhasm: stack64 bytes_backup
 
-# qhasm: enter crypto_stream_salsa2012_amd64_xmm6
-.text
-.p2align 5
-.globl _crypto_stream_salsa2012_amd64_xmm6
-.globl crypto_stream_salsa2012_amd64_xmm6
-_crypto_stream_salsa2012_amd64_xmm6:
-crypto_stream_salsa2012_amd64_xmm6:
-mov %rsp,%r11
-and $31,%r11
-add $480,%r11
-sub %r11,%rsp
-
-# qhasm: r11_stack = r11_caller
-# asm 1: movq <r11_caller=int64#9,>r11_stack=stack64#1
-# asm 2: movq <r11_caller=%r11,>r11_stack=352(%rsp)
-movq %r11,352(%rsp)
-
-# qhasm: r12_stack = r12_caller
-# asm 1: movq <r12_caller=int64#10,>r12_stack=stack64#2
-# asm 2: movq <r12_caller=%r12,>r12_stack=360(%rsp)
-movq %r12,360(%rsp)
-
-# qhasm: r13_stack = r13_caller
-# asm 1: movq <r13_caller=int64#11,>r13_stack=stack64#3
-# asm 2: movq <r13_caller=%r13,>r13_stack=368(%rsp)
-movq %r13,368(%rsp)
-
-# qhasm: r14_stack = r14_caller
-# asm 1: movq <r14_caller=int64#12,>r14_stack=stack64#4
-# asm 2: movq <r14_caller=%r14,>r14_stack=376(%rsp)
-movq %r14,376(%rsp)
-
-# qhasm: r15_stack = r15_caller
-# asm 1: movq <r15_caller=int64#13,>r15_stack=stack64#5
-# asm 2: movq <r15_caller=%r15,>r15_stack=384(%rsp)
-movq %r15,384(%rsp)
-
-# qhasm: rbx_stack = rbx_caller
-# asm 1: movq <rbx_caller=int64#14,>rbx_stack=stack64#6
-# asm 2: movq <rbx_caller=%rbx,>rbx_stack=392(%rsp)
-movq %rbx,392(%rsp)
-
-# qhasm: rbp_stack = rbp_caller
-# asm 1: movq <rbp_caller=int64#15,>rbp_stack=stack64#7
-# asm 2: movq <rbp_caller=%rbp,>rbp_stack=400(%rsp)
-movq %rbp,400(%rsp)
-
-# qhasm: bytes = arg2
-# asm 1: mov  <arg2=int64#2,>bytes=int64#6
-# asm 2: mov  <arg2=%rsi,>bytes=%r9
-mov  %rsi,%r9
-
-# qhasm: out = arg1
-# asm 1: mov  <arg1=int64#1,>out=int64#1
-# asm 2: mov  <arg1=%rdi,>out=%rdi
-mov  %rdi,%rdi
-
-# qhasm: m = out
-# asm 1: mov  <out=int64#1,>m=int64#2
-# asm 2: mov  <out=%rdi,>m=%rsi
-mov  %rdi,%rsi
-
-# qhasm: iv = arg3
-# asm 1: mov  <arg3=int64#3,>iv=int64#3
-# asm 2: mov  <arg3=%rdx,>iv=%rdx
-mov  %rdx,%rdx
-
-# qhasm: k = arg4
-# asm 1: mov  <arg4=int64#4,>k=int64#8
-# asm 2: mov  <arg4=%rcx,>k=%r10
-mov  %rcx,%r10
-
-# qhasm:               unsigned>? bytes - 0
-# asm 1: cmp  $0,<bytes=int64#6
-# asm 2: cmp  $0,<bytes=%r9
-cmp  $0,%r9
-# comment:fp stack unchanged by jump
-
-# qhasm: goto done if !unsigned>
-jbe ._done
-
-# qhasm: a = 0
-# asm 1: mov  $0,>a=int64#7
-# asm 2: mov  $0,>a=%rax
-mov  $0,%rax
-
-# qhasm: i = bytes
-# asm 1: mov  <bytes=int64#6,>i=int64#4
-# asm 2: mov  <bytes=%r9,>i=%rcx
-mov  %r9,%rcx
-
-# qhasm: while (i) { *out++ = a; --i }
-rep stosb
-
-# qhasm: out -= bytes
-# asm 1: sub  <bytes=int64#6,<out=int64#1
-# asm 2: sub  <bytes=%r9,<out=%rdi
-sub  %r9,%rdi
-# comment:fp stack unchanged by jump
-
-# qhasm: goto start
-jmp ._start
-
 # qhasm: enter crypto_stream_salsa2012_amd64_xmm6_xor
 .text
 .p2align 5
-.globl _crypto_stream_salsa2012_amd64_xmm6_xor
-.globl crypto_stream_salsa2012_amd64_xmm6_xor
-_crypto_stream_salsa2012_amd64_xmm6_xor:
-crypto_stream_salsa2012_amd64_xmm6_xor:
+.globl _fastd_salsa2012_xmm_xor
+.globl fastd_salsa2012_xmm_xor
+_fastd_salsa2012_xmm_xor:
+fastd_salsa2012_xmm_xor:
 mov %rsp,%r11
 and $31,%r11
 add $480,%r11

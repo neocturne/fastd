@@ -42,17 +42,8 @@
 #define KEYBYTES 32
 
 
-#ifdef __x86_64__
-#define crypto_stream_salsa2012_xor crypto_stream_salsa2012_amd64_xmm6_xor
-#endif
-
-#ifdef __i386__
-#define crypto_stream_salsa2012_xor crypto_stream_salsa2012_x86_xmm5_xor
-#endif
-
-
 /** The actual Salsa20/12 assembly implementation */
-int crypto_stream_salsa2012_xor(unsigned char *c, const unsigned char *m, unsigned long long mlen, const unsigned char *n, const unsigned char *k);
+int fastd_salsa2012_xmm_xor(unsigned char *c, const unsigned char *m, unsigned long long mlen, const unsigned char *n, const unsigned char *k);
 
 
 /** The cipher state */
@@ -76,7 +67,7 @@ static fastd_cipher_state_t * salsa2012_init(const uint8_t *key) {
 
 /** XORs data with the Salsa20/12 cipher stream */
 static bool salsa2012_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
-	crypto_stream_salsa2012_xor(out->b, in->b, len, iv, state->key);
+	fastd_salsa2012_xmm_xor(out->b, in->b, len, iv, state->key);
 	return true;
 }
 
