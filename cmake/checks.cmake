@@ -54,11 +54,6 @@ if(NOT DARWIN)
 endif(NOT DARWIN)
 
 
-set(CMAKE_EXTRA_INCLUDE_FILES "netinet/if_ether.h")
-check_type_size("struct ethhdr" SIZEOF_ETHHDR)
-string(COMPARE NOTEQUAL "${SIZEOF_ETHHDR}" "" HAVE_ETHHDR)
-
-
 set(CMAKE_REQUIRED_INCLUDES "sys/types.h")
 
 if(NOT DARWIN)

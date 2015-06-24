@@ -35,9 +35,6 @@
 /** Defined if the platform supports the AI_ADDRCONFIG flag to getaddrinfo() */
 #cmakedefine HAVE_AI_ADDRCONFIG
 
-/** Defined if the platform defines the \e ethhdr struct */
-#cmakedefine HAVE_ETHHDR
-
 /** Defined if the platform defines get_current_dir_name() */
 #cmakedefine HAVE_GET_CURRENT_DIR_NAME
 

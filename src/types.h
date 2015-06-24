@@ -99,6 +99,7 @@ typedef struct fastd_iface fastd_iface_t;
 typedef struct fastd_socket fastd_socket_t;
 typedef struct fastd_peer_group fastd_peer_group_t;
 typedef struct fastd_eth_addr fastd_eth_addr_t;
+typedef struct fastd_eth_header fastd_eth_header_t;
 typedef struct fastd_peer fastd_peer_t;
 typedef struct fastd_peer_eth_addr fastd_peer_eth_addr_t;
 typedef struct fastd_remote fastd_remote_t;

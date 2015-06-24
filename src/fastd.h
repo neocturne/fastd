@@ -59,7 +59,14 @@
 
 /** An ethernet address */
 struct __attribute__((__packed__)) fastd_eth_addr {
-	uint8_t data[ETH_ALEN];		/**< The bytes of the address */
+	uint8_t data[6];		/**< The bytes of the address */
+};
+
+/** An ethernet header */
+struct  __attribute__((packed)) fastd_eth_header {
+	fastd_eth_addr_t dest;		/**< The destination MAC address field */
+	fastd_eth_addr_t source;	/**< The source MAC address field */
+	uint16_t proto;			/**< The EtherType/length field */
 };
 
 
@@ -422,7 +429,7 @@ static inline size_t fastd_max_payload(uint16_t mtu) {
 	switch (conf.mode) {
 	case MODE_TAP:
 	case MODE_MULTITAP:
-		return mtu+ETH_HLEN;
+		return mtu + sizeof(fastd_eth_header_t);
 	case MODE_TUN:
 		return mtu;
 	default:
@@ -434,14 +441,14 @@ static inline size_t fastd_max_payload(uint16_t mtu) {
 /** Returns the source address of an ethernet packet */
 static inline fastd_eth_addr_t fastd_buffer_source_address(const fastd_buffer_t buffer) {
 	fastd_eth_addr_t ret;
-	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_source), ETH_ALEN);
+	memcpy(&ret, buffer.data + offsetof(fastd_eth_header_t, source), sizeof(fastd_eth_addr_t));
 	return ret;
 }
 
 /** Returns the destination address of an ethernet packet */
 static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t buffer) {
 	fastd_eth_addr_t ret;
-	memcpy(&ret, buffer.data+offsetof(struct ethhdr, h_dest), ETH_ALEN);
+	memcpy(&ret, buffer.data + offsetof(fastd_eth_header_t, dest), sizeof(fastd_eth_addr_t));
 	return ret;
 }
 

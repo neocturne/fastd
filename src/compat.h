@@ -39,32 +39,10 @@
 #include <unistd.h>
 
 #include <sys/types.h>
-#include <sys/queue.h>
 #include <sys/socket.h>
 
-#include <net/if.h>
-#include <net/if_arp.h>
 #include <netinet/in.h>
-#include <netinet/if_ether.h>
 
-#ifndef ETH_ALEN
-/** The length of a MAC address */
-#define ETH_ALEN 6
-#endif
-
-#ifndef ETH_HLEN
-/** The length of the standard ethernet header */
-#define ETH_HLEN 14
-#endif
-
-#ifndef HAVE_ETHHDR
-/** An ethernet header */
-struct ethhdr {
-	uint8_t h_dest[ETH_ALEN];			/**< The destination MAC address field */
-	uint8_t h_source[ETH_ALEN];			/**< The source MAC address field */
-	uint16_t h_proto;				/**< The EtherType/length field */
-} __attribute__((packed));
-#endif
 
 #if defined(USE_FREEBIND) && !defined(IP_FREEBIND)
 /** Compatiblity define for systems supporting, but not defining IP_FREEBIND */

@@ -74,7 +74,7 @@ size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_ad
 		if (!bind_address && hide)
 			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in6.sin6_port));
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
-			char ifname_buf[IF_NAMESIZE];
+			char ifname_buf[IFNAMSIZ];
 			if (!iface && IN6_IS_ADDR_LINKLOCAL(&address->in6.sin6_addr))
 				iface = if_indextoname(address->in6.sin6_scope_id, ifname_buf);
 

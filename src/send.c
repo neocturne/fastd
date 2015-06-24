@@ -209,7 +209,7 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
 	if (conf.mode != MODE_TAP)
 		return false;
 
-	if (buffer.len < ETH_HLEN) {
+	if (buffer.len < sizeof(fastd_eth_header_t)) {
 		pr_debug("truncated ethernet packet");
 		fastd_buffer_free(buffer);
 		return true;

@@ -34,13 +34,14 @@
 #include "poll.h"
 
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <sys/wait.h>
 
 
 /** Adds peer-specific fields to \e env */
 void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr) {
-	/* both INET6_ADDRSTRLEN and IFNAMESIZE already include space for the zero termination, so there is no need to add space for the '%' here. */
-	char buf[INET6_ADDRSTRLEN+IF_NAMESIZE];
+	/* both INET6_ADDRSTRLEN and IFNAMSIZ already include space for the zero termination, so there is no need to add space for the '%' here. */
+	char buf[INET6_ADDRSTRLEN+IFNAMSIZ];
 
 	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->name : NULL);
 
@@ -890,7 +891,7 @@ bool fastd_peer_set_established(fastd_peer_t *peer) {
 
 /** Compares two MAC addresses */
 static inline int eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_eth_addr_t *addr2) {
-	return memcmp(addr1->data, addr2->data, ETH_ALEN);
+	return memcmp(addr1->data, addr2->data, sizeof(fastd_eth_addr_t));
 }
 
 /** Compares two fastd_peer_eth_addr_t entries by their MAC addresses */

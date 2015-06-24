@@ -39,6 +39,7 @@
 #include "peer.h"
 
 #include <json-c/json.h>
+#include <net/if.h>
 #include <sys/un.h>
 
 
