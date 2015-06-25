@@ -58,7 +58,7 @@
 
 
 /** An ethernet address */
-struct __attribute__((__packed__)) fastd_eth_addr {
+struct __attribute__((packed)) fastd_eth_addr {
 	uint8_t data[6];		/**< The bytes of the address */
 };
 
