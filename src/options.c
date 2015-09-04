@@ -379,6 +379,7 @@ static void option_on_disestablish(const char *arg) {
 /** Handles the --on-verify option */
 static void option_on_verify(const char *arg) {
 	fastd_shell_command_set(&conf.on_verify, arg, false);
+	conf.on_verify_group = conf.peer_group;
 }
 
 #endif

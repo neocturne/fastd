@@ -257,6 +257,7 @@ struct fastd_config {
 	fastd_shell_command_t on_disestablish;	/**< The command to execute when a connection has been disestablished */
 #ifdef WITH_DYNAMIC_PEERS
 	fastd_shell_command_t on_verify;	/**< The command to execute to check if a connection from an unknown peer should be allowed */
+	fastd_peer_group_t *on_verify_group;	/**< The peer group to put dynamic peers into */
 #endif
 
 #ifdef WITH_STATUS_SOCKET

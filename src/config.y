@@ -201,7 +201,6 @@ statement:	peer_group_statement
 	|	TOK_ON TOK_CONNECT on_connect ';'
 	|	TOK_ON TOK_ESTABLISH on_establish ';'
 	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
-	|	TOK_ON TOK_VERIFY on_verify ';'
 	|	TOK_STATUS TOK_SOCKET status_socket ';'
 	|	TOK_FORWARD forward ';'
 	;
@@ -211,6 +210,7 @@ peer_group_statement:
 	|	TOK_PEER TOK_GROUP peer_group '{' peer_group_config '}' peer_group_after
 	|	TOK_PEER TOK_LIMIT peer_limit ';'
 	|	TOK_METHOD method ';'
+	|	TOK_ON TOK_VERIFY on_verify ';'
 	|	TOK_INCLUDE include ';'
 	;
 
@@ -437,16 +437,6 @@ on_disestablish: sync TOK_STRING {
 		}
 	;
 
-on_verify:	sync TOK_STRING {
-#ifdef WITH_DYNAMIC_PEERS
-			fastd_shell_command_set(&conf.on_verify, $2->str, $1);
-#else
-			fastd_config_error(&@$, state, "`on verify' is not supported by this version of fastd");
-			YYERROR;
-#endif
-		}
-	;
-
 status_socket:	TOK_STRING {
 #ifdef WITH_STATUS_SOCKET
 			free(conf.status_socket); conf.status_socket = fastd_strdup($1->str);
@@ -591,6 +581,17 @@ peer_limit:	TOK_UINT {
 
 method:		TOK_STRING {
 			fastd_config_method(state->peer_group, $1->str);
+		}
+	;
+
+on_verify:	sync TOK_STRING {
+#ifdef WITH_DYNAMIC_PEERS
+			fastd_shell_command_set(&conf.on_verify, $2->str, $1);
+			conf.on_verify_group = state->peer_group;
+#else
+			fastd_config_error(&@$, state, "`on verify' is not supported by this version of fastd");
+			YYERROR;
+#endif
 		}
 	;
 

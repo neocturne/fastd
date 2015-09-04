@@ -565,11 +565,17 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 	}
 
 	fastd_peer_t *peer = fastd_new0(fastd_peer_t);
-	peer->group = conf.peer_group;
+	peer->group = conf.on_verify_group;
 	peer->config_state = CONFIG_DYNAMIC;
 
 	peer->key = fastd_new(fastd_protocol_key_t);
 	*peer->key = peer_key;
+
+	if (!fastd_peer_may_connect(peer)) {
+		pr_debug("not adding dynamic peer %P[%I] because of local constraints", peer, addr);
+		fastd_peer_free(peer);
+		return NULL;
+	}
 
 	if (!fastd_peer_add(peer))
 		exit_bug("failed to add dynamic peer");
