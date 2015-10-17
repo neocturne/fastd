@@ -208,6 +208,14 @@ static void dump_status(int fd) {
 	}
 }
 
+static void unlink_status_socket(void) {
+	if (!conf.status_socket || ctx.status_fd.fd < 0)
+		return;
+
+	if (unlink(conf.status_socket))
+		pr_warn_errno("fastd_status_cleanup: unlink");
+}
+
 /** Initialized the status socket */
 void fastd_status_init(void) {
 	if (!conf.status_socket) {
@@ -252,6 +260,12 @@ void fastd_status_init(void) {
 		}
 	}
 
+	if (atexit(unlink_status_socket)) {
+		pr_error_errno("atexit");
+		unlink_status_socket();
+		exit(1);
+	}
+
 	if (listen(ctx.status_fd.fd, 4))
 		exit_errno("fastd_status_init: listen");
 
@@ -268,14 +282,15 @@ void fastd_status_init(void) {
 
 /** Closes the status socket */
 void fastd_status_close(void) {
-	if (!conf.status_socket)
+	if (!conf.status_socket || ctx.status_fd.fd < 0)
 		return;
 
 	if (!fastd_poll_fd_close(&ctx.status_fd))
 		pr_warn_errno("fastd_status_cleanup: close");
 
-	if (unlink(conf.status_socket))
-		pr_warn_errno("fastd_status_cleanup: unlink");
+	unlink_status_socket();
+
+	ctx.status_fd.fd = -1;
 }
 
 /** Handles a single connection on the status socket */
