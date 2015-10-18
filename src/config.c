@@ -40,6 +40,7 @@
 #include "lex.h"
 #include "method.h"
 #include "peer.h"
+#include "peer_group.h"
 #include <config.yy.h>
 
 #include <dirent.h>

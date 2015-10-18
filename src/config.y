@@ -137,8 +137,9 @@
 
 
 %code {
-	#include <src/peer.h>
 	#include <src/config.h>
+	#include <src/peer.h>
+	#include <src/peer_group.h>
 
 	#include <limits.h>
 

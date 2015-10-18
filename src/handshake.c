@@ -33,6 +33,7 @@
 #include "handshake.h"
 #include "method.h"
 #include "peer.h"
+#include "peer_group.h"
 #include <fastd_version.h>
 
 
@@ -424,7 +425,7 @@ static inline const fastd_method_info_t * get_method_by_name(const fastd_string_
 
 /** Returns the most appropriate method to negotiate with a peer a handshake was received from */
 const fastd_method_info_t * fastd_handshake_get_method(const fastd_peer_t *peer, const fastd_handshake_t *handshake) {
-	const fastd_string_stack_t *methods = fastd_peer_get_methods(peer);
+	const fastd_string_stack_t *methods = *fastd_peer_group_lookup_peer(peer, methods);
 
 	if (handshake->records[RECORD_METHOD_LIST].data && handshake->records[RECORD_METHOD_LIST].length) {
 		fastd_string_stack_t *method_list = parse_string_list(handshake->records[RECORD_METHOD_LIST].data, handshake->records[RECORD_METHOD_LIST].length);

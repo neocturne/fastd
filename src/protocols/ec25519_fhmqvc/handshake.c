@@ -33,6 +33,7 @@
 #include "../../crypto.h"
 #include "../../handshake.h"
 #include "../../hkdf_sha256.h"
+#include "../../peer_group.h"
 #include "../../verify.h"
 
 
@@ -314,7 +315,7 @@ static void respond_handshake(const fastd_socket_t *sock, const fastd_peer_addre
 	if (!update_shared_handshake_key(peer, handshake_key, peer_handshake_key))
 		return;
 
-	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(2, little_endian, fastd_peer_get_mtu(peer), method, fastd_peer_get_methods(peer), 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
+	fastd_handshake_buffer_t buffer = fastd_handshake_new_reply(2, little_endian, fastd_peer_get_mtu(peer), method, *fastd_peer_group_lookup_peer(peer, methods), 4*(4+PUBLICKEYBYTES) + 2*(4+HASHBYTES));
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 	fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);

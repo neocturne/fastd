@@ -110,24 +110,6 @@ struct fastd_peer {
 };
 
 
-/**
-   A group of peers
-
-   Peer groups may be nested and form a tree
-*/
-struct fastd_peer_group {
-	fastd_peer_group_t *next;			/**< The next sibling in the group tree */
-	fastd_peer_group_t *parent;			/**< The group's parent group */
-	fastd_peer_group_t *children;			/**< The group's first child */
-
-	char *name;					/**< The group's name; NULL for the root group */
-	fastd_string_stack_t *peer_dirs;		/**< List of peer directories which belong to this group */
-
-	/* constraints */
-	int max_connections;				/**< The maximum number of connections to allow in this group; -1 for no limit */
-	fastd_string_stack_t *methods;			/**< The list of configured method names */
-};
-
 /** An entry for a MAC address seen at another peer */
 struct fastd_peer_eth_addr {
 	fastd_eth_addr_t addr;				/**< The MAC address */
@@ -268,20 +250,6 @@ static inline void fastd_peer_seen(fastd_peer_t *peer) {
 /** Checks if a peer uses dynamic sockets (which means that each connection attempt uses a new socket) */
 static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {
 	return (!peer->sock || !peer->sock->addr);
-}
-
-/** Returns the configured methods for a peer's group */
-static inline const fastd_string_stack_t * fastd_peer_get_methods(const fastd_peer_t *peer) {
-	if (!peer)
-		return conf.peer_group->methods;
-
-	const fastd_peer_group_t *group;
-	for (group = peer->group; group; group = group->parent) {
-		if (group->methods)
-			return group->methods;
-	}
-
-	return NULL;
 }
 
 /** Returns the MTU to use for a peer */
