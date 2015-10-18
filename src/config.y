@@ -196,12 +196,7 @@ statement:	peer_group_statement
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_PRE_UP on_pre_up ';'
-	|	TOK_ON TOK_UP on_up ';'
-	|	TOK_ON TOK_DOWN on_down ';'
 	|	TOK_ON TOK_POST_DOWN on_post_down ';'
-	|	TOK_ON TOK_CONNECT on_connect ';'
-	|	TOK_ON TOK_ESTABLISH on_establish ';'
-	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_STATUS TOK_SOCKET status_socket ';'
 	|	TOK_FORWARD forward ';'
 	;
@@ -211,6 +206,11 @@ peer_group_statement:
 	|	TOK_PEER TOK_GROUP peer_group '{' peer_group_config '}' peer_group_after
 	|	TOK_PEER TOK_LIMIT peer_limit ';'
 	|	TOK_METHOD method ';'
+	|	TOK_ON TOK_UP on_up ';'
+	|	TOK_ON TOK_DOWN on_down ';'
+	|	TOK_ON TOK_CONNECT on_connect ';'
+	|	TOK_ON TOK_ESTABLISH on_establish ';'
+	|	TOK_ON TOK_DISESTABLISH on_disestablish ';'
 	|	TOK_ON TOK_VERIFY on_verify ';'
 	|	TOK_INCLUDE include ';'
 	;
@@ -408,33 +408,8 @@ on_pre_up:	TOK_STRING {
 		}
 	;
 
-on_up:		sync TOK_STRING {
-			fastd_shell_command_set(&conf.on_up, $2->str, $1);
-		}
-	;
-
-on_down:	sync TOK_STRING {
-			fastd_shell_command_set(&conf.on_down, $2->str, $1);
-		}
-	;
-
 on_post_down:	TOK_STRING {
 			fastd_shell_command_set(&conf.on_post_down, $1->str, true);
-		}
-	;
-
-on_connect:	sync TOK_STRING {
-			fastd_shell_command_set(&conf.on_connect, $2->str, $1);
-		}
-	;
-
-on_establish:	sync TOK_STRING {
-			fastd_shell_command_set(&conf.on_establish, $2->str, $1);
-		}
-	;
-
-on_disestablish: sync TOK_STRING {
-			fastd_shell_command_set(&conf.on_disestablish, $2->str, $1);
 		}
 	;
 
@@ -582,6 +557,31 @@ peer_limit:	TOK_UINT {
 
 method:		TOK_STRING {
 			fastd_config_method(state->peer_group, $1->str);
+		}
+	;
+
+on_up:		sync TOK_STRING {
+			fastd_shell_command_set(&state->peer_group->on_up, $2->str, $1);
+		}
+	;
+
+on_down:	sync TOK_STRING {
+			fastd_shell_command_set(&state->peer_group->on_down, $2->str, $1);
+		}
+	;
+
+on_connect:	sync TOK_STRING {
+			fastd_shell_command_set(&state->peer_group->on_connect, $2->str, $1);
+		}
+	;
+
+on_establish:	sync TOK_STRING {
+			fastd_shell_command_set(&state->peer_group->on_establish, $2->str, $1);
+		}
+	;
+
+on_disestablish: sync TOK_STRING {
+			fastd_shell_command_set(&state->peer_group->on_disestablish, $2->str, $1);
 		}
 	;
 

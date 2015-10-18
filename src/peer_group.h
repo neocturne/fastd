@@ -48,9 +48,14 @@ struct fastd_peer_group {
 	char *name;					/**< The group's name; NULL for the root group */
 	fastd_string_stack_t *peer_dirs;		/**< List of peer directories which belong to this group */
 
-	/* constraints */
 	int max_connections;				/**< The maximum number of connections to allow in this group; -1 for no limit */
 	fastd_string_stack_t *methods;			/**< The list of configured method names */
+
+	fastd_shell_command_t on_up;			/**< The command to execute after the initialization of the tunnel interface */
+	fastd_shell_command_t on_down;			/**< The command to execute before the destruction of the tunnel interface */
+	fastd_shell_command_t on_connect;		/**< The command to execute before a handshake is sent to establish a new connection */
+	fastd_shell_command_t on_establish;		/**< The command to execute when a new connection has been established */
+	fastd_shell_command_t on_disestablish;		/**< The command to execute when a connection has been disestablished */
 };
 
 

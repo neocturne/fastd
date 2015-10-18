@@ -50,6 +50,7 @@
 #include "fastd.h"
 #include "config.h"
 #include "peer.h"
+#include "peer_group.h"
 #include <fastd_version.h>
 
 #include <arpa/inet.h>
@@ -346,12 +347,12 @@ static void option_on_pre_up(const char *arg) {
 
 /** Handles the --on-up option */
 static void option_on_up(const char *arg) {
-	fastd_shell_command_set(&conf.on_up, arg, true);
+	fastd_shell_command_set(&conf.peer_group->on_up, arg, true);
 }
 
 /** Handles the --on-down option */
 static void option_on_down(const char *arg) {
-	fastd_shell_command_set(&conf.on_down, arg, true);
+	fastd_shell_command_set(&conf.peer_group->on_down, arg, true);
 }
 
 /** Handles the --on-post-down option */
@@ -361,17 +362,17 @@ static void option_on_post_down(const char *arg) {
 
 /** Handles the --on-connect option */
 static void option_on_connect(const char *arg) {
-	fastd_shell_command_set(&conf.on_connect, arg, false);
+	fastd_shell_command_set(&conf.peer_group->on_connect, arg, false);
 }
 
 /** Handles the --on-establish option */
 static void option_on_establish(const char *arg) {
-	fastd_shell_command_set(&conf.on_establish, arg, false);
+	fastd_shell_command_set(&conf.peer_group->on_establish, arg, false);
 }
 
 /** Handles the --on-disestablish option */
 static void option_on_disestablish(const char *arg) {
-	fastd_shell_command_set(&conf.on_disestablish, arg, false);
+	fastd_shell_command_set(&conf.peer_group->on_disestablish, arg, false);
 }
 
 #ifdef WITH_DYNAMIC_PEERS

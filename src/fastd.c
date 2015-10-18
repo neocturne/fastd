@@ -39,6 +39,7 @@
 #include "config.h"
 #include "crypto.h"
 #include "peer.h"
+#include "peer_group.h"
 #include "peer_hashtable.h"
 #include "poll.h"
 #include <fastd_version.h>
@@ -214,7 +215,7 @@ static inline void on_pre_up(void) {
 static inline void on_up(fastd_iface_t *iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec_sync(&conf.on_up, env, NULL);
+	fastd_shell_command_exec_sync(&conf.peer_group->on_up, env, NULL);
 	fastd_shell_env_free(env);
 }
 
@@ -222,7 +223,7 @@ static inline void on_up(fastd_iface_t *iface) {
 static inline void on_down(fastd_iface_t *iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_shell_env_set_iface(env, iface);
-	fastd_shell_command_exec_sync(&conf.on_down, env, NULL);
+	fastd_shell_command_exec_sync(&conf.peer_group->on_down, env, NULL);
 	fastd_shell_env_free(env);
 }
 

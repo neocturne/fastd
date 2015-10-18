@@ -249,12 +249,7 @@ struct fastd_config {
 	fastd_protocol_config_t *protocol_config; /**< The protocol-specific configuration */
 
 	fastd_shell_command_t on_pre_up;	/**< The command to execute before the initialization of the tunnel interface */
-	fastd_shell_command_t on_up;		/**< The command to execute after the initialization of the tunnel interface */
-	fastd_shell_command_t on_down;		/**< The command to execute before the destruction of the tunnel interface */
 	fastd_shell_command_t on_post_down;	/**< The command to execute after the destruction of the tunnel interface */
-	fastd_shell_command_t on_connect;	/**< The command to execute before a handshake is sent to establish a new connection */
-	fastd_shell_command_t on_establish;	/**< The command to execute when a new connection has been established */
-	fastd_shell_command_t on_disestablish;	/**< The command to execute when a connection has been disestablished */
 #ifdef WITH_DYNAMIC_PEERS
 	fastd_shell_command_t on_verify;	/**< The command to execute to check if a connection from an unknown peer should be allowed */
 	fastd_peer_group_t *on_verify_group;	/**< The peer group to put dynamic peers into */

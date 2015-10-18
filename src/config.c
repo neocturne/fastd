@@ -197,6 +197,13 @@ static void free_peer_group(fastd_peer_group_t *group) {
 
 	fastd_string_stack_free(group->peer_dirs);
 	fastd_string_stack_free(group->methods);
+
+	fastd_shell_command_unset(&group->on_up);
+	fastd_shell_command_unset(&group->on_down);
+	fastd_shell_command_unset(&group->on_connect);
+	fastd_shell_command_unset(&group->on_establish);
+	fastd_shell_command_unset(&group->on_disestablish);
+
 	free(group->name);
 	free(group);
 }
@@ -691,12 +698,7 @@ void fastd_config_release(void) {
 	fastd_string_stack_free(conf.method_list);
 
 	fastd_shell_command_unset(&conf.on_pre_up);
-	fastd_shell_command_unset(&conf.on_up);
-	fastd_shell_command_unset(&conf.on_down);
 	fastd_shell_command_unset(&conf.on_post_down);
-	fastd_shell_command_unset(&conf.on_connect);
-	fastd_shell_command_unset(&conf.on_establish);
-	fastd_shell_command_unset(&conf.on_disestablish);
 #ifdef WITH_DYNAMIC_PEERS
 	fastd_shell_command_unset(&conf.on_verify);
 #endif

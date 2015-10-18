@@ -126,22 +126,26 @@ void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const f
 
 /** Calls the on-up command */
 static inline void on_up(const fastd_peer_t *peer, bool sync) {
-	fastd_peer_exec_shell_command(&conf.on_up, peer, NULL, NULL, sync);
+	const fastd_shell_command_t *on_up = container_of(fastd_peer_group_lookup_peer(peer, on_up.command), fastd_shell_command_t, command);
+	fastd_peer_exec_shell_command(on_up, peer, NULL, NULL, sync);
 }
 
 /** Calls the on-down command */
 static inline void on_down(const fastd_peer_t *peer, bool sync) {
-	fastd_peer_exec_shell_command(&conf.on_down, peer, NULL, NULL, sync);
+	const fastd_shell_command_t *on_down = container_of(fastd_peer_group_lookup_peer(peer, on_down.command), fastd_shell_command_t, command);
+	fastd_peer_exec_shell_command(on_down, peer, NULL, NULL, sync);
 }
 
 /** Executes the on-establish command for a peer */
 static inline void on_establish(const fastd_peer_t *peer) {
-	fastd_peer_exec_shell_command(&conf.on_establish, peer, &peer->local_address, &peer->address, false);
+	const fastd_shell_command_t *on_establish = container_of(fastd_peer_group_lookup_peer(peer, on_establish.command), fastd_shell_command_t, command);
+	fastd_peer_exec_shell_command(on_establish, peer, &peer->local_address, &peer->address, false);
 }
 
 /** Executes the on-disestablish command for a peer */
 static inline void on_disestablish(const fastd_peer_t *peer) {
-	fastd_peer_exec_shell_command(&conf.on_disestablish, peer, &peer->local_address, &peer->address, false);
+	const fastd_shell_command_t *on_disestablish = container_of(fastd_peer_group_lookup_peer(peer, on_disestablish.command), fastd_shell_command_t, command);
+	fastd_peer_exec_shell_command(on_disestablish, peer, &peer->local_address, &peer->address, false);
 }
 
 /** Compares two peers by their peer ID */
