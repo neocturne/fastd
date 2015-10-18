@@ -95,3 +95,17 @@ struct fastd_peer_group {
 			const fastd_peer_t *_peer = (peer);		\
 			_peer ? fastd_peer_group_lookup(_peer->group, attr) : &conf.peer_group->attr; \
 		})
+
+/**
+   Looks up an shell command attribute in the peer group tree, for a given peer
+
+   Returns a pointer to the attribute, going up the group tree to the first group
+   where the attribute is not NULL if such a group exists. Uses the default group
+   if no peer is given.
+
+   @param peer		the peer
+   @param attr		the name of the shell command member
+
+   \hideinitializer
+ */
+#define fastd_peer_group_lookup_peer_shell_command(peer, attr) container_of(fastd_peer_group_lookup_peer(peer, attr.command), fastd_shell_command_t, command)
