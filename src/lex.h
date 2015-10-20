@@ -33,7 +33,7 @@
 #pragma once
 
 #include "types.h"
-#include <config.yy.h>
+#include <generated/config.yy.h>
 
 #include <stdio.h>
 

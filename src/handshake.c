@@ -34,7 +34,7 @@
 #include "method.h"
 #include "peer.h"
 #include "peer_group.h"
-#include <fastd_version.h>
+#include <generated/version.h>
 
 
 /** Human-readable names for the TLV record types */

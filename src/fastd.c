@@ -42,7 +42,7 @@
 #include "peer_group.h"
 #include "peer_hashtable.h"
 #include "poll.h"
-#include <fastd_version.h>
+#include <generated/version.h>
 
 #include <grp.h>
 #include <signal.h>

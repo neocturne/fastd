@@ -51,7 +51,7 @@
 #include "config.h"
 #include "peer.h"
 #include "peer_group.h"
-#include <fastd_version.h>
+#include <generated/version.h>
 
 #include <arpa/inet.h>
 

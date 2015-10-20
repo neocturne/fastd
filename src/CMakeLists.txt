@@ -1,7 +1,7 @@
 set_property(DIRECTORY PROPERTY COMPILE_DEFINITIONS _GNU_SOURCE __APPLE_USE_RFC_3542)
 set(FASTD_CFLAGS "${PTHREAD_CFLAGS} -std=c99 ${LIBUECC_CFLAGS_OTHER} ${LIBNACL_CFLAGS_OTHER} ${JSON_C_CFLAGS_OTHER} ${CFLAGS_LTO} -Wall")
 
-include_directories(${FASTD_SOURCE_DIR} ${FASTD_BINARY_DIR}/src)
+include_directories(${FASTD_SOURCE_DIR} ${FASTD_BINARY_DIR}/gen)
 
 
 include(generate_version)
@@ -12,9 +12,9 @@ add_subdirectory(methods)
 add_subdirectory(crypto)
 
 include(check_reqs)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fastd_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/fastd_config.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/build.h.in ${CMAKE_BINARY_DIR}/gen/generated/build.h)
 
-BISON_TARGET(fastd_config_parse config.y ${CMAKE_CURRENT_BINARY_DIR}/config.yy.c)
+BISON_TARGET(fastd_config_parse config.y ${CMAKE_BINARY_DIR}/gen/generated/config.yy.c)
 
 add_executable(fastd
   android.c

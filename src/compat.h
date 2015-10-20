@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include <fastd_config.h>
+#include <generated/build.h>
 
 #include <stdint.h>
 #include <time.h>

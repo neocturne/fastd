@@ -41,7 +41,7 @@
 #include "method.h"
 #include "peer.h"
 #include "peer_group.h"
-#include <config.yy.h>
+#include <generated/config.yy.h>
 
 #include <dirent.h>
 #include <grp.h>
