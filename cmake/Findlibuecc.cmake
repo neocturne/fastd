@@ -12,7 +12,7 @@ else(ANDROID)
   find_package(PkgConfig REQUIRED QUIET)
 endif(ANDROID)
 
-pkg_check_modules(_LIBUECC libuecc>=5)
+pkg_check_modules(_LIBUECC libuecc>=6)
 
 find_path(LIBUECC_INCLUDE_DIR NAMES libuecc/ecc.h HINTS ${_LIBUECC_INCLUDE_DIRS})
 find_library(LIBUECC_LIBRARIES NAMES uecc HINTS ${_LIBUECC_LIBRARY_DIRS})

@@ -50,8 +50,8 @@ static void new_handshake_key(keypair_t *key) {
 	ecc_25519_gf_sanitize_secret(&key->secret, &key->secret);
 
 	ecc_25519_work_t work;
-	ecc_25519_scalarmult_base(&work, &key->secret);
-	ecc_25519_store_packed(&key->public.int256, &work);
+	ecc_25519_scalarmult(&work, &key->secret, &ecc_25519_work_base_legacy);
+	ecc_25519_store_packed_legacy(&key->public.int256, &work);
 
 	if (!divide_key(&key->secret))
 		exit_bug("generated invalid ephemeral key");

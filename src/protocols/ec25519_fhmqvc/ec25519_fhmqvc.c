@@ -68,8 +68,8 @@ static fastd_protocol_config_t * protocol_init(void) {
 		exit_error("invalid secret key");
 
 	ecc_25519_work_t work;
-	ecc_25519_scalarmult_base(&work, &protocol_config->key.secret);
-	ecc_25519_store_packed(&protocol_config->key.public.int256, &work);
+	ecc_25519_scalarmult(&work, &protocol_config->key.secret, &ecc_25519_work_base_legacy);
+	ecc_25519_store_packed_legacy(&protocol_config->key.public.int256, &work);
 
 	if (!divide_key(&protocol_config->key.secret))
 		exit_error("invalid secret key");
@@ -82,7 +82,7 @@ static fastd_protocol_key_t * protocol_read_key(const char *key) {
 	fastd_protocol_key_t *ret = fastd_new(fastd_protocol_key_t);
 
 	if (read_key(ret->key.u8, key)) {
-		if (ecc_25519_load_packed(&ret->unpacked, &ret->key.int256)) {
+		if (ecc_25519_load_packed_legacy(&ret->unpacked, &ret->key.int256)) {
 			if (!ecc_25519_is_identity(&ret->unpacked))
 				return ret;
 		}

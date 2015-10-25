@@ -198,7 +198,7 @@ static bool make_shared_handshake_key(bool initiator, const keypair_t *handshake
 	const aligned_int256_t *A, *B, *X, *Y;
 	ecc_25519_work_t work, workXY;
 
-	if (!ecc_25519_load_packed(&workXY, &peer_handshake_key->int256))
+	if (!ecc_25519_load_packed_legacy(&workXY, &peer_handshake_key->int256))
 		return false;
 
 	if (ecc_25519_is_identity(&workXY))
@@ -261,7 +261,7 @@ static bool make_shared_handshake_key(bool initiator, const keypair_t *handshake
 	if (ecc_25519_is_identity(&work))
 		return false;
 
-	ecc_25519_store_packed(&sigma->int256, &work);
+	ecc_25519_store_packed_legacy(&sigma->int256, &work);
 
 	if (shared_handshake_key)
 		derive_key(shared_handshake_key, 1, zero_salt, "", A, B, X, Y, sigma);
@@ -561,7 +561,7 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 	fastd_protocol_key_t peer_key;
 	memcpy(&peer_key.key, key, PUBLICKEYBYTES);
 
-	if (!ecc_25519_load_packed(&peer_key.unpacked, &peer_key.key.int256)
+	if (!ecc_25519_load_packed_legacy(&peer_key.unpacked, &peer_key.key.int256)
 		|| ecc_25519_is_identity(&peer_key.unpacked)) {
 		pr_debug("ignoring handshake from %I (invalid key)", addr);
 		return NULL;
