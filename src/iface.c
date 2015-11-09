@@ -246,11 +246,16 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 		exit_bug("invalid mode");
 	}
 
+	iface->cleanup = true;
+
 	if (ifname) {
-		if (strncmp(ifname, type, 3) != 0)
-			exit_error("`%s' doesn't seem to be a %s device", ifname, type);
+		if (strlen(ifname) <= 3 || strncmp(ifname, type, 3) != 0)
+			exit_error("Invalid %s interface `%s'", type, ifname);
 
 		strncat(dev_name, ifname, IFNAMSIZ-1);
+
+		if (if_nametoindex(ifname))
+			iface->cleanup = false;
 	}
 	else {
 		strncat(dev_name, type, IFNAMSIZ-1);
@@ -277,7 +282,15 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	}
 }
 
-static void cleanup_iface(UNUSED fastd_iface_t *iface) {
+static void cleanup_iface(fastd_iface_t *iface) {
+	if (!iface->cleanup)
+		return;
+
+	struct ifreq ifr = {};
+	strncpy(ifr.ifr_name, iface->name, IFNAMSIZ-1);
+
+	if (ioctl(ctx.ioctl_sock, SIOCIFDESTROY, &ifr) < 0)
+		pr_warn_errno("unable to destroy TUN/TAP interface");
 }
 
 #else /* __OpenBSD__ */
