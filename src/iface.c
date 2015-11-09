@@ -190,6 +190,17 @@ static void set_tun_mtu(fastd_iface_t *iface, uint16_t mtu) {
 		exit_errno("TUNSIFINFO ioctl failed");
 }
 
+static void cleanup_iface(fastd_iface_t *iface) {
+	if (!iface->cleanup)
+		return;
+
+	struct ifreq ifr = {};
+	strncpy(ifr.ifr_name, iface->name, IFNAMSIZ-1);
+
+	if (ioctl(ctx.ioctl_sock, SIOCIFDESTROY, &ifr) < 0)
+		pr_warn_errno("unable to destroy TUN/TAP interface");
+}
+
 
 #ifdef __FreeBSD__
 
@@ -282,17 +293,6 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	}
 }
 
-static void cleanup_iface(fastd_iface_t *iface) {
-	if (!iface->cleanup)
-		return;
-
-	struct ifreq ifr = {};
-	strncpy(ifr.ifr_name, iface->name, IFNAMSIZ-1);
-
-	if (ioctl(ctx.ioctl_sock, SIOCIFDESTROY, &ifr) < 0)
-		pr_warn_errno("unable to destroy TUN/TAP interface");
-}
-
 #else /* __OpenBSD__ */
 
 static void set_link0(fastd_iface_t *iface, bool set) {
@@ -333,6 +333,8 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	else
 		strncat(dev_name, ifname, IFNAMSIZ-1);
 
+	iface->cleanup = !if_nametoindex(ifname);
+
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(dev_name, O_RDWR|O_NONBLOCK));
 	if (iface->fd.fd < 0)
 		exit_errno("could not open tun device file");
@@ -351,9 +353,6 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	default:
 		exit_bug("invalid mode");
 	}
-}
-
-static void cleanup_iface(UNUSED fastd_iface_t *iface) {
 }
 
 #endif
