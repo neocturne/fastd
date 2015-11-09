@@ -89,6 +89,7 @@ static inline fastd_iface_type_t get_iface_type(void) {
 }
 
 static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu);
+static void cleanup_iface(fastd_iface_t *iface);
 
 
 #ifdef __linux__
@@ -141,6 +142,9 @@ static void open_iface_linux(fastd_iface_t *iface, const char *ifname, uint16_t 
   error:
 	close(iface->fd.fd);
 	iface->fd.fd = -1;
+}
+
+static void cleanup_iface(UNUSED fastd_iface_t *iface) {
 }
 
 #endif
@@ -273,6 +277,9 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	}
 }
 
+static void cleanup_iface(UNUSED fastd_iface_t *iface) {
+}
+
 #else /* __OpenBSD__ */
 
 static void set_link0(fastd_iface_t *iface, bool set) {
@@ -333,6 +340,9 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	}
 }
 
+static void cleanup_iface(UNUSED fastd_iface_t *iface) {
+}
+
 #endif
 
 #elif __APPLE__
@@ -372,6 +382,9 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	ifr.ifr_mtu = mtu;
 	if (ioctl(ctx.ioctl_sock, SIOCSIFMTU, &ifr) < 0)
 		exit_errno("SIOCSIFMTU ioctl failed");
+}
+
+static void cleanup_iface(UNUSED fastd_iface_t *iface) {
 }
 
 #else
@@ -510,7 +523,9 @@ fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 
 /** Closes the TUN/TAP device */
 void fastd_iface_close(fastd_iface_t *iface) {
-	if (!fastd_poll_fd_close(&iface->fd))
+	if (fastd_poll_fd_close(&iface->fd))
+		cleanup_iface(iface);
+	else
 		pr_warn_errno("closing TUN/TAP: close");
 
 	free(iface->name);

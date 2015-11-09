@@ -167,6 +167,7 @@ struct fastd_iface {
 	char *name;				/**< The interface name */
 	fastd_peer_t *peer;			/**< The peer associated with the interface (if any) */
 	uint16_t mtu;				/**< The MTU of the interface */
+	bool cleanup;				/**< Determines if the interface should be deleted after use; not used on all platforms */
 };
 
 
