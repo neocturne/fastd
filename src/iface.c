@@ -33,6 +33,7 @@
    Management of the TUN/TAP interface
 */
 
+#include "fastd.h"
 #include "config.h"
 #include "peer.h"
 #include "poll.h"
@@ -94,7 +95,6 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu);
 
 /** Opens the TUN/TAP device helper shared by Android and Linux targets */
 static void open_iface_linux(fastd_iface_t *iface, const char *ifname, uint16_t mtu, const char *dev_name) {
-	int ctl_sock = -1;
 	struct ifreq ifr = {};
 
 	iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, open(dev_name, O_RDWR|O_NONBLOCK));
@@ -125,32 +125,20 @@ static void open_iface_linux(fastd_iface_t *iface, const char *ifname, uint16_t 
 
 	iface->name = fastd_strndup(ifr.ifr_name, IFNAMSIZ-1);
 
-	ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (ctl_sock < 0)
-		exit_errno("socket");
-
-	if (ioctl(ctl_sock, SIOCGIFMTU, &ifr) < 0)
+	if (ioctl(ctx.ioctl_sock, SIOCGIFMTU, &ifr) < 0)
 		exit_errno("SIOCGIFMTU ioctl failed");
 
 	if (ifr.ifr_mtu != mtu) {
 		ifr.ifr_mtu = mtu;
-		if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0) {
+		if (ioctl(ctx.ioctl_sock, SIOCSIFMTU, &ifr) < 0) {
 			pr_error_errno("unable to set TUN/TAP interface MTU: SIOCSIFMTU ioctl failed");
 			goto error;
 		}
 	}
 
-	if (close(ctl_sock))
-		pr_error_errno("close");
-
 	return;
 
   error:
-	if (ctl_sock >= 0) {
-		if (close(ctl_sock))
-			pr_error_errno("close");
-	}
-
 	close(iface->fd.fd);
 	iface->fd.fd = -1;
 }
@@ -290,12 +278,8 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 static void set_link0(fastd_iface_t *iface, bool set) {
 	struct ifreq ifr = {};
 
-	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (ctl_sock < 0)
-		exit_errno("socket");
-
 	strncpy(ifr.ifr_name, iface->name, IFNAMSIZ-1);
-	if (ioctl(ctl_sock, SIOCGIFFLAGS, &ifr) < 0)
+	if (ioctl(ctx.ioctl_sock, SIOCGIFFLAGS, &ifr) < 0)
 		exit_errno("SIOCGIFFLAGS ioctl failed");
 
 	if (set)
@@ -303,11 +287,8 @@ static void set_link0(fastd_iface_t *iface, bool set) {
 	else
 		ifr.ifr_flags &= ~IFF_LINK0;
 
-	if (ioctl(ctl_sock, SIOCSIFFLAGS, &ifr) < 0)
+	if (ioctl(ctx.ioctl_sock, SIOCSIFFLAGS, &ifr) < 0)
 		exit_errno("SIOCSIFFLAGS ioctl failed");
-
-	if (close(ctl_sock))
-		pr_error_errno("close");
 }
 
 /** Sets up the TUN device */
@@ -386,18 +367,11 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 
 	iface->name = fastd_strndup(ifname, IFNAMSIZ-1);
 
-	int ctl_sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (ctl_sock < 0)
-		exit_errno("socket");
-
 	struct ifreq ifr = {};
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ-1);
 	ifr.ifr_mtu = mtu;
-	if (ioctl(ctl_sock, SIOCSIFMTU, &ifr) < 0)
+	if (ioctl(ctx.ioctl_sock, SIOCSIFMTU, &ifr) < 0)
 		exit_errno("SIOCSIFMTU ioctl failed");
-
-	if (close(ctl_sock))
-		pr_error_errno("close");
 }
 
 #else

@@ -173,6 +173,10 @@ static inline uint16_t get_bind_port(const fastd_bind_address_t *addr) {
 
 /** Initializes the configured sockets */
 static void init_sockets(void) {
+	ctx.ioctl_sock = socket(PF_INET, SOCK_DGRAM, 0);
+	if (ctx.ioctl_sock < 0)
+		exit_errno("unable to create ioctl socket");
+
 	ctx.socks = fastd_new_array(conf.n_bind_addrs, fastd_socket_t);
 
 	size_t i;
@@ -204,6 +208,9 @@ static void close_sockets(void) {
 		fastd_socket_close(&ctx.socks[i]);
 
 	free(ctx.socks);
+
+	if (close(ctx.ioctl_sock))
+		pr_error_errno("close");
 }
 
 /** Calls the on-pre-up command */

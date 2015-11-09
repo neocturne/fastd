@@ -325,6 +325,8 @@ struct fastd_context {
 	int android_ctrl_sock_fd;		/**< The unix domain socket for communicating with Android GUI */
 #endif
 
+	int ioctl_sock;				/**< The global ioctl socket */
+
 	size_t n_socks;				/**< The number of sockets in socks */
 	fastd_socket_t *socks;			/**< Array of all sockets */
 
