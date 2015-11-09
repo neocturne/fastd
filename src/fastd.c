@@ -481,7 +481,8 @@ static inline void init_config(int *status_fd) {
 
 	/* Init crypto libs here as fastd_config_check() initializes the methods and might need them */
 #ifdef HAVE_LIBSODIUM
-	sodium_init();
+	if (sodium_init() < 0)
+		exit_error("unable to initialize libsodium");
 #endif
 
 #ifdef ENABLE_OPENSSL
