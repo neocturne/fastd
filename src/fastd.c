@@ -503,7 +503,7 @@ static inline void init(int argc, char *argv[]) {
 	init_config(&status_fd);
 
 	fastd_update_time();
-	ctx.next_maintenance = ctx.now + MAINTENANCE_INTERVAL;
+	fastd_task_schedule(&ctx.next_maintenance, TASK_TYPE_MAINTENANCE, ctx.now + MAINTENANCE_INTERVAL);
 
 	fastd_receive_unknown_init();
 
@@ -574,17 +574,6 @@ static inline void init(int argc, char *argv[]) {
 }
 
 
-/** Performs periodic maintenance tasks */
-static inline void maintenance(void) {
-	if (!fastd_timed_out(ctx.next_maintenance))
-		return;
-
-	fastd_socket_handle_binds();
-	fastd_peer_maintenance();
-
-	ctx.next_maintenance += MAINTENANCE_INTERVAL;
-}
-
 /** Reaps zombies of asynchronous shell commands. */
 static inline void reap_zombies(void) {
 	size_t i;
@@ -637,10 +626,9 @@ static inline void handle_signals(void) {
 
 /** A single iteration of fastd's main loop */
 static inline void run(void) {
-	fastd_peer_handle_handshake_queue();
+	fastd_task_handle();
 	fastd_poll_handle();
 
-	maintenance();
 	handle_signals();
 }
 

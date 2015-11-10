@@ -91,7 +91,7 @@ struct fastd_peer {
 
 	fastd_peer_state_t state;			/**< The peer's state */
 
-	fastd_pqueue_t handshake_entry;			/**< Entry in the handshake queue */
+	fastd_task_t handshake_task;			/**< Entry in the handshake queue */
 	fastd_timeout_t last_handshake_timeout;		/**< No handshakes are sent to the peer until this timeout has occured to avoid flooding the peer */
 	fastd_timeout_t last_handshake_response_timeout; /**< All handshakes from last_handshake_address will be ignored until this timeout has occured */
 	fastd_timeout_t establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
@@ -175,7 +175,7 @@ static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
 
 /** Cancels a scheduled handshake */
 static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
-	fastd_pqueue_remove(&peer->handshake_entry);
+	fastd_task_unschedule(&peer->handshake_task);
 }
 
 #ifdef WITH_DYNAMIC_PEERS
@@ -192,7 +192,7 @@ static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 
 /** Checks if there's a handshake queued for the peer */
 static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
-	return fastd_pqueue_linked(&peer->handshake_entry);
+	return fastd_task_scheduled(&peer->handshake_task);
 }
 
 /** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */
@@ -270,7 +270,7 @@ static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
 bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer);
 
-void fastd_peer_handle_handshake_queue(void);
+void fastd_peer_handle_handshake_task(fastd_task_t *task);
 void fastd_peer_maintenance(void);
 void fastd_peer_reset_all(void);
 

@@ -85,6 +85,13 @@ typedef enum fastd_poll_type {
 	POLL_TYPE_SOCKET,	/**< A network socket */
 } fastd_poll_type_t;
 
+/** Task types */
+typedef enum fastd_task_type {
+	TASK_TYPE_UNSPEC = 0,	/**< Unspecified task type */
+	TASK_TYPE_MAINTENANCE,	/**< Scheduled maintenance */
+	TASK_TYPE_HANDSHAKE,	/**< Scheduled handshake */
+} fastd_task_type_t;
+
 
 /** A timestamp used as a timeout */
 typedef int64_t fastd_timeout_t;
@@ -93,6 +100,7 @@ typedef int64_t fastd_timeout_t;
 typedef struct fastd_buffer fastd_buffer_t;
 typedef struct fastd_poll_fd fastd_poll_fd_t;
 typedef struct fastd_pqueue fastd_pqueue_t;
+typedef struct fastd_task fastd_task_t;
 
 typedef union fastd_peer_address fastd_peer_address_t;
 typedef struct fastd_bind_address fastd_bind_address_t;

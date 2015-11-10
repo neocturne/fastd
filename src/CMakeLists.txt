@@ -40,6 +40,7 @@ add_executable(fastd
   shell.c
   socket.c
   status.c
+  task.c
   vector.c
   verify.c
   ${BISON_fastd_config_parse_OUTPUTS}

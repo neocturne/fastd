@@ -51,12 +51,13 @@
 #endif
 
 
-/** Returns the time to the next handshake or -1 */
-static inline int handshake_timeout(void) {
-	if (!ctx.handshake_queue)
+/** Returns the time to the next task or -1 */
+static inline int task_timeout(void) {
+	fastd_timeout_t timeout;
+	if (!fastd_task_timeout(&timeout))
 		return -1;
 
-	int diff_msec = ctx.handshake_queue->value - ctx.now;
+	int diff_msec = timeout - ctx.now;
 	if (diff_msec < 0)
 		return 0;
 	else
@@ -221,14 +222,7 @@ bool fastd_poll_fd_close(fastd_poll_fd_t *fd) {
 void fastd_poll_handle(void) {
 	size_t i;
 
-	int maintenance_timeout = ctx.next_maintenance - ctx.now;
-
-	if (maintenance_timeout < 0)
-		maintenance_timeout = 0;
-
-	int timeout = handshake_timeout();
-	if (timeout < 0 || timeout > maintenance_timeout)
-		timeout = maintenance_timeout;
+	int timeout = task_timeout();
 
 	if (!VECTOR_LEN(ctx.pollfds)) {
 		for (i = 0; i < VECTOR_LEN(ctx.fds); i++) {

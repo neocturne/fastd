@@ -41,6 +41,7 @@
 #include "poll.h"
 #include "sem.h"
 #include "shell.h"
+#include "task.h"
 #include "util.h"
 #include "vector.h"
 
@@ -312,8 +313,8 @@ struct fastd_context {
 	size_t peer_addr_ht_used;		/**< The current number of entries in the peer address hashtable */
 	VECTOR(fastd_peer_t *) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
 
-	fastd_pqueue_t *handshake_queue;	/**< A priority queue of the peers currently queued for handshakes (ordered by the time of the next handshake) */
-	fastd_timeout_t next_maintenance;	/**< The time of the next maintenance call */
+	fastd_pqueue_t *task_queue;		/**< Priority queue of scheduled tasks */
+	fastd_task_t next_maintenance;		/**< Schedules the next maintenance call */
 
 	VECTOR(pid_t) async_pids;		/**< PIDs of asynchronously executed commands which still have to be reaped */
 	fastd_poll_fd_t async_rfd;		/**< The read side of the pipe used to send data from other threads to the main thread */
