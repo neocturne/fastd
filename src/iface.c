@@ -144,6 +144,7 @@ static void open_iface_linux(fastd_iface_t *iface, const char *ifname, uint16_t 
 	iface->fd.fd = -1;
 }
 
+/** Removes TUN/TAP interfaces on platforms which need this */
 static void cleanup_iface(UNUSED fastd_iface_t *iface) {
 }
 
@@ -190,6 +191,7 @@ static void set_tun_mtu(fastd_iface_t *iface, uint16_t mtu) {
 		exit_errno("TUNSIFINFO ioctl failed");
 }
 
+/** Removes TUN/TAP interfaces on platforms which need this */
 static void cleanup_iface(fastd_iface_t *iface) {
 	if (!iface->cleanup)
 		return;
@@ -396,6 +398,7 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 		exit_errno("SIOCSIFMTU ioctl failed");
 }
 
+/** Removes TUN/TAP interfaces on platforms which need this */
 static void cleanup_iface(UNUSED fastd_iface_t *iface) {
 }
 

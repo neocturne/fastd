@@ -41,6 +41,7 @@ static inline void maintenance(void) {
 	fastd_task_reschedule_relative(&ctx.next_maintenance, MAINTENANCE_INTERVAL);
 }
 
+/** Handles one task */
 static void handle_task(void) {
 	fastd_task_t *task = container_of(ctx.task_queue, fastd_task_t, entry);
 	fastd_pqueue_remove(ctx.task_queue);
@@ -59,16 +60,19 @@ static void handle_task(void) {
 	}
 }
 
+/** Handles all tasks whose timeout has been reached */
 void fastd_task_handle(void) {
 	while (ctx.task_queue && fastd_timed_out(ctx.task_queue->value))
 		handle_task();
 }
 
+/** Puts a task back into the queue with a new timeout */
 void fastd_task_reschedule(fastd_task_t *task, fastd_timeout_t timeout) {
 	task->entry.value = timeout;
 	fastd_pqueue_insert(&ctx.task_queue, &task->entry);
 }
 
+/** Gets the timeout of the next task (if any) */
 bool fastd_task_timeout(fastd_timeout_t *timeout) {
 	if (!ctx.task_queue)
 		return false;

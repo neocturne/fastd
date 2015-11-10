@@ -208,6 +208,7 @@ static void dump_status(int fd) {
 	}
 }
 
+/** Deletes the status socket file */
 static void unlink_status_socket(void) {
 	if (!conf.status_socket || ctx.status_fd.fd < 0)
 		return;

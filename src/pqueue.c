@@ -36,6 +36,7 @@
 #include "log.h"
 
 
+/** Links an element at the position specified by \e pqueue */
 static inline void pqueue_link(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
 	if (elem->next)
 		exit_bug("pqueue_link: element already linked");
@@ -48,6 +49,7 @@ static inline void pqueue_link(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
 	*pqueue = elem;
 }
 
+/** Unlinks an element */
 static inline void pqueue_unlink(fastd_pqueue_t *elem) {
 	*elem->pprev = elem->next;
 	if (elem->next)
@@ -57,6 +59,11 @@ static inline void pqueue_unlink(fastd_pqueue_t *elem) {
 }
 
 
+/**
+   Merges two priority queues
+
+   \e pqueue2 may be empty (NULL)
+*/
 static fastd_pqueue_t * pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pqueue2) {
 	if (!pqueue1)
 		exit_bug("pqueue_merge: pqueue1 unset");
@@ -85,6 +92,7 @@ static fastd_pqueue_t * pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pq
 	return lo;
 }
 
+/** Merges a list of priority queues */
 static fastd_pqueue_t * pqueue_merge_pairs(fastd_pqueue_t *pqueue0) {
 	if (!pqueue0)
 		return NULL;
@@ -104,6 +112,7 @@ static fastd_pqueue_t * pqueue_merge_pairs(fastd_pqueue_t *pqueue0) {
 	return pqueue_merge(pqueue_merge(pqueue0, pqueue1), pqueue_merge_pairs(pqueue2));
 }
 
+/** Inserts a new element into a priority queue */
 void fastd_pqueue_insert(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
 	if (elem->pprev || elem->next || elem->children)
 		exit_bug("fastd_pqueue_insert: tried to insert linked pqueue element");
@@ -112,6 +121,7 @@ void fastd_pqueue_insert(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
 	(*pqueue)->pprev = pqueue;
 }
 
+/** Removes an element from a priority queue */
 void fastd_pqueue_remove(fastd_pqueue_t *elem) {
 	if (!fastd_pqueue_linked(elem)) {
 		if (elem->children || elem->next)
