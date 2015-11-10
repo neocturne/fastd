@@ -53,7 +53,6 @@ static inline void pqueue_unlink(fastd_pqueue_t *elem) {
 	if (elem->next)
 		elem->next->pprev = elem->pprev;
 
-	elem->pprev = NULL;
 	elem->next = NULL;
 }
 
@@ -101,7 +100,6 @@ static fastd_pqueue_t * pqueue_merge_pairs(fastd_pqueue_t *pqueue0) {
 	fastd_pqueue_t *pqueue2 = pqueue1->next;
 
 	pqueue0->next = pqueue1->next = NULL;
-	pqueue0->pprev = pqueue1->pprev = NULL;
 
 	return pqueue_merge(pqueue_merge(pqueue0, pqueue1), pqueue_merge_pairs(pqueue2));
 }
@@ -130,5 +128,6 @@ void fastd_pqueue_remove(fastd_pqueue_t *elem) {
 	if (merged)
 		pqueue_link(pprev, merged);
 
+	elem->pprev = NULL;
 	elem->children = NULL;
 }
