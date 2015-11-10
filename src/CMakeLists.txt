@@ -31,6 +31,7 @@ add_executable(fastd
   peer.c
   peer_hashtable.c
   poll.c
+  pqueue.c
   random.c
   receive.c
   resolve.c
