@@ -36,7 +36,6 @@
 
 #pragma once
 
-#include "dlist.h"
 #include "buffer.h"
 #include "log.h"
 #include "poll.h"
@@ -313,7 +312,7 @@ struct fastd_context {
 	size_t peer_addr_ht_used;		/**< The current number of entries in the peer address hashtable */
 	VECTOR(fastd_peer_t *) *peer_addr_ht;	/**< An array of hash buckets for the peer hash table */
 
-	fastd_dlist_head_t handshake_queue;	/**< A doubly linked list of the peers currently queued for handshakes (ordered by the time of the next handshake) */
+	fastd_pqueue_t *handshake_queue;	/**< A priority queue of the peers currently queued for handshakes (ordered by the time of the next handshake) */
 	fastd_timeout_t next_maintenance;	/**< The time of the next maintenance call */
 
 	VECTOR(pid_t) async_pids;		/**< PIDs of asynchronously executed commands which still have to be reaped */

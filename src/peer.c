@@ -265,17 +265,8 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
 	fastd_peer_unschedule_handshake(peer);
 
-	peer->next_handshake = ctx.now + delay;
-
-	fastd_dlist_head_t *list;
-	for (list = &ctx.handshake_queue; list->next; list = list->next) {
-		fastd_peer_t *entry = container_of(list->next, fastd_peer_t, handshake_entry);
-
-		if (entry->next_handshake > peer->next_handshake)
-			break;
-	}
-
-	fastd_dlist_insert(list, &peer->handshake_entry);
+	peer->handshake_entry.value = ctx.now + delay;
+	fastd_pqueue_insert(&ctx.handshake_queue, &peer->handshake_entry);
 }
 
 /** Checks if the peer group \e group1 lies in \e group2 */
@@ -829,12 +820,12 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 
 /** Sends a handshake to one peer, if a scheduled handshake is due */
 void fastd_peer_handle_handshake_queue(void) {
-	if (!ctx.handshake_queue.next)
+	if (!ctx.handshake_queue)
+		return;
+	if (!fastd_timed_out(ctx.handshake_queue->value))
 		return;
 
-	fastd_peer_t *peer = container_of(ctx.handshake_queue.next, fastd_peer_t, handshake_entry);
-	if (!fastd_timed_out(peer->next_handshake))
-		return;
+	fastd_peer_t *peer = container_of(ctx.handshake_queue, fastd_peer_t, handshake_entry);
 
 	fastd_peer_schedule_handshake_default(peer);
 

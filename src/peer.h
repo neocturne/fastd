@@ -33,6 +33,7 @@
 #pragma once
 
 #include "fastd.h"
+#include "pqueue.h"
 
 
 /** The state of a peer */
@@ -90,7 +91,7 @@ struct fastd_peer {
 
 	fastd_peer_state_t state;			/**< The peer's state */
 
-	fastd_timeout_t next_handshake;			/**< The time of the next handshake */
+	fastd_pqueue_t handshake_entry;			/**< Entry in the handshake queue */
 	fastd_timeout_t last_handshake_timeout;		/**< No handshakes are sent to the peer until this timeout has occured to avoid flooding the peer */
 	fastd_timeout_t last_handshake_response_timeout; /**< All handshakes from last_handshake_address will be ignored until this timeout has occured */
 	fastd_timeout_t establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
@@ -100,8 +101,6 @@ struct fastd_peer {
 	fastd_timeout_t keepalive_timeout;		/**< The timeout after which a keepalive is sent to the peer */
 
 	fastd_stats_t stats;				/**< Traffic statistics */
-
-	fastd_dlist_head_t handshake_entry;		/**< Entry in the handshake queue */
 
 #ifdef WITH_DYNAMIC_PEERS
 	fastd_timeout_t verify_timeout;			/**< Specifies the minimum time after which on-verify may be run again */
@@ -176,7 +175,7 @@ static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
 
 /** Cancels a scheduled handshake */
 static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
-	fastd_dlist_remove(&peer->handshake_entry);
+	fastd_pqueue_remove(&peer->handshake_entry);
 }
 
 #ifdef WITH_DYNAMIC_PEERS
@@ -193,7 +192,7 @@ static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 
 /** Checks if there's a handshake queued for the peer */
 static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
-	return fastd_dlist_linked(&peer->handshake_entry);
+	return fastd_pqueue_linked(&peer->handshake_entry);
 }
 
 /** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */

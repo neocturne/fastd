@@ -53,12 +53,10 @@
 
 /** Returns the time to the next handshake or -1 */
 static inline int handshake_timeout(void) {
-	if (!ctx.handshake_queue.next)
+	if (!ctx.handshake_queue)
 		return -1;
 
-	fastd_peer_t *peer = container_of(ctx.handshake_queue.next, fastd_peer_t, handshake_entry);
-
-	int diff_msec = peer->next_handshake - ctx.now;
+	int diff_msec = ctx.handshake_queue->value - ctx.now;
 	if (diff_msec < 0)
 		return 0;
 	else
