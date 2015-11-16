@@ -271,6 +271,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
 bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer);
 
 void fastd_peer_handle_handshake_task(fastd_task_t *task);
+void fastd_peer_eth_addr_cleanup(void);
 void fastd_peer_maintenance(void);
 void fastd_peer_reset_all(void);
 

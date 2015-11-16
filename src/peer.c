@@ -971,7 +971,7 @@ static bool maintain_peer(fastd_peer_t *peer) {
 }
 
 /** Removes all time-outed MAC addresses from \e ctx.eth_addrs */
-static void eth_addr_cleanup(void) {
+void fastd_peer_eth_addr_cleanup(void) {
 	size_t i, deleted = 0;
 
 	for (i = 0; i < VECTOR_LEN(ctx.eth_addrs); i++) {
@@ -997,8 +997,6 @@ void fastd_peer_maintenance(void) {
 		if (maintain_peer(peer))
 			i++;
 	}
-
-	eth_addr_cleanup();
 }
 
 /** Resets all peers */
