@@ -192,7 +192,7 @@ static void session_send(fastd_peer_t *peer, fastd_buffer_t buffer, protocol_ses
 	}
 
 	fastd_send(peer->sock, &peer->local_address, &peer->address, peer, send_buffer, stat_size);
-	peer->keepalive_timeout = ctx.now + KEEPALIVE_TIMEOUT;
+	fastd_peer_clear_keepalive(peer);
 }
 
 /** Encrypts and sends a packet to a peer */

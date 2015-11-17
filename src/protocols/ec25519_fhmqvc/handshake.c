@@ -163,7 +163,6 @@ static bool establish(fastd_peer_t *peer, const fastd_method_info_t *method, fas
 	}
 
 	peer->establish_handshake_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
-	fastd_peer_seen(peer);
 
 	pr_verbose("new session with %P established using method `%s'%s.", peer, method->name, salt ? "" : " (compat mode)");
 
@@ -586,6 +585,7 @@ static fastd_peer_t * add_dynamic(fastd_socket_t *sock, const fastd_peer_address
 	/* Ugly hack */
 	peer->protocol_state->last_serial--;
 
+	/* Performs further peer initialization */
 	fastd_peer_reset(peer);
 
 	return peer;

@@ -33,7 +33,6 @@
 #pragma once
 
 #include "fastd.h"
-#include "pqueue.h"
 
 
 /** The state of a peer */
@@ -97,7 +96,8 @@ struct fastd_peer {
 	fastd_timeout_t establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
 	int64_t established;				/**< The time this peer connection has been established */
 
-	fastd_timeout_t timeout;			/**< The timeout after which the peer is reset */
+	fastd_task_t task;				/**< Task queue entry for periodic maintenance tasks */
+	fastd_timeout_t reset_timeout;			/**< The timeout after which the peer is reset */
 	fastd_timeout_t keepalive_timeout;		/**< The timeout after which a keepalive is sent to the peer */
 
 	fastd_stats_t stats;				/**< Traffic statistics */
@@ -133,20 +133,6 @@ bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_pee
 void fastd_peer_address_simplify(fastd_peer_address_t *addr);
 void fastd_peer_address_widen(fastd_peer_address_t *addr);
 
-/** Returns the port of a fastd_peer_address_t (in network byte order) */
-static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *addr) {
-	switch (addr->sa.sa_family) {
-	case AF_INET:
-		return addr->in.sin_port;
-
-	case AF_INET6:
-		return addr->in6.sin6_port;
-
-	default:
-		return 0;
-	}
-}
-
 bool fastd_peer_add(fastd_peer_t *peer);
 void fastd_peer_reset(fastd_peer_t *peer);
 void fastd_peer_delete(fastd_peer_t *peer);
@@ -163,6 +149,29 @@ fastd_peer_t * fastd_peer_find_by_id(uint64_t id);
 
 void fastd_peer_set_shell_env(fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr);
 void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *peer_addr, bool sync);
+
+void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
+bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer);
+
+void fastd_peer_handle_handshake_task(fastd_task_t *task);
+void fastd_peer_handle_task(fastd_task_t *task);
+void fastd_peer_eth_addr_cleanup(void);
+void fastd_peer_reset_all(void);
+
+
+/** Returns the port of a fastd_peer_address_t (in network byte order) */
+static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *addr) {
+	switch (addr->sa.sa_family) {
+	case AF_INET:
+		return addr->in.sin_port;
+
+	case AF_INET6:
+		return addr->in6.sin6_port;
+
+	default:
+		return 0;
+	}
+}
 
 /**
    Schedules a handshake with the default delay and jitter
@@ -182,11 +191,15 @@ static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
 /** Call to signal that there is currently an asychronous on-verify command running for the peer */
 static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
 	peer->verify_timeout = ctx.now + MIN_VERIFY_INTERVAL;
+
+	fastd_timeout_advance(&peer->reset_timeout, peer->verify_timeout);
 }
 
 /** Marks the peer verification as successful or failed */
 static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 	peer->verify_valid_timeout = ctx.now + (ok ? VERIFY_VALID_TIME : 0);
+
+	fastd_timeout_advance(&peer->reset_timeout, peer->verify_valid_timeout);
 }
 #endif
 
@@ -243,7 +256,12 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 
 /** Signals that a valid packet was received from the peer */
 static inline void fastd_peer_seen(fastd_peer_t *peer) {
-	peer->timeout = ctx.now + PEER_STALE_TIME;
+	peer->reset_timeout = ctx.now + PEER_STALE_TIME;
+}
+
+/** Resets the keepalive timeout */
+static inline void fastd_peer_clear_keepalive(fastd_peer_t *peer) {
+	peer->keepalive_timeout = ctx.now + KEEPALIVE_TIMEOUT;
 }
 
 /** Checks if a peer uses dynamic sockets (which means that each connection attempt uses a new socket) */
@@ -266,14 +284,6 @@ static inline uint16_t fastd_peer_get_mtu(const fastd_peer_t *peer) {
 static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
 	return ((addr.data[0] & 1) == 0);
 }
-
-void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
-bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer);
-
-void fastd_peer_handle_handshake_task(fastd_task_t *task);
-void fastd_peer_eth_addr_cleanup(void);
-void fastd_peer_maintenance(void);
-void fastd_peer_reset_all(void);
 
 /** Adds statistics for a single packet of a given size */
 static inline void fastd_stats_add(UNUSED fastd_peer_t *peer, UNUSED fastd_stat_type_t stat, UNUSED size_t bytes) {

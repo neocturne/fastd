@@ -314,6 +314,7 @@ static void reset_peer(fastd_peer_t *peer) {
 	VECTOR_RESIZE(ctx.eth_addrs, VECTOR_LEN(ctx.eth_addrs)-deleted);
 
 	fastd_peer_unschedule_handshake(peer);
+	fastd_task_unschedule(&peer->task);
 
 	fastd_peer_hashtable_remove(peer);
 
@@ -363,6 +364,15 @@ void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_
 		init_handshake(peer);
 }
 
+/** Schedules the peer maintenance task (or removes the schduled task if there's nothing to do) */
+void schedule_peer_task(fastd_peer_t *peer) {
+	fastd_task_unschedule(&peer->task);
+
+	fastd_timeout_t timeout = fastd_timeout_min(peer->reset_timeout, peer->keepalive_timeout);
+	if (timeout != fastd_timeout_inv)
+		fastd_task_schedule(&peer->task, TASK_TYPE_PEER, timeout);
+}
+
 /** Initializes a peer */
 static void setup_peer(fastd_peer_t *peer) {
 	if (VECTOR_LEN(peer->remotes) == 0) {
@@ -396,6 +406,14 @@ static void setup_peer(fastd_peer_t *peer) {
 	peer->verify_timeout = ctx.now;
 	peer->verify_valid_timeout = ctx.now;
 #endif
+
+	peer->reset_timeout = fastd_timeout_inv;
+	peer->keepalive_timeout = fastd_timeout_inv;
+
+	if (fastd_peer_is_dynamic(peer)) {
+		peer->reset_timeout = ctx.now;
+		schedule_peer_task(peer);
+	}
 
 	if (!fastd_peer_is_enabled(peer))
 		/* Keep the peer in STATE_INACTIVE */
@@ -864,14 +882,19 @@ bool fastd_peer_set_established(fastd_peer_t *peer) {
 
 	if (!peer->iface) {
 		peer->iface = fastd_iface_open(peer);
-		if (peer->iface)
-			on_up(peer, false);
-		else
+		if (!peer->iface)
 			return false;
+
+		on_up(peer, false);
 	}
 
 	peer->state = STATE_ESTABLISHED;
 	peer->established = ctx.now;
+	fastd_peer_seen(peer);
+	fastd_peer_clear_keepalive(peer);
+
+	schedule_peer_task(peer);
+
 	on_establish(peer);
 	pr_info("connection with %P established.", peer);
 
@@ -938,36 +961,29 @@ bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **pee
    \li If no data was received from the peer for some time, it is reset.
    \li If no data was sent to the peer for some time, a keepalive is sent.
  */
-static bool maintain_peer(fastd_peer_t *peer) {
-	if (fastd_peer_is_dynamic(peer) || fastd_peer_is_established(peer)) {
-		/* check for peer timeout */
-		if (fastd_timed_out(peer->timeout)) {
-#ifdef WITH_DYNAMIC_PEERS
-			if (fastd_peer_is_dynamic(peer) &&
-			    fastd_timed_out(peer->verify_timeout) &&
-			    fastd_timed_out(peer->verify_valid_timeout)) {
-				fastd_peer_delete(peer);
-				return false;
-			}
-#endif
+void fastd_peer_handle_task(fastd_task_t *task) {
+	fastd_peer_t *peer = container_of(task, fastd_peer_t, task);
 
-			if (fastd_peer_is_established(peer))
-				fastd_peer_reset(peer);
-			return true;
-		}
+	if (!fastd_peer_is_dynamic(peer) && !fastd_peer_is_established(peer))
+		return;
 
-		/* check for keepalive timeout */
-		if (!fastd_peer_is_established(peer))
-			return true;
+	/* check for peer timeout */
+	if (fastd_timed_out(peer->reset_timeout)) {
+		if (fastd_peer_is_dynamic(peer))
+			fastd_peer_delete(peer);
+		else
+			fastd_peer_reset(peer);
 
-		if (!fastd_timed_out(peer->keepalive_timeout))
-			return true;
+		return;
+	}
 
+	/* check for keepalive timeout */
+	if (fastd_timed_out(peer->keepalive_timeout)) {
 		pr_debug2("sending keepalive to %P", peer);
 		conf.protocol->send(peer, fastd_buffer_alloc(0, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
 	}
 
-	return true;
+	schedule_peer_task(peer);
 }
 
 /** Removes all time-outed MAC addresses from \e ctx.eth_addrs */
@@ -986,17 +1002,6 @@ void fastd_peer_eth_addr_cleanup(void) {
 	}
 
 	VECTOR_RESIZE(ctx.eth_addrs, VECTOR_LEN(ctx.eth_addrs)-deleted);
-}
-
-/** Performs periodic maintenance tasks for peers */
-void fastd_peer_maintenance(void) {
-	size_t i;
-	for (i = 0; i < VECTOR_LEN(ctx.peers);) {
-		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
-
-		if (maintain_peer(peer))
-			i++;
-	}
 }
 
 /** Resets all peers */

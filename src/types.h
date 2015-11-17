@@ -90,11 +90,15 @@ typedef enum fastd_task_type {
 	TASK_TYPE_UNSPEC = 0,	/**< Unspecified task type */
 	TASK_TYPE_MAINTENANCE,	/**< Scheduled maintenance */
 	TASK_TYPE_HANDSHAKE,	/**< Scheduled handshake */
+	TASK_TYPE_PEER,		/**< Peer maintenance */
 } fastd_task_type_t;
 
 
 /** A timestamp used as a timeout */
 typedef int64_t fastd_timeout_t;
+
+/** Invalid timestamp */
+static const fastd_timeout_t fastd_timeout_inv = INT64_MAX;
 
 
 typedef struct fastd_buffer fastd_buffer_t;

@@ -533,6 +533,17 @@ static inline bool fastd_timed_out(fastd_timeout_t timeout) {
 	return timeout <= ctx.now;
 }
 
+/** Returns the minimum of two fastd_timeout_t values */
+static inline fastd_timeout_t fastd_timeout_min(fastd_timeout_t a, fastd_timeout_t b) {
+	return (a < b) ? a : b;
+}
+
+/** Updates a timeout, ensuring it can only increase */
+static inline void fastd_timeout_advance(fastd_timeout_t *a, fastd_timeout_t v) {
+	if (*a < v)
+		*a = v;
+}
+
 /** Updates the current time */
 static inline void fastd_update_time(void) {
 	struct timespec ts;
