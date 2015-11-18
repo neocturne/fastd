@@ -111,6 +111,12 @@
 #define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
 
 
+/** The default handshake interval */
+#define DEFAULT_HANDSHAKE_INTERVAL 20000 /* 20 seconds */
+
+/** The default handshake interval jitter */
+#define DEFAULT_HANDSHAKE_JITTER 2500	/* 2.5 seconds */
+
 /** The interval of periodic maintenance tasks */
 #define MAINTENANCE_INTERVAL 10000	/* 10 seconds */
 

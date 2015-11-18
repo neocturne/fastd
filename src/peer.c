@@ -256,6 +256,36 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 		return;
 }
 
+/** Schedules the peer maintenance task (or removes the scheduled task if there's nothing to do) */
+static void schedule_peer_task(fastd_peer_t *peer) {
+	fastd_timeout_t timeout = fastd_timeout_min(peer->reset_timeout,
+						    fastd_timeout_min(peer->keepalive_timeout,
+								      peer->next_handshake));
+
+	if (timeout == fastd_timeout_inv) {
+		pr_debug2("Removing scheduled task for %P", peer);
+		fastd_task_unschedule(&peer->task);
+	}
+	else if (fastd_task_timeout(&peer->task) > timeout) {
+		pr_debug2("Replacing scheduled task for %P", peer);
+		fastd_task_unschedule(&peer->task);
+		fastd_task_schedule(&peer->task, TASK_TYPE_PEER, timeout);
+	}
+	else {
+		pr_debug2("Keeping scheduled task for %P", peer);
+	}
+}
+
+/** Sets the timeout for the next handshake without actually rescheduling */
+static void set_next_handshake(fastd_peer_t *peer, int delay) {
+	peer->next_handshake = ctx.now + delay;
+}
+
+/** Sets the timeout for the next handshake to the default delay and jitter without actually rescheduling */
+static void set_next_handshake_default(fastd_peer_t *peer) {
+	set_next_handshake(peer, fastd_peer_handshake_default_rand());
+}
+
 /**
    Schedules a handshake after the given delay
 
@@ -263,8 +293,8 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
    @param delay	the delay in milliseconds
 */
 void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
-	fastd_peer_unschedule_handshake(peer);
-	fastd_task_schedule(&peer->handshake_task, TASK_TYPE_HANDSHAKE, ctx.now + delay);
+	set_next_handshake(peer, delay);
+	schedule_peer_task(peer);
 }
 
 /** Checks if the peer group \e group1 lies in \e group2 */
@@ -313,7 +343,6 @@ static void reset_peer(fastd_peer_t *peer) {
 
 	VECTOR_RESIZE(ctx.eth_addrs, VECTOR_LEN(ctx.eth_addrs)-deleted);
 
-	fastd_peer_unschedule_handshake(peer);
 	fastd_task_unschedule(&peer->task);
 
 	fastd_peer_hashtable_remove(peer);
@@ -364,23 +393,6 @@ void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_
 		init_handshake(peer);
 }
 
-/** Schedules the peer maintenance task (or removes the scheduled task if there's nothing to do) */
-static void schedule_peer_task(fastd_peer_t *peer) {
-	fastd_timeout_t timeout = fastd_timeout_min(peer->reset_timeout, peer->keepalive_timeout);
-	if (timeout == fastd_timeout_inv) {
-		pr_debug2("Removing scheduled task for %P", peer);
-		fastd_task_unschedule(&peer->task);
-	}
-	else if (fastd_task_timeout(&peer->task) > timeout) {
-		pr_debug2("Replacing scheduled task for %P", peer);
-		fastd_task_unschedule(&peer->task);
-		fastd_task_schedule(&peer->task, TASK_TYPE_PEER, timeout);
-	}
-	else {
-		pr_debug2("Keeping scheduled task for %P", peer);
-	}
-}
-
 /** Initializes a peer */
 static void setup_peer(fastd_peer_t *peer) {
 	if (VECTOR_LEN(peer->remotes) == 0) {
@@ -415,13 +427,12 @@ static void setup_peer(fastd_peer_t *peer) {
 	peer->verify_valid_timeout = ctx.now;
 #endif
 
+	peer->next_handshake = fastd_timeout_inv;
 	peer->reset_timeout = fastd_timeout_inv;
 	peer->keepalive_timeout = fastd_timeout_inv;
 
-	if (fastd_peer_is_dynamic(peer)) {
+	if (fastd_peer_is_dynamic(peer))
 		peer->reset_timeout = ctx.now;
-		schedule_peer_task(peer);
-	}
 
 	if (!fastd_peer_is_enabled(peer))
 		/* Keep the peer in STATE_INACTIVE */
@@ -447,7 +458,7 @@ static void setup_peer(fastd_peer_t *peer) {
 		if (next_remote->hostname) {
 			peer->state = STATE_RESOLVING;
 			fastd_resolve_peer(peer, next_remote);
-			fastd_peer_schedule_handshake_default(peer);
+			set_next_handshake_default(peer);
 		}
 		else  {
 			init_handshake(peer);
@@ -456,6 +467,8 @@ static void setup_peer(fastd_peer_t *peer) {
 	else {
 		peer->state = STATE_PASSIVE;
 	}
+
+	schedule_peer_task(peer);
 }
 
 /**
@@ -842,47 +855,6 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);
 }
 
-/** Sends a handshake to one peer, if a scheduled handshake is due */
-void fastd_peer_handle_handshake_task(fastd_task_t *task) {
-	fastd_peer_t *peer = container_of(task, fastd_peer_t, handshake_task);
-
-	fastd_peer_schedule_handshake_default(peer);
-
-	if (!fastd_peer_may_connect(peer)) {
-		if (peer->next_remote != -1) {
-			pr_debug("temporarily disabling handshakes with %P", peer);
-			peer->next_remote = -1;
-		}
-
-		return;
-	}
-
-	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
-
-	if (next_remote || fastd_peer_is_established(peer)) {
-		send_handshake(peer, next_remote);
-
-		if (fastd_peer_is_established(peer))
-			return;
-
-		peer->state = STATE_HANDSHAKE;
-
-		if (++next_remote->current_address < next_remote->n_addresses)
-			return;
-
-		peer->next_remote++;
-	}
-
-	if (peer->next_remote < 0 || (size_t)peer->next_remote >= VECTOR_LEN(peer->remotes))
-		peer->next_remote = 0;
-
-	next_remote = fastd_peer_get_next_remote(peer);
-	next_remote->current_address = 0;
-
-	if (next_remote->hostname)
-		fastd_resolve_peer(peer, next_remote);
-}
-
 /** Marks a peer as established */
 bool fastd_peer_set_established(fastd_peer_t *peer) {
 	if (fastd_peer_is_established(peer))
@@ -963,6 +935,45 @@ bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **pee
 	return true;
 }
 
+/** Sends a handshake to one peer, if a scheduled handshake is due */
+static void handle_task_handshake(fastd_peer_t *peer) {
+	set_next_handshake_default(peer);
+
+	if (!fastd_peer_may_connect(peer)) {
+		if (peer->next_remote != -1) {
+			pr_debug("temporarily disabling handshakes with %P", peer);
+			peer->next_remote = -1;
+		}
+
+		return;
+	}
+
+	fastd_remote_t *next_remote = fastd_peer_get_next_remote(peer);
+
+	if (next_remote || fastd_peer_is_established(peer)) {
+		send_handshake(peer, next_remote);
+
+		if (fastd_peer_is_established(peer))
+			return;
+
+		peer->state = STATE_HANDSHAKE;
+
+		if (++next_remote->current_address < next_remote->n_addresses)
+			return;
+
+		peer->next_remote++;
+	}
+
+	if (peer->next_remote < 0 || (size_t)peer->next_remote >= VECTOR_LEN(peer->remotes))
+		peer->next_remote = 0;
+
+	next_remote = fastd_peer_get_next_remote(peer);
+	next_remote->current_address = 0;
+
+	if (next_remote->hostname)
+		fastd_resolve_peer(peer, next_remote);
+}
+
 /**
    Performs maintenance tasks for a peer
 
@@ -971,9 +982,6 @@ bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **pee
  */
 void fastd_peer_handle_task(fastd_task_t *task) {
 	fastd_peer_t *peer = container_of(task, fastd_peer_t, task);
-
-	if (!fastd_peer_is_dynamic(peer) && !fastd_peer_is_established(peer))
-		return;
 
 	/* check for peer timeout */
 	if (fastd_timed_out(peer->reset_timeout)) {
@@ -990,6 +998,9 @@ void fastd_peer_handle_task(fastd_task_t *task) {
 		pr_debug2("sending keepalive to %P", peer);
 		conf.protocol->send(peer, fastd_buffer_alloc(0, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
 	}
+
+	if (fastd_timed_out(peer->next_handshake))
+		handle_task_handshake(peer);
 
 	schedule_peer_task(peer);
 }

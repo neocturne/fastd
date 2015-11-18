@@ -90,13 +90,14 @@ struct fastd_peer {
 
 	fastd_peer_state_t state;			/**< The peer's state */
 
-	fastd_task_t handshake_task;			/**< Entry in the handshake queue */
+	fastd_task_t task;				/**< Task queue entry for periodic maintenance tasks */
+
+	fastd_timeout_t next_handshake;			/**< The time of the next handshake */
 	fastd_timeout_t last_handshake_timeout;		/**< No handshakes are sent to the peer until this timeout has occured to avoid flooding the peer */
 	fastd_timeout_t last_handshake_response_timeout; /**< All handshakes from last_handshake_address will be ignored until this timeout has occured */
 	fastd_timeout_t establish_handshake_timeout;	/**< A timeout during which all handshakes for this peer will be ignored after a new connection has been established */
 	int64_t established;				/**< The time this peer connection has been established */
 
-	fastd_task_t task;				/**< Task queue entry for periodic maintenance tasks */
 	fastd_timeout_t reset_timeout;			/**< The timeout after which the peer is reset */
 	fastd_timeout_t keepalive_timeout;		/**< The timeout after which a keepalive is sent to the peer */
 
@@ -153,7 +154,6 @@ void fastd_peer_exec_shell_command(const fastd_shell_command_t *command, const f
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
 bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer);
 
-void fastd_peer_handle_handshake_task(fastd_task_t *task);
 void fastd_peer_handle_task(fastd_task_t *task);
 void fastd_peer_eth_addr_cleanup(void);
 void fastd_peer_reset_all(void);
@@ -173,18 +173,20 @@ static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *a
 	}
 }
 
-/**
-   Schedules a handshake with the default delay and jitter
+/** Returns a random value in the range DEFAULT_HANDSHAKE_INTERVAL +/- DEFAULT_HANDSHAKE_JITTER */
+static inline int fastd_peer_handshake_default_rand(void) {
+	return fastd_rand(DEFAULT_HANDSHAKE_INTERVAL-DEFAULT_HANDSHAKE_JITTER,
+			  DEFAULT_HANDSHAKE_INTERVAL+DEFAULT_HANDSHAKE_JITTER);
+}
 
-   The default relay is between 17.5 and 22.5 seconds
-*/
+/** Schedules a handshake with the default delay and jitter */
 static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
-	fastd_peer_schedule_handshake(peer, fastd_rand(17500, 22500));
+	fastd_peer_schedule_handshake(peer, fastd_peer_handshake_default_rand());
 }
 
 /** Cancels a scheduled handshake */
 static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
-	fastd_task_unschedule(&peer->handshake_task);
+	peer->next_handshake = fastd_timeout_inv;
 }
 
 #ifdef WITH_DYNAMIC_PEERS
@@ -205,7 +207,7 @@ static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 
 /** Checks if there's a handshake queued for the peer */
 static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
-	return fastd_task_scheduled(&peer->handshake_task);
+	return (peer->next_handshake != fastd_timeout_inv);
 }
 
 /** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */

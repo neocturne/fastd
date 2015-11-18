@@ -89,8 +89,7 @@ typedef enum fastd_poll_type {
 typedef enum fastd_task_type {
 	TASK_TYPE_UNSPEC = 0,	/**< Unspecified task type */
 	TASK_TYPE_MAINTENANCE,	/**< Scheduled maintenance */
-	TASK_TYPE_HANDSHAKE,	/**< Scheduled handshake */
-	TASK_TYPE_PEER,		/**< Peer maintenance */
+	TASK_TYPE_PEER,		/**< Peer maintenance (handshake, reset, keepalive) */
 } fastd_task_type_t;
 
 

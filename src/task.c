@@ -51,10 +51,6 @@ static void handle_task(void) {
 		maintenance();
 		break;
 
-	case TASK_TYPE_HANDSHAKE:
-		fastd_peer_handle_handshake_task(task);
-		break;
-
 	case TASK_TYPE_PEER:
 		fastd_peer_handle_task(task);
 		break;
