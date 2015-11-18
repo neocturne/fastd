@@ -44,11 +44,20 @@ struct fastd_task {
 void fastd_task_handle(void);
 
 void fastd_task_reschedule(fastd_task_t *task, fastd_timeout_t timeout);
+fastd_timeout_t fastd_task_queue_timeout(void);
 
 
 /** Checks if the given task is currently scheduled */
 static inline bool fastd_task_scheduled(fastd_task_t *task) {
 	return fastd_pqueue_linked(&task->entry);
+}
+
+/** Gets the timeout of a task */
+static inline fastd_timeout_t fastd_task_timeout(fastd_task_t *task) {
+	if (!fastd_task_scheduled(task))
+		return fastd_timeout_inv;
+
+	return task->entry.value;
 }
 
 /** Removes a task from the queue */
@@ -66,6 +75,3 @@ static inline void fastd_task_schedule(fastd_task_t *task, fastd_task_type_t typ
 	task->type = type;
 	fastd_task_reschedule(task, timeout);
 }
-
-
-bool fastd_task_timeout(fastd_timeout_t *timeout);

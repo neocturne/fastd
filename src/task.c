@@ -76,11 +76,10 @@ void fastd_task_reschedule(fastd_task_t *task, fastd_timeout_t timeout) {
 	fastd_pqueue_insert(&ctx.task_queue, &task->entry);
 }
 
-/** Gets the timeout of the next task (if any) */
-bool fastd_task_timeout(fastd_timeout_t *timeout) {
+/** Gets the timeout of the next task in the task queue */
+fastd_timeout_t fastd_task_queue_timeout(void) {
 	if (!ctx.task_queue)
-		return false;
+		return fastd_timeout_inv;
 
-	*timeout = ctx.task_queue->value;
-	return true;
+	return ctx.task_queue->value;
 }

@@ -53,8 +53,8 @@
 
 /** Returns the time to the next task or -1 */
 static inline int task_timeout(void) {
-	fastd_timeout_t timeout;
-	if (!fastd_task_timeout(&timeout))
+	fastd_timeout_t timeout = fastd_task_queue_timeout();
+	if (timeout == fastd_timeout_inv)
 		return -1;
 
 	int diff_msec = timeout - ctx.now;

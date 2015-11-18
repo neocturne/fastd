@@ -364,13 +364,21 @@ void fastd_peer_handle_resolve(fastd_peer_t *peer, fastd_remote_t *remote, size_
 		init_handshake(peer);
 }
 
-/** Schedules the peer maintenance task (or removes the schduled task if there's nothing to do) */
-void schedule_peer_task(fastd_peer_t *peer) {
-	fastd_task_unschedule(&peer->task);
-
+/** Schedules the peer maintenance task (or removes the scheduled task if there's nothing to do) */
+static void schedule_peer_task(fastd_peer_t *peer) {
 	fastd_timeout_t timeout = fastd_timeout_min(peer->reset_timeout, peer->keepalive_timeout);
-	if (timeout != fastd_timeout_inv)
+	if (timeout == fastd_timeout_inv) {
+		pr_debug2("Removing scheduled task for %P", peer);
+		fastd_task_unschedule(&peer->task);
+	}
+	else if (fastd_task_timeout(&peer->task) > timeout) {
+		pr_debug2("Replacing scheduled task for %P", peer);
+		fastd_task_unschedule(&peer->task);
 		fastd_task_schedule(&peer->task, TASK_TYPE_PEER, timeout);
+	}
+	else {
+		pr_debug2("Keeping scheduled task for %P", peer);
+	}
 }
 
 /** Initializes a peer */
