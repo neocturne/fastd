@@ -257,9 +257,13 @@ static inline int get_syslog_level(fastd_loglevel_t log_level) {
 
 /** printf-like function handling different conversion specifiers and using the configured log destinations */
 void fastd_logf(fastd_loglevel_t level, const char *format, ...) {
-	char buffer[1024];
-	char timestr[100] = "";
+	bool log_stderr = !ctx.log_initialized || level <= conf.log_stderr_level;
+	bool log_syslog = ctx.log_initialized && level <= conf.log_syslog_level;
 	va_list ap;
+	char buffer[1024];
+
+	if (!log_stderr && !log_syslog)
+		return;
 
 	va_start(ap, format);
 	fastd_vsnprintf(buffer, sizeof(buffer), format, ap);
@@ -267,22 +271,20 @@ void fastd_logf(fastd_loglevel_t level, const char *format, ...) {
 
 	buffer[sizeof(buffer)-1] = 0;
 
-	if (!ctx.log_initialized || level <= conf.log_stderr_level) {
+	if (log_stderr) {
+		char timestr[100] = "";
 		time_t t;
 		struct tm tm;
 
 		t = time(NULL);
 		if (localtime_r(&t, &tm) != NULL) {
 			if (strftime(timestr, sizeof(timestr), "%F %T %z --- ", &tm) <= 0)
-				*timestr = 0;
+				timestr[0] = 0;
 		}
-	}
 
-	if (!ctx.log_initialized || level <= conf.log_stderr_level)
 		fprintf(stderr, "%s%s%s\n", timestr, get_log_prefix(level), buffer);
-
-	if (ctx.log_initialized) {
-		if (level <= conf.log_syslog_level)
-			syslog(get_syslog_level(level), "%s", buffer);
 	}
+
+	if (log_syslog)
+		syslog(get_syslog_level(level), "%s", buffer);
 }
