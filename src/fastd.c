@@ -108,9 +108,13 @@ static void on_signal(int signo) {
 
 /** Installs signal handlers */
 static void init_signals(void) {
+	/* block all non-fatal signals */
 	sigset_t set;
 	sigfillset(&set);
-	/* block all signals */
+	sigdelset(&set, SIGILL);
+	sigdelset(&set, SIGABRT);
+	sigdelset(&set, SIGFPE);
+	sigdelset(&set, SIGSEGV);
 	pthread_sigmask(SIG_SETMASK, &set, NULL);
 
 	struct sigaction action = {};
