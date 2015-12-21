@@ -71,8 +71,8 @@ fastd_context_t ctx = {};
 
 static volatile bool sig_reload = false;	/**< Is set to true when a SIGHUP is received */
 static volatile bool sig_reset = false;		/**< Is set to true when a SIGUSR2 is received */
-static volatile bool sig_terminate = false;	/**< Is set to true when a SIGTERM, SIGQUIT or SIGINT is received */
 static volatile bool sig_child = false;		/**< Is set to true when a SIGCHLD is received */
+static volatile int sig_terminate = 0;		/**< Holds the signal number when a SIGTERM, SIGQUIT or SIGINT is received */
 
 
 /** Signal handler; just saves the signals to be handled later */
@@ -93,7 +93,7 @@ static void on_signal(int signo) {
 	case SIGTERM:
 	case SIGQUIT:
 	case SIGINT:
-		sig_terminate = true;
+		sig_terminate = signo;
 		break;
 
 	default:
@@ -683,6 +683,18 @@ static inline void cleanup(void) {
 	fastd_config_release();
 }
 
+/** Terminates fastd by re-raising the received signal */
+static inline void terminate(void) {
+	struct sigaction action = {};
+	sigemptyset(&action.sa_mask);
+
+	action.sa_handler = SIG_DFL;
+	sigaction(sig_terminate, &action, NULL);
+
+	pthread_sigmask(SIG_SETMASK, &action.sa_mask, NULL);
+
+	kill(getpid(), sig_terminate);
+}
 
 /** Main function */
 int main(int argc, char *argv[]) {
@@ -692,6 +704,8 @@ int main(int argc, char *argv[]) {
 		run();
 
 	cleanup();
+	terminate();
 
-	return 0;
+	/* Should not be reached */
+	return -1;
 }
