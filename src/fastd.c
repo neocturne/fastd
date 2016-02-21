@@ -329,7 +329,7 @@ static void set_user(void) {
 			exit_errno("setreuid");
 #endif
 
-		pr_info("changed to UID %i, GID %i", (int)conf.uid, (int)conf.gid);
+		pr_info("changed to UID %u, GID %u", (unsigned)conf.uid, (unsigned)conf.gid);
 	}
 #endif
 }
