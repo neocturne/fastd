@@ -47,6 +47,12 @@
 /** Defined if be32toh etc. exist */
 #cmakedefine HAVE_LINUX_ENDIAN
 
+/** Defined if the platform defines setresuid() */
+#cmakedefine HAVE_SETRESUID
+
+/** Defined if the platform defines setresgid() */
+#cmakedefine HAVE_SETRESGID
+
 /** Defined if the platform supports SO_BINDTODEVICE */
 #cmakedefine USE_BINDTODEVICE
 

@@ -312,11 +312,22 @@ static inline void write_pid(void) {
 static void set_user(void) {
 #ifdef USE_USER
 	if (conf.user || conf.group) {
-		if (setgid(conf.gid) < 0)
-			exit_errno("setgid");
 
-		if (setuid(conf.uid) < 0)
-			exit_errno("setuid");
+#ifdef HAVE_SETRESGID
+		if (setresgid(conf.gid, conf.gid, conf.gid) < 0)
+			exit_errno("setresgid");
+#else
+		if (setregid(conf.gid, conf.gid) < 0)
+			exit_errno("setregid");
+#endif
+
+#ifdef HAVE_SETRESUID
+		if (setresuid(conf.uid, conf.uid, conf.uid) < 0)
+			exit_errno("setresuid");
+#else
+		if (setreuid(conf.uid, conf.uid) < 0)
+			exit_errno("setreuid");
+#endif
 
 		pr_info("changed to UID %i, GID %i", (int)conf.uid, (int)conf.gid);
 	}

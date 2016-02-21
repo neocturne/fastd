@@ -37,6 +37,8 @@ int main() {
 
 check_prototype_definition("get_current_dir_name" "char *get_current_dir_name(void)" "NULL" "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
 
+check_symbol_exists("setresuid" "unistd.h" HAVE_SETRESUID)
+check_symbol_exists("setresgid" "unistd.h" HAVE_SETRESGID)
 
 if(NOT DARWIN)
   set(RT_LIBRARY "")
