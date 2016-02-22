@@ -34,7 +34,10 @@
 
 #ifdef WITH_CAPABILITIES
 
+#include "config.h"
+
 #include <sys/capability.h>
+#include <sys/prctl.h>
 
 
 /** Tries to acquire a capability */
@@ -48,20 +51,16 @@ static void try_cap(cap_value_t cap) {
 		goto end_free;
 
 	cap_flag_value_t val;
-	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &val) < 0) {
-		pr_debug_errno("cap_get_flag");
-		goto end_free;
-	}
+	if (cap_get_flag(caps, cap, CAP_EFFECTIVE, &val) < 0)
+		exit_errno("cap_get_flag");
 
 	if (val == CAP_SET)
 		goto end_free;
 
-	pr_verbose("Trying to acquire %s", name);
+	pr_verbose("trying to acquire %s", name);
 
-	if (cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, CAP_SET) < 0) {
-		pr_debug_errno("cap_set_flags");
-		goto end_free;
-	}
+	if (cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, CAP_SET) < 0)
+		exit_errno("cap_set_flags");
 
 	if (cap_set_proc(caps) < 0) {
 		pr_debug_errno("cap_set_proc");
@@ -75,31 +74,60 @@ static void try_cap(cap_value_t cap) {
 	cap_free(name);
 }
 
+/** Returns true if CAP_NET_ADMIN should be retained */
+static bool need_cap_net_admin(void) {
+	return !fastd_config_persistent_ifaces();
+}
+
+/** Returns true if CAP_NET_RAW should be retained */
+static bool need_cap_net_raw(void) {
+	if (!ctx.sock_default_v4 && conf.bind_addr_default_v4 && conf.bind_addr_default_v4->bindtodev)
+		return true;
+
+	if (!ctx.sock_default_v6 && conf.bind_addr_default_v6 && conf.bind_addr_default_v6->bindtodev)
+		return true;
+
+	return false;
+}
+
+static void set_cap(cap_t caps, cap_value_t cap) {
+	if (cap_set_flag(caps, CAP_PERMITTED, 1, &cap, CAP_SET) < 0)
+		exit_errno("cap_set_flags");
+	if (cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, CAP_SET) < 0)
+		exit_errno("cap_set_flags");
+}
+
 /** Tries to acquire the capabilities needed to perform initialization without root privileges */
-void fastd_cap_init(void) {
+void fastd_cap_acquire(void) {
 	/* interface creation */
 	try_cap(CAP_NET_ADMIN);
 
 	/* privileged binds */
 	try_cap(CAP_NET_BIND_SERVICE);
 
-	/* for device binds */
+	/* device binds */
 	try_cap(CAP_NET_RAW);
+
+	if (prctl(PR_SET_KEEPCAPS, 1) < 0)
+		pr_warn_errno("prctl(PR_SET_KEEPCAPS)");
 }
 
-/** Drops all capabilities */
-void fastd_cap_drop(void) {
+/** Reacquires required capabilities, drops the rest */
+void fastd_cap_reacquire_drop(void) {
 	cap_t caps = cap_init();
 
-	if (cap_set_proc(caps) < 0) {
-		pr_debug_errno("cap_set_proc");
-	}
-	else {
+	if (need_cap_net_admin())
+		set_cap(caps, CAP_NET_ADMIN);
+
+	if (need_cap_net_raw())
+		set_cap(caps, CAP_NET_RAW);
+
+	if (cap_set_proc(caps) < 0)
+		exit_errno("unable to retain required capabilities");
+	else
 		pr_verbose("dropped capabilities");
-	}
 
 	cap_free(caps);
-
 }
 
 #endif

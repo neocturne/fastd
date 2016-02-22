@@ -392,13 +392,13 @@ bool fastd_android_protect_socket(int fd);
 
 #ifdef WITH_CAPABILITIES
 
-void fastd_cap_init(void);
-void fastd_cap_drop(void);
+void fastd_cap_acquire(void);
+void fastd_cap_reacquire_drop(void);
 
 #else /* WITH_CAPABILITIES */
 
-static inline void fastd_cap_init(void) {}
-static inline void fastd_cap_drop(void) {}
+static inline void fastd_cap_acquire(void) {}
+static inline void fastd_cap_reacquire_drop(void) {}
 
 #endif /* WITH_CAPABILITIES */
 

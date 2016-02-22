@@ -602,6 +602,26 @@ bool fastd_config_single_iface(void) {
 	return (VECTOR_LEN(ctx.peers) == 1);
 }
 
+bool fastd_config_persistent_ifaces(void) {
+	if (fastd_use_android_integration())
+		return true;
+
+	if (conf.mode == MODE_TAP)
+		return true;
+
+	if (!conf.iface_persist)
+		return false;
+
+	if (has_peer_group_peer_dirs(conf.peer_group))
+		return false;
+
+	if (fastd_allow_verify())
+		return false;
+
+	return true;
+
+}
+
 /** Performs the verify-config checks */
 void fastd_config_verify(void) {
 	config_check_base();

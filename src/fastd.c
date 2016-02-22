@@ -355,7 +355,7 @@ static void set_groups(void) {
 /** Switches the user and drops all capabilities */
 static void drop_caps(void) {
 	set_user();
-	fastd_cap_drop();
+	fastd_cap_reacquire_drop();
 }
 
 /** Will double fork and wait for a status notification from the child before exiting in the original parent */
@@ -536,7 +536,7 @@ static inline void init(int argc, char *argv[]) {
 	fastd_update_time();
 	ctx.started = ctx.now;
 
-	fastd_cap_init();
+	fastd_cap_acquire();
 
 	fastd_poll_init();
 
