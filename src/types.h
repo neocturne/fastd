@@ -74,7 +74,7 @@ typedef enum fastd_drop_caps {
 	DROP_CAPS_OFF,		/**< The capabilities aren't dropped at all */
 	DROP_CAPS_ON,		/**< The capabilities are dropped after executing the on-up command */
 	DROP_CAPS_EARLY,	/**< The capabilities are dropped before executing the on-up command */
-	DROP_CAPS_FORCE,        /**< The capabilities are dropped before executing the on-up command; CAP_NET_ADMIN is always dropped */
+	DROP_CAPS_FORCE,        /**< The capabilities are dropped before executing the on-up command; CAP_NET_ADMIN is dropped even when TUN/TAP interfaces need to be opened */
 } fastd_drop_caps_t;
 
 /** Types of file descriptors to poll on */

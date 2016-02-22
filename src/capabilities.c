@@ -76,7 +76,13 @@ static void try_cap(cap_value_t cap) {
 
 /** Returns true if CAP_NET_ADMIN should be retained */
 static bool need_cap_net_admin(void) {
-	return !fastd_config_persistent_ifaces() && conf.drop_caps != DROP_CAPS_FORCE;
+	if (!fastd_config_persistent_ifaces() && conf.drop_caps != DROP_CAPS_FORCE)
+		return true;
+
+	if (!(ctx.sock_default_v4 || ctx.sock_default_v6) && conf.packet_mark)
+		return true;
+
+	return false;
 }
 
 /** Returns true if CAP_NET_RAW should be retained */
