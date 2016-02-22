@@ -371,12 +371,6 @@ fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af);
 void fastd_socket_close(fastd_socket_t *sock);
 void fastd_socket_error(fastd_socket_t *sock);
 
-#ifdef __ANDROID__
-int fastd_android_receive_tunfd(void);
-void fastd_android_send_pid(void);
-bool fastd_android_protect_socket(int fd);
-#endif
-
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
 fastd_iface_t * fastd_iface_open(fastd_peer_t *peer);
@@ -384,10 +378,30 @@ void fastd_iface_handle(fastd_iface_t *iface);
 void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer);
 void fastd_iface_close(fastd_iface_t *iface);
 
+void fastd_random_bytes(void *buffer, size_t len, bool secure);
+
+
+#ifdef __ANDROID__
+
+int fastd_android_receive_tunfd(void);
+void fastd_android_send_pid(void);
+bool fastd_android_protect_socket(int fd);
+
+#endif /* __ANDROID__ */
+
+
+#ifdef WITH_CAPABILITIES
+
 void fastd_cap_init(void);
 void fastd_cap_drop(void);
 
-void fastd_random_bytes(void *buffer, size_t len, bool secure);
+#else /* WITH_CAPABILITIES */
+
+static inline void fastd_cap_init(void) {}
+static inline void fastd_cap_drop(void) {}
+
+#endif /* WITH_CAPABILITIES */
+
 
 #ifdef WITH_STATUS_SOCKET
 
@@ -395,15 +409,13 @@ void fastd_status_init(void);
 void fastd_status_close(void);
 void fastd_status_handle(void);
 
-#else
+#else /* WITH_STATUS_SOCKET */
 
-static inline void fastd_status_init(void) {
-}
+static inline void fastd_status_init(void) {}
+static inline void fastd_status_close(void) {}
+static inline void fastd_status_handle(void) {}
 
-static inline void fastd_status_close(void) {
-}
-
-#endif
+#endif /* WITH_STATUS_SOCKET */
 
 
 /** Returns a random number between \a min (inclusively) and \a max (exclusively) */

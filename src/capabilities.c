@@ -102,15 +102,4 @@ void fastd_cap_drop(void) {
 
 }
 
-
-#else /* WITH_CAPABILITIES */
-
-void fastd_cap_init(void) {
-}
-
-void fastd_cap_drop(void) {
-}
-
-#endif /* WITH_CAPABILITIES */
-
-
+#endif

@@ -73,12 +73,10 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 			fastd_async_handle();
 		break;
 
-#ifdef WITH_STATUS_SOCKET
 	case POLL_TYPE_STATUS:
 		if (input)
 			fastd_status_handle();
 		break;
-#endif
 
 	case POLL_TYPE_IFACE:
 	{
@@ -318,4 +316,3 @@ void fastd_poll_handle(void) {
 }
 
 #endif
-
