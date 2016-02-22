@@ -79,8 +79,10 @@ static bool need_cap_net_admin(void) {
 	if (!fastd_config_persistent_ifaces() && conf.drop_caps != DROP_CAPS_FORCE)
 		return true;
 
+#ifdef USE_PACKET_MARK
 	if (!(ctx.sock_default_v4 || ctx.sock_default_v6) && conf.packet_mark)
 		return true;
+#endif
 
 	return false;
 }
