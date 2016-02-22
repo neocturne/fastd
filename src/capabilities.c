@@ -97,6 +97,12 @@ static bool need_cap_net_raw(void) {
 }
 
 static void set_cap(cap_t caps, cap_value_t cap) {
+	char *name = cap_to_name(cap);
+	if (name) {
+		pr_verbose("retaining %s", name);
+		cap_free(name);
+	}
+
 	if (cap_set_flag(caps, CAP_PERMITTED, 1, &cap, CAP_SET) < 0)
 		exit_errno("cap_set_flags");
 	if (cap_set_flag(caps, CAP_EFFECTIVE, 1, &cap, CAP_SET) < 0)
