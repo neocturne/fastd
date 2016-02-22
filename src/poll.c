@@ -84,27 +84,35 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 
 		if (input)
 			fastd_iface_handle(iface);
-	}
+
 		break;
+	}
 
 	case POLL_TYPE_SOCKET:
 	{
 		fastd_socket_t *sock = container_of(fd, fastd_socket_t, fd);
+
 		if (error) {
 			if (sock->peer)
 				fastd_peer_reset_socket(sock->peer);
 			else
 				fastd_socket_error(sock);
+
+			return;
 		}
-		else if (input) {
+
+		if (input)
 			fastd_receive(sock);
-		}
+
+		break;
 	}
-	break;
 
 	default:
 		exit_bug("unknown FD type");
 	}
+
+	if (error)
+		exit_error("unexpected poll error");
 }
 
 
