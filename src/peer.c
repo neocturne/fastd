@@ -251,9 +251,6 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 		else
 			peer->sock = fastd_socket_open(peer, AF_INET6);
 	}
-
-	if (!peer->sock || !fastd_peer_is_socket_dynamic(peer))
-		return;
 }
 
 /** Schedules the peer maintenance task (or removes the scheduled task if there's nothing to do) */
