@@ -96,15 +96,15 @@ fastd_tristate_t fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_com
 
 		memcpy(session->receive_nonce, nonce, COMMON_NONCEBYTES);
 		session->reorder_timeout = ctx.now + REORDER_TIME;
-		return fastd_tristate_false;
+		return FASTD_TRISTATE_FALSE;
 	}
 	else if (age == 0 || session->receive_reorder_seen & ((uint64_t)1 << (age-1))) {
 		pr_debug("dropping duplicate packet from %P (age %u)", peer, (unsigned)age);
-		return fastd_tristate_undef;
+		return FASTD_TRISTATE_UNDEF;
 	}
 	else {
 		pr_debug2("accepting reordered packet from %P (age %u)", peer, (unsigned)age);
 		session->receive_reorder_seen |= ((uint64_t)1 << (age-1));
-		return fastd_tristate_true;
+		return FASTD_TRISTATE_TRUE;
 	}
 }

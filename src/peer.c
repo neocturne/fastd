@@ -262,7 +262,7 @@ static void schedule_peer_task(fastd_peer_t *peer) {
 						    fastd_timeout_min(peer->keepalive_timeout,
 								      peer->next_handshake));
 
-	if (timeout == fastd_timeout_inv) {
+	if (timeout == FASTD_TIMEOUT_INV) {
 		pr_debug2("Removing scheduled task for %P", peer);
 		fastd_task_unschedule(&peer->task);
 	}
@@ -427,9 +427,9 @@ static void setup_peer(fastd_peer_t *peer) {
 	peer->verify_valid_timeout = ctx.now;
 #endif
 
-	peer->next_handshake = fastd_timeout_inv;
-	peer->reset_timeout = fastd_timeout_inv;
-	peer->keepalive_timeout = fastd_timeout_inv;
+	peer->next_handshake = FASTD_TIMEOUT_INV;
+	peer->reset_timeout = FASTD_TIMEOUT_INV;
+	peer->keepalive_timeout = FASTD_TIMEOUT_INV;
 
 	if (fastd_peer_is_dynamic(peer))
 		peer->reset_timeout = ctx.now;

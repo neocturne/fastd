@@ -186,7 +186,7 @@ static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
 
 /** Cancels a scheduled handshake */
 static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
-	peer->next_handshake = fastd_timeout_inv;
+	peer->next_handshake = FASTD_TIMEOUT_INV;
 }
 
 #ifdef WITH_DYNAMIC_PEERS
@@ -207,7 +207,7 @@ static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 
 /** Checks if there's a handshake queued for the peer */
 static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
-	return (peer->next_handshake != fastd_timeout_inv);
+	return (peer->next_handshake != FASTD_TIMEOUT_INV);
 }
 
 /** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */

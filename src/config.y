@@ -653,8 +653,8 @@ boolean:	TOK_YES		{ $$ = true; }
 	|	TOK_NO		{ $$ = false; }
 	;
 
-autobool:	TOK_AUTO	{ $$ = fastd_tristate_undef; }
-	|	boolean		{ $$ = $1 ? fastd_tristate_true : fastd_tristate_false; }
+autobool:	TOK_AUTO	{ $$ = FASTD_TRISTATE_UNDEF; }
+	|	boolean		{ $$ = $1 ? FASTD_TRISTATE_TRUE : FASTD_TRISTATE_FALSE; }
 	;
 
 colon_or_port:	':'

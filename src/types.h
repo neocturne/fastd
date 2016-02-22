@@ -49,11 +49,11 @@ typedef struct fastd_tristate {
 } fastd_tristate_t;
 
 /** A fastd_tristate_t instance representing the value \em true */
-static const fastd_tristate_t fastd_tristate_true = {true, true};
+#define FASTD_TRISTATE_TRUE ((fastd_tristate_t){true, true})
 /** A fastd_tristate_t instance representing the value \em false */
-static const fastd_tristate_t fastd_tristate_false = {true, false};
+#define FASTD_TRISTATE_FALSE ((fastd_tristate_t){true, false})
 /** A fastd_tristate_t instance representing the value \em undefined */
-static const fastd_tristate_t fastd_tristate_undef = {false, false};
+#define FASTD_TRISTATE_UNDEF ((fastd_tristate_t){false, false})
 
 
 /** The defined packet types */
@@ -97,7 +97,7 @@ typedef enum fastd_task_type {
 typedef int64_t fastd_timeout_t;
 
 /** Invalid timestamp */
-static const fastd_timeout_t fastd_timeout_inv = INT64_MAX;
+#define FASTD_TIMEOUT_INV INT64_MAX
 
 
 typedef struct fastd_buffer fastd_buffer_t;

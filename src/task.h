@@ -55,7 +55,7 @@ static inline bool fastd_task_scheduled(fastd_task_t *task) {
 /** Gets the timeout of a task */
 static inline fastd_timeout_t fastd_task_timeout(fastd_task_t *task) {
 	if (!fastd_task_scheduled(task))
-		return fastd_timeout_inv;
+		return FASTD_TIMEOUT_INV;
 
 	return task->entry.value;
 }

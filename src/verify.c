@@ -106,12 +106,12 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 		bool ret = do_verify(env);
 		fastd_shell_env_free(env);
 		fastd_peer_set_verified(peer, ret);
-		return ret ? fastd_tristate_true : fastd_tristate_false;
+		return ret ? FASTD_TRISTATE_TRUE : FASTD_TRISTATE_FALSE;
 	}
 	else {
 		if (!fastd_sem_trywait(&ctx.verify_limit)) {
 			pr_debug("maximum number of verification processes reached");
-			return fastd_tristate_false;
+			return FASTD_TRISTATE_FALSE;
 		}
 
 		verify_arg_t *arg = fastd_alloc0(sizeof(verify_arg_t) + data_len);
@@ -135,10 +135,10 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 			fastd_shell_env_free(env);
 			free(arg);
 
-			return fastd_tristate_false;
+			return FASTD_TRISTATE_FALSE;
 		}
 
-		return fastd_tristate_undef;
+		return FASTD_TRISTATE_UNDEF;
 	}
 }
 
