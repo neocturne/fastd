@@ -571,7 +571,7 @@ static inline void init(int argc, char *argv[]) {
 			exit_errno("status: close");
 	}
 
-	if (conf.drop_caps == DROP_CAPS_EARLY)
+	if (conf.drop_caps == DROP_CAPS_EARLY || conf.drop_caps == DROP_CAPS_FORCE)
 		drop_caps();
 
 	if (ctx.iface)

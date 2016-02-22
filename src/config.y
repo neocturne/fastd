@@ -84,6 +84,7 @@
 %token TOK_ESTABLISH
 %token TOK_FATAL
 %token TOK_FLOAT
+%token TOK_FORCE
 %token TOK_FORWARD
 %token TOK_FROM
 %token TOK_GROUP
@@ -243,6 +244,9 @@ drop_capabilities:
 drop_capabilities_enabled:
 		TOK_EARLY {
 			$$ = DROP_CAPS_EARLY;
+		}
+	|	TOK_FORCE {
+			$$ = DROP_CAPS_FORCE;
 		}
 	|	boolean {
 			$$ = $1 ? DROP_CAPS_ON : DROP_CAPS_OFF;

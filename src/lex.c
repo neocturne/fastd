@@ -80,6 +80,7 @@ static const keyword_t keywords[] = {
 	{ "establish", TOK_ESTABLISH },
 	{ "fatal", TOK_FATAL },
 	{ "float", TOK_FLOAT },
+	{ "force", TOK_FORCE },
 	{ "forward", TOK_FORWARD },
 	{ "from", TOK_FROM },
 	{ "group", TOK_GROUP },
