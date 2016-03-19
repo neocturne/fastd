@@ -53,7 +53,7 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(void) {
 	ecc_25519_gf_sanitize_secret(&secret_key, &secret_key);
 
 	ecc_25519_work_t work;
-	ecc_25519_scalarmult(&work, &secret_key, &ecc_25519_work_base_legacy);
+	ecc_25519_scalarmult_base(&work, &secret_key);
 	ecc_25519_store_packed_legacy(&public_key, &work);
 
 	if (conf.machine_readable) {
