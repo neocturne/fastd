@@ -18,12 +18,12 @@ Command line options and config files are parsed in order they are specified, so
 --status-socket <socket>
   Configures a socket to get fastd's status.
 
---log-level <error|warn|info|verbose|debug|debug2>
+--log-level error|warn|info|verbose|debug|debug2
   Sets the stderr log level; default is info,
   if no alternative log destination ist configured.
   If logging to syslog or files is enabled, the default is not to log to stderr.
 
---syslog-level <error|warn|info|verbose|debug|debug2>
+--syslog-level error|warn|info|verbose|debug|debug2
   Sets the log level for syslog output; default is not to use syslog.
 
 --syslog-ident <ident>
@@ -38,7 +38,7 @@ Command line options and config files are parsed in order they are specified, so
 --config-peer-dir <dir>
   Loads all files from a directory as peer configs. On SIGHUP fastd will reload peer directories.
 
---mode, -m <tap|tun>
+--mode, -m tap|multitap|tun
   Sets the mode of the interface; default is TAP mode.
 
 --interface, -i <name>

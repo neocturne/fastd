@@ -54,8 +54,8 @@ Example config:
   When an address without port or with port 0 is configured, a new socket with a random
   port will be created for each outgoing connection. This has the side effect that the
   options for packet marks and interface-specific binds (except IPv6 link-local addresses) will only work with the
-  ``CAP_NET_ADMIN`` capability (option ``drop capabilities no`` when fastd is built with
-  capability support, root privileges otherwise).
+  ``CAP_NET_ADMIN`` capability. If fastd is built with capability support, it will automatically retain
+  these capabilities; otherwise, fastd must run as root.
 
   Configuring no bind address at all is equivalent to the setting ``bind any``, meaning fastd
   will use a random port for each outgoing connection both for IPv4 and IPv6.
@@ -87,14 +87,19 @@ Example config:
     - ``nacl``: Use implementation from NaCl or libsodium
 
 
-| ``drop capabilities yes|no|early;``
+| ``drop capabilities yes|no|early|force;``
 
   By default, fastd switches to the configured user and/or drops its
-  POSIX capabilities after the on up command has been run.
-  When drop capabilities is set to early, the on up command
-  is run after the privileges have been dropped, when set to no, the POSIX capabilities
-  aren't dropped at all (but the user is switched after the on up command
+  POSIX capabilities after the on-up command has been run.
+  When drop capabilities is set to *early*, the on-up command
+  is run after the privileges have been dropped, when set to *no*, the POSIX capabilities
+  aren't dropped at all (but the user is switched after the on-up command
   has been run nevertheless).
+
+  fastd automatically detects which capabilities are required for normal operation
+  and retains these capabilities. This can be overridden using the *force* value
+  (this may make sense if persistent TUN/TAP interfaces are used which may be used
+  without special privileges by fastd.)
 
 | ``forward yes|no;``
 
@@ -130,6 +135,12 @@ Example config:
 
   Sets the name of the TUN/TAP interface to use; it will be set by the OS when no name is configured explicitly.
 
+  In TUN/multi-TAP mode, either peer-specific interface names need to be configured, or one
+  (but not both) of the following patterns must be used to set a unique interface name for each peer:
+
+  * ``%n``: The peer's name
+  * ``%k``: The first 16 hex digits of the peer's public key
+
 | ``log level fatal|error|warn|info|verbose|debug|debug2;``
 
   Sets the default log level, meaning syslog if there is currently a level set for syslog, and stderr
@@ -164,9 +175,12 @@ Example config:
   Sets the encryption/authentication method. See the page :doc:`methods` for more information about the supported methods.
   When multiple method statements are given, the first one has the highest preference.
 
-| ``mode tap|tun;``
+| ``mode tap|multitap|tun;``
 
   Sets the mode of the interface; the default is TAP mode.
+
+  In TAP mode, a single interface will be created for all peers, in multi-TAP and TUN mode,
+  each peers gets its own interface.
 
 | ``mtu <MTU>;``
 
@@ -188,6 +202,8 @@ Example config:
   pre-up, up, down and post-down commands are executed synchronously by default, meaning fastd will block
   until the commands have finished, while the other commands are executed asynchronously by default. This
   can be changed using the keywords sync and async.
+
+  All commands except pre-up and post-down may be overriden per peer group.
 
   The following environment variables are set by fastd for all commands:
 
@@ -215,6 +231,9 @@ Example config:
   Verify commands are executed asynchronously by default. This
   can be changed using the keywords sync and async.
 
+  The on-verify command my be put into a peer group to define which peer group unknown peers
+  are added to. This may be used to apply a peer limit only to unknown peers.
+
 | ``packet mark <mark>;``
 
   Defines a packet mark to set on fastd's packets, which can be used in an ip rule.
@@ -232,6 +251,13 @@ Example config:
 | ``peer limit <limit>;``
 
   Sets the maximum number of connections for the current peer group.
+
+| ``persist interface yes|no;``
+
+  If set to *no*, fastd will create peer-specific interfaces only as long as there's an
+  active session with the peer. Does not have an effect in TUN mode.
+
+  By default, interfaces are persistent.
 
 .. _option-pmtu:
 
@@ -283,9 +309,21 @@ Example config:
 
   Includes another configuration file.
 
+| ``interface "<name>";``
+
+  Sets the name of the peer-specific TUN/TAP interface to use.
+
+  Does have no effect in TAP mode.
+
 | ``key "<key>";``
 
   Sets the peer's public key.
+
+| ``mtu <MTU>;``
+
+  Sets the MTU for a peer-specific interface; must be at least 576.
+
+  Does have no effect in TAP mode.
 
 | ``remote <IPv4 address>:<port>;``
 | ``remote <IPv6 address>:<port>;``
