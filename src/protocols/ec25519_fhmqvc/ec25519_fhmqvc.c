@@ -130,41 +130,34 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 		goto fail;
 
 	fastd_buffer_t recv_buffer;
-	bool ok = false, reordered;
+	bool ok = false, reordered = false;
 
-	if (is_session_valid(&peer->protocol_state->old_session)) {
-		reordered = false;
-		if (peer->protocol_state->old_session.method->provider->decrypt(peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer, &reordered))
-			ok = true;
-	}
+	if (is_session_valid(&peer->protocol_state->old_session))
+		ok = peer->protocol_state->old_session.method->provider->decrypt(peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer, &reordered);
 
 	if (!ok) {
-		reordered = false;
-		if (peer->protocol_state->session.method->provider->decrypt(peer, peer->protocol_state->session.method_state, &recv_buffer, buffer, &reordered)) {
-			ok = true;
-
-			if (peer->protocol_state->old_session.method) {
-				pr_debug("invalidating old session with %P", peer);
-				peer->protocol_state->old_session.method->provider->session_free(peer->protocol_state->old_session.method_state);
-				peer->protocol_state->old_session = (protocol_session_t){};
-			}
-
-			if (!peer->protocol_state->session.handshakes_cleaned) {
-				pr_debug("cleaning left handshakes with %P", peer);
-				fastd_peer_unschedule_handshake(peer);
-				peer->protocol_state->session.handshakes_cleaned = true;
-
-				if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state))
-					fastd_protocol_ec25519_fhmqvc_send_empty(peer, &peer->protocol_state->session);
-			}
-
-			check_session_refresh(peer);
+		ok = peer->protocol_state->session.method->provider->decrypt(peer, peer->protocol_state->session.method_state, &recv_buffer, buffer, &reordered);
+		if (!ok) {
+			pr_debug2("verification failed for packet received from %P", peer);
+			goto fail;
 		}
-	}
 
-	if (!ok) {
-		pr_debug2("verification failed for packet received from %P", peer);
-		goto fail;
+		if (peer->protocol_state->old_session.method) {
+			pr_debug("invalidating old session with %P", peer);
+			peer->protocol_state->old_session.method->provider->session_free(peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session = (protocol_session_t){};
+		}
+
+		if (!peer->protocol_state->session.handshakes_cleaned) {
+			pr_debug("cleaning left handshakes with %P", peer);
+			fastd_peer_unschedule_handshake(peer);
+			peer->protocol_state->session.handshakes_cleaned = true;
+
+			if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state))
+				fastd_protocol_ec25519_fhmqvc_send_empty(peer, &peer->protocol_state->session);
+		}
+
+		check_session_refresh(peer);
 	}
 
 	fastd_peer_seen(peer);
