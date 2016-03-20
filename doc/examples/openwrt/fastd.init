@@ -33,6 +33,11 @@ error() {
 	echo "${initscript}:" "$@" 1>&2
 }
 
+instance_usage() {
+	echo "Usage: ${initscript} $1 instance..." 1>&2
+	exit 1
+}
+
 get_key_instance() {
 	local s="$1"
 
@@ -397,6 +402,8 @@ reload() {
 }
 
 up() {
+	[ $# -gt 0 ] || instance_usage 'up'
+
 	local exists
 	local instance
 	config_load 'fastd'
@@ -409,6 +416,8 @@ up() {
 }
 
 down() {
+	[ $# -gt 0 ] || instance_usage 'down'
+
 	local exists
 	local instance
 	config_load 'fastd'
@@ -421,6 +430,8 @@ down() {
 }
 
 show_key() {
+	[ $# -gt 0 ] || instance_usage 'show_key'
+
 	local exists
 	local instance
 	config_load 'fastd'
@@ -433,6 +444,8 @@ show_key() {
 }
 
 generate_key() {
+	[ $# -gt 0 ] || instance_usage 'generate_key'
+
 	local exists
 	local instance
 	config_load 'fastd'
