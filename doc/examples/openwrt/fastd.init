@@ -71,33 +71,40 @@ guard_quotes() {
 
 yes_no() {
 	case "$1" in
-		0|no|off|false|disabled) echo -n no;;
-		*) echo -n yes;;
+		1|yes|on|true|enabled)
+			echo -n yes;;
+		0|no|off|false|disabled)
+			echo -n no;;
+		*)
+			guard_value "$1";;
 	esac
 }
 
+config_string_bind='bind $(guard_quotes "$value");'
 config_string_config='include $(escape_string "$value");'
 config_string_config_peer='include peer $(escape_string "$value");'
 config_string_config_peer_dir='include peers from $(escape_string "$value");'
-config_string_bind='bind $(guard_quotes "$value");'
-config_string_method='method $(escape_string "$value");'
-config_string_syslog_level='log to syslog level $(guard_value "$value");'
-config_string_mode='mode $(guard_value "$value");'
-config_string_interface='interface $(escape_string "$value");'
-config_string_mtu='mtu $(guard_value "$value");'
-config_string_peer_limit='peer limit $(guard_value "$value");'
-config_string_user='user $(escape_string "$value");'
-config_string_group='group $(escape_string "$value");'
-config_string_status_socket='status socket $(escape_string "$value");'
+config_string_drop_capabilities='drop capabilities $(yes_no "$value");'
 config_string_forward='forward $(yes_no "$value");'
+config_string_group='group $(escape_string "$value");'
 config_string_hide_ip_addresses='hide ip addresses $(yes_no "$value");'
 config_string_hide_mac_addresses='hide mac addresses $(yes_no "$value");'
-config_string_secure_handshakes='secure handshakes $(yes_no "$value");'
+config_string_interface='interface $(escape_string "$value");'
+config_string_method='method $(escape_string "$value");'
+config_string_mode='mode $(guard_value "$value");'
+config_string_mtu='mtu $(guard_value "$value");'
+config_string_peer_limit='peer limit $(guard_value "$value");'
 config_string_packet_mark='packet mark $(guard_value "$value");'
+config_string_persist_interface='persist interface $(yes_no "$value");'
+config_string_secure_handshakes='secure handshakes $(yes_no "$value");'
+config_string_status_socket='status socket $(escape_string "$value");'
+config_string_syslog_level='log to syslog level $(guard_value "$value");'
+config_string_user='user $(escape_string "$value");'
+
 config_string_on_pre_up='on pre-up $(escape_string "$value");'
+config_string_on_post_down='on post-down $(escape_string "$value");'
 config_string_on_up='on up $(escape_string "$value");'
 config_string_on_down='on down $(escape_string "$value");'
-config_string_on_post_down='on post-down $(escape_string "$value");'
 config_string_on_connect='on connect $(escape_string "$value");'
 config_string_on_establish='on establish $(escape_string "$value");'
 config_string_on_disestablish='on disestablish $(escape_string "$value");'
@@ -106,8 +113,10 @@ config_string_on_verify='on verify $(escape_string "$value");'
 config_string_peer='peer $(escape_string "$value") {'
 config_string_peer_group='peer group $(escape_string "$value") {'
 
-peer_string_key='key $(escape_string "$value");'
 peer_string_float='float $(yes_no "$value");'
+peer_string_interface='interface $(escape_string "$value");'
+peer_string_key='key $(escape_string "$value");'
+peer_string_mtu='mtu $(guard_value "$value");'
 peer_string_remote='remote $(guard_quotes "$value");'
 
 generate_option() {
@@ -167,7 +176,7 @@ generate_peer_config() {
 	fi
 
 	append_options "$peer" peer \
-		key float remote
+		float interface key mtu remote
 }
 
 generate_single_peer_config() {
@@ -234,7 +243,8 @@ generate_peer_group_config() {
 	if [ -z "$update_only" ]; then
 		generate_option "$group" config_string_peer_group
 		append_options "$group" config \
-			config config_peer config_peer_dir method peer_limit
+			config config_peer config_peer_dir method peer_limit \
+			on_up on_down on_connect on_establish on_disestablish on_verify
 	fi
 
 	update_peer_group "$net" "$group_dir" "$group" "$update_only"
@@ -256,9 +266,9 @@ generate_config() {
 	generate_option 'info' config_string_syslog_level
 
 	append_options "$s" config \
-		config config_peer config_peer_dir bind method syslog_level mode interface mtu peer_limit \
+		bind config config_peer config_peer_dir drop_capabilities method syslog_level mode interface mtu peer_limit \
 		user group status_socket forward hide_ip_addresses hide_mac_addresses secure_handshakes packet_mark \
-		on_pre_up on_up on_down on_post_down on_connect on_establish on_disestablish on_verify
+		persist_interface on_pre_up on_post_down on_up on_down on_connect on_establish on_disestablish on_verify
 
 	config_get mode "$s" mode
 
