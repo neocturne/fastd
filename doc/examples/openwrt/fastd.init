@@ -5,7 +5,18 @@ START=95
 
 SERVICE_USE_PID=1
 
-EXTRA_COMMANDS="up down show_key generate_key"
+EXTRA_COMMANDS='up down show_key generate_key'
+
+EXTRA_HELP='
+	up		starts the instances given as additional arguments
+	down		stops the instances given as additional arguments
+	show_key	shows the public keys of the instances given as
+			additional arguments
+	generate_key	generates the private keys for the instances given as
+			additional arguments and saves them in the configuration
+			(when there in no key configured yet)
+'
+
 
 LIST_SEP="
 "
