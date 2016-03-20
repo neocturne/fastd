@@ -98,6 +98,7 @@ static bool need_cap_net_raw(void) {
 	return false;
 }
 
+/** Sets a single capability as permitted and effective in the given cap_t */
 static void set_cap(cap_t caps, cap_value_t cap) {
 	char *name = cap_to_name(cap);
 	if (name) {
