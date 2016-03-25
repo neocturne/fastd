@@ -18,6 +18,7 @@ Release notes
 .. toctree::
    :maxdepth: 2
 
+   releases/v18
    releases/v17
    releases/v16
    releases/v15

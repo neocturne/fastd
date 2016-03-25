@@ -131,6 +131,8 @@ Example config:
   Includes each file in a directory as a peer configuration. These peers are reloaded when
   fastd receives a SIGHUP signal.
 
+.. _option-interface:
+
 | ``interface "<name>";``
 
   Sets the name of the TUN/TAP interface to use; it will be set by the OS when no name is configured explicitly.

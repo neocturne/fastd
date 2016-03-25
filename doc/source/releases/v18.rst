@@ -1,0 +1,73 @@
+fastd v18 (in development)
+==========================
+
+New features
+~~~~~~~~~~~~
+
+Multi-interface modes
+---------------------
+
+A single fastd instance can now manage multiple TUN/TAP interfaces. This allows to
+use multiple peers and peer directories in TUN mode, creating one interface for each
+peer. *on-up* and *on-down* scripts are run once for each interface.
+
+By default, all interfaces are created on startup or peer reload; the option
+*interface persist* can be used to change this behaviour.
+
+In addition to the multi-peer TUN mode, it is also possible to make fastd create one
+interface per peer in TAP mode now. This is enabled by the setting *mode multitap*
+(the option for multi-interface TUN mode is just *mode tun*, as there is no TUN mode
+which handles multiple peers on a single interface.)
+
+Multi-TAP mode is compatible with TAP mode, i.e. the peer may be configured in normal
+TAP mode (and may use a fastd version without multi-TAP support.
+
+If explicit interface names are configured, these names must now be set for each peer,
+which may either be done explicitly, or using :ref:`name patterns <option-interface>`.
+
+Peer-specific interfaces may also be configured with peer-specific MTUs.
+
+Interface cleanup on FreeBSD/OpenBSD
+------------------------------------
+
+FreeBSD and OpenBSD do not automatically destroy TUN/TAP interfaces. fastd will
+now destroy the interfaces it creates on these systems on exit.
+
+Improved capability management
+------------------------------
+
+fastd will now automatically retain all POSIX capabilities it needs, so all options
+should now work without full root privileges.
+
+The option *drop capabilities force* may be used to drop CAP_NET_ADMIN even when
+fastd would normally retain it.
+
+More powerful peer groups
+-------------------------
+
+All *on-\** options may now be overridden per peer group.
+
+In particular, the *on-verify* option may be moved into a peer group to determine
+the peer group of unconfigured peers. This allows to set a peer limit for unconfigured
+peers without globally limiting the peer count.
+
+Bugfixes
+~~~~~~~~
+
+* When linked with NaCl instead of libsodium, fastd would use SSE for salsa20/salsa2012 on x86 even after
+  determining that SSE is not availble. This led to crashes or transmission
+  failures on CPUs like the Geode.
+* Fix crash on x86-64 systems when built with certain combinations of GCC version and
+  stack-protector compiler flags (observed on Fedora)
+* fastd did reject configurations which contain neither static peers nor
+  peer directories, but a *on-verify* option
+* The status socket is now removed correctly if fastd exits with an error message
+* fastd did exit with regular exit code 0 instead of re-raising the termination signal after cleanup
+* Fix in-tree compile on non-Linux systems
+
+Other changes
+~~~~~~~~~~~~~
+
+* Some error conditions that can't be recovered from will now cause fastd
+  to exit instead of just logging an error message. This allows service managers like systemd/procd
+  to restart fastd, so proper operation can be restored.
