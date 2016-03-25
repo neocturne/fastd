@@ -120,7 +120,7 @@ FASTD_ANDROID_DEFS="-DWITH_CAPABILITIES=OFF -DWITH_STATUS_SOCKET=OFF -DWITH_CIPH
 
 for ARCH in arm x86; do
     BUILD_DIR=fastd-${ARCH}
-    if [ ! -d "BUILD_DIR" ]; then
+    if [ ! -d "${BUILD_DIR}" ]; then
         mkdir ${BUILD_DIR}
     fi
     pushd ${BUILD_DIR} > /dev/null
