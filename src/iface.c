@@ -160,7 +160,6 @@ static void open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 
 		pr_debug("using android TUN fd");
 		iface->fd = FASTD_POLL_FD(POLL_TYPE_IFACE, fastd_android_receive_tunfd());
-		iface->name = NULL;
 
 		fastd_android_send_pid();
 	} else {
@@ -514,7 +513,7 @@ fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 		}
 	}
 
-	fastd_iface_t *iface = fastd_new(fastd_iface_t);
+	fastd_iface_t *iface = fastd_new0(fastd_iface_t);
 	iface->peer = peer;
 	iface->mtu = fastd_peer_get_mtu(peer);
 
@@ -522,6 +521,7 @@ fastd_iface_t * fastd_iface_open(fastd_peer_t *peer) {
 	open_iface(iface, ifname, iface->mtu);
 
 	if (iface->fd.fd < 0) {
+		free(iface->name);
 		free(iface);
 		return NULL;
 	}
