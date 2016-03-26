@@ -7,12 +7,13 @@ Dependencies
 * libuecc (developed together with fastd)
 * libsodium or NaCl (for most crypto methods)
 * libcap (Linux only; can be disabled if you don't need POSIX capability support)
-* Bison (>= 2.5)
+* bison (>= 2.5)
 * pkg-config
 
 Optional:
 
-* libssl (for fast AES implementations; OpenSSL support must be enabled during build)
+* libssl (if WITH_CIPHER_AES128_CTR_OPENSSL is enabled; provides fast AES implementations)
+* libjson-c (if WITH_STATUS_SOCKET is enabled)
 
 Building
 ~~~~~~~~
