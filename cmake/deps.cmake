@@ -12,10 +12,10 @@ endif(ANDROID)
 
 find_package(libuecc REQUIRED)
 
-set(NACL_INCLUDE_DIR "")
-set(NACL_CFLAGS_OTHER "")
-set(NACL_LIBRARIES "")
-set(NACL_LDFLAGS_OTHER "")
+set(NACL_INCLUDE_DIR)
+set(NACL_CFLAGS_OTHER)
+set(NACL_LIBRARIES)
+set(NACL_LDFLAGS_OTHER)
 
 if(ENABLE_LIBSODIUM)
   find_package(libsodium)
