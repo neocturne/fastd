@@ -164,14 +164,7 @@ bool fastd_poll_fd_close(fastd_poll_fd_t *fd) {
 
 
 void fastd_poll_handle(void) {
-	int maintenance_timeout = ctx.next_maintenance - ctx.now;
-
-	if (maintenance_timeout < 0)
-		maintenance_timeout = 0;
-
-	int timeout = handshake_timeout();
-	if (timeout < 0 || timeout > maintenance_timeout)
-		timeout = maintenance_timeout;
+	int timeout = task_timeout();
 
 	struct epoll_event events[16];
 	int ret = epoll_wait_unblocked(ctx.epoll_fd, events, 16, timeout);
