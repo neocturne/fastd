@@ -4,16 +4,16 @@ Building fastd
 Dependencies
 ~~~~~~~~~~~~
 
-* libuecc (developed together with fastd)
+* libuecc (>= v6; >= v7 recommended; developed together with fastd)
 * libsodium or NaCl (for most crypto methods)
-* libcap (Linux only; can be disabled if you don't need POSIX capability support)
 * bison (>= 2.5)
 * pkg-config
 
 Optional:
 
-* libssl (if WITH_CIPHER_AES128_CTR_OPENSSL is enabled; provides fast AES implementations)
+* libcap (if WITH_CAPABILITIES is enabled; Linux only; can be disabled if you don't need POSIX capability support)
 * libjson-c (if WITH_STATUS_SOCKET is enabled)
+* libssl (if ENABLE_OPENSSL is enabled; provides fast AES implementations)
 
 Building
 ~~~~~~~~
@@ -43,13 +43,12 @@ CMake variables
 ~~~~~~~~~~~~~~~
 There are a few more options besides ``CMAKE_BUILD_TYPE`` that can be given to cmake with ``-DVARIABLE=VALUE``:
 
-* If you have a recent enough toolchain (GCC 4.8 or higher recommended), you can enable link-time optimization with ENABLE_LTO=ON to get slightly better optimized binaries
 * By default, fastd will try to build against libsodium. If you want to use NaCl instead, set ENABLE_LIBSODIUM=OFF
-* Use ENABLE_OPENSSL=ON/OFF to enable or disable compiling against OpenSSL
-* If you have a toolchain without binutils plugin support (e.g. on Debian Wheezy), it is not enough to keep ENABLE_LTO disabled, in addition CMake must be told to use the standard `ar`, `ranlib` and `nm` implementation instead of the GCC-provided versions::
+* If you have a recent enough toolchain (GCC 4.8 or higher recommended), you can enable link-time optimization with ENABLE_LTO=ON to get slightly better optimized binaries
+* If you want to use LTO with a binutils version without linker plugin support, you need to use the GCC versions of ar, nm and ranlib by setting the following variables::
 
-    CMAKE_AR=/usr/bin/ar
-    CMAKE_RANLIB=/usr/bin/ranlib
-    CMAKE_NM=/usr/bin/nm
+    CMAKE_AR=/usr/bin/gcc-ar
+    CMAKE_NM=/usr/bin/gcc-nm
+    CMAKE_RANLIB=/usr/bin/gcc-ranlib
 
 * You can see all CMake options by calling ``ccmake .`` in the build directory after running cmake. Use the `t` key to toggle display between simple and advanced view and use `c` and then `g` to update the configuration after making changes in ccmake.
