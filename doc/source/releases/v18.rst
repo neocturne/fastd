@@ -1,5 +1,5 @@
-fastd v18 (in development)
-==========================
+fastd v18
+=========
 
 New features
 ~~~~~~~~~~~~
@@ -68,6 +68,7 @@ Bugfixes
 Other changes
 ~~~~~~~~~~~~~
 
+* fastd now requires at least libuecc v6 (v7 recommended)
 * Some error conditions that can't be recovered from will now cause fastd
   to exit instead of just logging an error message. This allows service managers like systemd/procd
   to restart fastd, so proper operation can be restored.
