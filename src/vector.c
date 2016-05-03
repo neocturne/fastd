@@ -57,8 +57,13 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 		n = n*3/2;
 	}
 
-	while (alloc < n)
+	while (alloc < n) {
 		alloc <<= 1;
+		if (!alloc) {
+			errno = EOVERFLOW;
+			exit_errno("memory allocation error");
+		}
+	}
 
 	if (alloc != desc->allocated) {
 		desc->allocated = alloc;
