@@ -62,7 +62,7 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 
 	if (alloc != desc->allocated) {
 		desc->allocated = alloc;
-		*data = fastd_realloc(*data, alloc * elemsize);
+		*data = fastd_realloc_array(*data, alloc, elemsize);
 	}
 }
 

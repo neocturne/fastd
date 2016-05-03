@@ -49,6 +49,28 @@ static inline void * fastd_alloc(size_t size) {
 }
 
 /**
+  Multiplies two size_t values, checking for overflows
+
+  Both arguments are limited to the size of a uint32_t.
+
+  Terminates the process on failure.
+*/
+static inline size_t fastd_mul_check(size_t members, size_t size) {
+	uint64_t v = (uint64_t)members * size;
+
+	if (members > UINT32_MAX || size > UINT32_MAX || v > SIZE_MAX) {
+		errno = EOVERFLOW;
+		exit_errno("memory allocation error");
+	}
+
+	return v;
+}
+
+static inline void * fastd_alloc_array(size_t members, size_t size) {
+	return fastd_alloc(fastd_mul_check(members, size));
+}
+
+/**
    Allocates a block of uninitialized memory on the heap, aligned to 16 bytes
 
    Terminates the process on failure.
@@ -97,6 +119,15 @@ static inline void * fastd_realloc(void *ptr, size_t size) {
 	return ret;
 }
 
+/**
+   Reallocates a block of memory for an array on the heap
+
+   Terminates the process on failure.
+*/
+static inline void * fastd_realloc_array(void *ptr, size_t members, size_t size) {
+	return fastd_realloc(ptr, fastd_mul_check(members, size));
+}
+
 
 /** Allocates a block of uninitialized memory in the size of a given type */
 #define fastd_new(type) ((type *)fastd_alloc(sizeof(type)))
@@ -108,7 +139,7 @@ static inline void * fastd_realloc(void *ptr, size_t size) {
 #define fastd_new0(type) ((type *)fastd_alloc0(sizeof(type)))
 
 /** Allocates a block of undefined memory for an array of elements of a given type */
-#define fastd_new_array(members, type) ((type *)fastd_alloc(members * sizeof(type)))
+#define fastd_new_array(members, type) ((type *)fastd_alloc_array(members, sizeof(type)))
 
 /** Allocates a block of memory set to zero for an array of elements of a given type */
 #define fastd_new0_array(members, type) ((type *)fastd_alloc0_array(members, sizeof(type)))
