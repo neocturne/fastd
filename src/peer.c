@@ -890,13 +890,13 @@ static int peer_eth_addr_cmp(const fastd_peer_eth_addr_t *addr1, const fastd_pee
 
 /** Adds a MAC address to the sorted list of addresses associated with a peer (or updates the timeout of an existing entry) */
 void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
-	int min = 0, max = VECTOR_LEN(ctx.eth_addrs);
+	size_t min = 0, max = VECTOR_LEN(ctx.eth_addrs);
 
 	if (peer && !fastd_peer_is_established(peer))
 		exit_bug("tried to learn ethernet address on non-established peer");
 
 	while (max > min) {
-		int cur = (min+max)/2;
+		size_t cur = min + (max - min)/2;
 		int cmp = eth_addr_cmp(&addr, &VECTOR_INDEX(ctx.eth_addrs, cur).addr);
 
 		if (cmp == 0) {
