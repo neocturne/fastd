@@ -10,7 +10,7 @@ Unlike OpenVPN, fastd doesn't support fragmentation itself, but relies on the IP
 Guidelines
 ----------
 
-* The basic overhead of a fastd packet in TUN mode over IPv4 is 39 Bytes when only null crypto is used and 52 Bytes for all other crypto methods
+* The basic overhead of a fastd packet in TUN mode over IPv4 is 29 Bytes when only null crypto is used and 52 Bytes for all other crypto methods
 * TAP mode needs 14 bytes more than TUN mode
 * Tunneling over IPv6 needs 20 bytes more than IPv4
 
