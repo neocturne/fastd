@@ -707,7 +707,7 @@ static inline void terminate(void) {
 
 	pthread_sigmask(SIG_SETMASK, &action.sa_mask, NULL);
 
-	kill(getpid(), sig_terminate);
+	raise(sig_terminate);
 }
 
 /** Main function */
