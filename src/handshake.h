@@ -215,9 +215,9 @@ static inline void fastd_handshake_add_uint16_endian(fastd_handshake_buffer_t *b
 static inline void fastd_handshake_add_uint(fastd_handshake_buffer_t *buffer, fastd_handshake_record_type_t type, uint32_t value) {
 	if (value > 0xffffff)
 		fastd_handshake_add_uint32(buffer, type, value);
-	if (value > 0xffff)
+	else if (value > 0xffff)
 		fastd_handshake_add_uint24(buffer, type, value);
-	if (value > 0xff)
+	else if (value > 0xff)
 		fastd_handshake_add_uint16(buffer, type, value);
 	else
 		fastd_handshake_add_uint8(buffer, type, value);
