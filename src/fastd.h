@@ -283,7 +283,7 @@ struct fastd_context {
 
 	int64_t started;			/**< The timestamp when fastd was started */
 
-	int64_t now;				/**< The current monotonous timestamp in microseconds after an arbitrary point in time */
+	int64_t now;				/**< The current monotonous timestamp in milliseconds after an arbitrary point in time */
 
 	fastd_iface_t *iface;			/**< The default tunnel interface */
 
