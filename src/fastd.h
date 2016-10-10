@@ -379,6 +379,7 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer);
 void fastd_iface_close(fastd_iface_t *iface);
 
 void fastd_random_bytes(void *buffer, size_t len, bool secure);
+int64_t fastd_get_time(void);
 
 
 #ifdef __ANDROID__
@@ -558,10 +559,7 @@ static inline void fastd_timeout_advance(fastd_timeout_t *a, fastd_timeout_t v) 
 
 /** Updates the current time */
 static inline void fastd_update_time(void) {
-	struct timespec ts;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-
-	ctx.now = (1000*(int64_t)ts.tv_sec) + ts.tv_nsec/1000000;
+	ctx.now = fastd_get_time();
 }
 
 /** Checks if a on-verify command is set */

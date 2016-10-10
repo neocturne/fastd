@@ -41,6 +41,7 @@ add_executable(fastd
   socket.c
   status.c
   task.c
+  time.c
   vector.c
   verify.c
   ${BISON_fastd_config_parse_OUTPUTS}
