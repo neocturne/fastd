@@ -243,15 +243,15 @@ void fastd_status_init(void) {
 
 	size_t status_socket_len = strlen(conf.status_socket);
 	size_t len = offsetof(struct sockaddr_un, sun_path) + status_socket_len + 1;
-	uint8_t buf[len];
-	memset(buf, 0, len);
+	uint8_t buf[len] __attribute__((aligned(__alignof__(struct sockaddr_un))));
+	memset(buf, 0, offsetof(struct sockaddr_un, sun_path));
 
-	struct sockaddr_un *sa = (void*)buf;
+	struct sockaddr_un *sa = (struct sockaddr_un *)buf;
 
 	sa->sun_family = AF_UNIX;
 	memcpy(sa->sun_path, conf.status_socket, status_socket_len+1);
 
-	if (bind(ctx.status_fd.fd, (struct sockaddr*)sa, len)) {
+	if (bind(ctx.status_fd.fd, (struct sockaddr *)sa, len)) {
 		switch (errno) {
 		case EADDRINUSE:
 			exit_error("unable to create status socket: the path `%s' already exists", conf.status_socket);
