@@ -54,12 +54,6 @@
 #include <sodium/core.h>
 #endif
 
-#ifdef ENABLE_OPENSSL
-#include <openssl/conf.h>
-#include <openssl/evp.h>
-#include <openssl/err.h>
-#endif
-
 #ifdef ENABLE_SYSTEMD
 #include <sys/un.h>
 #endif
@@ -500,12 +494,6 @@ static inline void init_config(int *status_fd) {
 		exit_error("unable to initialize libsodium");
 #endif
 
-#ifdef ENABLE_OPENSSL
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
-	OPENSSL_config(NULL);
-#endif
-
 	fastd_config_check();
 }
 
@@ -684,12 +672,6 @@ static inline void cleanup(void) {
 	VECTOR_FREE(ctx.eth_addrs);
 
 	free(ctx.protocol_state);
-
-#ifdef ENABLE_OPENSSL
-	CONF_modules_free();
-	EVP_cleanup();
-	ERR_free_strings();
-#endif
 
 	fastd_receive_unknown_free();
 
