@@ -88,7 +88,7 @@ static json_object * dump_stat(const fastd_stats_t *stats, fastd_stat_type_t typ
 
 /** Dumps a single traffic stat as a JSON object */
 static json_object * dump_iface(const fastd_iface_t *iface) {
-	return iface->name ? json_object_new_string(iface->name) : NULL;
+	return (iface && iface->name) ? json_object_new_string(iface->name) : NULL;
 }
 
 /** Dumps a fastd_stats_t as a JSON object */
