@@ -104,7 +104,9 @@ static void * resolve_peer(void *varg) {
 
 	fastd_async_enqueue(ASYNC_TYPE_RESOLVE_RETURN, ret, sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t));
 
-	freeaddrinfo(res);
+	if (res)
+		freeaddrinfo(res);
+
 	free(arg->hostname);
 	free(arg);
 
