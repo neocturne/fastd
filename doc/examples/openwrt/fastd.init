@@ -233,7 +233,7 @@ generate_peer_group_config() {
 	config_get group_parent "$group" parent
 	[ "$parent" = "$group_parent" ] || return 0
 
-	if [ "$net" != "$peer_net" ]; then
+	if [ "$net" != "$group_net" ]; then
 		[ -z "$parent" ] || error "warning: the parent of peer group '$group' doesn't match its net, the peer group will be ignored"
 		return 0
 	fi
