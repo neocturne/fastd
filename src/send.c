@@ -133,16 +133,20 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 
 	int ret = sendmsg(sock->fd.fd, &msg, 0);
 
-	if (ret < 0 && errno == EINVAL && msg.msg_controllen) {
-		pr_debug2("sendmsg failed, trying again without pktinfo");
+	if (ret < 0 && msg.msg_controllen) {
+		switch (errno) {
+		case EINVAL:
+		case ENETUNREACH:
+			pr_debug2("sendmsg: %s (trying again without pktinfo)", strerror(errno));
 
-		if (peer && !fastd_peer_handshake_scheduled(peer))
-			fastd_peer_schedule_handshake_default(peer);
+			if (peer && !fastd_peer_handshake_scheduled(peer))
+				fastd_peer_schedule_handshake_default(peer);
 
-		msg.msg_control = NULL;
-		msg.msg_controllen = 0;
+			msg.msg_control = NULL;
+			msg.msg_controllen = 0;
 
-		ret = sendmsg(sock->fd.fd, &msg, 0);
+			ret = sendmsg(sock->fd.fd, &msg, 0);
+		}
 	}
 
 	if (ret < 0) {
