@@ -42,10 +42,9 @@ void fastd_random_bytes(void *buffer, size_t len, bool secure) {
 	int fd;
 	size_t read_bytes = 0;
 
-	if (secure)
-		fd = open("/dev/random", O_RDONLY);
-	else
-		fd = open("/dev/urandom", O_RDONLY);
+  // always use /dev/urandom, because it is same secure and random
+  // as /dev/random, but random blocks key generation
+  fd = open("/dev/urandom", O_RDONLY);
 
 	if (fd < 0)
 		exit_errno("unable to open random device");
