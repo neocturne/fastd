@@ -32,38 +32,38 @@
 
 #pragma once
 
-#include "types.h"
 #include "peer.h"
+#include "types.h"
 
 
 /** A type of asynchronous notification */
 typedef enum fastd_async_type {
-	ASYNC_TYPE_NOP,				/**< Does nothing (is used to ensure poll returns quickly after a signal has occurred) */
-	ASYNC_TYPE_RESOLVE_RETURN,		/**< A DNS resolver response */
-	ASYNC_TYPE_VERIFY_RETURN,		/**< A on-verify return */
+	ASYNC_TYPE_NOP, /**< Does nothing (is used to ensure poll returns quickly after a signal has occurred) */
+	ASYNC_TYPE_RESOLVE_RETURN, /**< A DNS resolver response */
+	ASYNC_TYPE_VERIFY_RETURN,  /**< A on-verify return */
 } fastd_async_type_t;
 
 
 /** A DNS resolver response */
 typedef struct fastd_async_resolve_return {
-	uint64_t peer_id;			/**< The ID of the peer the resolved remote belongs to */
-	size_t remote;				/**< The index of the resolved remote */
+	uint64_t peer_id; /**< The ID of the peer the resolved remote belongs to */
+	size_t remote;    /**< The index of the resolved remote */
 
-	size_t n_addr;				/**< The number of addresses returned */
-	fastd_peer_address_t addr[];		/**< The resolved addresses */
+	size_t n_addr;               /**< The number of addresses returned */
+	fastd_peer_address_t addr[]; /**< The resolved addresses */
 } fastd_async_resolve_return_t;
 
 /** A on-verify response */
 typedef struct fastd_async_verify_return {
-	bool ok;				/**< true if the verification was successful */
+	bool ok; /**< true if the verification was successful */
 
-	uint64_t peer_id;			/**< The ID of the verified peer */
+	uint64_t peer_id; /**< The ID of the verified peer */
 
-	const fastd_method_info_t *method;	/**< The method supplied in the handshake causing the verification */
-	fastd_socket_t *sock;			/**< The socket the handshake causing the verification was received on */
+	const fastd_method_info_t *method; /**< The method supplied in the handshake causing the verification */
+	fastd_socket_t *sock;              /**< The socket the handshake causing the verification was received on */
 
-	fastd_peer_address_t local_addr;	/**< The local address the handshake was received on */
-	fastd_peer_address_t remote_addr;	/**< The address the handshake was received from */
+	fastd_peer_address_t local_addr;  /**< The local address the handshake was received on */
+	fastd_peer_address_t remote_addr; /**< The address the handshake was received from */
 
 	uint8_t protocol_data[] __attribute__((aligned(8))); /**< Protocol-specific data */
 } fastd_async_verify_return_t;

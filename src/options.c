@@ -47,8 +47,8 @@
 */
 
 
-#include "fastd.h"
 #include "config.h"
+#include "fastd.h"
 #include "peer.h"
 #include "peer_group.h"
 #include <generated/version.h>
@@ -59,14 +59,14 @@
 /** Prints the usage message for a single command line option */
 static void print_usage(const char *options, const char *message) {
 	/* 28 spaces */
-	static const char spaces[] = {[0 ... 27] = ' ', [28] = 0};
+	static const char spaces[] = { [0 ... 27] = ' ', [28] = 0 };
 
 	int len = strlen(options);
 
 	printf("%s", options);
 
 	if (len < 28)
-		printf("%s", spaces+len);
+		printf("%s", spaces + len);
 	else
 		printf("\n%s", spaces);
 
@@ -90,7 +90,6 @@ static void usage(void) {
 
 	exit(0);
 }
-
 
 
 /** Prints fastd's version and exits */
@@ -134,7 +133,7 @@ static void option_config(const char *arg) {
 static void option_config_peer(const char *arg) {
 	fastd_peer_t *peer = fastd_new0(fastd_peer_t);
 
-	if(!fastd_config_read(arg, conf.peer_group, peer, 0))
+	if (!fastd_config_read(arg, conf.peer_group, peer, 0))
 		exit(1);
 
 	if (!fastd_peer_add(peer))
@@ -256,29 +255,26 @@ static void option_bind(const char *arg) {
 		if (!charptr || (charptr[1] != ':' && charptr[1] != '\0'))
 			exit_error("invalid bind address `%s'", arg);
 
-		addrstr = fastd_strndup(arg+1, charptr-arg-1);
+		addrstr = fastd_strndup(arg + 1, charptr - arg - 1);
 
 		if (charptr[1] == ':')
 			charptr++;
 		else
 			charptr = NULL;
-	}
-	else {
+	} else {
 		charptr = strrchr(arg, ':');
 		if (charptr) {
-			addrstr = fastd_strndup(arg, charptr-arg);
-		}
-		else {
+			addrstr = fastd_strndup(arg, charptr - arg);
+		} else {
 			addrstr = fastd_strdup(arg);
 		}
 	}
 
 	if (charptr) {
-		l = strtol(charptr+1, &endptr, 10);
+		l = strtol(charptr + 1, &endptr, 10);
 		if (*endptr || l < 1 || l > 65535)
-			exit_error("invalid bind port `%s'", charptr+1);
-	}
-	else {
+			exit_error("invalid bind port `%s'", charptr + 1);
+	} else {
 		l = 0;
 	}
 
@@ -296,12 +292,10 @@ static void option_bind(const char *arg) {
 
 		if (inet_pton(AF_INET6, addrstr, &addr.in6.sin6_addr) != 1)
 			exit_error("invalid bind address `[%s]'", addrstr);
-	}
-	else if (strcmp(addrstr, "any") == 0) {
+	} else if (strcmp(addrstr, "any") == 0) {
 		addr.in.sin_family = AF_UNSPEC;
 		addr.in.sin_port = htons(l);
-	}
-	else {
+	} else {
 		addr.in.sin_family = AF_INET;
 		addr.in.sin_port = htons(l);
 
@@ -418,7 +412,7 @@ static bool config_match(const char *opt, ...) {
 
 	va_start(ap, opt);
 
-	while((str = va_arg(ap, const char *)) != NULL) {
+	while ((str = va_arg(ap, const char *)) != NULL) {
 		if (strcmp(opt, str) == 0) {
 			match = true;
 			break;
@@ -436,25 +430,29 @@ void fastd_config_handle_options(int argc, char *const argv[]) {
 
 	while (i < argc) {
 #define OR ,
-#define SEPARATOR do {} while (false)
-#define OPTION(func, options, message)					\
-		({							\
-			if(config_match(argv[i], options, NULL)) {	\
-				i++;					\
-				func();			\
-				continue;				\
-			}						\
-		})
-#define OPTION_ARG(func, options, arg, message)				\
-		({							\
-			if(config_match(argv[i], options, NULL)) {	\
-				i+=2;					\
-				if (i > argc)				\
-					exit_error("command line error: option `%s' needs an argument; see --help for usage", argv[i-2]); \
-				func(argv[i-1]);		\
-				continue;				\
-			}						\
-		})
+#define SEPARATOR \
+	do {      \
+	} while (false)
+#define OPTION(func, options, message)                      \
+	({                                                  \
+		if (config_match(argv[i], options, NULL)) { \
+			i++;                                \
+			func();                             \
+			continue;                           \
+		}                                           \
+	})
+#define OPTION_ARG(func, options, arg, message)                                                                    \
+	({                                                                                                         \
+		if (config_match(argv[i], options, NULL)) {                                                        \
+			i += 2;                                                                                    \
+			if (i > argc)                                                                              \
+				exit_error(                                                                        \
+					"command line error: option `%s' needs an argument; see --help for usage", \
+					argv[i - 2]);                                                              \
+			func(argv[i - 1]);                                                                         \
+			continue;                                                                                  \
+		}                                                                                                  \
+	})
 #include "options.def.h"
 #undef OR
 #undef SEPARATOR

@@ -34,8 +34,8 @@
 
 /** The session state */
 struct fastd_method_session_state {
-	bool valid;			/**< true if the session has not been invalidated */
-	bool initiator;			/**< true if this side is the initiator of the session */
+	bool valid;     /**< true if the session has not been invalidated */
+	bool initiator; /**< true if this side is the initiator of the session */
 };
 
 
@@ -45,8 +45,7 @@ static bool method_create_by_name(const char *name, UNUSED fastd_method_t **meth
 }
 
 /** Does nothing as the null provider provides only a single method */
-static void method_destroy(UNUSED fastd_method_t *method) {
-}
+static void method_destroy(UNUSED fastd_method_t *method) {}
 
 /** Returns 0 */
 static size_t method_key_length(UNUSED const fastd_method_t *method) {
@@ -54,7 +53,8 @@ static size_t method_key_length(UNUSED const fastd_method_t *method) {
 }
 
 /** Initiates a new null session */
-static fastd_method_session_state_t * method_session_init(UNUSED const fastd_method_t *method, UNUSED const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t *
+method_session_init(UNUSED const fastd_method_t *method, UNUSED const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	session->valid = true;
@@ -64,7 +64,8 @@ static fastd_method_session_state_t * method_session_init(UNUSED const fastd_met
 }
 
 /** Initiates a new null session (pre-v11 compat handshake) */
-static fastd_method_session_state_t * method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, UNUSED size_t length, bool initiator) {
+static fastd_method_session_state_t *
+method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, UNUSED size_t length, bool initiator) {
 	return method_session_init(method, secret, initiator);
 }
 
@@ -99,13 +100,17 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Just returns the input buffer as the output */
-static bool method_encrypt(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(
+	UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out,
+	fastd_buffer_t in) {
 	*out = in;
 	return true;
 }
 
 /** Just returns the input buffer as the output */
-static bool method_decrypt(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, UNUSED bool *reordered) {
+static bool method_decrypt(
+	UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+	UNUSED bool *reordered) {
 	*out = in;
 	return true;
 }

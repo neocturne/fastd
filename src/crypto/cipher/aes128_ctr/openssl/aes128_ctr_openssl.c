@@ -38,12 +38,12 @@
 
 /** The cipher state containing the OpenSSL cipher context */
 struct fastd_cipher_state {
-	EVP_CIPHER_CTX *aes;		/**< The OpenSSL cipher context */
+	EVP_CIPHER_CTX *aes; /**< The OpenSSL cipher context */
 };
 
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t * aes128_ctr_init(const uint8_t *key) {
+static fastd_cipher_state_t *aes128_ctr_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 
 	state->aes = EVP_CIPHER_CTX_new();
@@ -53,7 +53,9 @@ static fastd_cipher_state_t * aes128_ctr_init(const uint8_t *key) {
 }
 
 /** XORs data with the aes128-ctr cipher stream */
-static bool aes128_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+static bool aes128_ctr_crypt(
+	const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len,
+	const uint8_t *iv) {
 	int clen, clen2;
 
 	if (!EVP_EncryptInit_ex(state->aes, NULL, NULL, NULL, iv))
@@ -65,7 +67,7 @@ static bool aes128_ctr_crypt(const fastd_cipher_state_t *state, fastd_block128_t
 	if (!EVP_EncryptFinal(state->aes, ((unsigned char *)out) + clen, &clen2))
 		return false;
 
-	if ((size_t)(clen+clen2) != len)
+	if ((size_t)(clen + clen2) != len)
 		return false;
 
 	return true;

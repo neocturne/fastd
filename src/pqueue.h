@@ -36,12 +36,12 @@
 
 /** Element of a priority queue */
 struct fastd_pqueue {
-	fastd_pqueue_t **pprev;		/**< \e next element of the previous element (or \e children of the parent) */
-	fastd_pqueue_t *next;		/**< Next sibling in the heap */
+	fastd_pqueue_t **pprev; /**< \e next element of the previous element (or \e children of the parent) */
+	fastd_pqueue_t *next;   /**< Next sibling in the heap */
 
-	fastd_pqueue_t *children;	/**< Heap children */
+	fastd_pqueue_t *children; /**< Heap children */
 
-	int64_t value;			/**< The priority */
+	int64_t value; /**< The priority */
 };
 
 

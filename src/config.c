@@ -34,9 +34,9 @@
 */
 
 
-#include "fastd.h"
 #include "config.h"
 #include "crypto.h"
+#include "fastd.h"
 #include "lex.h"
 #include "method.h"
 #include "peer.h"
@@ -50,8 +50,9 @@
 #include <stdarg.h>
 #include <strings.h>
 
-#include <sys/stat.h>
 #include <sys/types.h>
+
+#include <sys/stat.h>
 
 
 /** The global configuration */
@@ -124,17 +125,22 @@ bool fastd_config_ifname(fastd_peer_t *peer, const char *ifname) {
 /** Handles the configuration of a cipher implementation */
 void fastd_config_cipher(const char *name, const char *impl) {
 	if (!fastd_cipher_config(name, impl))
-		exit_error("config error: implementation `%s' is not supported for cipher `%s' (or cipher `%s' is not supported)", impl, name, name);
+		exit_error(
+			"config error: implementation `%s' is not supported for cipher `%s' (or cipher `%s' is not supported)",
+			impl, name, name);
 }
 
 /** Handles the configuration of a MAC implementation */
 void fastd_config_mac(const char *name, const char *impl) {
 	if (!fastd_mac_config(name, impl))
-		exit_error("config error: implementation `%s' is not supported for MAC `%s' (or MAC `%s' is not supported)", impl, name, name);
+		exit_error(
+			"config error: implementation `%s' is not supported for MAC `%s' (or MAC `%s' is not supported)",
+			impl, name, name);
 }
 
 /** Handles the configuration of a bind address */
-void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+void fastd_config_bind_address(
+	const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev && !fastd_peer_address_is_v6_ll(address))
 		exit_error("config error: device bind configuration not supported on this system");
@@ -240,7 +246,7 @@ static void read_peer_dir(fastd_peer_group_t *group, const char *dir) {
 			if (result->d_name[0] == '.')
 				continue;
 
-			if (result->d_name[strlen(result->d_name)-1] == '~') {
+			if (result->d_name[strlen(result->d_name) - 1] == '~') {
 				pr_verbose("ignoring file `%s' as it seems to be a backup file", result->d_name);
 				continue;
 			}
@@ -270,8 +276,7 @@ static void read_peer_dir(fastd_peer_group_t *group, const char *dir) {
 		if (closedir(dirh) < 0)
 			pr_error_errno("closedir");
 
-	}
-	else {
+	} else {
 		pr_error("opendir for `%s' failed: %s", dir, strerror(errno));
 	}
 }
@@ -305,8 +310,7 @@ void fastd_config_add_peer_dir(fastd_peer_group_t *group, const char *dir) {
 
 		if (chdir(oldcwd))
 			pr_error("can't chdir to `%s': %s", oldcwd, strerror(errno));
-	}
-	else {
+	} else {
 		pr_error("change from directory `%s' to `%s' failed: %s", oldcwd, dir, strerror(errno));
 	}
 
@@ -331,8 +335,7 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 
 	if (!filename) {
 		file = stdin;
-	}
-	else {
+	} else {
 		file = fopen(filename, "r");
 		if (!file) {
 			pr_error("can't open config file `%s': %s", filename, strerror(errno));
@@ -356,19 +359,18 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 
 	int token;
 	YYSTYPE token_val;
-	YYLTYPE loc = {1, 0, 1, 0};
+	YYLTYPE loc = { 1, 0, 1, 0 };
 	fastd_parser_state_t state = {
 		.peer_group = peer_group,
 		.peer = peer,
 		.filename = filename,
-		.depth = depth+1,
+		.depth = depth + 1,
 	};
 
 	if (peer) {
 		token = START_PEER_CONFIG;
 		peer->group = peer_group;
-	}
-	else {
+	} else {
 		token = peer_group->parent ? START_PEER_GROUP_CONFIG : START_CONFIG;
 	}
 
@@ -378,7 +380,9 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 		token = fastd_lex(&token_val, &loc, lex);
 
 		if (token < 0) {
-			pr_error("config error: %s at %s:%i:%i", token_val.error, filename, loc.first_line, loc.first_column);
+			pr_error(
+				"config error: %s at %s:%i:%i", token_val.error, filename, loc.first_line,
+				loc.first_column);
 			ret = false;
 			goto end_free;
 		}
@@ -394,13 +398,13 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 	if (parse_ret)
 		ret = false;
 
- end_free:
+end_free:
 	fastd_string_stack_free(strings);
 
 	fastd_lex_destroy(lex);
 	fastd_config_pstate_delete(ps);
 
-	if(chdir(oldcwd))
+	if (chdir(oldcwd))
 		pr_error("can't chdir to `%s': %s", oldcwd, strerror(errno));
 
 	free(filename2);
@@ -427,7 +431,7 @@ static void configure_user(void) {
 			char buf[bufspace];
 			error = getpwnam_r(conf.user, &pwd, buf, bufspace, &pwdr);
 			bufspace *= 2;
-		} while(error == ERANGE);
+		} while (error == ERANGE);
 
 		if (error)
 			exit_errno("getpwnam_r");
@@ -448,7 +452,7 @@ static void configure_user(void) {
 			char buf[bufspace];
 			error = getgrnam_r(conf.group, &grp, buf, bufspace, &grpr);
 			bufspace *= 2;
-		} while(error == ERANGE);
+		} while (error == ERANGE);
 
 		if (error)
 			exit_errno("getgrnam_r");
@@ -530,7 +534,7 @@ static void configure_methods(void) {
 
 	collect_methods(conf.peer_group, &n_methods);
 
-	conf.methods = fastd_new0_array(n_methods+1, fastd_method_info_t);
+	conf.methods = fastd_new0_array(n_methods + 1, fastd_method_info_t);
 
 	for (i = 0, method_name = conf.method_list; method_name; i++, method_name = method_name->next) {
 		conf.methods[i].name = method_name->str;
@@ -620,7 +624,6 @@ bool fastd_config_persistent_ifaces(void) {
 		return false;
 
 	return true;
-
 }
 
 /** Performs the verify-config checks */
@@ -644,11 +647,12 @@ static void configure_peers(bool dirs_only) {
 	ctx.max_mtu = conf.mtu;
 
 	ssize_t i;
-	for (i = VECTOR_LEN(ctx.peers)-1; i >= 0; i--) {
+	for (i = VECTOR_LEN(ctx.peers) - 1; i >= 0; i--) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
 
 		if (peer->config_state == CONFIG_STATIC) {
-			/* The peer hasn't been touched since the last run of configure_peers(), so its definition must have disappeared */
+			/* The peer hasn't been touched since the last run of configure_peers(), so its definition must
+			 * have disappeared */
 			fastd_peer_delete(peer);
 			continue;
 		}

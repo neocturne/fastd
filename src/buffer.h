@@ -37,11 +37,11 @@
 
 /** A buffer descriptor */
 struct fastd_buffer {
-	void *base;			/**< The beginning of the allocated memory area */
-	size_t base_len;		/**< The size of the allocated memory area */
+	void *base;      /**< The beginning of the allocated memory area */
+	size_t base_len; /**< The size of the allocated memory area */
 
-	void *data;			/**< The beginning of the actual data in the buffer */
-	size_t len;			/**< The data length */
+	void *data; /**< The beginning of the actual data in the buffer */
+	size_t len; /**< The data length */
 };
 
 
@@ -54,10 +54,10 @@ struct fastd_buffer {
    etc. in crypto implementations
 */
 static inline fastd_buffer_t fastd_buffer_alloc(const size_t len, size_t head_space, size_t tail_space) {
-	size_t base_len = head_space+len+tail_space;
+	size_t base_len = head_space + len + tail_space;
 	void *ptr = fastd_alloc_aligned(base_len, 16);
 
-	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr+head_space, .len = len };
+	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr + head_space, .len = len };
 }
 
 /** Duplicates a buffer */

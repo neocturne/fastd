@@ -30,30 +30,30 @@
 */
 
 
-#include "ghash_pclmulqdq.h"
 #include "../../../../alloc.h"
+#include "ghash_pclmulqdq.h"
 
-#include <wmmintrin.h>
 #include <emmintrin.h>
 #include <tmmintrin.h>
+#include <wmmintrin.h>
 
 
 /** An union allowing easy access to a block as a SIMD vector and a fastd_block128_t */
 typedef union vecblock {
-	__m128i v;			/**< __m128i access */
-	fastd_block128_t b;		/**< fastd_block128_t access */
+	__m128i v;          /**< __m128i access */
+	fastd_block128_t b; /**< fastd_block128_t access */
 } vecblock_t;
 
 /** The MAC state used by this GHASH implementation */
 struct fastd_mac_state {
-	vecblock_t H;			/**< The hash key used by GHASH */
+	vecblock_t H; /**< The hash key used by GHASH */
 };
 
 
 /** Left shift on a 128bit integer */
 static inline __m128i shl(__m128i v, int a) {
 	__m128i tmpl = _mm_slli_epi64(v, a);
-	__m128i tmpr = _mm_srli_epi64(v, 64-a);
+	__m128i tmpr = _mm_srli_epi64(v, 64 - a);
 	tmpr = _mm_slli_si128(tmpr, 8);
 
 	return _mm_xor_si128(tmpl, tmpr);
@@ -62,14 +62,14 @@ static inline __m128i shl(__m128i v, int a) {
 /** Right shift on a 128bit integer */
 static inline __m128i shr(__m128i v, int a) {
 	__m128i tmpr = _mm_srli_epi64(v, a);
-	__m128i tmpl = _mm_slli_epi64(v, 64-a);
+	__m128i tmpl = _mm_slli_epi64(v, 64 - a);
 	tmpl = _mm_srli_si128(tmpl, 8);
 
 	return _mm_xor_si128(tmpr, tmpl);
 }
 
 /** _mm_shuffle_epi8 parameter to reverse the bytes of a __m128i */
-static const __v16qi BYTESWAP_SHUFFLE = {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+static const __v16qi BYTESWAP_SHUFFLE = { 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 
 /** Reverses the order of the bytes of a __m128i */
 static inline __m128i byteswap(__m128i v) {
@@ -78,7 +78,7 @@ static inline __m128i byteswap(__m128i v) {
 
 
 /** Initializes the state used by this GHASH implementation */
-fastd_mac_state_t * fastd_ghash_pclmulqdq_init(const uint8_t *key) {
+fastd_mac_state_t *fastd_ghash_pclmulqdq_init(const uint8_t *key) {
 	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
 
 	memcpy(&state->H, key, sizeof(__m128i));
@@ -150,13 +150,14 @@ static __m128i gmul(__m128i v, __m128i h) {
 
 
 /** Calculates the GHASH of the supplied input blocks */
-bool fastd_ghash_pclmulqdq_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
+bool fastd_ghash_pclmulqdq_digest(
+	const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
 	if (length % sizeof(fastd_block128_t))
 		exit_bug("ghash_digest (pclmulqdq): invalid length");
 
 	size_t n_blocks = length / sizeof(fastd_block128_t);
 
-	vecblock_t v = {.v = _mm_setzero_si128()};
+	vecblock_t v = { .v = _mm_setzero_si128() };
 
 	size_t i;
 	for (i = 0; i < n_blocks; i++) {

@@ -40,9 +40,9 @@
 
 /** A shell command */
 struct fastd_shell_command {
-	char *command;		/**< The command as given to \em /bin/sh */
-	char *dir;		/**< The working directory for the command */
-	bool sync;		/**< If false, the command will be executed in the background by default */
+	char *command; /**< The command as given to \em /bin/sh */
+	char *dir;     /**< The working directory for the command */
+	bool sync;     /**< If false, the command will be executed in the background by default */
 };
 
 
@@ -69,7 +69,7 @@ static inline bool fastd_shell_command_isset(const fastd_shell_command_t *comman
 	return command->command;
 }
 
-fastd_shell_env_t * fastd_shell_env_alloc(void);
+fastd_shell_env_t *fastd_shell_env_alloc(void);
 void fastd_shell_env_set(fastd_shell_env_t *env, const char *key, const char *value);
 void fastd_shell_env_set_iface(fastd_shell_env_t *env, const fastd_iface_t *iface);
 void fastd_shell_env_free(fastd_shell_env_t *env);

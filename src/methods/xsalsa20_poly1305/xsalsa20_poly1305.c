@@ -43,7 +43,7 @@
 
 /** The session state */
 struct fastd_method_session_state {
-	fastd_method_common_t common;		/**< The common method state */
+	fastd_method_common_t common; /**< The common method state */
 
 	uint8_t key[crypto_secretbox_xsalsa20poly1305_KEYBYTES] __attribute__((aligned(8))); /**< The encryption key */
 };
@@ -55,8 +55,7 @@ static bool method_create_by_name(const char *name, UNUSED fastd_method_t **meth
 }
 
 /** Does nothing as this provider has only a single method */
-static void method_destroy(UNUSED fastd_method_t *method) {
-}
+static void method_destroy(UNUSED fastd_method_t *method) {}
 
 /** Returns the key length used by xsalsa20-poly1305 */
 static size_t method_key_length(UNUSED const fastd_method_t *method) {
@@ -64,7 +63,8 @@ static size_t method_key_length(UNUSED const fastd_method_t *method) {
 }
 
 /** Initializes the session state */
-static fastd_method_session_state_t * method_session_init(UNUSED const fastd_method_t *method, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t *
+method_session_init(UNUSED const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	fastd_method_common_init(&session->common, initiator);
@@ -75,7 +75,8 @@ static fastd_method_session_state_t * method_session_init(UNUSED const fastd_met
 }
 
 /** Initializes the session state (pre-v11 compat handshake) */
-static fastd_method_session_state_t * method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
+static fastd_method_session_state_t *
+method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator) {
 	if (length < crypto_secretbox_xsalsa20poly1305_KEYBYTES)
 		exit_bug("xsalsa20-poly1305: tried to init with short secret");
 
@@ -104,7 +105,7 @@ static void method_session_superseded(fastd_method_session_state_t *session) {
 
 /** Frees the session state */
 static void method_session_free(fastd_method_session_state_t *session) {
-	if(session) {
+	if (session) {
 		secure_memzero(session, sizeof(fastd_method_session_state_t));
 		free(session);
 	}
@@ -120,7 +121,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 static inline void memcpy_nonce(uint8_t *dst, const uint8_t *src) {
 	size_t i;
 	for (i = 0; i < COMMON_NONCEBYTES; i++)
-		dst[i] = src[COMMON_NONCEBYTES-i-1];
+		dst[i] = src[COMMON_NONCEBYTES - i - 1];
 }
 
 /** Adds the xsalsa20-poly1305 header to the head of a packet */
@@ -140,14 +141,17 @@ static inline void take_header(fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONC
 }
 
 /** Removes and handles the xsalsa20-poly1305 header from the head of a packet */
-static inline bool handle_header(const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags, int64_t *age) {
+static inline bool handle_header(
+	const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags,
+	int64_t *age) {
 	take_header(buffer, nonce, flags);
 	return fastd_method_is_nonce_valid(session, nonce, age);
 }
 
 
 /** Performs encryption and authentication of a packet */
-static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(
+	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_pull_head_zero(&in, crypto_secretbox_xsalsa20poly1305_ZEROBYTES);
 
 	*out = fastd_buffer_alloc(in.len, 0, 0);
@@ -167,7 +171,9 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 }
 
 /** Performs validation and decryption of a packet */
-static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, bool *reordered) {
+static bool method_decrypt(
+	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+	bool *reordered) {
 	if (in.len < COMMON_HEADBYTES)
 		return false;
 
@@ -204,8 +210,7 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set) {
 		*reordered = reorder_check.state;
-	}
-	else {
+	} else {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(crypto_secretbox_xsalsa20poly1305_ZEROBYTES, 0, 0);
 	}
@@ -219,7 +224,8 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 /** The xsalsa20-poly1305 method provider */
 const fastd_method_provider_t fastd_method_xsalsa20_poly1305 = {
 
-	.max_overhead = COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES - crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES,
+	.max_overhead = COMMON_HEADBYTES + crypto_secretbox_xsalsa20poly1305_ZEROBYTES -
+			crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES,
 	.min_encrypt_head_space = crypto_secretbox_xsalsa20poly1305_ZEROBYTES,
 	.min_decrypt_head_space = crypto_secretbox_xsalsa20poly1305_BOXZEROBYTES - COMMON_HEADBYTES,
 	.min_encrypt_tail_space = 0,

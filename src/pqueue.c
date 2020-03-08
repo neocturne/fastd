@@ -64,7 +64,7 @@ static inline void pqueue_unlink(fastd_pqueue_t *elem) {
 
    \e pqueue2 may be empty (NULL)
 */
-static fastd_pqueue_t * pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pqueue2) {
+static fastd_pqueue_t *pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pqueue2) {
 	if (!pqueue1)
 		exit_bug("pqueue_merge: pqueue1 unset");
 	if (pqueue1->next)
@@ -81,8 +81,7 @@ static fastd_pqueue_t * pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pq
 	if (pqueue1->value < pqueue2->value) {
 		lo = pqueue1;
 		hi = pqueue2;
-	}
-	else {
+	} else {
 		lo = pqueue2;
 		hi = pqueue1;
 	}
@@ -93,7 +92,7 @@ static fastd_pqueue_t * pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pq
 }
 
 /** Merges a list of priority queues */
-static fastd_pqueue_t * pqueue_merge_pairs(fastd_pqueue_t *pqueue0) {
+static fastd_pqueue_t *pqueue_merge_pairs(fastd_pqueue_t *pqueue0) {
 	if (!pqueue0)
 		return NULL;
 

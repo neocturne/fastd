@@ -38,12 +38,12 @@
 
 /** The cipher state */
 struct fastd_cipher_state {
-	uint8_t key[crypto_stream_salsa2012_KEYBYTES];	/**< The encryption key */
+	uint8_t key[crypto_stream_salsa2012_KEYBYTES]; /**< The encryption key */
 };
 
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t * salsa2012_init(const uint8_t *key) {
+static fastd_cipher_state_t *salsa2012_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 	memcpy(state->key, key, crypto_stream_salsa2012_KEYBYTES);
 
@@ -51,7 +51,9 @@ static fastd_cipher_state_t * salsa2012_init(const uint8_t *key) {
 }
 
 /** XORs data with the Salsa20/12 cipher stream */
-static bool salsa2012_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+static bool salsa2012_crypt(
+	const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len,
+	const uint8_t *iv) {
 	crypto_stream_salsa2012_xor(out->b, in->b, len, iv, state->key);
 	return true;
 }

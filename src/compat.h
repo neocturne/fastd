@@ -39,6 +39,7 @@
 #include <unistd.h>
 
 #include <sys/types.h>
+
 #include <sys/socket.h>
 
 #include <netinet/in.h>
@@ -72,7 +73,8 @@
 /** Replacement function for *BSD systems not supporting get_current_dir_name() */
 static inline char *get_current_dir_name(void) {
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__APPLE__) || defined(__ANDROID__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__) || \
+	defined(__APPLE__) || defined(__ANDROID__)
 
 	return getcwd(NULL, 0);
 
@@ -81,7 +83,6 @@ static inline char *get_current_dir_name(void) {
 #error unknown system, get_current_dir_name() not implemented
 
 #endif
-
 }
 
 #endif

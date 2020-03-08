@@ -46,7 +46,7 @@ int64_t fastd_get_time(void) {
 	if (!timebase_info.denom)
 		mach_timebase_info(&timebase_info);
 
-	int64_t nsecs = (((long double)mach_absolute_time())*timebase_info.numer) / timebase_info.denom;
+	int64_t nsecs = (((long double)mach_absolute_time()) * timebase_info.numer) / timebase_info.denom;
 	return nsecs / 1000000;
 }
 
@@ -57,7 +57,7 @@ int64_t fastd_get_time(void) {
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 
-	return (1000*(int64_t)ts.tv_sec) + ts.tv_nsec/1000000;
+	return (1000 * (int64_t)ts.tv_sec) + ts.tv_nsec / 1000000;
 }
 
 #endif

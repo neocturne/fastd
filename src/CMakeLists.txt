@@ -54,3 +54,9 @@ target_link_libraries(fastd protocols methods ciphers macs ${RT_LIBRARY} ${LIBCA
 add_dependencies(fastd version)
 
 install(TARGETS fastd RUNTIME DESTINATION bin)
+
+
+add_custom_target(format
+	find src -type f -name '*.[ch]' | xargs clang-format -i --style=file
+	WORKING_DIRECTORY ${FASTD_SOURCE_DIR}
+)

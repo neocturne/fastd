@@ -41,25 +41,25 @@
 
 /** An environment variable */
 typedef struct shell_env_entry {
-	const char *key;			/**< The name of the enviroment variable */
-	char *value;				/**< The value of the environment variable */
+	const char *key; /**< The name of the enviroment variable */
+	char *value;     /**< The value of the environment variable */
 } shell_env_entry_t;
 
 
 /** A shell environment */
 struct fastd_shell_env {
-	VECTOR(shell_env_entry_t) entries;	/**< Vector of the entries of the environment */
+	VECTOR(shell_env_entry_t) entries; /**< Vector of the entries of the environment */
 };
 
 
 /** Allocated a new shell environment */
-fastd_shell_env_t * fastd_shell_env_alloc(void) {
+fastd_shell_env_t *fastd_shell_env_alloc(void) {
 	return fastd_new0(fastd_shell_env_t);
 }
 
 /** Sets a variable in a shell environment */
 void fastd_shell_env_set(fastd_shell_env_t *env, const char *key, const char *value) {
-	shell_env_entry_t entry = {.key = key, .value = fastd_strdup(value)};
+	shell_env_entry_t entry = { .key = key, .value = fastd_strdup(value) };
 	VECTOR_ADD(env->entries, entry);
 }
 
@@ -84,8 +84,7 @@ void fastd_shell_env_set_iface(fastd_shell_env_t *env, const fastd_iface_t *ifac
 
 		snprintf(buf, sizeof(buf), "%u", iface->mtu);
 		fastd_shell_env_set(env, "INTERFACE_MTU", buf);
-	}
-	else {
+	} else {
 		fastd_shell_env_set(env, "INTERFACE", NULL);
 		fastd_shell_env_set(env, "INTERFACE_MTU", NULL);
 	}
@@ -122,8 +121,7 @@ static bool shell_command_do_exec(const fastd_shell_command_t *command, const fa
 	if (*pid < 0) {
 		pr_error_errno("shell_command_do_exec: fork");
 		return false;
-	}
-	else if (*pid > 0) {
+	} else if (*pid > 0) {
 		return true;
 	}
 
@@ -168,8 +166,7 @@ bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const f
 
 	if (ret) {
 		*ret = status;
-	}
-	else {
+	} else {
 		if (WIFSIGNALED(status))
 			pr_warn("command exited with signal %i", WTERMSIG(status));
 		else if (WEXITSTATUS(status))

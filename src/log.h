@@ -41,19 +41,21 @@
 
 /** A log level specification */
 typedef enum fastd_loglevel {
-	LL_UNSPEC = 0,			/**< Nothing is logged */
-	LL_FATAL,			/**< Only fatal errors are logged */
-	LL_ERROR,			/**< Only errors are logged */
-	LL_WARN,			/**< Only warning and errors are logged */
-	LL_INFO,			/**< General informational messages are logged */
-	LL_VERBOSE,			/**< More verbose logging */
-	LL_DEBUG,			/**< Debug messages are logged, excluding messages potentially occuring very often */
-	LL_DEBUG2,			/**< All debug messages a logged */
-	LL_DEFAULT = LL_VERBOSE,	/**< The default log level */
+	LL_UNSPEC = 0,           /**< Nothing is logged */
+	LL_FATAL,                /**< Only fatal errors are logged */
+	LL_ERROR,                /**< Only errors are logged */
+	LL_WARN,                 /**< Only warning and errors are logged */
+	LL_INFO,                 /**< General informational messages are logged */
+	LL_VERBOSE,              /**< More verbose logging */
+	LL_DEBUG,                /**< Debug messages are logged, excluding messages potentially occuring very often */
+	LL_DEBUG2,               /**< All debug messages a logged */
+	LL_DEFAULT = LL_VERBOSE, /**< The default log level */
 } fastd_loglevel_t;
 
 
-size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address, bool hide);
+size_t fastd_snprint_peer_address(
+	char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address,
+	bool hide);
 
 
 void fastd_logf(const fastd_loglevel_t level, const char *format, ...);
@@ -83,10 +85,18 @@ void fastd_logf(const fastd_loglevel_t level, const char *format, ...);
 #define pr_debug2_errno(message) pr_debug2("%s: %s", message, strerror(errno))
 
 /** Logs a formatted fatal error message and aborts the program */
-#define exit_fatal(args...) do { pr_fatal(args); abort(); } while(0)
+#define exit_fatal(args...)     \
+	do {                    \
+		pr_fatal(args); \
+		abort();        \
+	} while (0)
 /** Logs a simple fatal error message after a bug was found and aborts the program */
 #define exit_bug(message) exit_fatal("BUG: %s", message)
 /** Logs a formatted error message and exits with an error status */
-#define exit_error(args...) do { pr_error(args); exit(1); } while(0)
+#define exit_error(args...)     \
+	do {                    \
+		pr_error(args); \
+		exit(1);        \
+	} while (0)
 /** Logs a simple error message adding the error found in \e errno and exits with an error status */
 #define exit_errno(message) exit_error("%s: %s", message, strerror(errno))

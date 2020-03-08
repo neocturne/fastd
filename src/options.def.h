@@ -19,8 +19,12 @@ SEPARATOR;
 #endif
 
 #ifdef WITH_CMDLINE_LOGGING
-OPTION_ARG(option_log_level, "--log-level", "error|warn|info|verbose|debug|debug2", "Sets the stderr log level; default is info, if no alternative log destination is configured");
-OPTION_ARG(option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug|debug2", "Sets the log level for syslog output; default is not to use syslog");
+OPTION_ARG(
+	option_log_level, "--log-level", "error|warn|info|verbose|debug|debug2",
+	"Sets the stderr log level; default is info, if no alternative log destination is configured");
+OPTION_ARG(
+	option_syslog_level, "--syslog-level", "error|warn|info|verbose|debug|debug2",
+	"Sets the log level for syslog output; default is not to use syslog");
 OPTION_ARG(option_syslog_ident, "--syslog-ident", "<ident>", "Sets the syslog identification; default is 'fastd'");
 OPTION(option_hide_ip_addresses, "--hide-ip-addresses", "Hides IP addresses in log output");
 OPTION(option_hide_mac_addresses, "--hide-mac-addresses", "Hides MAC addresses in log output");
@@ -47,12 +51,22 @@ SEPARATOR;
 OPTION_ARG(option_on_pre_up, "--on-pre-up", "<command>", "Sets a shell command to execute before interface creation");
 OPTION_ARG(option_on_up, "--on-up", "<command>", "Sets a shell command to execute after interface creation");
 OPTION_ARG(option_on_down, "--on-down", "<command>", "Sets a shell command to execute before interface destruction");
-OPTION_ARG(option_on_post_down, "--on-post-down", "<command>", "Sets a shell command to execute after interface destruction");
-OPTION_ARG(option_on_connect, "--on-connect", "<command>", "Sets a shell command to execute when a handshake is sent to establish a new connection");
-OPTION_ARG(option_on_establish, "--on-establish", "<command>", "Sets a shell command to execute when a new connection is established");
-OPTION_ARG(option_on_disestablish, "--on-disestablish", "<command>", "Sets a shell command to execute when a connection is lost");
+OPTION_ARG(
+	option_on_post_down, "--on-post-down", "<command>",
+	"Sets a shell command to execute after interface destruction");
+OPTION_ARG(
+	option_on_connect, "--on-connect", "<command>",
+	"Sets a shell command to execute when a handshake is sent to establish a new connection");
+OPTION_ARG(
+	option_on_establish, "--on-establish", "<command>",
+	"Sets a shell command to execute when a new connection is established");
+OPTION_ARG(
+	option_on_disestablish, "--on-disestablish", "<command>",
+	"Sets a shell command to execute when a connection is lost");
 #ifdef WITH_DYNAMIC_PEERS
-OPTION_ARG(option_on_verify, "--on-verify", "<command>", "Sets a shell command to execute to check a connection attempt by an unknown peer");
+OPTION_ARG(
+	option_on_verify, "--on-verify", "<command>",
+	"Sets a shell command to execute to check a connection attempt by an unknown peer");
 #endif
 SEPARATOR;
 #endif
@@ -60,4 +74,5 @@ SEPARATOR;
 OPTION(option_verify_config, "--verify-config", "Checks the configuration and exits");
 OPTION(option_generate_key, "--generate-key", "Generates a new keypair");
 OPTION(option_show_key, "--show-key", "Shows the public key corresponding to the configured secret");
-OPTION(option_machine_readable, "--machine-readable", "Suppresses output of explaining text in the --show-key and --generate-key commands");
+OPTION(option_machine_readable, "--machine-readable",
+       "Suppresses output of explaining text in the --show-key and --generate-key commands");

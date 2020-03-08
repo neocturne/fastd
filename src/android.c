@@ -53,10 +53,10 @@
 
 
 /** declare a work buffer for sending/receiving \e n handles */
-#define ANCIL_FD_BUFFER(n) \
-	struct { \
+#define ANCIL_FD_BUFFER(n)        \
+	struct {                  \
 		struct cmsghdr h; \
-		int fd[n]; \
+		int fd[n];        \
 	}
 
 /** receive \e n_fds handles from unix domain socket \e sock and store in \e fds  */
@@ -85,7 +85,7 @@ static int ancil_recv_fds_with_buffer(int sock, int *fds, unsigned n_fds, void *
 	}
 
 	if (recvmsg(sock, &msghdr, 0) < 0) {
-		return(-1);
+		return -1;
 	}
 	for (i = 0; i < n_fds; i++) {
 		fds[i] = ((int *)CMSG_DATA(cmsg))[i];
@@ -129,8 +129,7 @@ static int ancil_send_fds_with_buffer(int sock, const int *fds, unsigned n_fds, 
 }
 
 /** shortcut for sending only one \e fd to \e sock */
-static int ancil_send_fd(int sock, int fd)
-{
+static int ancil_send_fd(int sock, int fd) {
 	ANCIL_FD_BUFFER(1) buffer;
 
 	return ancil_send_fds_with_buffer(sock, &fd, 1, &buffer);
@@ -161,11 +160,11 @@ static void init_ctrl_sock(void) {
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	addr.sun_path[0] = 0;     /* Linux's abstract unix domain socket name */
+	addr.sun_path[0] = 0; /* Linux's abstract unix domain socket name */
 	strncpy(addr.sun_path + 1, CTRL_SOCK_NAME, sizeof(addr.sun_path) - 2);
 	int socklen = offsetof(struct sockaddr_un, sun_path) + strlen(CTRL_SOCK_NAME) + 1;
 
-	if (connect(ctx.android_ctrl_sock_fd, (struct sockaddr*)&addr, socklen) == -1) {
+	if (connect(ctx.android_ctrl_sock_fd, (struct sockaddr *)&addr, socklen) == -1) {
 		exit_errno("could not connect to Android LocalServerSocket");
 	}
 }
@@ -214,4 +213,3 @@ bool fastd_android_protect_socket(int fd) {
 }
 
 #endif /* __ANDROID__ */
-

@@ -41,16 +41,16 @@ void fastd_method_common_init(fastd_method_common_t *session, bool initiator) {
 	session->refresh_after = ctx.now + KEY_REFRESH - fastd_rand(0, KEY_REFRESH_SPLAY);
 
 	if (initiator) {
-		session->send_nonce[COMMON_NONCEBYTES-1] = 3;
-	}
-	else {
-		session->send_nonce[COMMON_NONCEBYTES-1] = 2;
-		session->receive_nonce[COMMON_NONCEBYTES-1] = 1;
+		session->send_nonce[COMMON_NONCEBYTES - 1] = 3;
+	} else {
+		session->send_nonce[COMMON_NONCEBYTES - 1] = 2;
+		session->receive_nonce[COMMON_NONCEBYTES - 1] = 1;
 	}
 }
 
 /** Checks if a received nonce is valid */
-bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age) {
+bool fastd_method_is_nonce_valid(
+	const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age) {
 	if ((nonce[0] & 1) != (session->receive_nonce[0] & 1))
 		return false;
 
@@ -82,7 +82,8 @@ bool fastd_method_is_nonce_valid(const fastd_method_common_t *session, const uin
    false if the packet is okay and not reordered and true
    if it is reordered.
 */
-fastd_tristate_t fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age) {
+fastd_tristate_t fastd_method_reorder_check(
+	fastd_peer_t *peer, fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t age) {
 	if (age < 0) {
 		size_t shift = -age;
 
@@ -92,19 +93,17 @@ fastd_tristate_t fastd_method_reorder_check(fastd_peer_t *peer, fastd_method_com
 			session->receive_reorder_seen <<= shift;
 
 		if (shift <= 64)
-			session->receive_reorder_seen |= ((uint64_t)1 << (shift-1));
+			session->receive_reorder_seen |= ((uint64_t)1 << (shift - 1));
 
 		memcpy(session->receive_nonce, nonce, COMMON_NONCEBYTES);
 		session->reorder_timeout = ctx.now + REORDER_TIME;
 		return FASTD_TRISTATE_FALSE;
-	}
-	else if (age == 0 || session->receive_reorder_seen & ((uint64_t)1 << (age-1))) {
+	} else if (age == 0 || session->receive_reorder_seen & ((uint64_t)1 << (age - 1))) {
 		pr_debug("dropping duplicate packet from %P (age %u)", peer, (unsigned)age);
 		return FASTD_TRISTATE_UNDEF;
-	}
-	else {
+	} else {
 		pr_debug2("accepting reordered packet from %P (age %u)", peer, (unsigned)age);
-		session->receive_reorder_seen |= ((uint64_t)1 << (age-1));
+		session->receive_reorder_seen |= ((uint64_t)1 << (age - 1));
 		return FASTD_TRISTATE_TRUE;
 	}
 }

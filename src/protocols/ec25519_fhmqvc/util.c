@@ -58,8 +58,7 @@ void fastd_protocol_ec25519_fhmqvc_generate_key(void) {
 
 	if (conf.machine_readable) {
 		print_hexdump("", secret_key.p);
-	}
-	else {
+	} else {
 		print_hexdump("Secret: ", secret_key.p);
 		print_hexdump("Public: ", public_key.p);
 	}
@@ -83,8 +82,7 @@ void fastd_protocol_ec25519_fhmqvc_set_shell_env(fastd_shell_env_t *env, const f
 	if (peer) {
 		hexdump(buf, peer->key->key.u8);
 		fastd_shell_env_set(env, "PEER_KEY", buf);
-	}
-	else {
+	} else {
 		fastd_shell_env_set(env, "PEER_KEY", NULL);
 	}
 }

@@ -46,9 +46,9 @@
 
 #include <grp.h>
 #include <signal.h>
-#include <syslog.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <syslog.h>
 
 #ifdef HAVE_LIBSODIUM
 #include <sodium/core.h>
@@ -63,15 +63,15 @@
 fastd_context_t ctx = {};
 
 
-static volatile bool sig_reload = false;	/**< Is set to true when a SIGHUP is received */
-static volatile bool sig_reset = false;		/**< Is set to true when a SIGUSR2 is received */
-static volatile bool sig_child = false;		/**< Is set to true when a SIGCHLD is received */
-static volatile int sig_terminate = 0;		/**< Holds the signal number when a SIGTERM, SIGQUIT or SIGINT is received */
+static volatile bool sig_reload = false; /**< Is set to true when a SIGHUP is received */
+static volatile bool sig_reset = false;  /**< Is set to true when a SIGUSR2 is received */
+static volatile bool sig_child = false;  /**< Is set to true when a SIGCHLD is received */
+static volatile int sig_terminate = 0;   /**< Holds the signal number when a SIGTERM, SIGQUIT or SIGINT is received */
 
 
 /** Signal handler; just saves the signals to be handled later */
 static void on_signal(int signo) {
-	switch(signo) {
+	switch (signo) {
 	case SIGHUP:
 		sig_reload = true;
 		break;
@@ -137,7 +137,6 @@ static void init_signals(void) {
 		exit_errno("sigaction");
 	if (sigaction(SIGUSR1, &action, NULL))
 		exit_errno("sigaction");
-
 }
 
 /** Initializes log destinations */
@@ -188,8 +187,7 @@ static void init_sockets(void) {
 
 			if (addr == conf.bind_addr_default_v6)
 				ctx.sock_default_v6 = &ctx.socks[i];
-		}
-		else {
+		} else {
 			ctx.socks[i] = (fastd_socket_t){ .fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, -1), .addr = NULL };
 		}
 
@@ -289,8 +287,7 @@ static inline void write_pid(void) {
 		if (fclose(f) < 0)
 			pr_warn_errno("fclose");
 
-	}
-	else {
+	} else {
 		pr_error_errno("can't write PID file: fopen");
 	}
 
@@ -336,8 +333,7 @@ static void set_groups(void) {
 			if (errno != EPERM)
 				pr_debug_errno("setgroups");
 		}
-	}
-	else if (conf.user || conf.group) {
+	} else if (conf.user || conf.group) {
 		if (setgroups(1, &conf.gid) < 0) {
 			if (errno != EPERM)
 				pr_debug_errno("setgroups");
@@ -364,8 +360,7 @@ static int daemonize(void) {
 
 	if (fork1 < 0) {
 		exit_errno("fork");
-	}
-	else if (fork1 > 0) {
+	} else if (fork1 > 0) {
 		/* parent */
 		if (close(pipefd[1]) < 0)
 			exit_errno("close");
@@ -377,8 +372,7 @@ static int daemonize(void) {
 			exit_errno("read");
 
 		exit(status);
-	}
-	else {
+	} else {
 		/* child 1 */
 		if (close(pipefd[0]) < 0)
 			pr_error_errno("close");
@@ -390,12 +384,10 @@ static int daemonize(void) {
 
 		if (fork2 < 0) {
 			exit_errno("fork");
-		}
-		else if (fork2 > 0) {
+		} else if (fork2 > 0) {
 			/* still child 1 */
 			_exit(0);
-		}
-		else {
+		} else {
 			/* child 2 */
 			return pipefd[1];
 		}
@@ -425,13 +417,14 @@ static inline void notify_systemd(void) {
 	if (sa.sun_path[0] == '@')
 		sa.sun_path[0] = 0;
 
-	if (connect(fd, (struct sockaddr *)&sa, offsetof(struct sockaddr_un, sun_path) + strnlen(notify_socket, sizeof(sa.sun_path))) < 0) {
+	if (connect(fd, (struct sockaddr *)&sa,
+		    offsetof(struct sockaddr_un, sun_path) + strnlen(notify_socket, sizeof(sa.sun_path))) < 0) {
 		pr_debug_errno("unable to connect to notify socket: connect");
 		close(fd);
 		return;
 	}
 
-	dprintf(fd, "READY=1\nMAINPID=%lu", (unsigned long) getpid());
+	dprintf(fd, "READY=1\nMAINPID=%lu", (unsigned long)getpid());
 	pr_debug("sent startup notification to systemd");
 
 	close(fd);
@@ -586,13 +579,11 @@ static inline void reap_zombies(void) {
 
 		if (ret > 0) {
 			pr_debug("child process %u finished", (unsigned)pid);
-		}
-		else {
+		} else {
 			if (ret == 0 || errno == EINTR) {
 				i++;
 				continue;
-			}
-			else {
+			} else {
 				pr_error_errno("waitpid");
 			}
 		}
@@ -637,7 +628,7 @@ static inline void run(void) {
 /** Removes all peers */
 static void delete_peers(void) {
 	while (VECTOR_LEN(ctx.peers))
-		fastd_peer_delete(VECTOR_INDEX(ctx.peers, VECTOR_LEN(ctx.peers)-1));
+		fastd_peer_delete(VECTOR_INDEX(ctx.peers, VECTOR_LEN(ctx.peers) - 1));
 }
 
 /**

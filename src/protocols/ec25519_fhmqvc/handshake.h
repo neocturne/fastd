@@ -50,10 +50,10 @@ typedef struct handshake_key {
 	*/
 	uint64_t serial;
 
-	fastd_timeout_t preferred_till;		/**< Specifies how long this keypair will be used for new handshakes */
-	fastd_timeout_t valid_till;		/**< Specifies how long handshakes using this keypair will be answered */
+	fastd_timeout_t preferred_till; /**< Specifies how long this keypair will be used for new handshakes */
+	fastd_timeout_t valid_till;     /**< Specifies how long handshakes using this keypair will be answered */
 
-	keypair_t key;				/**< The actual keypair */
+	keypair_t key; /**< The actual keypair */
 } handshake_key_t;
 
 /**
@@ -62,8 +62,8 @@ typedef struct handshake_key {
    There are up to two keys valid at the same time.
 */
 struct fastd_protocol_state {
-	handshake_key_t prev_handshake_key;	/**< The previously generated handshake keypair */
-	handshake_key_t handshake_key;		/**< The newest handshake keypair */
+	handshake_key_t prev_handshake_key; /**< The previously generated handshake keypair */
+	handshake_key_t handshake_key;      /**< The newest handshake keypair */
 };
 
 

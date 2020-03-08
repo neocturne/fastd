@@ -40,8 +40,8 @@
 
 /** Contains information about a cipher algorithm */
 struct fastd_cipher_info {
-	size_t key_length;		/**< The key length used by the cipher */
-	size_t iv_length;		/**< The initialization vector length used by the cipher */
+	size_t key_length; /**< The key length used by the cipher */
+	size_t iv_length;  /**< The initialization vector length used by the cipher */
 };
 
 /** A stream cipher implementation */
@@ -50,9 +50,11 @@ struct fastd_cipher {
 	bool (*available)(void);
 
 	/** Initializes a cipher context with the given key */
-	fastd_cipher_state_t * (*init)(const uint8_t *key);
+	fastd_cipher_state_t *(*init)(const uint8_t *key);
 	/** Encrypts or decrypts data */
-	bool (*crypt)(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv);
+	bool (*crypt)(
+		const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len,
+		const uint8_t *iv);
 	/** Frees a cipher context */
 	void (*free)(fastd_cipher_state_t *state);
 };
@@ -60,7 +62,7 @@ struct fastd_cipher {
 
 /** Contains information about a message authentication code algorithm */
 struct fastd_mac_info {
-	size_t key_length;		/**< The key length used by the MAC */
+	size_t key_length; /**< The key length used by the MAC */
 };
 
 /** A MAC implementation */
@@ -69,9 +71,10 @@ struct fastd_mac {
 	bool (*available)(void);
 
 	/** Initializes a MAC context with the given key */
-	fastd_mac_state_t * (*init)(const uint8_t *key);
+	fastd_mac_state_t *(*init)(const uint8_t *key);
 	/** Computes the MAC of data blocks */
-	bool (*digest)(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length);
+	bool (*digest)(
+		const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length);
 	/** Frees a MAC context */
 	void (*free)(fastd_mac_state_t *state);
 };
@@ -85,10 +88,10 @@ bool fastd_cipher_config(const char *name, const char *impl);
 
 
 /** Returns information about the cipher with the specified name if there is an implementation available */
-const fastd_cipher_info_t * fastd_cipher_info_get_by_name(const char *name);
+const fastd_cipher_info_t *fastd_cipher_info_get_by_name(const char *name);
 
 /** Returns the chosen cipher implementation for a given cipher */
-const fastd_cipher_t * fastd_cipher_get(const fastd_cipher_info_t *info);
+const fastd_cipher_t *fastd_cipher_get(const fastd_cipher_info_t *info);
 
 
 /** Initializes the list of MAC implementations */
@@ -99,10 +102,10 @@ bool fastd_mac_config(const char *name, const char *impl);
 
 
 /** Returns information about the MAC with the specified name if there is an implementation available */
-const fastd_mac_info_t * fastd_mac_info_get_by_name(const char *name);
+const fastd_mac_info_t *fastd_mac_info_get_by_name(const char *name);
 
 /** Returns the chosen MAC implementation for a given cipher */
-const fastd_mac_t * fastd_mac_get(const fastd_mac_info_t *info);
+const fastd_mac_t *fastd_mac_get(const fastd_mac_info_t *info);
 
 
 /** Sets a range of memory to zero, ensuring the operation can't be optimized out by the compiler */
@@ -136,12 +139,12 @@ static inline bool block_equal(const fastd_block128_t *a, const fastd_block128_t
 }
 
 /** XORs two blocks of data */
-static inline void xor(fastd_block128_t *x, const fastd_block128_t *a, const fastd_block128_t *b) {
+static inline void block_xor(fastd_block128_t *x, const fastd_block128_t *a, const fastd_block128_t *b) {
 	x->qw[0] = a->qw[0] ^ b->qw[0];
 	x->qw[1] = a->qw[1] ^ b->qw[1];
 }
 
 /** XORs one block of data into another */
-static inline void xor_a(fastd_block128_t *x, const fastd_block128_t *a) {
-	xor(x, x, a);
+static inline void block_xor_a(fastd_block128_t *x, const fastd_block128_t *a) {
+	block_xor(x, x, a);
 }

@@ -45,29 +45,30 @@ static const fastd_block128_t ZERO_BLOCK = {};
 
 /** A specific method provided by this provider */
 struct fastd_method {
-	const fastd_cipher_info_t *cipher_info;		/**< The cipher used for encryption */
-	const fastd_cipher_info_t *umac_cipher_info;	/**< The cipher used for authenticaton */
-	const fastd_mac_info_t *uhash_info;		/**< UHASH */
+	const fastd_cipher_info_t *cipher_info;      /**< The cipher used for encryption */
+	const fastd_cipher_info_t *umac_cipher_info; /**< The cipher used for authenticaton */
+	const fastd_mac_info_t *uhash_info;          /**< UHASH */
 };
 
 /** The method-specific session state */
 struct fastd_method_session_state {
-	fastd_method_common_t common;			/**< The common method state */
+	fastd_method_common_t common; /**< The common method state */
 
-	const fastd_method_t *method;			/**< The specific method used */
+	const fastd_method_t *method; /**< The specific method used */
 
-	const fastd_cipher_t *cipher;			/**< The cipher implementation used for encryption */
-	fastd_cipher_state_t *cipher_state;		/**< The cipher state for encryption */
+	const fastd_cipher_t *cipher;       /**< The cipher implementation used for encryption */
+	fastd_cipher_state_t *cipher_state; /**< The cipher state for encryption */
 
-	const fastd_cipher_t *umac_cipher;		/**< The cipher implementation used for authentication */
-	fastd_cipher_state_t *umac_cipher_state;	/**< The cipher state for authentication */
+	const fastd_cipher_t *umac_cipher;       /**< The cipher implementation used for authentication */
+	fastd_cipher_state_t *umac_cipher_state; /**< The cipher state for authentication */
 
-	const fastd_mac_t *uhash;			/**< The UHASH implementation */
-	fastd_mac_state_t *uhash_state;			/**< The UHASH state */
+	const fastd_mac_t *uhash;       /**< The UHASH implementation */
+	fastd_mac_state_t *uhash_state; /**< The UHASH state */
 };
 
 
-/** Instanciates a method using a name of the pattern "<cipher>+<cipher>+umac" (or "<cipher>+<cipher>-umac" for block ciphers in counter mode, e.g. null+aes128-umac instead of null+aes128-ctr+umac) */
+/** Instanciates a method using a name of the pattern "<cipher>+<cipher>+umac" (or "<cipher>+<cipher>-umac" for block
+ * ciphers in counter mode, e.g. null+aes128-umac instead of null+aes128-ctr+umac) */
 static bool method_create_by_name(const char *name, fastd_method_t **method) {
 	fastd_method_t m;
 
@@ -78,11 +79,10 @@ static bool method_create_by_name(const char *name, fastd_method_t **method) {
 	size_t len = strlen(name);
 	char cipher_name[len];
 
-	if (len >= 5 && !strcmp(name+len-5, "+umac")) {
-		memcpy(cipher_name, name, len-5);
-		cipher_name[len-5] = 0;
-	}
-	else {
+	if (len >= 5 && !strcmp(name + len - 5, "+umac")) {
+		memcpy(cipher_name, name, len - 5);
+		cipher_name[len - 5] = 0;
+	} else {
 		return false;
 	}
 
@@ -125,7 +125,8 @@ static size_t method_key_length(const fastd_method_t *method) {
 }
 
 /** Initializes a session */
-static fastd_method_session_state_t * method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t *
+method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	fastd_method_common_init(&session->common, initiator);
@@ -138,7 +139,8 @@ static fastd_method_session_state_t * method_session_init(const fastd_method_t *
 	session->umac_cipher_state = session->umac_cipher->init(secret + method->cipher_info->key_length);
 
 	session->uhash = fastd_mac_get(method->uhash_info);
-	session->uhash_state = session->uhash->init(secret + method->cipher_info->key_length + method->umac_cipher_info->key_length);
+	session->uhash_state =
+		session->uhash->init(secret + method->cipher_info->key_length + method->umac_cipher_info->key_length);
 
 	return session;
 }
@@ -175,10 +177,13 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Encrypts and authenticates a packet */
-static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	size_t tail_len = in.len ? alignto(in.len, 2 * sizeof(fastd_block128_t))-in.len : (2 * sizeof(fastd_block128_t));
+static bool method_encrypt(
+	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+	size_t tail_len =
+		in.len ? alignto(in.len, 2 * sizeof(fastd_block128_t)) - in.len : (2 * sizeof(fastd_block128_t));
 
-	*out = fastd_buffer_alloc(sizeof(fastd_block128_t)+in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
+	*out = fastd_buffer_alloc(
+		sizeof(fastd_block128_t) + in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -189,20 +194,23 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 	uint8_t umac_nonce[session->method->umac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(umac_nonce, session->common.send_nonce, sizeof(umac_nonce));
 
-	bool ok = session->umac_cipher->crypt(session->umac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), umac_nonce);
+	bool ok = session->umac_cipher->crypt(
+		session->umac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), umac_nonce);
 
 	if (ok) {
 		uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
 		fastd_method_expand_nonce(nonce, session->common.send_nonce, session->method->cipher_info->iv_length);
 
-		ok = session->cipher->crypt(session->cipher_state, outblocks+1, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
+		ok = session->cipher->crypt(
+			session->cipher_state, outblocks + 1, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
 	}
 
 	if (ok) {
 		if (tail_len)
-			memset(out->data+out->len, 0, tail_len);
+			memset(out->data + out->len, 0, tail_len);
 
-		ok = session->uhash->digest(session->uhash_state, &tag, outblocks+1, out->len - sizeof(fastd_block128_t));
+		ok = session->uhash->digest(
+			session->uhash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t));
 	}
 
 	if (!ok) {
@@ -210,7 +218,7 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 		return false;
 	}
 
-	xor_a(&outblocks[0], &tag);
+	block_xor_a(&outblocks[0], &tag);
 
 	fastd_buffer_free(in);
 
@@ -221,8 +229,10 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 }
 
 /** Verifies and decrypts a packet */
-static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, bool *reordered) {
-	if (in.len < COMMON_HEADBYTES+sizeof(fastd_block128_t))
+static bool method_decrypt(
+	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+	bool *reordered) {
+	if (in.len < COMMON_HEADBYTES + sizeof(fastd_block128_t))
 		return false;
 
 	if (!method_session_is_valid(session))
@@ -244,7 +254,8 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	fastd_method_expand_nonce(umac_nonce, in_nonce, sizeof(umac_nonce));
 
 	size_t in_len = in.len - sizeof(fastd_block128_t);
-	size_t tail_len = in_len ? alignto(in_len, 2 * sizeof(fastd_block128_t))-in_len : (2 * sizeof(fastd_block128_t));
+	size_t tail_len =
+		in_len ? alignto(in_len, 2 * sizeof(fastd_block128_t)) - in_len : (2 * sizeof(fastd_block128_t));
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
@@ -253,16 +264,19 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
-	bool ok = session->umac_cipher->crypt(session->umac_cipher_state, outblocks, inblocks, sizeof(fastd_block128_t), umac_nonce);
+	bool ok = session->umac_cipher->crypt(
+		session->umac_cipher_state, outblocks, inblocks, sizeof(fastd_block128_t), umac_nonce);
 
 	if (ok)
-		ok = session->cipher->crypt(session->cipher_state, outblocks+1, inblocks+1, (n_blocks-1)*sizeof(fastd_block128_t), nonce);
+		ok = session->cipher->crypt(
+			session->cipher_state, outblocks + 1, inblocks + 1, (n_blocks - 1) * sizeof(fastd_block128_t),
+			nonce);
 
 	if (ok) {
 		if (tail_len)
-			memset(in.data+in.len, 0, tail_len);
+			memset(in.data + in.len, 0, tail_len);
 
-		ok = session->uhash->digest(session->uhash_state, &tag, inblocks+1, in_len);
+		ok = session->uhash->digest(session->uhash_state, &tag, inblocks + 1, in_len);
 	}
 
 	if (!ok || !block_equal(&tag, &outblocks[0])) {
@@ -275,8 +289,7 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set) {
 		*reordered = reorder_check.state;
-	}
-	else {
+	} else {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(0, 0, 0);
 	}
@@ -292,8 +305,8 @@ const fastd_method_provider_t fastd_method_composed_umac = {
 	.max_overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,
-	.min_encrypt_tail_space = sizeof(fastd_block128_t)-1,
-	.min_decrypt_tail_space = 2*sizeof(fastd_block128_t),
+	.min_encrypt_tail_space = sizeof(fastd_block128_t) - 1,
+	.min_decrypt_tail_space = 2 * sizeof(fastd_block128_t),
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

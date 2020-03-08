@@ -40,7 +40,7 @@ static inline bool read_key(uint8_t key[32], const char *hexkey) {
 
 	size_t i;
 	for (i = 0; i < 32; i++)
-		sscanf(&hexkey[2*i], "%02hhx", &key[i]);
+		sscanf(&hexkey[2 * i], "%02hhx", &key[i]);
 
 	return true;
 }
@@ -58,7 +58,7 @@ static inline void check_session_refresh(fastd_peer_t *peer) {
 }
 
 /** Initializes the protocol-specific configuration */
-static fastd_protocol_config_t * protocol_init(void) {
+static fastd_protocol_config_t *protocol_init(void) {
 	fastd_protocol_config_t *protocol_config = fastd_new(fastd_protocol_config_t);
 
 	if (!conf.secret)
@@ -78,7 +78,7 @@ static fastd_protocol_config_t * protocol_init(void) {
 }
 
 /** Parses a peer's key */
-static fastd_protocol_key_t * protocol_read_key(const char *key) {
+static fastd_protocol_key_t *protocol_read_key(const char *key) {
 	fastd_protocol_key_t *ret = fastd_new(fastd_protocol_key_t);
 
 	if (read_key(ret->key.u8, key)) {
@@ -133,10 +133,12 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	bool ok = false, reordered = false;
 
 	if (is_session_valid(&peer->protocol_state->old_session))
-		ok = peer->protocol_state->old_session.method->provider->decrypt(peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer, &reordered);
+		ok = peer->protocol_state->old_session.method->provider->decrypt(
+			peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer, &reordered);
 
 	if (!ok) {
-		ok = peer->protocol_state->session.method->provider->decrypt(peer, peer->protocol_state->session.method_state, &recv_buffer, buffer, &reordered);
+		ok = peer->protocol_state->session.method->provider->decrypt(
+			peer, peer->protocol_state->session.method_state, &recv_buffer, buffer, &reordered);
 		if (!ok) {
 			pr_debug2("verification failed for packet received from %P", peer);
 			goto fail;
@@ -144,7 +146,8 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 
 		if (peer->protocol_state->old_session.method) {
 			pr_debug("invalidating old session with %P", peer);
-			peer->protocol_state->old_session.method->provider->session_free(peer->protocol_state->old_session.method_state);
+			peer->protocol_state->old_session.method->provider->session_free(
+				peer->protocol_state->old_session.method_state);
 			peer->protocol_state->old_session = (protocol_session_t){};
 		}
 
@@ -153,7 +156,8 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 			fastd_peer_unschedule_handshake(peer);
 			peer->protocol_state->session.handshakes_cleaned = true;
 
-			if (peer->protocol_state->session.method->provider->session_is_initiator(peer->protocol_state->session.method_state))
+			if (peer->protocol_state->session.method->provider->session_is_initiator(
+				    peer->protocol_state->session.method_state))
 				fastd_protocol_ec25519_fhmqvc_send_empty(peer, &peer->protocol_state->session);
 		}
 
@@ -169,7 +173,7 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 
 	return;
 
- fail:
+fail:
 	fastd_buffer_free(buffer);
 }
 
@@ -200,19 +204,23 @@ static void protocol_send(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (use_old_session(peer->protocol_state)) {
 		pr_debug2("sending packet for old session to %P", peer);
 		session_send(peer, buffer, &peer->protocol_state->old_session);
-	}
-	else {
+	} else {
 		session_send(peer, buffer, &peer->protocol_state->session);
 	}
 }
 
 /** Sends an empty payload packet (i.e. keepalive) to a peer using a specified session */
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_session_t *session) {
-	session_send(peer, fastd_buffer_alloc(0, alignto(session->method->provider->min_encrypt_head_space, 8), session->method->provider->min_encrypt_tail_space), session);
+	session_send(
+		peer,
+		fastd_buffer_alloc(
+			0, alignto(session->method->provider->min_encrypt_head_space, 8),
+			session->method->provider->min_encrypt_tail_space),
+		session);
 }
 
 /** get_current_method implementation for ec25519-fhmqvp */
-const fastd_method_info_t * protocol_get_current_method(const fastd_peer_t *peer) {
+const fastd_method_info_t *protocol_get_current_method(const fastd_peer_t *peer) {
 	if (!peer->protocol_state || !fastd_peer_is_established(peer))
 		return NULL;
 

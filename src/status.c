@@ -45,13 +45,13 @@
 
 /** Argument for dump_thread */
 typedef struct dump_thread_arg {
-	int fd;				/**< The file descriptor of an accepted socket connection */
-	struct json_object *json;	/**< The JSON object to write to the status socket */
+	int fd;                   /**< The file descriptor of an accepted socket connection */
+	struct json_object *json; /**< The JSON object to write to the status socket */
 } dump_thread_arg_t;
 
 
 /** Thread to write the status JSON to the status socket */
-static void * dump_thread(void *p) {
+static void *dump_thread(void *p) {
 	dump_thread_arg_t *arg = p;
 
 	const char *str = json_object_to_json_string(arg->json);
@@ -77,7 +77,7 @@ static void * dump_thread(void *p) {
 
 
 /** Dumps a single traffic stat as a JSON object */
-static json_object * dump_stat(const fastd_stats_t *stats, fastd_stat_type_t type) {
+static json_object *dump_stat(const fastd_stats_t *stats, fastd_stat_type_t type) {
 	struct json_object *ret = json_object_new_object();
 
 	json_object_object_add(ret, "packets", json_object_new_int64(stats->packets[type]));
@@ -87,12 +87,12 @@ static json_object * dump_stat(const fastd_stats_t *stats, fastd_stat_type_t typ
 }
 
 /** Dumps a single traffic stat as a JSON object */
-static json_object * dump_iface(const fastd_iface_t *iface) {
+static json_object *dump_iface(const fastd_iface_t *iface) {
 	return (iface && iface->name) ? json_object_new_string(iface->name) : NULL;
 }
 
 /** Dumps a fastd_stats_t as a JSON object */
-static json_object * dump_stats(const fastd_stats_t *stats) {
+static json_object *dump_stats(const fastd_stats_t *stats) {
 	struct json_object *statistics = json_object_new_object();
 
 	json_object_object_add(statistics, "rx", dump_stat(stats, STAT_RX));
@@ -107,7 +107,7 @@ static json_object * dump_stats(const fastd_stats_t *stats) {
 
 
 /** Dumps a peer's status as a JSON object */
-static json_object * dump_peer(const fastd_peer_t *peer) {
+static json_object *dump_peer(const fastd_peer_t *peer) {
 	struct json_object *ret = json_object_new_object();
 
 	/* '[' + IPv6 addresss + '%' + interface + ']:' + port + NUL */
@@ -152,9 +152,9 @@ static json_object * dump_peer(const fastd_peer_t *peer) {
 				const uint8_t *d = addr->addr.data;
 
 				char eth_addr_buf[18];
-				snprintf(eth_addr_buf, sizeof(eth_addr_buf),
-					 "%02x:%02x:%02x:%02x:%02x:%02x",
-					 d[0], d[1], d[2], d[3], d[4], d[5]);
+				snprintf(
+					eth_addr_buf, sizeof(eth_addr_buf), "%02x:%02x:%02x:%02x:%02x:%02x", d[0], d[1],
+					d[2], d[3], d[4], d[5]);
 
 				json_object_array_add(mac_addresses, json_object_new_string(eth_addr_buf));
 			}
@@ -249,7 +249,7 @@ void fastd_status_init(void) {
 	struct sockaddr_un *sa = (struct sockaddr_un *)buf;
 
 	sa->sun_family = AF_UNIX;
-	memcpy(sa->sun_path, conf.status_socket, status_socket_len+1);
+	memcpy(sa->sun_path, conf.status_socket, status_socket_len + 1);
 
 	if (bind(ctx.status_fd.fd, (struct sockaddr *)sa, len)) {
 		switch (errno) {

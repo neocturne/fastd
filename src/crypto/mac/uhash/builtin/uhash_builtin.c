@@ -30,42 +30,42 @@
 */
 
 
-#include "../../../../crypto.h"
 #include "../../../../alloc.h"
-#include "../../../../util.h"
+#include "../../../../crypto.h"
 #include "../../../../log.h"
+#include "../../../../util.h"
 
 
 /** MAC state used by this UHASH implmentation */
 struct fastd_mac_state {
-	uint32_t L1Key[256+3*4];	/**< The keys used by the L1-HASH */
-	uint64_t L2Key[12];		/**< The keys used by the L2-HASH */
-	uint64_t L3Key1[32];		/**< The first keys used by the L3-HASH */
-	uint32_t L3Key2[4];		/**< The second keys used by the L3-HASH */
+	uint32_t L1Key[256 + 3 * 4]; /**< The keys used by the L1-HASH */
+	uint64_t L2Key[12];          /**< The keys used by the L2-HASH */
+	uint64_t L3Key1[32];         /**< The first keys used by the L3-HASH */
+	uint32_t L3Key2[4];          /**< The second keys used by the L3-HASH */
 };
 
 
 /** An unsigned 64bit integer, split into two 32bit parts */
 typedef struct uint32_2 {
-	uint32_t h;			/**< The high half */
-	uint32_t l;			/**< The low half */
+	uint32_t h; /**< The high half */
+	uint32_t l; /**< The low half */
 } uint32_2_t;
 
 /** An unsigned 128bit integer, split into two 64bit parts */
 typedef struct uint64_2 {
-	uint64_t h;			/**< The high half */
-	uint64_t l;			/**< The low half */
+	uint64_t h; /**< The high half */
+	uint64_t l; /**< The low half */
 } uint64_2_t;
 
 /** Four unsigned 64bit integers */
 typedef struct uint64_4 {
-	uint64_t v[4];			/**< The values */
+	uint64_t v[4]; /**< The values */
 } uint64_4_t;
 
 
 /** Splits a 64bit interger into its 32bit halves */
 static inline uint32_2_t split64(uint64_t x) {
-	return (uint32_2_t){.h = x >> 32, .l = x};
+	return (uint32_2_t){ .h = x >> 32, .l = x };
 }
 
 /** Joins two 32bit halves into a 64bit integer */
@@ -97,7 +97,7 @@ static inline uint64_t mod_p36(uint64_t a) {
 
 
 /** Initializes the MAC state with the unpacked key data */
-static fastd_mac_state_t * uhash_init(const uint8_t *key) {
+static fastd_mac_state_t *uhash_init(const uint8_t *key) {
 	fastd_mac_state_t *state = fastd_new(fastd_mac_state_t);
 
 	const uint32_t *key32 = (const uint32_t *)key;
@@ -131,20 +131,20 @@ static fastd_mac_state_t * uhash_init(const uint8_t *key) {
    The four iterations are interleaved to improve cache locality.
 */
 static uint64_4_t nh(const uint32_t *K, const uint32_t *M, size_t length) {
-	uint64_4_t Y = {{8 * length, 8 * length, 8 * length, 8 * length}};
+	uint64_4_t Y = { { 8 * length, 8 * length, 8 * length, 8 * length } };
 
 	size_t i, j;
 	for (i = 0; i < max_size_t(block_count(length, 4), 1); i += 8) {
 		uint32_t b[8];
 
 		for (j = 0; j < 8; j++)
-			b[j] = le32toh(M[i+j]);
+			b[j] = le32toh(M[i + j]);
 
 		for (j = 0; j < 4; j++) {
-			Y.v[j] += mul64(b[0] + K[i+4*j+0], b[4] + K[i+4*j+4]);
-			Y.v[j] += mul64(b[1] + K[i+4*j+1], b[5] + K[i+4*j+5]);
-			Y.v[j] += mul64(b[2] + K[i+4*j+2], b[6] + K[i+4*j+6]);
-			Y.v[j] += mul64(b[3] + K[i+4*j+3], b[7] + K[i+4*j+7]);
+			Y.v[j] += mul64(b[0] + K[i + 4 * j + 0], b[4] + K[i + 4 * j + 4]);
+			Y.v[j] += mul64(b[1] + K[i + 4 * j + 1], b[5] + K[i + 4 * j + 5]);
+			Y.v[j] += mul64(b[2] + K[i + 4 * j + 2], b[6] + K[i + 4 * j + 6]);
+			Y.v[j] += mul64(b[3] + K[i + 4 * j + 3], b[7] + K[i + 4 * j + 7]);
 		}
 	}
 
@@ -161,7 +161,7 @@ static void l1hash(uint64_4_t *Y, const uint32_t *K, const fastd_block128_t *mes
 
 	for (i = 0; i < blocks; i++) {
 		size_t blocklen = min_size_t(length, 1024);
-		Y[i] = nh(K, (message+64*i)->dw, blocklen);
+		Y[i] = nh(K, (message + 64 * i)->dw, blocklen);
 		length -= 1024;
 	}
 }
@@ -177,7 +177,7 @@ static inline uint64_2_t mul128(uint32_2_t a, uint32_2_t b) {
 	uint32_2_t mid = split64(mul64(a.l, b.h) + mul64(a.h, b.l) + lo.h);
 	uint64_t hi = mul64(a.h, b.h) + mid.h;
 
-	return (uint64_2_t) {
+	return (uint64_2_t){
 		.h = hi,
 		.l = join64(mid.l, lo.l),
 	};
@@ -238,12 +238,12 @@ static uint64_4_t l2hash(const uint64_t *K, const uint64_4_t *M, size_t count) {
 	if (count > 0x4000)
 		exit_bug("uhash (builtin): l2hash: message too long");
 
-	uint64_4_t y = {{1, 1, 1, 1}};
+	uint64_4_t y = { { 1, 1, 1, 1 } };
 
 	size_t i, j;
 	for (i = 0; i < count; i++) {
 		for (j = 0; j < 4; j++)
-			y.v[j] = l2add(y.v[j], K[3*j], M[i].v[j]);
+			y.v[j] = l2add(y.v[j], K[3 * j], M[i].v[j]);
 	}
 
 	return y;
@@ -255,7 +255,7 @@ static uint32_t l3hash(const uint64_t *K1, uint32_t K2, uint64_t M) {
 
 	size_t i;
 	for (i = 4; i < 8; i++) {
-		uint16_t m = M >> (16 * (3 - i%4));
+		uint16_t m = M >> (16 * (3 - i % 4));
 		y += m * K1[i];
 	}
 
@@ -263,7 +263,8 @@ static uint32_t l3hash(const uint64_t *K1, uint32_t K2, uint64_t M) {
 }
 
 /** Calculates the UHASH of the supplied blocks */
-static bool uhash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
+static bool
+uhash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
 	size_t blocks = max_size_t(block_count(length, 1024), 1);
 	size_t i;
 
@@ -277,7 +278,7 @@ static bool uhash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, 
 		B = l2hash(state->L2Key, A, blocks);
 
 	for (i = 0; i < 4; i++) {
-		const uint64_t *L3Key1 = state->L3Key1 + 8*i;
+		const uint64_t *L3Key1 = state->L3Key1 + 8 * i;
 		uint32_t L3Key2 = state->L3Key2[i];
 
 		uint32_t c = l3hash(L3Key1, L3Key2, B.v[i]);

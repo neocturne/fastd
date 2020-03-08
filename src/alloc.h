@@ -40,7 +40,7 @@
 
    Terminates the process on failure.
 */
-static inline void * fastd_alloc(size_t size) {
+static inline void *fastd_alloc(size_t size) {
 	void *ret = malloc(size);
 	if (!ret)
 		exit_errno("malloc");
@@ -66,7 +66,7 @@ static inline size_t fastd_mul_check(size_t members, size_t size) {
 	return v;
 }
 
-static inline void * fastd_alloc_array(size_t members, size_t size) {
+static inline void *fastd_alloc_array(size_t members, size_t size) {
 	return fastd_alloc(fastd_mul_check(members, size));
 }
 
@@ -75,7 +75,7 @@ static inline void * fastd_alloc_array(size_t members, size_t size) {
 
    Terminates the process on failure.
 */
-static inline void * fastd_alloc_aligned(size_t size, size_t align) {
+static inline void *fastd_alloc_aligned(size_t size, size_t align) {
 	void *ret;
 	int err = posix_memalign(&ret, align, size);
 	if (err)
@@ -89,7 +89,7 @@ static inline void * fastd_alloc_aligned(size_t size, size_t align) {
 
    Terminates the process on failure.
 */
-static inline void * fastd_alloc0_array(size_t members, size_t size) {
+static inline void *fastd_alloc0_array(size_t members, size_t size) {
 	void *ret = calloc(members, size);
 	if (!ret)
 		exit_errno("calloc");
@@ -102,7 +102,7 @@ static inline void * fastd_alloc0_array(size_t members, size_t size) {
 
    Terminates the process on failure.
 */
-static inline void * fastd_alloc0(size_t size) {
+static inline void *fastd_alloc0(size_t size) {
 	return fastd_alloc0_array(1, size);
 }
 
@@ -111,7 +111,7 @@ static inline void * fastd_alloc0(size_t size) {
 
    Terminates the process on failure.
 */
-static inline void * fastd_realloc(void *ptr, size_t size) {
+static inline void *fastd_realloc(void *ptr, size_t size) {
 	void *ret = realloc(ptr, size);
 	if (!ret)
 		exit_errno("realloc");
@@ -124,7 +124,7 @@ static inline void * fastd_realloc(void *ptr, size_t size) {
 
    Terminates the process on failure.
 */
-static inline void * fastd_realloc_array(void *ptr, size_t members, size_t size) {
+static inline void *fastd_realloc_array(void *ptr, size_t members, size_t size) {
 	return fastd_realloc(ptr, fastd_mul_check(members, size));
 }
 
@@ -146,7 +146,7 @@ static inline void * fastd_realloc_array(void *ptr, size_t members, size_t size)
 
 
 /** Duplicates a string (string may be NULL) */
-static inline char * fastd_strdup(const char *s) {
+static inline char *fastd_strdup(const char *s) {
 	if (!s)
 		return NULL;
 
@@ -158,7 +158,7 @@ static inline char * fastd_strdup(const char *s) {
 }
 
 /** Duplicates a string up to a maximum length (string may be NULL) */
-static inline char * fastd_strndup(const char *s, size_t n) {
+static inline char *fastd_strndup(const char *s, size_t n) {
 	if (!s)
 		return NULL;
 

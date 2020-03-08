@@ -37,18 +37,18 @@
 
 /** Information about a single encryption method */
 struct fastd_method_info {
-	const char *name;				/**< The method name */
-	const fastd_method_provider_t *provider;	/**< The provider of the method */
-	fastd_method_t *method;				/**< Provider-specific method data */
+	const char *name;                        /**< The method name */
+	const fastd_method_provider_t *provider; /**< The provider of the method */
+	fastd_method_t *method;                  /**< Provider-specific method data */
 };
 
 /** Describes a method provider (an implementation of a class of encryption methods) */
 struct fastd_method_provider {
-	size_t max_overhead;				/**< The maximum number of bytes of overhead the methods may add */
-	size_t min_encrypt_head_space;			/**< The minimum head space needed for encrytion */
-	size_t min_decrypt_head_space;			/**< The minimum head space needed for decryption */
-	size_t min_encrypt_tail_space;			/**< The minimum tail space needed for encryption */
-	size_t min_decrypt_tail_space;			/**< The minimum tail space needed for decryption */
+	size_t max_overhead;           /**< The maximum number of bytes of overhead the methods may add */
+	size_t min_encrypt_head_space; /**< The minimum head space needed for encrytion */
+	size_t min_decrypt_head_space; /**< The minimum head space needed for decryption */
+	size_t min_encrypt_tail_space; /**< The minimum tail space needed for encryption */
+	size_t min_decrypt_tail_space; /**< The minimum tail space needed for decryption */
 
 	/** Tries to create a method with the given name */
 	bool (*create_by_name)(const char *name, fastd_method_t **method);
@@ -59,9 +59,11 @@ struct fastd_method_provider {
 	size_t (*key_length)(const fastd_method_t *method);
 
 	/** Initiates a session */
-	fastd_method_session_state_t * (*session_init)(const fastd_method_t *method, const uint8_t *secret, bool initiator);
+	fastd_method_session_state_t *(*session_init)(
+		const fastd_method_t *method, const uint8_t *secret, bool initiator);
 	/** Initiates a session in pre-v11 compatiblity mode */
-	fastd_method_session_state_t * (*session_init_compat)(const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
+	fastd_method_session_state_t *(*session_init_compat)(
+		const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
 	/** Closes a session */
 	void (*session_free)(fastd_method_session_state_t *session);
 
@@ -75,9 +77,12 @@ struct fastd_method_provider {
 	void (*session_superseded)(fastd_method_session_state_t *session);
 
 	/** Encrypts a packet for a given session, adding method-specific headers */
-	bool (*encrypt)(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
+	bool (*encrypt)(
+		fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in);
 	/** Decrypts a packet for a given session, stripping method-specific headers */
-	bool (*decrypt)(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, bool *reordered);
+	bool (*decrypt)(
+		fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+		bool *reordered);
 };
 
 
@@ -86,7 +91,7 @@ bool fastd_method_create_by_name(const char *name, const fastd_method_provider_t
 
 
 /** Finds the fastd_method_info_t for a configured method */
-static inline const fastd_method_info_t * fastd_method_get_by_name(const char *name) {
+static inline const fastd_method_info_t *fastd_method_get_by_name(const char *name) {
 	size_t i;
 	for (i = 0; conf.methods[i].name; i++) {
 		if (!strcmp(conf.methods[i].name, name))

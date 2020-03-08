@@ -36,8 +36,8 @@
 
 /** A scheduled task */
 struct fastd_task {
-	fastd_pqueue_t entry;	/**< Task queue entry */
-	fastd_task_type_t type;	/**< Type of the task */
+	fastd_pqueue_t entry;   /**< Task queue entry */
+	fastd_task_type_t type; /**< Type of the task */
 };
 
 

@@ -45,7 +45,7 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	int af = AF_UNSPEC;
 
 	if (addr->addr.sa.sa_family != AF_INET) {
-		fd = socket(PF_INET6, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
+		fd = socket(PF_INET6, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd >= 0) {
 			af = AF_INET6;
 
@@ -57,7 +57,7 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 		}
 	}
 	if (fd < 0 && addr->addr.sa.sa_family != AF_INET6) {
-		fd = socket(PF_INET, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
+		fd = socket(PF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd < 0)
 			exit_errno("unable to create socket");
 		else
@@ -143,7 +143,8 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 			bind_address.in.sin_port = addr->addr.in.sin_port;
 	}
 
-	if (bind(fd, &bind_address.sa, bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
+	if (bind(fd, &bind_address.sa,
+		 bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
 		pr_warn_errno("bind");
 		goto error;
 	}
@@ -157,14 +158,17 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 
 	return fd;
 
- error:
+error:
 	if (fd >= 0) {
 		if (close(fd))
 			pr_error_errno("close");
 	}
 
 	if (addr->bindtodev)
-		pr_error(fastd_peer_address_is_v6_ll(&addr->addr) ? "unable to bind to %L" : "unable to bind to %B on `%s'", &addr->addr, addr->bindtodev);
+		pr_error(
+			fastd_peer_address_is_v6_ll(&addr->addr) ? "unable to bind to %L"
+								 : "unable to bind to %B on `%s'",
+			&addr->addr, addr->bindtodev);
 	else
 		pr_error("unable to bind to %B", &addr->addr);
 
@@ -213,22 +217,21 @@ void fastd_socket_bind_all(void) {
 }
 
 /** Opens a single socket bound to a random port for the given address family */
-fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
+fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af) {
 	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
 
 	const fastd_bind_address_t *bind_address;
 
 	if (af == AF_INET && conf.bind_addr_default_v4) {
 		bind_address = conf.bind_addr_default_v4;
-	}
-	else if (af == AF_INET6 && conf.bind_addr_default_v6) {
+	} else if (af == AF_INET6 && conf.bind_addr_default_v6) {
 		bind_address = conf.bind_addr_default_v6;
-	}
-	else if (!conf.bind_addr_default_v4 && !conf.bind_addr_default_v6) {
+	} else if (!conf.bind_addr_default_v4 && !conf.bind_addr_default_v6) {
 		bind_address = &any_address;
-	}
-	else {
-		pr_debug("not opening an %s socket for peer %P (no bind address with matching address family)", (af == AF_INET6) ? "IPv6" : "IPv4", peer);
+	} else {
+		pr_debug(
+			"not opening an %s socket for peer %P (no bind address with matching address family)",
+			(af == AF_INET6) ? "IPv6" : "IPv4", peer);
 		return NULL;
 	}
 

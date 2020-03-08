@@ -30,8 +30,8 @@
 */
 
 
-#include "handshake.h"
 #include "../../crypto.h"
+#include "handshake.h"
 
 
 /** Allocates the protocol-specific state */

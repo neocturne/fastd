@@ -29,24 +29,24 @@
    DNS resolver functions
  */
 
+#include "async.h"
 #include "fastd.h"
 #include "peer.h"
-#include "async.h"
 
 #include <netdb.h>
 
 
 /** The argument given to the resolver thread */
 typedef struct resolv_arg {
-	uint64_t peer_id;	/**< The ID of the peer the remote being resolved belongs to */
-	size_t remote;		/**< The number of the remote to resolve */
-	char *hostname;		/**< The hostname to resolve */
+	uint64_t peer_id;                 /**< The ID of the peer the remote being resolved belongs to */
+	size_t remote;                    /**< The number of the remote to resolve */
+	char *hostname;                   /**< The hostname to resolve */
 	fastd_peer_address_t constraints; /**< Contains address family and port of the remote entry to resolve */
 } resolv_arg_t;
 
 
 /** The resolver thread main routine */
-static void * resolve_peer(void *varg) {
+static void *resolve_peer(void *varg) {
 	resolv_arg_t *arg = varg;
 
 	struct addrinfo *res = NULL, *res2;
@@ -56,13 +56,12 @@ static void * resolve_peer(void *varg) {
 	char portstr[6];
 	snprintf(portstr, 6, "%u", ntohs(arg->constraints.in.sin_port));
 
-	struct addrinfo hints = {
-		.ai_family = arg->constraints.sa.sa_family,
-		.ai_socktype = SOCK_DGRAM,
-		.ai_protocol = IPPROTO_UDP,
-		.ai_flags = AI_NUMERICSERV
+	struct addrinfo hints = { .ai_family = arg->constraints.sa.sa_family,
+				  .ai_socktype = SOCK_DGRAM,
+				  .ai_protocol = IPPROTO_UDP,
+				  .ai_flags = AI_NUMERICSERV
 #ifdef HAVE_AI_ADDRCONFIG
-		| AI_ADDRCONFIG
+					      | AI_ADDRCONFIG
 #endif
 	};
 
@@ -70,13 +69,13 @@ static void * resolve_peer(void *varg) {
 
 	if (gai_ret || !res) {
 		pr_verbose("resolving host `%s' failed: %s", arg->hostname, gai_strerror(gai_ret));
-	}
-	else {
+	} else {
 		for (res2 = res; res2; res2 = res2->ai_next)
 			n_addr++;
 	}
 
-	uint8_t retbuf[sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t)] __attribute__((aligned(8)));
+	uint8_t retbuf[sizeof(fastd_async_resolve_return_t) + n_addr * sizeof(fastd_peer_address_t)]
+		__attribute__((aligned(8)));
 	fastd_async_resolve_return_t *ret = (fastd_async_resolve_return_t *)retbuf;
 	ret->peer_id = arg->peer_id;
 	ret->remote = arg->remote;
@@ -84,7 +83,8 @@ static void * resolve_peer(void *varg) {
 	if (n_addr) {
 		n_addr = 0;
 		for (res2 = res; res2; res2 = res2->ai_next) {
-			if (res2->ai_addrlen > sizeof(fastd_peer_address_t) || (res2->ai_addr->sa_family != AF_INET && res2->ai_addr->sa_family != AF_INET6)) {
+			if (res2->ai_addrlen > sizeof(fastd_peer_address_t) ||
+			    (res2->ai_addr->sa_family != AF_INET && res2->ai_addr->sa_family != AF_INET6)) {
 				pr_warn("resolving host `%s': unsupported address returned", arg->hostname);
 				continue;
 			}
@@ -102,7 +102,9 @@ static void * resolve_peer(void *varg) {
 
 	ret->n_addr = n_addr;
 
-	fastd_async_enqueue(ASYNC_TYPE_RESOLVE_RETURN, ret, sizeof(fastd_async_resolve_return_t) + n_addr*sizeof(fastd_peer_address_t));
+	fastd_async_enqueue(
+		ASYNC_TYPE_RESOLVE_RETURN, ret,
+		sizeof(fastd_async_resolve_return_t) + n_addr * sizeof(fastd_peer_address_t));
 
 	if (res)
 		freeaddrinfo(res);

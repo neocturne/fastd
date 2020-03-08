@@ -34,8 +34,8 @@
 
 
 #include "../../../../alloc.h"
-#include "../../../../crypto.h"
 #include "../../../../cpuid.h"
+#include "../../../../crypto.h"
 
 
 /** The length of the key used by Salsa20 */
@@ -43,12 +43,14 @@
 
 
 /** The actual Salsa20 assembly implementation */
-int fastd_salsa20_xmm_xor(unsigned char *c, const unsigned char *m, unsigned long long mlen, const unsigned char *n, const unsigned char *k);
+int fastd_salsa20_xmm_xor(
+	unsigned char *c, const unsigned char *m, unsigned long long mlen, const unsigned char *n,
+	const unsigned char *k);
 
 
 /** The cipher state */
 struct fastd_cipher_state {
-	uint8_t key[KEYBYTES];		/**< The encryption key */
+	uint8_t key[KEYBYTES]; /**< The encryption key */
 };
 
 
@@ -58,7 +60,7 @@ static bool salsa20_available(void) {
 }
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t * salsa20_init(const uint8_t *key) {
+static fastd_cipher_state_t *salsa20_init(const uint8_t *key) {
 	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 	memcpy(state->key, key, KEYBYTES);
 
@@ -66,7 +68,9 @@ static fastd_cipher_state_t * salsa20_init(const uint8_t *key) {
 }
 
 /** XORs data with the Salsa20 cipher stream */
-static bool salsa20_crypt(const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len, const uint8_t *iv) {
+static bool salsa20_crypt(
+	const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len,
+	const uint8_t *iv) {
 	fastd_salsa20_xmm_xor(out->b, in->b, len, iv, state->key);
 	return true;
 }

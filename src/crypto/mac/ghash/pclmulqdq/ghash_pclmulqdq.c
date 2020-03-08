@@ -36,9 +36,9 @@
 
 /** Checks if the runtime platform can support the PCLMULQDQ implementation */
 static bool ghash_available(void) {
-	static const uint64_t REQ = CPUID_FXSR|CPUID_SSSE3|CPUID_PCLMULQDQ;
+	static const uint64_t REQ = CPUID_FXSR | CPUID_SSSE3 | CPUID_PCLMULQDQ;
 
-	return ((fastd_cpuid()&REQ) == REQ);
+	return ((fastd_cpuid() & REQ) == REQ);
 }
 
 /** The pclmulqdq ghash implementation */

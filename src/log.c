@@ -33,9 +33,9 @@
 #include "fastd.h"
 #include "peer.h"
 
-#include <syslog.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <syslog.h>
 
 
 /** snprintf wrapper always returning the number of bytes written */
@@ -52,7 +52,9 @@ static inline size_t snprintf_safe(char *buffer, size_t size, const char *format
 }
 
 /** Creates a string representation of a peer address */
-size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address, bool hide) {
+size_t fastd_snprint_peer_address(
+	char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address,
+	bool hide) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
 
 	switch (address->sa.sa_family) {
@@ -79,11 +81,11 @@ size_t fastd_snprint_peer_address(char *buffer, size_t size, const fastd_peer_ad
 				iface = if_indextoname(address->in6.sin6_scope_id, ifname_buf);
 
 			if (iface)
-				return snprintf_safe(buffer, size, "[%s%%%s]:%u", addr_buf, iface, ntohs(address->in6.sin6_port));
+				return snprintf_safe(
+					buffer, size, "[%s%%%s]:%u", addr_buf, iface, ntohs(address->in6.sin6_port));
 			else
 				return snprintf_safe(buffer, size, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
-		}
-		else
+		} else
 			return 0;
 
 	default:
@@ -96,8 +98,7 @@ static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *pe
 	if (peer) {
 		if (peer->name) {
 			return snprintf_safe(buffer, size, "<%s>", peer->name);
-		}
-		else {
+		} else {
 			char buf[17];
 			if (conf.protocol->describe_peer(peer, buf, sizeof(buf)))
 				return snprintf_safe(buffer, size, "{%s}", buf);
@@ -111,7 +112,7 @@ static size_t snprint_peer_str(char *buffer, size_t size, const fastd_peer_t *pe
 static size_t snprint_hexdump(char *buffer, size_t size, const uint8_t *d, size_t len) {
 	size_t n = 0, i;
 	for (i = 0; i < len && n < size; i++)
-		n += snprintf_safe(buffer+n, size-n, "%02x", d[i]);
+		n += snprintf_safe(buffer + n, size - n, "%02x", d[i]);
 
 	return n;
 }
@@ -119,7 +120,7 @@ static size_t snprint_hexdump(char *buffer, size_t size, const uint8_t *d, size_
 /** vsnprintf-like function using different conversion specifiers */
 static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_list ap) {
 	char *buffer_start = buffer;
-	char *buffer_end = buffer+size;
+	char *buffer_end = buffer + size;
 
 	*buffer = 0;
 
@@ -139,29 +140,30 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 
 		format++;
 
-		switch(*format) {
+		switch (*format) {
 		case '%':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%%");
+			buffer += snprintf_safe(buffer, buffer_end - buffer, "%%");
 			break;
 
 		case 'i':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%i", va_arg(ap, int));
+			buffer += snprintf_safe(buffer, buffer_end - buffer, "%i", va_arg(ap, int));
 			break;
 
 		case 'u':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%u", va_arg(ap, unsigned int));
+			buffer += snprintf_safe(buffer, buffer_end - buffer, "%u", va_arg(ap, unsigned int));
 			break;
 
 		case 'U':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%llu", (unsigned long long)va_arg(ap, uint64_t));
+			buffer += snprintf_safe(
+				buffer, buffer_end - buffer, "%llu", (unsigned long long)va_arg(ap, uint64_t));
 			break;
 
 		case 's':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%s", va_arg(ap, char *));
+			buffer += snprintf_safe(buffer, buffer_end - buffer, "%s", va_arg(ap, char *));
 			break;
 
 		case 'p':
-			buffer += snprintf_safe(buffer, buffer_end-buffer, "%p", va_arg(ap, void *));
+			buffer += snprintf_safe(buffer, buffer_end - buffer, "%p", va_arg(ap, void *));
 			break;
 
 		case 'E':
@@ -169,24 +171,24 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 
 			if (eth_addr) {
 				if (conf.hide_mac_addresses)
-					buffer += snprintf_safe(buffer, buffer_end-buffer, "[hidden]");
+					buffer += snprintf_safe(buffer, buffer_end - buffer, "[hidden]");
 				else
-					buffer += snprintf_safe(buffer, buffer_end-buffer, "%02x:%02x:%02x:%02x:%02x:%02x",
-								eth_addr->data[0], eth_addr->data[1], eth_addr->data[2],
-								eth_addr->data[3], eth_addr->data[4], eth_addr->data[5]);
-			}
-			else {
-				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
+					buffer += snprintf_safe(
+						buffer, buffer_end - buffer, "%02x:%02x:%02x:%02x:%02x:%02x",
+						eth_addr->data[0], eth_addr->data[1], eth_addr->data[2],
+						eth_addr->data[3], eth_addr->data[4], eth_addr->data[5]);
+			} else {
+				buffer += snprintf_safe(buffer, buffer_end - buffer, "(null)");
 			}
 			break;
 
 		case 'P':
-			buffer += snprint_peer_str(buffer, buffer_end-buffer, va_arg(ap, const fastd_peer_t *));
+			buffer += snprint_peer_str(buffer, buffer_end - buffer, va_arg(ap, const fastd_peer_t *));
 			break;
 
 		case 'H':
 			p = va_arg(ap, const uint8_t *);
-			buffer += snprint_hexdump(buffer, buffer_end-buffer, p, va_arg(ap, size_t));
+			buffer += snprint_hexdump(buffer, buffer_end - buffer, p, va_arg(ap, size_t));
 			break;
 
 		case 'I':
@@ -197,9 +199,11 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 			iface = (*format == 'L') ? va_arg(ap, const char *) : NULL;
 
 			if (p)
-				buffer += fastd_snprint_peer_address(buffer, buffer_end-buffer, (const fastd_peer_address_t *)p, iface, *format != 'I', conf.hide_ip_addresses);
+				buffer += fastd_snprint_peer_address(
+					buffer, buffer_end - buffer, (const fastd_peer_address_t *)p, iface,
+					*format != 'I', conf.hide_ip_addresses);
 			else
-				buffer += snprintf_safe(buffer, buffer_end-buffer, "(null)");
+				buffer += snprintf_safe(buffer, buffer_end - buffer, "(null)");
 			break;
 
 		default:
@@ -212,12 +216,12 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 	if (buffer < buffer_end)
 		*buffer = 0;
 
-	return buffer-buffer_start;
+	return buffer - buffer_start;
 }
 
 /** Returns a prefix string to use for log messages of a specified level */
-static inline const char * get_log_prefix(fastd_loglevel_t log_level) {
-	switch(log_level) {
+static inline const char *get_log_prefix(fastd_loglevel_t log_level) {
+	switch (log_level) {
 	case LL_FATAL:
 		return "Fatal: ";
 	case LL_ERROR:
@@ -239,7 +243,7 @@ static inline const char * get_log_prefix(fastd_loglevel_t log_level) {
 
 /** Converts fastd log levels to syslog levels */
 static inline int get_syslog_level(fastd_loglevel_t log_level) {
-	switch(log_level) {
+	switch (log_level) {
 	case LL_FATAL:
 		return LOG_CRIT;
 	case LL_ERROR:
@@ -269,7 +273,7 @@ void fastd_logf(fastd_loglevel_t level, const char *format, ...) {
 	fastd_vsnprintf(buffer, sizeof(buffer), format, ap);
 	va_end(ap);
 
-	buffer[sizeof(buffer)-1] = 0;
+	buffer[sizeof(buffer) - 1] = 0;
 
 	if (log_stderr) {
 		char timestr[100] = "";

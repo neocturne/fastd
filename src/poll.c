@@ -78,8 +78,7 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 			fastd_status_handle();
 		break;
 
-	case POLL_TYPE_IFACE:
-	{
+	case POLL_TYPE_IFACE: {
 		fastd_iface_t *iface = container_of(fd, fastd_iface_t, fd);
 
 		if (input)
@@ -88,8 +87,7 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 		break;
 	}
 
-	case POLL_TYPE_SOCKET:
-	{
+	case POLL_TYPE_SOCKET: {
 		fastd_socket_t *sock = container_of(fd, fastd_socket_t, fd);
 
 		if (error) {
@@ -125,7 +123,7 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 
 /** Simplified epoll_pwait wrapper (as there are systems without or with broken epoll_pwait) */
 static inline int epoll_wait_unblocked(int epfd, struct epoll_event *events, int maxevents, int timeout) {
-	const uint8_t buf[_NSIG/8] = {};
+	const uint8_t buf[_NSIG / 8] = {};
 	return syscall(SYS_epoll_pwait, epfd, events, maxevents, timeout, buf, sizeof(buf));
 }
 
@@ -178,15 +176,12 @@ void fastd_poll_handle(void) {
 
 	size_t i;
 	for (i = 0; i < (size_t)ret; i++)
-		handle_fd(events[i].data.ptr,
-			  events[i].events & EPOLLIN,
-			  events[i].events & (EPOLLERR|EPOLLHUP));
+		handle_fd(events[i].data.ptr, events[i].events & EPOLLIN, events[i].events & (EPOLLERR | EPOLLHUP));
 }
 
 #else
 
-void fastd_poll_init(void) {
-}
+void fastd_poll_init(void) {}
 
 void fastd_poll_free(void) {
 	VECTOR_FREE(ctx.fds);
@@ -266,10 +261,10 @@ void fastd_poll_handle(void) {
 		struct timeval tv = {}, *tvp = NULL;
 		if (timeout >= 0) {
 			tvp = &tv;
-			tv.tv_sec = timeout/1000;
-			tv.tv_usec = (timeout%1000)*1000;
+			tv.tv_sec = timeout / 1000;
+			tv.tv_usec = (timeout % 1000) * 1000;
 		}
-		ret = select(maxfd+1, &readfds, NULL, &errfds, tvp);
+		ret = select(maxfd + 1, &readfds, NULL, &errfds, tvp);
 		if (ret < 0 && errno != EINTR)
 			exit_errno("select");
 	}
@@ -312,7 +307,9 @@ void fastd_poll_handle(void) {
 		if (pollfd->revents)
 			ret--;
 
-		handle_fd(VECTOR_INDEX(ctx.fds, pollfd->fd), pollfd->revents & POLLIN, pollfd->revents & (POLLERR|POLLHUP|POLLNVAL));
+		handle_fd(
+			VECTOR_INDEX(ctx.fds, pollfd->fd), pollfd->revents & POLLIN,
+			pollfd->revents & (POLLERR | POLLHUP | POLLNVAL));
 	}
 }
 

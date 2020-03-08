@@ -85,7 +85,9 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 }
 
 /** Sends a packet of a given type */
-static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
+static void send_type(
+	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+	fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
 
@@ -116,10 +118,8 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 		msg.msg_namelen = sizeof(struct sockaddr_in6);
 	}
 
-	struct iovec iov[2] = {
-		{ .iov_base = &packet_type, .iov_len = 1 },
-		{ .iov_base = buffer.data, .iov_len = buffer.len }
-	};
+	struct iovec iov[2] = { { .iov_base = &packet_type, .iov_len = 1 },
+				{ .iov_base = buffer.data, .iov_len = buffer.len } };
 
 	msg.msg_iov = iov;
 	msg.msg_iovlen = buffer.len ? 2 : 1;
@@ -170,8 +170,7 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 			pr_warn_errno("sendmsg");
 			fastd_stats_add(peer, STAT_TX_ERROR, stat_size);
 		}
-	}
-	else {
+	} else {
 		fastd_stats_add(peer, STAT_TX, stat_size);
 	}
 
@@ -179,12 +178,16 @@ static void send_type(const fastd_socket_t *sock, const fastd_peer_address_t *lo
 }
 
 /** Sends a payload packet */
-void fastd_send(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
+void fastd_send(
+	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+	fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
 	send_type(sock, local_addr, remote_addr, peer, PACKET_DATA, buffer, stat_size);
 }
 
 /** Sends a handshake packet */
-void fastd_send_handshake(const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, fastd_buffer_t buffer) {
+void fastd_send_handshake(
+	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+	fastd_peer_t *peer, fastd_buffer_t buffer) {
 	send_type(sock, local_addr, remote_addr, peer, PACKET_HANDSHAKE, buffer, 0);
 }
 
@@ -197,12 +200,13 @@ static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
 			continue;
 
 		/* optimization, primarily for TUN mode: don't duplicate the buffer for the last (or only) peer */
-		if (i == VECTOR_LEN(ctx.peers)-1) {
+		if (i == VECTOR_LEN(ctx.peers) - 1) {
 			conf.protocol->send(dest, buffer);
 			return;
 		}
 
-		conf.protocol->send(dest, fastd_buffer_dup(buffer, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
+		conf.protocol->send(
+			dest, fastd_buffer_dup(buffer, conf.min_encrypt_head_space, conf.min_encrypt_tail_space));
 	}
 
 	fastd_buffer_free(buffer);

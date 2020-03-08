@@ -38,8 +38,8 @@
 
 /** A file descriptor to poll on */
 struct fastd_poll_fd {
-	fastd_poll_type_t type;		/**< What the file descriptor is used for */
-	int fd;				/**< The file descriptor itself */
+	fastd_poll_type_t type; /**< What the file descriptor is used for */
+	int fd;                 /**< The file descriptor itself */
 };
 
 
@@ -49,7 +49,7 @@ void fastd_poll_init(void);
 void fastd_poll_free(void);
 
 /** Returns a fastd_poll_fd_t structure */
-#define FASTD_POLL_FD(type, fd) ((fastd_poll_fd_t){type, fd})
+#define FASTD_POLL_FD(type, fd) ((fastd_poll_fd_t){ type, fd })
 
 /** Registers a new file descriptor to poll on */
 void fastd_poll_fd_register(fastd_poll_fd_t *fd);

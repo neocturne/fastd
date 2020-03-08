@@ -55,8 +55,7 @@ static bool do_verify(const fastd_shell_env_t *env) {
 	if (WIFSIGNALED(ret)) {
 		pr_error("verify command exited with signal %i", WTERMSIG(ret));
 		return false;
-	}
-	else if (WEXITSTATUS(ret)) {
+	} else if (WEXITSTATUS(ret)) {
 		pr_debug("verify command exited with status %i", WEXITSTATUS(ret));
 		return false;
 	}
@@ -66,13 +65,13 @@ static bool do_verify(const fastd_shell_env_t *env) {
 
 /** The argument given to asynchronous verifier threads */
 typedef struct verify_arg {
-	fastd_shell_env_t *env;			/**< Enviroment containing information about the peer to verify */
-	size_t ret_len;				/**< Length of the \e ret field (as it contains a flexible member) */
-	fastd_async_verify_return_t ret;	/**< Information to return to the main thread after the verification */
+	fastd_shell_env_t *env;          /**< Enviroment containing information about the peer to verify */
+	size_t ret_len;                  /**< Length of the \e ret field (as it contains a flexible member) */
+	fastd_async_verify_return_t ret; /**< Information to return to the main thread after the verification */
 } verify_arg_t;
 
 /** Verifier thread main function */
-static void * do_verify_thread(void *p) {
+static void *do_verify_thread(void *p) {
 	verify_arg_t *arg = p;
 
 	arg->ret.ok = do_verify(arg->env);
@@ -90,10 +89,13 @@ static void * do_verify_thread(void *p) {
 /**
    Verifies a peer
 
-   \return A tristate. If on-verify is a synchronous command, it will be \e true or \e false, but if the command is asynchronous (which is the default),
-   \e undef will be returned and the result is sent via the asyncronous notification mechanism.
+   \return A tristate. If on-verify is a synchronous command, it will be \e true or \e false, but if the command is
+   asynchronous (which is the default), \e undef will be returned and the result is sent via the asyncronous
+   notification mechanism.
 */
-fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *data, size_t data_len) {
+fastd_tristate_t fastd_verify_peer(
+	fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
+	const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *data, size_t data_len) {
 	if (!fastd_shell_command_isset(&conf.on_verify))
 		exit_bug("tried to verify peer without on-verify command");
 
@@ -107,8 +109,7 @@ fastd_tristate_t fastd_verify_peer(fastd_peer_t *peer, fastd_socket_t *sock, con
 		fastd_shell_env_free(env);
 		fastd_peer_set_verified(peer, ret);
 		return ret ? FASTD_TRISTATE_TRUE : FASTD_TRISTATE_FALSE;
-	}
-	else {
+	} else {
 		if (!fastd_sem_trywait(&ctx.verify_limit)) {
 			pr_debug("maximum number of verification processes reached");
 			return FASTD_TRISTATE_FALSE;

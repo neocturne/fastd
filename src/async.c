@@ -38,8 +38,8 @@
 
 /** The packet header used on the async notification sockets */
 typedef struct fastd_async_hdr {
-	fastd_async_type_t type;	/**< The type of the notification */
-	size_t len;			/**< The length of the notification payload */
+	fastd_async_type_t type; /**< The type of the notification */
+	size_t len;              /**< The length of the notification payload */
 } fastd_async_hdr_t;
 
 
@@ -48,7 +48,7 @@ void fastd_async_init(void) {
 	int fds[2];
 
 	/* use socketpair with SOCK_DGRAM instead of pipe2 with O_DIRECT to keep this portable */
-	if (socketpair(AF_UNIX, SOCK_DGRAM|SOCK_NONBLOCK, 0, fds))
+	if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK, 0, fds))
 		exit_errno("socketpair");
 
 #ifdef NO_HAVE_SOCK_NONBLOCK
@@ -88,8 +88,9 @@ static void handle_verify_return(const fastd_async_verify_return_t *verify_retur
 
 	fastd_peer_set_verified(peer, verify_return->ok);
 
-	conf.protocol->handle_verify_return(peer, verify_return->sock, &verify_return->local_addr, &verify_return->remote_addr,
-					    verify_return->method, verify_return->protocol_data, verify_return->ok);
+	conf.protocol->handle_verify_return(
+		peer, verify_return->sock, &verify_return->local_addr, &verify_return->remote_addr,
+		verify_return->method, verify_return->protocol_data, verify_return->ok);
 }
 
 #endif

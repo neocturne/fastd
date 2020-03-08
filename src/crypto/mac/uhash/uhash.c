@@ -37,5 +37,5 @@
 
 /** MAC info about the UHASH algorithm */
 const fastd_mac_info_t fastd_mac_info_uhash = {
-	.key_length = 1024+3*16 + 4*24 + 4*64 + 4*4, /* we use 4 iterations */
+	.key_length = 1024 + 3 * 16 + 4 * 24 + 4 * 64 + 4 * 4, /* we use 4 iterations */
 };

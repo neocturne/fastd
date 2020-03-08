@@ -49,16 +49,16 @@
 
 /** A specific method provided by this provider */
 struct fastd_method {
-	const fastd_cipher_info_t *cipher_info;		/**< The cipher used */
+	const fastd_cipher_info_t *cipher_info; /**< The cipher used */
 };
 
 /** The method-specific session state */
 struct fastd_method_session_state {
-	fastd_method_common_t common;			/**< The common method state */
+	fastd_method_common_t common; /**< The common method state */
 
-	const fastd_method_t *method;			/**< The specific method used */
-	const fastd_cipher_t *cipher;			/**< The cipher implementation used */
-	fastd_cipher_state_t *cipher_state;		/**< The cipher state */
+	const fastd_method_t *method;       /**< The specific method used */
+	const fastd_cipher_t *cipher;       /**< The cipher implementation used */
+	fastd_cipher_state_t *cipher_state; /**< The cipher state */
 };
 
 
@@ -70,12 +70,12 @@ static bool method_create_by_name(const char *name, fastd_method_t **method) {
 	if (len < 9)
 		return false;
 
-	if (strcmp(name+len-9, "+poly1305"))
+	if (strcmp(name + len - 9, "+poly1305"))
 		return false;
 
-	char cipher_name[len-8];
-	memcpy(cipher_name, name, len-9);
-	cipher_name[len-9] = 0;
+	char cipher_name[len - 8];
+	memcpy(cipher_name, name, len - 9);
+	cipher_name[len - 9] = 0;
 
 	m.cipher_info = fastd_cipher_info_get_by_name(cipher_name);
 	if (!m.cipher_info)
@@ -101,7 +101,8 @@ static size_t method_key_length(const fastd_method_t *method) {
 }
 
 /** Initializes a session */
-static fastd_method_session_state_t * method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t *
+method_session_init(const fastd_method_t *method, const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	fastd_method_common_init(&session->common, initiator);
@@ -142,14 +143,15 @@ static void method_session_free(fastd_method_session_state_t *session) {
 
 
 /** Encrypts and authenticates a packet */
-static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
+static bool method_encrypt(
+	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_pull_head_zero(&in, KEYBYTES);
 
-	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
-	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t)+tail_len);
+	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
+	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
 
 	if (tail_len)
-		memset(in.data+in.len, 0, tail_len);
+		memset(in.data + in.len, 0, tail_len);
 
 	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
@@ -160,14 +162,15 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 	fastd_block128_t *outblocks = out->data;
 	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
 
-	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
+	bool ok = session->cipher->crypt(
+		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
 
 	if (!ok) {
 		fastd_buffer_free(*out);
 		return false;
 	}
 
-	crypto_onetimeauth_poly1305(tag, outblocks->b+KEYBYTES, in.len - KEYBYTES, outblocks->b);
+	crypto_onetimeauth_poly1305(tag, outblocks->b + KEYBYTES, in.len - KEYBYTES, outblocks->b);
 
 	fastd_buffer_push_head(out, KEYBYTES);
 	fastd_buffer_pull_head_from(out, tag, TAGBYTES);
@@ -181,8 +184,10 @@ static bool method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state
 }
 
 /** Verifies and decrypts a packet */
-static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in, bool *reordered) {
-	if (in.len < COMMON_HEADBYTES+TAGBYTES)
+static bool method_decrypt(
+	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+	bool *reordered) {
+	if (in.len < COMMON_HEADBYTES + TAGBYTES)
 		return false;
 
 	if (!method_session_is_valid(session))
@@ -204,18 +209,19 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	fastd_buffer_push_head_to(&in, tag, TAGBYTES);
 	fastd_buffer_pull_head_zero(&in, KEYBYTES);
 
-	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t))-in.len;
+	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
-	bool ok = session->cipher->crypt(session->cipher_state, outblocks, inblocks, n_blocks*sizeof(fastd_block128_t), nonce);
+	bool ok = session->cipher->crypt(
+		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
 
 	if (ok) {
 		if (tail_len)
-			memset(in.data+in.len, 0, tail_len);
+			memset(in.data + in.len, 0, tail_len);
 
 		ok = (crypto_onetimeauth_poly1305_verify(tag, in.data + KEYBYTES, in.len - KEYBYTES, out->data) == 0);
 	}
@@ -238,8 +244,7 @@ static bool method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *ses
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set) {
 		*reordered = reorder_check.state;
-	}
-	else {
+	} else {
 		fastd_buffer_free(*out);
 		*out = fastd_buffer_alloc(0, 0, 0);
 	}
@@ -253,8 +258,8 @@ const fastd_method_provider_t fastd_method_generic_poly1305 = {
 	.max_overhead = COMMON_HEADBYTES + TAGBYTES,
 	.min_encrypt_head_space = KEYBYTES,
 	.min_decrypt_head_space = KEYBYTES - TAGBYTES,
-	.min_encrypt_tail_space = sizeof(fastd_block128_t)-1,
-	.min_decrypt_tail_space = sizeof(fastd_block128_t)-1,
+	.min_encrypt_tail_space = sizeof(fastd_block128_t) - 1,
+	.min_decrypt_tail_space = sizeof(fastd_block128_t) - 1,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

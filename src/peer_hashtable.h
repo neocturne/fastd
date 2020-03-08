@@ -39,7 +39,7 @@
 
 /** Hashes a peer address */
 static inline void fastd_peer_address_hash(uint32_t *hash, const fastd_peer_address_t *addr) {
-	switch(addr->sa.sa_family) {
+	switch (addr->sa.sa_family) {
 	case AF_INET:
 		fastd_hash(hash, &addr->in.sin_addr.s_addr, sizeof(addr->in.sin_addr.s_addr));
 		fastd_hash(hash, &addr->in.sin_port, sizeof(addr->in.sin_port));

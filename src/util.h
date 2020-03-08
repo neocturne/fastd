@@ -53,30 +53,31 @@
 
    \hideinitializer
  */
-#define container_of(ptr, type, member) ({				\
-			const __typeof__(((type *)0)->member) *_mptr = (ptr); \
-			(type *)((char *)_mptr - offsetof(type, member)); \
-		})
+#define container_of(ptr, type, member)                               \
+	({                                                            \
+		const __typeof__(((type *)0)->member) *_mptr = (ptr); \
+		(type *)((char *)_mptr - offsetof(type, member));     \
+	})
 
 /**
    Returns the number of elements of an array
 
    \hideinitializer
  */
-#define array_size(array) (sizeof(array)/sizeof((array)[0]))
+#define array_size(array) (sizeof(array) / sizeof((array)[0]))
 
 /**
    Determines how many blocks of a given size \a a are needed to contain some length \a l
  */
 static inline size_t block_count(size_t l, size_t a) {
-	return (l+a-1)/a;
+	return (l + a - 1) / a;
 }
 
 /**
    Rounds up a length \a l to the next multiple of a block size \a a
  */
 static inline size_t alignto(size_t l, size_t a) {
-	return block_count(l, a)*a;
+	return block_count(l, a) * a;
 }
 
 /**

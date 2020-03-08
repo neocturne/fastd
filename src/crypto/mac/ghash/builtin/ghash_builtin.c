@@ -30,18 +30,18 @@
 */
 
 
-#include "../../../../crypto.h"
 #include "../../../../alloc.h"
+#include "../../../../crypto.h"
 
 
 /** MAC state used by this GHASH implmentation */
 struct fastd_mac_state {
-	fastd_block128_t H[32][16];		/**< Lookup table unpacked from the hash key */
+	fastd_block128_t H[32][16]; /**< Lookup table unpacked from the hash key */
 };
 
 
 /** Lower 128 bit of the modulus \f$ x^{128} + x^7 + x^2 + x + 1 \f$ */
-static const fastd_block128_t r = { .b = {0xe1} };
+static const fastd_block128_t r = { .b = { 0xe1 } };
 
 
 /** Right shift of a 128bit integer by up to 8 bytes */
@@ -50,12 +50,12 @@ static inline uint8_t shr(fastd_block128_t *out, const fastd_block128_t *in, int
 	uint8_t c = 0;
 
 	for (i = 0; i < sizeof(fastd_block128_t); i++) {
-		uint8_t c2 = in->b[i] << (8-n);
+		uint8_t c2 = in->b[i] << (8 - n);
 		out->b[i] = (in->b[i] >> n) | c;
 		c = c2;
 	}
 
-	return (c >> (8-n));
+	return (c >> (8 - n));
 }
 
 /** Galois field multiplication of a 128bit integer with H */
@@ -64,8 +64,8 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 
 	size_t i;
 	for (i = 0; i < 16; i++) {
-		xor_a(&out, &cstate->H[2*i][x->b[i]>>4]);
-		xor_a(&out, &cstate->H[2*i+1][x->b[i]&0xf]);
+		block_xor_a(&out, &cstate->H[2 * i][x->b[i] >> 4]);
+		block_xor_a(&out, &cstate->H[2 * i + 1][x->b[i] & 0xf]);
 	}
 
 	*x = out;
@@ -73,7 +73,7 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 
 
 /** Initializes the MAC state with the unpacked key data */
-static fastd_mac_state_t * ghash_init(const uint8_t *key) {
+static fastd_mac_state_t *ghash_init(const uint8_t *key) {
 	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
 
 	fastd_block128_t Hbase[4];
@@ -84,11 +84,11 @@ static fastd_mac_state_t * ghash_init(const uint8_t *key) {
 
 	size_t i;
 	for (i = 1; i < 4; i++) {
-		uint8_t carry = shr(&Hbase[i], &Hbase[i-1], 1);
+		uint8_t carry = shr(&Hbase[i], &Hbase[i - 1], 1);
 		if (carry)
-			xor_a(&Hbase[i], &r);
+			block_xor_a(&Hbase[i], &r);
 
-		shr(&Rbase[i], &Rbase[i-1], 1);
+		shr(&Rbase[i], &Rbase[i - 1], 1);
 	}
 
 	fastd_block128_t R[16];
@@ -99,8 +99,8 @@ static fastd_mac_state_t * ghash_init(const uint8_t *key) {
 		int j;
 		for (j = 0; j < 4; j++) {
 			if (i & (8 >> j)) {
-				xor_a(&state->H[0][i], &Hbase[j]);
-				xor_a(&R[i], &Rbase[j]);
+				block_xor_a(&state->H[0][i], &Hbase[j]);
+				block_xor_a(&R[i], &Rbase[j]);
 			}
 		}
 	}
@@ -109,8 +109,8 @@ static fastd_mac_state_t * ghash_init(const uint8_t *key) {
 		int j;
 
 		for (j = 0; j < 16; j++) {
-			uint8_t carry = shr(&state->H[i][j], &state->H[i-1][j], 4);
-			xor_a(&state->H[i][j], &R[carry]);
+			uint8_t carry = shr(&state->H[i][j], &state->H[i - 1][j], 4);
+			block_xor_a(&state->H[i][j], &R[carry]);
 		}
 	}
 
@@ -118,7 +118,8 @@ static fastd_mac_state_t * ghash_init(const uint8_t *key) {
 }
 
 /** Calculates the GHASH of the supplied blocks */
-static bool ghash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
+static bool
+ghash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
 	if (length % sizeof(fastd_block128_t))
 		exit_bug("ghash_digest (builtin): invalid length");
 
@@ -128,7 +129,7 @@ static bool ghash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, 
 
 	size_t i;
 	for (i = 0; i < n_blocks; i++) {
-		xor_a(out, &in[i]);
+		block_xor_a(out, &in[i]);
 		mulH_a(out, state);
 	}
 

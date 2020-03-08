@@ -89,7 +89,7 @@ void fastd_peer_hashtable_insert(fastd_peer_t *peer) {
 
 	ctx.peer_addr_ht_used++;
 
-	if (ctx.peer_addr_ht_used > 2*ctx.peer_addr_ht_size) {
+	if (ctx.peer_addr_ht_used > 2 * ctx.peer_addr_ht_size) {
 		resize_hashtable();
 		return;
 	}

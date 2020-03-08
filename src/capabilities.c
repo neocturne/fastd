@@ -69,7 +69,7 @@ static void try_cap(cap_value_t cap) {
 
 	pr_verbose("acquired capability %s", name);
 
- end_free:
+end_free:
 	cap_free(caps);
 	cap_free(name);
 }
