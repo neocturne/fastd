@@ -666,7 +666,7 @@ colon_or_port:	':'
 	;
 
 port:		colon_or_port TOK_UINT {
-			if ($2 < 1 || $2 > 65535) {
+			if ($2 < 0 || $2 > 65535) {
 				fastd_config_error(&@$, state, "invalid port");
 				YYERROR;
 			}
