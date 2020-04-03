@@ -144,7 +144,7 @@
 
 	#include <limits.h>
 
-	void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s);
+	static void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s);
 }
 
 
@@ -675,6 +675,6 @@ port:		colon_or_port TOK_UINT {
 	;
 
 %%
-void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s) {
+static void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s) {
 	pr_error("config error: %s at %s:%i:%i", s, state->filename, loc->first_line, loc->first_column);
 }
