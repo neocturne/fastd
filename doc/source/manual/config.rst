@@ -51,7 +51,10 @@ Example config:
   The default option makes it the default address for outgoing connections
   for IPv4, IPv6 or both.
 
-  When an address without port or with port 0 is configured, a new socket with a random
+  When an address with port 0 is configured, a random port will be selected, which will not change as
+  long as fastd is running.
+
+  When the port is omitted completely, a new socket with a random
   port will be created for each outgoing connection. This has the side effect that the
   options for packet marks and interface-specific binds (except IPv6 link-local addresses) will only work with the
   ``CAP_NET_ADMIN`` capability. If fastd is built with capability support, it will automatically retain

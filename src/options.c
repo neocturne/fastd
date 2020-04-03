@@ -244,10 +244,11 @@ static void option_mtu(const char *arg) {
 
 /** Handles the --bind option */
 static void option_bind(const char *arg) {
-	long l;
+	long l = 0;
 	char *charptr;
 	char *endptr;
 	char *addrstr;
+	unsigned flags = 0;
 	char *ifname = NULL;
 
 	if (arg[0] == '[') {
@@ -272,10 +273,10 @@ static void option_bind(const char *arg) {
 
 	if (charptr) {
 		l = strtol(charptr + 1, &endptr, 10);
-		if (*endptr || l < 1 || l > 65535)
+		if (*endptr || l < 0 || l > 65535)
 			exit_error("invalid bind port `%s'", charptr + 1);
 	} else {
-		l = 0;
+		flags |= FASTD_BIND_DYNAMIC;
 	}
 
 	fastd_peer_address_t addr = {};
@@ -305,7 +306,7 @@ static void option_bind(const char *arg) {
 
 	free(addrstr);
 
-	fastd_config_bind_address(&addr, ifname, false, false);
+	fastd_config_bind_address(&addr, ifname, flags);
 }
 
 /** Handles the --protocol option */

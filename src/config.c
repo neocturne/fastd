@@ -139,8 +139,7 @@ void fastd_config_mac(const char *name, const char *impl) {
 }
 
 /** Handles the configuration of a bind address */
-void fastd_config_bind_address(
-	const fastd_peer_address_t *address, const char *bindtodev, bool default_v4, bool default_v6) {
+void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, unsigned flags) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev && !fastd_peer_address_is_v6_ll(address))
 		exit_error("config error: device bind configuration not supported on this system");
@@ -151,8 +150,8 @@ void fastd_config_bind_address(
 		fastd_peer_address_t addr4 = { .in = { .sin_family = AF_INET, .sin_port = address->in.sin_port } };
 		fastd_peer_address_t addr6 = { .in6 = { .sin6_family = AF_INET6, .sin6_port = address->in.sin_port } };
 
-		fastd_config_bind_address(&addr4, bindtodev, default_v4, default_v6);
-		fastd_config_bind_address(&addr6, bindtodev, default_v4, default_v6);
+		fastd_config_bind_address(&addr4, bindtodev, flags);
+		fastd_config_bind_address(&addr6, bindtodev, flags);
 		return;
 	}
 #endif
@@ -163,14 +162,15 @@ void fastd_config_bind_address(
 	conf.n_bind_addrs++;
 
 	addr->addr = *address;
+	addr->flags = flags;
 	addr->bindtodev = fastd_strdup(bindtodev);
 
 	fastd_peer_address_simplify(&addr->addr);
 
-	if (addr->addr.sa.sa_family != AF_INET6 && (default_v4 || !conf.bind_addr_default_v4))
+	if (addr->addr.sa.sa_family != AF_INET6 && ((flags & FASTD_BIND_DEFAULT_IPV4) || !conf.bind_addr_default_v4))
 		conf.bind_addr_default_v4 = addr;
 
-	if (addr->addr.sa.sa_family != AF_INET && (default_v6 || !conf.bind_addr_default_v6))
+	if (addr->addr.sa.sa_family != AF_INET && ((flags & FASTD_BIND_DEFAULT_IPV6) || !conf.bind_addr_default_v6))
 		conf.bind_addr_default_v6 = addr;
 }
 

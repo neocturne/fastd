@@ -154,10 +154,15 @@ union fastd_peer_address {
 	struct sockaddr_in6 in6; /**< An IPv6 address */
 };
 
+#define FASTD_BIND_DEFAULT_IPV4 (1U << 1)
+#define FASTD_BIND_DEFAULT_IPV6 (1U << 2)
+#define FASTD_BIND_DYNAMIC (1U << 3)
+
 /** A linked list of addresses to bind to */
 struct fastd_bind_address {
 	fastd_bind_address_t *next; /**< The next address in the list */
 	fastd_peer_address_t addr;  /**< The address to bind to */
+	unsigned flags;             /**< FASTD_BIND_* flags */
 	char *bindtodev;            /**< May contain an interface name to limit the bind to */
 };
 
