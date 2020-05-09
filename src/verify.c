@@ -30,6 +30,9 @@
 */
 static bool do_verify(const fastd_shell_env_t *env) {
 	int ret;
+	if (!fastd_shell_command_isset(&conf.on_verify))
+		exit_bug("tried to verify peer without on-verify command");
+
 	if (!fastd_shell_command_exec_sync(&conf.on_verify, env, &ret))
 		return false;
 
