@@ -10,7 +10,7 @@ else(ANDROID)
   find_package(BISON 2.5 REQUIRED)
 endif(ANDROID)
 
-find_package(libuecc REQUIRED)
+find_package(LIBUECC REQUIRED)
 
 set(NACL_INCLUDE_DIRS)
 set(NACL_CFLAGS_OTHER)
