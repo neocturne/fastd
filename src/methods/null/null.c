@@ -63,12 +63,6 @@ method_session_init(UNUSED const fastd_method_t *method, UNUSED const uint8_t *s
 	return session;
 }
 
-/** Initiates a new null session (pre-v11 compat handshake) */
-static fastd_method_session_state_t *
-method_session_init_compat(const fastd_method_t *method, const uint8_t *secret, UNUSED size_t length, bool initiator) {
-	return method_session_init(method, secret, initiator);
-}
-
 /** Checks if the session is valid */
 static bool method_session_is_valid(fastd_method_session_state_t *session) {
 	return (session && session->valid);
@@ -130,7 +124,6 @@ const fastd_method_provider_t fastd_method_null = {
 	.key_length = method_key_length,
 
 	.session_init = method_session_init,
-	.session_init_compat = method_session_init_compat,
 	.session_is_valid = method_session_is_valid,
 	.session_is_initiator = method_session_is_initiator,
 	.session_want_refresh = method_session_want_refresh,

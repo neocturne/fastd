@@ -61,9 +61,6 @@ struct fastd_method_provider {
 	/** Initiates a session */
 	fastd_method_session_state_t *(*session_init)(
 		const fastd_method_t *method, const uint8_t *secret, bool initiator);
-	/** Initiates a session in pre-v11 compatiblity mode */
-	fastd_method_session_state_t *(*session_init_compat)(
-		const fastd_method_t *method, const uint8_t *secret, size_t length, bool initiator);
 	/** Closes a session */
 	void (*session_free)(fastd_method_session_state_t *session);
 

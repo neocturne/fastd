@@ -95,7 +95,7 @@ static void *do_verify_thread(void *p) {
 */
 fastd_tristate_t fastd_verify_peer(
 	fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *data, size_t data_len) {
+	const fastd_peer_address_t *remote_addr, const void *data, size_t data_len) {
 	if (!fastd_shell_command_isset(&conf.on_verify))
 		exit_bug("tried to verify peer without on-verify command");
 
@@ -121,7 +121,6 @@ fastd_tristate_t fastd_verify_peer(
 		arg->ret_len = sizeof(fastd_async_verify_return_t) + data_len;
 
 		arg->ret.peer_id = peer->id;
-		arg->ret.method = method;
 		arg->ret.sock = sock;
 		arg->ret.local_addr = *local_addr;
 		arg->ret.remote_addr = *remote_addr;

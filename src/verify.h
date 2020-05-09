@@ -38,6 +38,6 @@
 
 fastd_tristate_t fastd_verify_peer(
 	fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *data, size_t data_len);
+	const fastd_peer_address_t *remote_addr, const void *data, size_t data_len);
 
 #endif /* WITH_DYNAMIC_PEERS */

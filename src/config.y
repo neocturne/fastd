@@ -258,7 +258,7 @@ drop_capabilities_enabled:
 
 secure_handshakes:
 		boolean {
-			conf.secure_handshakes = $1;
+			pr_warn("'secure handshakes' configuration is deprecated, insecure handshakes are not supported anymore");
 		}
 	;
 

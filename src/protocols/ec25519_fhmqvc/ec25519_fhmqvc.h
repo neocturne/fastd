@@ -96,11 +96,9 @@ struct fastd_protocol_peer_state {
 
 	/* handshake cache */
 	uint64_t last_handshake_serial; /**< The serial number of the ephemeral keypair used in the last handshake */
-	aligned_int256_t peer_handshake_key;        /**< The peer's ephemeral public key used in the last handshake */
-	aligned_int256_t sigma;                     /**< The value of sigma used in the last handshake */
-	fastd_sha256_t shared_handshake_key;        /**< The shared handshake key used in the last handshake */
-	fastd_sha256_t shared_handshake_key_compat; /**< The shared handshake key used in the last handshake (pre-v11
-						       compatiblity protocol) */
+	aligned_int256_t peer_handshake_key; /**< The peer's ephemeral public key used in the last handshake */
+	aligned_int256_t sigma;              /**< The value of sigma used in the last handshake */
+	fastd_sha256_t shared_handshake_key; /**< The shared handshake key used in the last handshake */
 };
 
 
@@ -119,7 +117,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(
 #ifdef WITH_DYNAMIC_PEERS
 void fastd_protocol_ec25519_fhmqvc_handle_verify_return(
 	fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *protocol_data, bool ok);
+	const fastd_peer_address_t *remote_addr, const void *protocol_data, bool ok);
 #endif
 
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_session_t *session);

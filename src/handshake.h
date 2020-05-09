@@ -104,7 +104,12 @@ void fastd_handshake_send_error(
 bool fastd_handshake_check_mtu(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, const fastd_handshake_t *handshake);
-const fastd_method_info_t *fastd_handshake_get_method(const fastd_peer_t *peer, const fastd_handshake_t *handshake);
+
+const fastd_method_info_t *
+fastd_handshake_get_method_by_name_list(const fastd_peer_t *peer, const fastd_handshake_t *handshake);
+const fastd_method_info_t *
+fastd_handshake_get_method_by_name(const fastd_peer_t *peer, const fastd_handshake_t *handshake);
+
 void fastd_handshake_handle(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, fastd_buffer_t buffer);

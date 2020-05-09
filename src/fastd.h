@@ -96,8 +96,7 @@ struct fastd_protocol {
 	/** Handles an asynchronous on-verify command return */
 	void (*handle_verify_return)(
 		fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
-		const fastd_peer_address_t *remote_addr, const fastd_method_info_t *method, const void *protocol_data,
-		bool ok);
+		const fastd_peer_address_t *remote_addr, const void *protocol_data, bool ok);
 #endif
 
 
@@ -238,8 +237,7 @@ struct fastd_config {
 #ifdef USE_PACKET_MARK
 	uint32_t packet_mark; /**< The configured packet mark (or 0) */
 #endif
-	bool forward;           /**< Specifies if packet forwarding is enable */
-	bool secure_handshakes; /**< Can be set to false to support connections with fastd versions before v11 */
+	bool forward; /**< Specifies if packet forwarding is enable */
 
 	fastd_drop_caps_t drop_caps; /**< Specifies if and when to drop capabilities */
 

@@ -90,7 +90,7 @@ static void handle_verify_return(const fastd_async_verify_return_t *verify_retur
 
 	conf.protocol->handle_verify_return(
 		peer, verify_return->sock, &verify_return->local_addr, &verify_return->remote_addr,
-		verify_return->method, verify_return->protocol_data, verify_return->ok);
+		verify_return->protocol_data, verify_return->ok);
 }
 
 #endif

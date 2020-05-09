@@ -59,8 +59,7 @@ typedef struct fastd_async_verify_return {
 
 	uint64_t peer_id; /**< The ID of the verified peer */
 
-	const fastd_method_info_t *method; /**< The method supplied in the handshake causing the verification */
-	fastd_socket_t *sock;              /**< The socket the handshake causing the verification was received on */
+	fastd_socket_t *sock; /**< The socket the handshake causing the verification was received on */
 
 	fastd_peer_address_t local_addr;  /**< The local address the handshake was received on */
 	fastd_peer_address_t remote_addr; /**< The address the handshake was received from */

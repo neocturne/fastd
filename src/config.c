@@ -70,7 +70,6 @@ static void default_config(void) {
 	conf.mode = MODE_TAP;
 	conf.iface_persist = true;
 
-	conf.secure_handshakes = true;
 	conf.drop_caps = DROP_CAPS_ON;
 
 	conf.protocol = &fastd_protocol_ec25519_fhmqvc;
