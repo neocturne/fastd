@@ -35,6 +35,9 @@ Bugfixes
 * Fix segfault in resolver with musl libc 1.1.20+
 * Fix OpenWrt initscript with multiple instances
 * Fix OpenWrt initscript with multiple interfaces (*tun*/*multitap* mode)
+* Fix *tap*/*multitap* modes on OpenBSD 5.9+
+
+  - Note: This breaks support for older OpenBSD versions
 
 Other changes
 ~~~~~~~~~~~~~
