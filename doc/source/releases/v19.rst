@@ -1,0 +1,47 @@
+fastd v19 (in development)
+==========================
+
+This is mostly a maintenance release with few new features.
+
+New features
+~~~~~~~~~~~~
+
+* Add support for OpenSSL 1.1+
+* Allow binding to a fixed random port
+
+  - By specifying port 0 in a *bind* directive, fastd will bind to a random port
+    that is stable over the whole runtime of the fastd instance. The existing
+    behaviour to use a new random port for each connection is preserved (by
+    not specifying a port at all).
+
+Removed features
+~~~~~~~~~~~~~~~~
+
+* The *secure handshakes* option is deprecated and has no effect with fastd v19;
+  the old (pre-v11) insecure handshake scheme is not supported anymore
+* The deprecated *xsalsa20-poly1305* method has been removed; *salsa20+poly1305*
+  and various faster methods exist since fastd v11
+* As libsodium removed the *aes128-ctr* cipher, fastd doesn't support it
+  anymore either (for both libsodium and NaCl). For AES support, fastd must
+  be built with OpenSSL.
+
+Bugfixes
+~~~~~~~~
+
+* Fix build with custom CMAKE_MODULE_PATH (as often by embedded build
+  environments like buildroot
+* Fix build on MacOS 10.12+
+* Fix segfault in *tun*/*multitap* mode with *persist iface no*
+* Fix segfault in resolver with musl libc 1.1.20+
+* Fix OpenWrt initscript with multiple instances
+* Fix OpenWrt initscript with multiple interfaces (*tun*/*multitap* mode)
+
+Other changes
+~~~~~~~~~~~~~
+
+* Allocation functions were hardened against a number of theoretical integer
+  overflow issues
+* The alternative handshake format introduced in fastd v17 was removed again.
+  The benefit of making endianess of the fastd packet formats more consistent
+  does not outweigh the downsides of creating an incompatible fastd protocol
+  version with a future release.
