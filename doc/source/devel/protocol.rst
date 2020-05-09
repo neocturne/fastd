@@ -39,7 +39,7 @@ Record ID  Value description             Format                     Values
 ``0x0007`` Recipient key                 32-byte public key
 ``0x0008`` Sender handshake key          32-byte public key
 ``0x0009`` Recipient handshake key       32-byte public key
-``0x000a`` Authentication tag (obsolete) 32-byte opaque value       Not used if secure handshakes are enabled
+``0x000a`` Authentication tag (obsolete) 32-byte opaque value       Not used anymore
 ``0x000b`` MTU                           2-byte unsigned integer
 ``0x000c`` Method name                   variable-length string
 ``0x000d`` Version name                  variable-length string
@@ -52,7 +52,7 @@ Record ID  Value description             Format                     Values
 Handshake protocol
 ------------------
 The following specification describes the current handshake as it is performed by fastd versions
-since v11 when secure handshakes are enabled.
+since v11.
 
 The handshake protocol consists of three packets. See also: :doc:`/crypto/ec25519`, :doc:`/crypto/fhmqvc`
 

@@ -278,16 +278,6 @@ Example config:
 
   Sets the secret key.
 
-| ``secure handshakes yes|no;``
-
-  fastd v11+ implements a revised handshake scheme which prevents downgrade attacks (i.e. an attacker forcing
-  two peers to use the least secure encryption method supported by both sides, or even half-establishing a
-  session with an encryption method supported by one side only). To maintain backwards compatiblity, the old
-  handshake is still supported when secure handshakes is set to no.
-
-  Setting this option to yes (the default) on one side is enough to ensure that a session established by two peers has not
-  been downgraded.
-
 | ``status socket "<socket>";``
 
   Configures a UNIX socket which can be used to retrieve the current state of fastd. An example script
