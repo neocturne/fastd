@@ -10,7 +10,4 @@ include(config)
 include(deps)
 include(checks)
 
-set(DOXYFILE_SOURCE_DIR ${FASTD_SOURCE_DIR}/src)
-include(UseDoxygen OPTIONAL)
-
 add_subdirectory(src)
