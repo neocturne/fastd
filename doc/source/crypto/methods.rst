@@ -57,18 +57,11 @@ generic-poly1305
 
 The *generic-umac* provider combines the `Poly1305 <http://cr.yp.to/mac.html>`_ message authentication code
 with any stream cipher, which is used both to encrypt the data and the
-authentication tag. This method was added to replace the deprecated *xsalsa20-poly1305*
+authentication tag. This method was added to replace the original *xsalsa20-poly1305*
 method, but may be removed as well in the long term as UMAC is generally more performant
 and makes the same security guarantees.
 
 The method names have the form "<cipher>+poly1305".
-
-xsalsa20-poly1305
-~~~~~~~~~~~~~~~~~
-
-The *xsalsa20-poly1305* provider only provides a single method, "xsalsa20-poly1305",
-which uses the "secret box" provided by the `NaCl <http://nacl.cr.yp.to/>`_ library.
-It is deprecated and should be used for connections with very old fastd versions only.
 
 null
 ~~~~

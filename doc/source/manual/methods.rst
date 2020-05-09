@@ -78,23 +78,8 @@ Method    Method provider  Cipher  MAC   Notes
 ========  ===============  ======  ====  =====
 
 
-Deprecated methods
-------------------
-
-========================  =================  ==========  =====  ======
-Method                    Method provider    Cipher      MAC    Notes
-========================  =================  ==========  =====  ======
-``xsalsa20-poly1305``     xsalsa20-poly1305  none        none   [6]_
-========================  =================  ==========  =====  ======
-
-  Since fastd v11 ``salsa20+poly1305`` should be used instead (or even better a more performant
-  method like salsa2012+gmac); ``xsalsa20-poly1305`` will be removed eventually.
-
-
 .. [1] The MAC is integrated in the method provider.
 .. [2] AES is very slow without OpenSSL support. OpenSSL's AES implementation may be suspect to cache timing side channels when no hardware support like AES-NI is available.
 .. [3] Poly1305 is very slow on embedded systems.
 .. [4] The cipher is used to encrypt the authentication tag only, the actual data is transmitted unencrypted.
 .. [5] Only authentication of peers' IP addresses, but no encryption or authentication of any data is provided.
-.. [6] Both the cipher and the MAC are integrated in the method provider.
-

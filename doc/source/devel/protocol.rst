@@ -126,5 +126,3 @@ The payload packet structure is defined by the methods; at the moment most metho
 * Bytes 9-24: Authentication tag (method-specific)
 
 The ``null`` method uses only a 1 byte header: The packet type is directly followed by the payload data.
-
-In the legacy ``xsalsa20-poly1305`` method, the flag and nonce fields are reversed and the nonce is in little endian for compatiblity reasons.
