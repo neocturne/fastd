@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2016, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2017, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
