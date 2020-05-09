@@ -134,7 +134,6 @@ typedef struct fastd_mac_info fastd_mac_info_t;
 typedef struct fastd_mac fastd_mac_t;
 
 typedef struct fastd_handshake fastd_handshake_t;
-typedef struct fastd_handshake_buffer fastd_handshake_buffer_t;
 
 typedef struct fastd_lex fastd_lex_t;
 typedef struct fastd_parser_state fastd_parser_state_t;
