@@ -7,7 +7,7 @@
 
 %define api.pure
 %define api.push-pull push
-%name-prefix "fastd_config_"
+%define api.prefix {fastd_config_}
 %locations
 %parse-param {fastd_parser_state_t *state}
 

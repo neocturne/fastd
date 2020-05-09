@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2016, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -150,7 +150,7 @@ static char *get_token(fastd_lex_t *lex) {
 }
 
 /** Tries to add the next character to the current token */
-static bool next(YYLTYPE *yylloc, fastd_lex_t *lex, bool move) {
+static bool next(FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex, bool move) {
 	if (lex->start + lex->tok_len >= lex->end)
 		return false;
 
@@ -182,13 +182,13 @@ static void consume(fastd_lex_t *lex, bool needspace) {
 }
 
 /** Signals an error caused by an I/O error */
-static int io_error(YYSTYPE *yylval, UNUSED fastd_lex_t *lex) {
+static int io_error(FASTD_CONFIG_STYPE *yylval, UNUSED fastd_lex_t *lex) {
 	yylval->error = "I/O error";
 	return -1;
 }
 
 /** Signals an error caused by a syntax error */
-static int syntax_error(YYSTYPE *yylval, fastd_lex_t *lex) {
+static int syntax_error(FASTD_CONFIG_STYPE *yylval, fastd_lex_t *lex) {
 	if (ferror(lex->file))
 		return io_error(yylval, lex);
 
@@ -197,7 +197,7 @@ static int syntax_error(YYSTYPE *yylval, fastd_lex_t *lex) {
 }
 
 /** Skips a block comment */
-static int consume_comment(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+static int consume_comment(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex) {
 	char prev = 0;
 
 	while (next(yylloc, lex, true)) {
@@ -218,7 +218,7 @@ static int consume_comment(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 }
 
 /** Signals an error caused by an unterminated string */
-static int unterminated_string(YYSTYPE *yylval, fastd_lex_t *lex) {
+static int unterminated_string(FASTD_CONFIG_STYPE *yylval, fastd_lex_t *lex) {
 	if (ferror(lex->file))
 		return io_error(yylval, lex);
 
@@ -227,7 +227,7 @@ static int unterminated_string(YYSTYPE *yylval, fastd_lex_t *lex) {
 }
 
 /** Tries to process the current input as a string */
-static int parse_string(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+static int parse_string(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex) {
 	char *buf = NULL;
 	size_t len = 1024;
 	size_t pos = 0;
@@ -278,7 +278,7 @@ static int parse_string(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 }
 
 /** Tries to process the current input as an IPv6 address */
-static int parse_ipv6_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+static int parse_ipv6_address(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex) {
 	if (lex->needspace)
 		return syntax_error(yylval, lex);
 
@@ -345,7 +345,7 @@ static int parse_ipv6_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 }
 
 /** Tries to process the current input as an IPv4 address */
-static int parse_ipv4_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+static int parse_ipv4_address(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex) {
 	if (lex->needspace)
 		return syntax_error(yylval, lex);
 
@@ -370,7 +370,7 @@ static int parse_ipv4_address(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex
 }
 
 /** Tries to process the current input as a number */
-static int parse_number(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+static int parse_number(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex) {
 	bool digitonly = true;
 
 	if (lex->needspace)
@@ -405,7 +405,7 @@ static int parse_number(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
 }
 
 /** Tries to process the current input as a keyword */
-static int parse_keyword(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+static int parse_keyword(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex) {
 	if (lex->needspace)
 		return syntax_error(yylval, lex);
 
@@ -446,7 +446,7 @@ void fastd_lex_destroy(fastd_lex_t *lex) {
 }
 
 /** Returns a single lexeme of the scanned file */
-int fastd_lex(YYSTYPE *yylval, YYLTYPE *yylloc, fastd_lex_t *lex) {
+int fastd_lex(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex) {
 	int token;
 
 	while (lex->end > lex->start) {

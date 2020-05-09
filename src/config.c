@@ -338,8 +338,8 @@ bool fastd_config_read(const char *filename, fastd_peer_group_t *peer_group, fas
 	}
 
 	int token;
-	YYSTYPE token_val;
-	YYLTYPE loc = { 1, 0, 1, 0 };
+	FASTD_CONFIG_STYPE token_val;
+	FASTD_CONFIG_LTYPE loc = { 1, 0, 1, 0 };
 	fastd_parser_state_t state = {
 		.peer_group = peer_group,
 		.peer = peer,
