@@ -28,9 +28,10 @@ Removed features
 Bugfixes
 ~~~~~~~~
 
-* Fix build with custom CMAKE_MODULE_PATH (as often by embedded build
+* Fix build with custom CMAKE_MODULE_PATH (as often used by embedded build
   environments like buildroot
 * Fix build on MacOS 10.12+
+* Fix fast reconnect when changing networks on recent Linux kernels
 * Fix segfault in *tun*/*multitap* mode with *persist iface no*
 * Fix segfault in resolver with musl libc 1.1.20+
 * Fix segfault when failing to create an interface on FreeBSD
