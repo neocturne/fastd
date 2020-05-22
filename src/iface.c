@@ -502,6 +502,7 @@ fastd_iface_t *fastd_iface_open(fastd_peer_t *peer) {
 	fastd_iface_t *iface = fastd_new0(fastd_iface_t);
 	iface->peer = peer;
 	iface->mtu = fastd_peer_get_mtu(peer);
+	iface->fd.fd = -1;
 
 	pr_debug("initializing TUN/TAP device...");
 
