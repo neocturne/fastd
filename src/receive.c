@@ -266,6 +266,7 @@ void fastd_receive(fastd_socket_t *sock) {
 	}
 #endif
 
+	fastd_peer_address_simplify(&local_addr);
 	fastd_peer_address_simplify(&recvaddr);
 
 	handle_socket_receive(sock, &local_addr, &recvaddr, buffer);
