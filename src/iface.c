@@ -218,6 +218,7 @@ static bool setup_tap(fastd_iface_t *iface, uint16_t mtu) {
 static bool open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	char dev_name[5 + IFNAMSIZ] = "/dev/";
 	const char *type;
+	bool cleanup = true;
 
 	switch (get_iface_type()) {
 	case IFACE_TYPE_TAP:
@@ -232,8 +233,6 @@ static bool open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 		exit_bug("invalid mode");
 	}
 
-	iface->cleanup = true;
-
 	if (ifname) {
 		if (strlen(ifname) <= 3 || strncmp(ifname, type, 3) != 0) {
 			pr_error("Invalid %s interface `%s'", type, ifname);
@@ -243,7 +242,7 @@ static bool open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 		strncat(dev_name, ifname, IFNAMSIZ - 1);
 
 		if (if_nametoindex(ifname))
-			iface->cleanup = false;
+			cleanup = false;
 	} else {
 		strncat(dev_name, type, IFNAMSIZ - 1);
 	}
@@ -256,6 +255,8 @@ static bool open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 
 	if (!(iface->name = fdevname_r(iface->fd.fd, fastd_alloc(IFNAMSIZ), IFNAMSIZ)))
 		exit_errno("could not get TUN/TAP interface name");
+
+	iface->cleanup = cleanup;
 
 	switch (get_iface_type()) {
 	case IFACE_TYPE_TAP:

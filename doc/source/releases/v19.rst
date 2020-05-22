@@ -33,6 +33,7 @@ Bugfixes
 * Fix build on MacOS 10.12+
 * Fix segfault in *tun*/*multitap* mode with *persist iface no*
 * Fix segfault in resolver with musl libc 1.1.20+
+* Fix segfault when failing to create an interface on FreeBSD
 * Do not print local address as a v4-mapped IPv6 address in log messages and
   script environments for sockets bound to *any*
 * Fix OpenWrt initscript with multiple instances
