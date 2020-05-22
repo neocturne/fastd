@@ -20,77 +20,55 @@
 #include <sys/wait.h>
 
 
+/** Adds address and port of an fastd_peer_address_t to \e env */
+static void fastd_peer_set_shell_env_addr(
+	fastd_shell_env_t *env, const fastd_peer_address_t *addr, const char *address_var, const char *port_var) {
+	/* both INET6_ADDRSTRLEN and IFNAMSIZ already include space for the zero termination, so there is no need to add
+	 * space for the '%' here. */
+	char buf[INET6_ADDRSTRLEN + IFNAMSIZ];
+
+	switch (addr ? addr->sa.sa_family : AF_UNSPEC) {
+	case AF_INET:
+		inet_ntop(AF_INET, &addr->in.sin_addr, buf, sizeof(buf));
+		fastd_shell_env_set(env, address_var, buf);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(addr->in.sin_port));
+		fastd_shell_env_set(env, port_var, buf);
+
+		return;
+
+	case AF_INET6:
+		inet_ntop(AF_INET6, &addr->in6.sin6_addr, buf, sizeof(buf));
+
+		if (IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr)) {
+			if (if_indextoname(addr->in6.sin6_scope_id, buf + strlen(buf) + 1))
+				buf[strlen(buf)] = '%';
+		}
+
+		fastd_shell_env_set(env, address_var, buf);
+
+		snprintf(buf, sizeof(buf), "%u", ntohs(addr->in6.sin6_port));
+		fastd_shell_env_set(env, port_var, buf);
+
+		return;
+	}
+
+	fastd_shell_env_set(env, address_var, NULL);
+	fastd_shell_env_set(env, port_var, NULL);
+}
+
+
 /** Adds peer-specific fields to \e env */
 void fastd_peer_set_shell_env(
 	fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr,
 	const fastd_peer_address_t *peer_addr) {
-	/* both INET6_ADDRSTRLEN and IFNAMSIZ already include space for the zero termination, so there is no need to add
-	 * space for the '%' here. */
-	char buf[INET6_ADDRSTRLEN + IFNAMSIZ];
 
 	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->name : NULL);
 
 	fastd_shell_env_set_iface(env, peer ? peer->iface : NULL);
 
-	switch (local_addr ? local_addr->sa.sa_family : AF_UNSPEC) {
-	case AF_INET:
-		inet_ntop(AF_INET, &local_addr->in.sin_addr, buf, sizeof(buf));
-		fastd_shell_env_set(env, "LOCAL_ADDRESS", buf);
-
-		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in.sin_port));
-		fastd_shell_env_set(env, "LOCAL_PORT", buf);
-
-		break;
-
-	case AF_INET6:
-		inet_ntop(AF_INET6, &local_addr->in6.sin6_addr, buf, sizeof(buf));
-
-		if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr)) {
-			if (if_indextoname(local_addr->in6.sin6_scope_id, buf + strlen(buf) + 1))
-				buf[strlen(buf)] = '%';
-		}
-
-		fastd_shell_env_set(env, "LOCAL_ADDRESS", buf);
-
-		snprintf(buf, sizeof(buf), "%u", ntohs(local_addr->in6.sin6_port));
-		fastd_shell_env_set(env, "LOCAL_PORT", buf);
-
-		break;
-
-	default:
-		fastd_shell_env_set(env, "LOCAL_ADDRESS", NULL);
-		fastd_shell_env_set(env, "LOCAL_PORT", NULL);
-	}
-
-	switch (peer_addr ? peer_addr->sa.sa_family : AF_UNSPEC) {
-	case AF_INET:
-		inet_ntop(AF_INET, &peer_addr->in.sin_addr, buf, sizeof(buf));
-		fastd_shell_env_set(env, "PEER_ADDRESS", buf);
-
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in.sin_port));
-		fastd_shell_env_set(env, "PEER_PORT", buf);
-
-		break;
-
-	case AF_INET6:
-		inet_ntop(AF_INET6, &peer_addr->in6.sin6_addr, buf, sizeof(buf));
-
-		if (IN6_IS_ADDR_LINKLOCAL(&peer_addr->in6.sin6_addr)) {
-			if (if_indextoname(peer_addr->in6.sin6_scope_id, buf + strlen(buf) + 1))
-				buf[strlen(buf)] = '%';
-		}
-
-		fastd_shell_env_set(env, "PEER_ADDRESS", buf);
-
-		snprintf(buf, sizeof(buf), "%u", ntohs(peer_addr->in6.sin6_port));
-		fastd_shell_env_set(env, "PEER_PORT", buf);
-
-		break;
-
-	default:
-		fastd_shell_env_set(env, "PEER_ADDRESS", NULL);
-		fastd_shell_env_set(env, "PEER_PORT", NULL);
-	}
+	fastd_peer_set_shell_env_addr(env, local_addr, "LOCAL_ADDRESS", "LOCAL_PORT");
+	fastd_peer_set_shell_env_addr(env, peer_addr, "PEER_ADDRESS", "PEER_PORT");
 
 	conf.protocol->set_shell_env(env, peer);
 }
