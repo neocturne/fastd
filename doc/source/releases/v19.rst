@@ -1,5 +1,5 @@
-fastd v19 (in development)
-==========================
+fastd v19
+=========
 
 This is mostly a maintenance release with few new features.
 
