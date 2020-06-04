@@ -5,9 +5,9 @@ if(NOT DARWIN)
 endif(NOT DARWIN)
 
 if(ANDROID)
-  find_host_package(BISON 2.5 REQUIRED)
+  find_host_package(BISON 2.6 REQUIRED)
 else(ANDROID)
-  find_package(BISON 2.5 REQUIRED)
+  find_package(BISON 2.6 REQUIRED)
 endif(ANDROID)
 
 find_package(LIBUECC REQUIRED)
