@@ -22,8 +22,8 @@
 #include "peer.h"
 #include "peer_group.h"
 #include "peer_hashtable.h"
-#include "poll.h"
-#include <generated/version.h>
+#include "polling.h"
+#include "version.h"
 
 #include <grp.h>
 #include <signal.h>
@@ -35,7 +35,7 @@
 #include <sodium/core.h>
 #endif
 
-#ifdef ENABLE_SYSTEMD
+#ifdef WITH_SYSTEMD
 #include <sys/un.h>
 #endif
 
@@ -361,7 +361,7 @@ static int daemonize(void) {
 
 /** Sends a readiness notification on a notify socket */
 static inline void notify_systemd(void) {
-#ifdef ENABLE_SYSTEMD
+#ifdef WITH_SYSTEMD
 	int fd;
 	struct sockaddr_un sa = {};
 	const char *notify_socket = getenv("NOTIFY_SOCKET");

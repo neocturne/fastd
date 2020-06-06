@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <generated/build.h>
+#include "build.h"
 
 #include <stdint.h>
 #include <time.h>

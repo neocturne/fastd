@@ -13,8 +13,8 @@
 
 #pragma once
 
+#include "config.yy.h"
 #include "types.h"
-#include <generated/config.yy.h>
 
 #include <stdio.h>
 

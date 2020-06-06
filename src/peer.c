@@ -13,7 +13,7 @@
 #include "peer.h"
 #include "peer_group.h"
 #include "peer_hashtable.h"
-#include "poll.h"
+#include "polling.h"
 
 #include <arpa/inet.h>
 #include <net/if.h>

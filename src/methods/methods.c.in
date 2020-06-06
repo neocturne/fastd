@@ -11,13 +11,14 @@
 */
 
 
-#include <src/method.h>
+#include "method.h"
 
 
 @METHOD_DEFINITIONS@
 
 /** The list of method providers */
-static const fastd_method_provider_t *const providers[] = { @METHOD_LIST@
+static const fastd_method_provider_t *const providers[] = {
+	@METHOD_LIST@
 };
 
 

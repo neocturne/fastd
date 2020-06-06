@@ -15,7 +15,7 @@
 #include "method.h"
 #include "peer.h"
 #include "peer_group.h"
-#include <generated/version.h>
+#include "version.h"
 
 
 /** Human-readable names for the TLV record types */

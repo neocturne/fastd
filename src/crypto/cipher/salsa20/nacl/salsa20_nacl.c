@@ -14,7 +14,11 @@
 #include "../../../../alloc.h"
 #include "../../../../crypto.h"
 
-#include <crypto_stream_salsa20.h>
+#ifdef HAVE_LIBSODIUM
+#include <sodium/crypto_stream_salsa20.h>
+#else
+#include <nacl/crypto_stream_salsa20.h>
+#endif
 
 
 /** The cipher state */

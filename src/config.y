@@ -12,7 +12,7 @@
 %parse-param {fastd_parser_state_t *state}
 
 %code requires {
-	#include <src/fastd.h>
+	#include "fastd.h"
 	#include <arpa/inet.h>
 	#include <net/if.h>
 }
@@ -119,9 +119,9 @@
 
 
 %code {
-	#include <src/config.h>
-	#include <src/peer.h>
-	#include <src/peer_group.h>
+	#include "config.h"
+	#include "peer.h"
+	#include "peer_group.h"
 
 	#include <limits.h>
 

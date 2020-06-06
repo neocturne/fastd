@@ -17,7 +17,7 @@
 #include "config.h"
 #include "fastd.h"
 #include "peer.h"
-#include "poll.h"
+#include "polling.h"
 
 #include <net/if.h>
 #include <sys/ioctl.h>

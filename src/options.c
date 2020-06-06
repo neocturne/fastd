@@ -32,7 +32,7 @@
 #include "fastd.h"
 #include "peer.h"
 #include "peer_group.h"
-#include <generated/version.h>
+#include "version.h"
 
 #include <arpa/inet.h>
 

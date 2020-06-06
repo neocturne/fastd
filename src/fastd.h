@@ -19,7 +19,7 @@
 
 #include "buffer.h"
 #include "log.h"
-#include "poll.h"
+#include "polling.h"
 #include "sem.h"
 #include "shell.h"
 #include "task.h"

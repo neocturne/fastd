@@ -11,7 +11,7 @@
 */
 
 #include "fastd.h"
-#include "poll.h"
+#include "polling.h"
 
 #include <net/if.h>
 

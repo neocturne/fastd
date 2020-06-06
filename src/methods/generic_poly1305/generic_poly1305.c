@@ -18,7 +18,11 @@
 #include "../../method.h"
 #include "../common.h"
 
-#include <crypto_onetimeauth_poly1305.h>
+#ifdef HAVE_LIBSODIUM
+#include <sodium/crypto_onetimeauth_poly1305.h>
+#else
+#include <nacl/crypto_onetimeauth_poly1305.h>
+#endif
 
 
 /** The length of the key used by Poly1305 */

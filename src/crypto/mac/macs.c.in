@@ -11,8 +11,8 @@
 */
 
 
-#include <src/crypto.h>
-#include <src/fastd.h>
+#include "crypto.h"
+#include "fastd.h"
 
 
 @MAC_DEFINITIONS@
@@ -33,7 +33,8 @@ typedef struct mac_entry {
 @MAC_IMPLS@
 
 /** The list of supported MACs */
-static const mac_entry_t macs[] = { @MAC_LIST@
+static const mac_entry_t macs[] = {
+	@MAC_LIST@
 };
 
 /** The list of chosen MAC implementations */

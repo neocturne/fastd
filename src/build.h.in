@@ -14,85 +14,85 @@
 #pragma once
 
 /** Defined if the platform supports the AI_ADDRCONFIG flag to getaddrinfo() */
-#cmakedefine HAVE_AI_ADDRCONFIG
+#mesondefine HAVE_AI_ADDRCONFIG
 
 /** Defined if the platform defines get_current_dir_name() */
-#cmakedefine HAVE_GET_CURRENT_DIR_NAME
+#mesondefine HAVE_GET_CURRENT_DIR_NAME
 
 /** Defined if <endian.h> exists */
-#cmakedefine HAVE_ENDIAN_H
+#mesondefine HAVE_ENDIAN_H
 
 /** Defined if <sys/endian.h> exists */
-#cmakedefine HAVE_SYS_ENDIAN_H
+#mesondefine HAVE_SYS_ENDIAN_H
 
 /** Defined if be32toh etc. exist */
-#cmakedefine HAVE_LINUX_ENDIAN
+#mesondefine HAVE_LINUX_ENDIAN
 
 /** Defined if the platform defines setresuid() */
-#cmakedefine HAVE_SETRESUID
+#mesondefine HAVE_SETRESUID
 
 /** Defined if the platform defines setresgid() */
-#cmakedefine HAVE_SETRESGID
+#mesondefine HAVE_SETRESGID
 
 /** Defined if the platform supports SO_BINDTODEVICE */
-#cmakedefine USE_BINDTODEVICE
+#mesondefine USE_BINDTODEVICE
 
 /** Defined if the platform supports epoll */
-#cmakedefine USE_EPOLL
+#mesondefine USE_EPOLL
 
 /** Defined if the platform uses select instead of poll */
-#cmakedefine USE_SELECT
+#mesondefine USE_SELECT
 
 /** Defined if the platform supports SO_FREEBIND */
-#cmakedefine USE_FREEBIND
+#mesondefine USE_FREEBIND
 
 /** Defined if the platform supports IP_MTU_DISCOVER */
-#cmakedefine USE_PMTU
+#mesondefine USE_PMTU
 
 /** Defined if the platform supports IP_PKTINFO */
-#cmakedefine USE_PKTINFO
+#mesondefine USE_PKTINFO
 
 /** Defined if the platform supports SO_MARK */
-#cmakedefine USE_PACKET_MARK
+#mesondefine USE_PACKET_MARK
 
 /** Defined if the platform supports settings users and groups */
-#cmakedefine USE_USER
+#mesondefine USE_USER
 
 /** Defined if the platform supports binding on IPv4 and IPv6 with a single socket */
-#cmakedefine USE_MULTIAF_BIND
+#mesondefine USE_MULTIAF_BIND
 
 
 /** Defined if POSIX capability support is enabled */
-#cmakedefine WITH_CAPABILITIES
+#mesondefine WITH_CAPABILITIES
 
 /** Defined if support for setting user/group related options on the command line is enabled */
-#cmakedefine WITH_CMDLINE_USER
+#mesondefine WITH_CMDLINE_USER
 
 /** Defined if support for setting logging related options on the command line is enabled */
-#cmakedefine WITH_CMDLINE_LOGGING
+#mesondefine WITH_CMDLINE_LOGGING
 
 /** Defined if support for setting related to the VPN operation (like mode, interface, encryption method) on the command line is enabled */
-#cmakedefine WITH_CMDLINE_OPERATION
+#mesondefine WITH_CMDLINE_OPERATION
 
 /** Defined if support for setting handler scripts (e.g. --on-up) on the command line is enabled */
-#cmakedefine WITH_CMDLINE_COMMANDS
+#mesondefine WITH_CMDLINE_COMMANDS
 
 /** Defined if on-verify support is enabled */
-#cmakedefine WITH_DYNAMIC_PEERS
+#mesondefine WITH_DYNAMIC_PEERS
 
 /** Defined if status socket support is enabled */
-#cmakedefine WITH_STATUS_SOCKET
+#mesondefine WITH_STATUS_SOCKET
 
 /** Defined if systemd support is enabled */
-#cmakedefine ENABLE_SYSTEMD
+#mesondefine WITH_SYSTEMD
 
 
 /** Defined if libsodium is used */
-#cmakedefine HAVE_LIBSODIUM
+#mesondefine HAVE_LIBSODIUM
 
 
 /** The maximum depth of nested includes in config files */
-#define MAX_CONFIG_DEPTH @MAX_CONFIG_DEPTH_NUM@
+#define MAX_CONFIG_DEPTH 10
 
 
 /** The default handshake interval */

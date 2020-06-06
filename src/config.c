@@ -16,13 +16,13 @@
 
 
 #include "config.h"
+#include "config.yy.h"
 #include "crypto.h"
 #include "fastd.h"
 #include "lex.h"
 #include "method.h"
 #include "peer.h"
 #include "peer_group.h"
-#include <generated/config.yy.h>
 
 #include <dirent.h>
 #include <grp.h>

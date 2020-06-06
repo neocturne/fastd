@@ -11,8 +11,8 @@
 */
 
 
-#include <src/crypto.h>
-#include <src/fastd.h>
+#include "crypto.h"
+#include "fastd.h"
 
 
 @CIPHER_DEFINITIONS@
@@ -33,7 +33,8 @@ typedef struct cipher_entry {
 @CIPHER_IMPLS@
 
 /** The list of supported ciphers */
-static const cipher_entry_t ciphers[] = { @CIPHER_LIST@
+static const cipher_entry_t ciphers[] = {
+	@CIPHER_LIST@
 };
 
 /** The list of chosen cipher implementations */
