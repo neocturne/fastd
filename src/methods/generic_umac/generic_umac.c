@@ -132,7 +132,7 @@ static bool method_encrypt(
 	size_t tail_len =
 		in.len ? alignto(in.len, 2 * sizeof(fastd_block128_t)) - in.len : (2 * sizeof(fastd_block128_t));
 
-	fastd_buffer_pull_head_zero(&in, sizeof(fastd_block128_t));
+	fastd_buffer_push_zero(&in, sizeof(fastd_block128_t));
 
 	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), tail_len);
 
@@ -220,7 +220,7 @@ static bool method_decrypt(
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(out, sizeof(fastd_block128_t));
+	fastd_buffer_pull(out, sizeof(fastd_block128_t));
 
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set) {

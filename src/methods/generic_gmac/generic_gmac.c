@@ -160,7 +160,7 @@ static inline void put_size(fastd_block128_t *out, size_t len) {
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head_zero(&in, sizeof(fastd_block128_t));
+	fastd_buffer_push_zero(&in, sizeof(fastd_block128_t));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
 	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
@@ -256,7 +256,7 @@ static bool method_decrypt(
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(out, sizeof(fastd_block128_t));
+	fastd_buffer_pull(out, sizeof(fastd_block128_t));
 
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set) {

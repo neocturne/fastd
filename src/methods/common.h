@@ -113,15 +113,15 @@ static inline void fastd_method_increment_nonce(fastd_method_common_t *session) 
 /** Adds the common header to a packet buffer */
 static inline void
 fastd_method_put_common_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
-	fastd_buffer_pull_head_from(buffer, nonce, COMMON_NONCEBYTES);
-	fastd_buffer_pull_head_from(buffer, &flags, 1);
+	fastd_buffer_push_from(buffer, nonce, COMMON_NONCEBYTES);
+	fastd_buffer_push_from(buffer, &flags, 1);
 }
 
 /** Removes the common header from a packet buffer */
 static inline void
 fastd_method_take_common_header(fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
-	fastd_buffer_push_head_to(buffer, flags, 1);
-	fastd_buffer_push_head_to(buffer, nonce, COMMON_NONCEBYTES);
+	fastd_buffer_pull_to(buffer, flags, 1);
+	fastd_buffer_pull_to(buffer, nonce, COMMON_NONCEBYTES);
 }
 
 /** Handles the common header of a packet */

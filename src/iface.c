@@ -413,7 +413,7 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 	buffer.len = len;
 
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
-		fastd_buffer_push_head(&buffer, 4);
+		fastd_buffer_pull(&buffer, 4);
 
 	fastd_send_data(buffer, NULL, iface->peer);
 }
@@ -443,7 +443,7 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 			return;
 		}
 
-		fastd_buffer_pull_head(&buffer, 4);
+		fastd_buffer_push(&buffer, 4);
 		memcpy(buffer.data, &af, 4);
 	}
 

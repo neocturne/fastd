@@ -130,7 +130,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_pull_head_zero(&in, KEYBYTES);
+	fastd_buffer_push_zero(&in, KEYBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
 	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
@@ -157,8 +157,8 @@ static bool method_encrypt(
 
 	crypto_onetimeauth_poly1305(tag, outblocks->b + KEYBYTES, in.len - KEYBYTES, outblocks->b);
 
-	fastd_buffer_push_head(out, KEYBYTES);
-	fastd_buffer_pull_head_from(out, tag, TAGBYTES);
+	fastd_buffer_pull(out, KEYBYTES);
+	fastd_buffer_push_from(out, tag, TAGBYTES);
 
 	fastd_buffer_free(in);
 
@@ -191,8 +191,8 @@ static bool method_decrypt(
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
 	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
-	fastd_buffer_push_head_to(&in, tag, TAGBYTES);
-	fastd_buffer_pull_head_zero(&in, KEYBYTES);
+	fastd_buffer_pull_to(&in, tag, TAGBYTES);
+	fastd_buffer_push_zero(&in, KEYBYTES);
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
@@ -215,8 +215,8 @@ static bool method_decrypt(
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_push_head(&in, KEYBYTES);
-		fastd_buffer_pull_head_from(&in, tag, TAGBYTES);
+		fastd_buffer_pull(&in, KEYBYTES);
+		fastd_buffer_push_from(&in, tag, TAGBYTES);
 		fastd_method_put_common_header(&in, in_nonce, 0);
 
 		return false;
@@ -224,7 +224,7 @@ static bool method_decrypt(
 
 	fastd_buffer_free(in);
 
-	fastd_buffer_push_head(out, KEYBYTES);
+	fastd_buffer_pull(out, KEYBYTES);
 
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set) {

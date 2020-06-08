@@ -265,7 +265,7 @@ static bool method_decrypt(
 		return false;
 	}
 
-	fastd_buffer_push_head(out, sizeof(fastd_block128_t));
+	fastd_buffer_pull(out, sizeof(fastd_block128_t));
 
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set) {

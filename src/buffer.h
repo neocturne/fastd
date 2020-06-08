@@ -54,39 +54,39 @@ static inline void fastd_buffer_free(fastd_buffer_t buffer) {
 }
 
 
-/** Pulls the data head (decreases the head space) */
-static inline void fastd_buffer_pull_head(fastd_buffer_t *buffer, size_t len) {
+/** Pushes the data head (decreases the head space) */
+static inline void fastd_buffer_push(fastd_buffer_t *buffer, size_t len) {
 	if (len > (size_t)(buffer->data - buffer->base))
-		exit_bug("tried to pull buffer across base");
+		exit_bug("tried to push buffer across base");
 
 	buffer->data -= len;
 	buffer->len += len;
 }
 
-/** Pulls the data head and fills with zeroes */
-static inline void fastd_buffer_pull_head_zero(fastd_buffer_t *buffer, size_t len) {
-	fastd_buffer_pull_head(buffer, len);
+/** Pushes the data head and fills with zeroes */
+static inline void fastd_buffer_push_zero(fastd_buffer_t *buffer, size_t len) {
+	fastd_buffer_push(buffer, len);
 	memset(buffer->data, 0, len);
 }
 
-/** Pulls the data head and copies data into the new space */
-static inline void fastd_buffer_pull_head_from(fastd_buffer_t *buffer, const void *data, size_t len) {
-	fastd_buffer_pull_head(buffer, len);
+/** Pushes the data head and copies data into the new space */
+static inline void fastd_buffer_push_from(fastd_buffer_t *buffer, const void *data, size_t len) {
+	fastd_buffer_push(buffer, len);
 	memcpy(buffer->data, data, len);
 }
 
 
-/** Pushes the buffer head (increases the head space) */
-static inline void fastd_buffer_push_head(fastd_buffer_t *buffer, size_t len) {
+/** Pulls the buffer head (increases the head space) */
+static inline void fastd_buffer_pull(fastd_buffer_t *buffer, size_t len) {
 	if (buffer->len < len)
-		exit_bug("tried to push buffer across tail");
+		exit_bug("tried to pull buffer across tail");
 
 	buffer->data += len;
 	buffer->len -= len;
 }
 
-/** Pushes the buffer head, copying the removed buffer data somewhere else */
-static inline void fastd_buffer_push_head_to(fastd_buffer_t *buffer, void *data, size_t len) {
+/** Pulls the buffer head, copying the removed buffer data somewhere else */
+static inline void fastd_buffer_pull_to(fastd_buffer_t *buffer, void *data, size_t len) {
 	memcpy(data, buffer->data, len);
-	fastd_buffer_push_head(buffer, len);
+	fastd_buffer_pull(buffer, len);
 }
