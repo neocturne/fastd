@@ -243,6 +243,8 @@ static uint32_t l3hash(const uint64_t *K1, uint32_t K2, uint64_t M) {
 	return mod_p36(y) ^ K2;
 }
 
+static const fastd_block128_t empty_input[2] = {};
+
 /** Calculates the UHASH of the supplied blocks */
 static bool
 uhash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
@@ -250,7 +252,7 @@ uhash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_
 	size_t i;
 
 	uint64_4_t A[blocks];
-	l1hash(A, state->L1Key, in, length);
+	l1hash(A, state->L1Key, length ? in : empty_input, length);
 
 	uint64_4_t B;
 	if (blocks <= 1)
