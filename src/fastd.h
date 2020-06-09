@@ -363,6 +363,9 @@ extern fastd_context_t ctx;
 extern fastd_config_t conf;
 
 
+void fastd_main(int argc, char *argv[]);
+
+
 void fastd_send(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);

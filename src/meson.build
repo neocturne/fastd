@@ -208,11 +208,15 @@ configure_file(
 	configuration : conf_data,
 )
 
-
-executable(
-	'fastd',
+libfastd = static_library(
+	'libfastd',
 	sources : src,
 	link_with : libs,
 	dependencies : deps,
+)
+
+executable(
+	'fastd', 'main.c',
+	link_with : libfastd,
 	install : true,
 )

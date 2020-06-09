@@ -649,7 +649,7 @@ static inline void terminate(void) {
 }
 
 /** Main function */
-int main(int argc, char *argv[]) {
+void fastd_main(int argc, char *argv[]) {
 	init(argc, argv);
 
 	while (!sig_terminate)
@@ -657,7 +657,4 @@ int main(int argc, char *argv[]) {
 
 	cleanup();
 	terminate();
-
-	/* Should not be reached */
-	return -1;
 }
