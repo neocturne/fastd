@@ -160,8 +160,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	size_t tail_len =
-		in.len ? alignto(in.len, 2 * sizeof(fastd_block128_t)) - in.len : (2 * sizeof(fastd_block128_t));
+	size_t tail_len = alignto(in.len, 2 * sizeof(fastd_block128_t)) - in.len;
 
 	*out = fastd_buffer_alloc(
 		sizeof(fastd_block128_t) + in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
@@ -235,8 +234,7 @@ static bool method_decrypt(
 	fastd_method_expand_nonce(umac_nonce, in_nonce, sizeof(umac_nonce));
 
 	size_t in_len = in.len - sizeof(fastd_block128_t);
-	size_t tail_len =
-		in_len ? alignto(in_len, 2 * sizeof(fastd_block128_t)) - in_len : (2 * sizeof(fastd_block128_t));
+	size_t tail_len = alignto(in_len, 2 * sizeof(fastd_block128_t)) - in_len;
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
@@ -287,7 +285,7 @@ const fastd_method_provider_t fastd_method_composed_umac = {
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,
 	.min_encrypt_tail_space = sizeof(fastd_block128_t) - 1,
-	.min_decrypt_tail_space = 2 * sizeof(fastd_block128_t),
+	.min_decrypt_tail_space = 2 * sizeof(fastd_block128_t) - 1,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

@@ -140,7 +140,7 @@ static int teardown(void **state) {
 
 static void test_uhash(void **state, const uint8_t expected[16], const uint8_t *in, size_t len) {
 	fastd_mac_state_t *mac_state = *state;
-	size_t inblocklen = len ? alignto(len, 32) : 32;
+	size_t inblocklen = alignto(len, 32);
 	fastd_block128_t tag;
 
 	fastd_block128_t *inblock;
