@@ -7,6 +7,7 @@ project(
 )
 
 subdir('src')
+subdir('test')
 
 
 clang_format = find_program(

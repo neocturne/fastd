@@ -29,3 +29,5 @@ option('method_generic-umac', type : 'feature', value : 'enabled')
 option('method_null', type : 'feature', value : 'enabled')
 
 option('use_nacl', type : 'boolean', value : false)
+
+option('build_tests', type : 'boolean', value : false)
