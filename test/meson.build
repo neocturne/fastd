@@ -20,3 +20,9 @@ test('uhash',
 	env : test_env,
 	protocol : 'tap',
 )
+
+benchmark_uhash = executable(
+	'benchmark-uhash', 'benchmark-uhash.c',
+	dependencies: test_deps,
+)
+benchmark('uhash', benchmark_uhash, timeout : 600)
