@@ -466,25 +466,25 @@ static void configure_user(void) {
 
 /** Initializes global configuration that depends on the configured methods */
 static void configure_method_parameters(void) {
-	conf.max_overhead = 0;
-	conf.min_encrypt_head_space = 0;
-	conf.min_decrypt_head_space = 0;
-	conf.min_decrypt_tail_space = 0;
+	conf.overhead = 0;
+	conf.encrypt_headroom = 0;
+	conf.decrypt_headroom = 0;
+	conf.decrypt_tailroom = 0;
 
 	size_t i;
 	for (i = 0; conf.methods[i].name; i++) {
 		const fastd_method_provider_t *provider = conf.methods[i].provider;
 
-		conf.max_overhead = max_size_t(conf.max_overhead, provider->max_overhead);
-		conf.min_encrypt_head_space = max_size_t(conf.min_encrypt_head_space, provider->min_encrypt_head_space);
-		conf.min_decrypt_head_space = max_size_t(conf.min_decrypt_head_space, provider->min_decrypt_head_space);
-		conf.min_decrypt_tail_space = max_size_t(conf.min_decrypt_tail_space, provider->min_decrypt_tail_space);
+		conf.overhead = max_size_t(conf.overhead, provider->overhead);
+		conf.encrypt_headroom = max_size_t(conf.encrypt_headroom, provider->encrypt_headroom);
+		conf.decrypt_headroom = max_size_t(conf.decrypt_headroom, provider->decrypt_headroom);
+		conf.decrypt_tailroom = max_size_t(conf.decrypt_tailroom, provider->decrypt_tailroom);
 	}
 
-	conf.min_encrypt_head_space = alignto(conf.min_encrypt_head_space, 16);
+	conf.encrypt_headroom = alignto(conf.encrypt_headroom, 16);
 
 	/* ugly hack to get alignment right for aes128-gcm, which needs data aligned to 16 and has a 24 byte header */
-	conf.min_decrypt_head_space = alignto(conf.min_decrypt_head_space, 16) + 8;
+	conf.decrypt_headroom = alignto(conf.decrypt_headroom, 16) + 8;
 }
 
 

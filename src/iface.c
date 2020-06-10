@@ -402,9 +402,9 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 
 	fastd_buffer_t buffer;
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
-		buffer = fastd_buffer_alloc(max_len + 4, conf.min_encrypt_head_space + 12, 0);
+		buffer = fastd_buffer_alloc(max_len + 4, conf.encrypt_headroom + 12, 0);
 	else
-		buffer = fastd_buffer_alloc(max_len, conf.min_encrypt_head_space, 0);
+		buffer = fastd_buffer_alloc(max_len, conf.encrypt_headroom, 0);
 
 	ssize_t len = read(iface->fd.fd, buffer.data, max_len);
 	if (len < 0)

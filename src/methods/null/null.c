@@ -93,10 +93,10 @@ static bool method_decrypt(
 
 /** The null method provider */
 const fastd_method_provider_t fastd_method_null = {
-	.max_overhead = 0,
-	.min_encrypt_head_space = 0,
-	.min_decrypt_head_space = 0,
-	.min_decrypt_tail_space = 0,
+	.overhead = 0,
+	.encrypt_headroom = 0,
+	.decrypt_headroom = 0,
+	.decrypt_tailroom = 0,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

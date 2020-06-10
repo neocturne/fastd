@@ -25,10 +25,10 @@ struct fastd_method_info {
 
 /** Describes a method provider (an implementation of a class of encryption methods) */
 struct fastd_method_provider {
-	size_t max_overhead;           /**< The maximum number of bytes of overhead the methods may add */
-	size_t min_encrypt_head_space; /**< The minimum head space needed for encrytion */
-	size_t min_decrypt_head_space; /**< The minimum head space needed for decryption */
-	size_t min_decrypt_tail_space; /**< The minimum tail space needed for decryption */
+	size_t overhead;         /**< The maximum number of bytes of overhead the methods may add */
+	size_t encrypt_headroom; /**< The minimum head space needed for encrytion */
+	size_t decrypt_headroom; /**< The minimum head space needed for decryption */
+	size_t decrypt_tailroom; /**< The minimum tail space needed for decryption */
 
 	/** Tries to create a method with the given name */
 	bool (*create_by_name)(const char *name, fastd_method_t **method);

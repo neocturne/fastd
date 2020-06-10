@@ -186,7 +186,7 @@ static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
 			return;
 		}
 
-		conf.protocol->send(dest, fastd_buffer_dup(buffer, conf.min_encrypt_head_space, 0));
+		conf.protocol->send(dest, fastd_buffer_dup(buffer, conf.encrypt_headroom, 0));
 	}
 
 	fastd_buffer_free(buffer);

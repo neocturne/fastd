@@ -270,10 +270,10 @@ static bool method_decrypt(
 
 /** The generic-gmac method provider */
 const fastd_method_provider_t fastd_method_generic_gmac = {
-	.max_overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
-	.min_encrypt_head_space = sizeof(fastd_block128_t),
-	.min_decrypt_head_space = 0,
-	.min_decrypt_tail_space = sizeof(fastd_block128_t),
+	.overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
+	.encrypt_headroom = sizeof(fastd_block128_t),
+	.decrypt_headroom = 0,
+	.decrypt_tailroom = sizeof(fastd_block128_t),
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

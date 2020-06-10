@@ -240,10 +240,10 @@ static bool method_decrypt(
 
 /** The generic-poly1305 method provider */
 const fastd_method_provider_t fastd_method_generic_poly1305 = {
-	.max_overhead = COMMON_HEADBYTES + TAGBYTES,
-	.min_encrypt_head_space = KEYBYTES,
-	.min_decrypt_head_space = KEYBYTES - TAGBYTES,
-	.min_decrypt_tail_space = 0,
+	.overhead = COMMON_HEADBYTES + TAGBYTES,
+	.encrypt_headroom = KEYBYTES,
+	.decrypt_headroom = KEYBYTES - TAGBYTES,
+	.decrypt_tailroom = 0,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,
