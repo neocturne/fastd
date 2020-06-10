@@ -28,7 +28,6 @@ struct fastd_method_provider {
 	size_t max_overhead;           /**< The maximum number of bytes of overhead the methods may add */
 	size_t min_encrypt_head_space; /**< The minimum head space needed for encrytion */
 	size_t min_decrypt_head_space; /**< The minimum head space needed for decryption */
-	size_t min_encrypt_tail_space; /**< The minimum tail space needed for encryption */
 	size_t min_decrypt_tail_space; /**< The minimum tail space needed for decryption */
 
 	/** Tries to create a method with the given name */

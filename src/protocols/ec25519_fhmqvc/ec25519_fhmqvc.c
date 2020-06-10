@@ -193,11 +193,7 @@ static void protocol_send(fastd_peer_t *peer, fastd_buffer_t buffer) {
 /** Sends an empty payload packet (i.e. keepalive) to a peer using a specified session */
 void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_session_t *session) {
 	session_send(
-		peer,
-		fastd_buffer_alloc(
-			0, alignto(session->method->provider->min_encrypt_head_space, 8),
-			session->method->provider->min_encrypt_tail_space),
-		session);
+		peer, fastd_buffer_alloc(0, alignto(session->method->provider->min_encrypt_head_space, 8), 0), session);
 }
 
 /** get_current_method implementation for ec25519-fhmqvp */

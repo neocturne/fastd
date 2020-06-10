@@ -241,8 +241,6 @@ struct fastd_config {
 					  encrypt */
 	size_t min_decrypt_head_space; /**< The minimum space a configured methods needs a the beginning of a buffer to
 					  decrypt */
-	size_t min_encrypt_tail_space; /**< The minimum space a configured methods needs a the end of a buffer to
-					  encrypt */
 	size_t min_decrypt_tail_space; /**< The minimum space a configured methods needs a the end of a buffer to
 					  decrypt */
 

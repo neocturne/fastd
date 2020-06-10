@@ -96,7 +96,6 @@ const fastd_method_provider_t fastd_method_null = {
 	.max_overhead = 0,
 	.min_encrypt_head_space = 0,
 	.min_decrypt_head_space = 0,
-	.min_encrypt_tail_space = 0,
 	.min_decrypt_tail_space = 0,
 
 	.create_by_name = method_create_by_name,

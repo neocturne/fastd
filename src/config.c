@@ -469,7 +469,6 @@ static void configure_method_parameters(void) {
 	conf.max_overhead = 0;
 	conf.min_encrypt_head_space = 0;
 	conf.min_decrypt_head_space = 0;
-	conf.min_encrypt_tail_space = 0;
 	conf.min_decrypt_tail_space = 0;
 
 	size_t i;
@@ -479,7 +478,6 @@ static void configure_method_parameters(void) {
 		conf.max_overhead = max_size_t(conf.max_overhead, provider->max_overhead);
 		conf.min_encrypt_head_space = max_size_t(conf.min_encrypt_head_space, provider->min_encrypt_head_space);
 		conf.min_decrypt_head_space = max_size_t(conf.min_decrypt_head_space, provider->min_decrypt_head_space);
-		conf.min_encrypt_tail_space = max_size_t(conf.min_encrypt_tail_space, provider->min_encrypt_tail_space);
 		conf.min_decrypt_tail_space = max_size_t(conf.min_decrypt_tail_space, provider->min_decrypt_tail_space);
 	}
 
