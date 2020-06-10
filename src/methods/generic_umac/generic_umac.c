@@ -235,8 +235,8 @@ const fastd_method_provider_t fastd_method_generic_umac = {
 	.max_overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
 	.min_encrypt_head_space = sizeof(fastd_block128_t),
 	.min_decrypt_head_space = 0,
-	.min_encrypt_tail_space = sizeof(fastd_block128_t) - 1,
-	.min_decrypt_tail_space = 2 * sizeof(fastd_block128_t) - 1,
+	.min_encrypt_tail_space = 0,
+	.min_decrypt_tail_space = sizeof(fastd_block128_t),
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

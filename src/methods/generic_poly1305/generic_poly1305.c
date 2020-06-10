@@ -243,8 +243,8 @@ const fastd_method_provider_t fastd_method_generic_poly1305 = {
 	.max_overhead = COMMON_HEADBYTES + TAGBYTES,
 	.min_encrypt_head_space = KEYBYTES,
 	.min_decrypt_head_space = KEYBYTES - TAGBYTES,
-	.min_encrypt_tail_space = sizeof(fastd_block128_t) - 1,
-	.min_decrypt_tail_space = sizeof(fastd_block128_t) - 1,
+	.min_encrypt_tail_space = 0,
+	.min_decrypt_tail_space = 0,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

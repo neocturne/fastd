@@ -14,6 +14,7 @@
 #pragma once
 
 #include "alloc.h"
+#include "util.h"
 
 
 /** A buffer descriptor */
@@ -35,8 +36,8 @@ struct fastd_buffer {
    etc. in crypto implementations
 */
 static inline fastd_buffer_t fastd_buffer_alloc(const size_t len, size_t head_space, size_t tail_space) {
-	size_t base_len = head_space + len + tail_space;
-	void *ptr = fastd_alloc_aligned(base_len, 16);
+	size_t base_len = alignto(head_space + len + tail_space, sizeof(fastd_block128_t));
+	void *ptr = fastd_alloc_aligned(base_len, sizeof(fastd_block128_t));
 
 	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr + head_space, .len = len };
 }
