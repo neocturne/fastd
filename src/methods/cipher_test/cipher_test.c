@@ -185,12 +185,10 @@ static bool method_decrypt(
 	}
 
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
-	if (reorder_check.set) {
+	if (reorder_check.set)
 		*reordered = reorder_check.state;
-	} else {
-		fastd_buffer_free(*out);
-		*out = fastd_buffer_alloc(0, 0, 0);
-	}
+	else
+		out->len = 0;
 
 	fastd_buffer_free(in);
 
