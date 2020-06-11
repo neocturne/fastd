@@ -18,11 +18,9 @@
 
 /** The length of the nonce in the common method packet header */
 #define COMMON_NONCEBYTES 6
-/** The length of the flags in the common method packet header */
-#define COMMON_FLAGBYTES 1
 
 /** The length of the common method packet header */
-#define COMMON_HEADBYTES (COMMON_NONCEBYTES + COMMON_FLAGBYTES)
+#define COMMON_HEADBYTES (2 + COMMON_NONCEBYTES)
 
 
 /** Common method session state */
@@ -113,13 +111,16 @@ static inline void fastd_method_increment_nonce(fastd_method_common_t *session) 
 /** Adds the common header to a packet buffer */
 static inline void
 fastd_method_put_common_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
+	const uint8_t packet_type = PACKET_DATA;
 	fastd_buffer_push_from(buffer, nonce, COMMON_NONCEBYTES);
 	fastd_buffer_push_from(buffer, &flags, 1);
+	fastd_buffer_push_from(buffer, &packet_type, 1);
 }
 
 /** Removes the common header from a packet buffer */
 static inline void
 fastd_method_take_common_header(fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
+	fastd_buffer_pull(buffer, 1);
 	fastd_buffer_pull_to(buffer, flags, 1);
 	fastd_buffer_pull_to(buffer, nonce, COMMON_NONCEBYTES);
 }

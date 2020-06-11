@@ -65,10 +65,10 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 	}
 }
 
-/** Sends a packet of a given type */
-static void send_type(
+/** Sends a packet */
+void fastd_send(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, uint8_t packet_type, fastd_buffer_t buffer, size_t stat_size) {
+	fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
 
@@ -99,11 +99,10 @@ static void send_type(
 		msg.msg_namelen = sizeof(struct sockaddr_in6);
 	}
 
-	struct iovec iov[2] = { { .iov_base = &packet_type, .iov_len = 1 },
-				{ .iov_base = buffer.data, .iov_len = buffer.len } };
+	struct iovec iov = { .iov_base = buffer.data, .iov_len = buffer.len };
 
-	msg.msg_iov = iov;
-	msg.msg_iovlen = buffer.len ? 2 : 1;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 	msg.msg_control = cbuf;
 	msg.msg_controllen = 0;
 
@@ -156,20 +155,6 @@ static void send_type(
 	}
 
 	fastd_buffer_free(buffer);
-}
-
-/** Sends a payload packet */
-void fastd_send(
-	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
-	send_type(sock, local_addr, remote_addr, peer, PACKET_DATA, buffer, stat_size);
-}
-
-/** Sends a handshake packet */
-void fastd_send_handshake(
-	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t buffer) {
-	send_type(sock, local_addr, remote_addr, peer, PACKET_HANDSHAKE, buffer, 0);
 }
 
 /** Encrypts and sends a payload packet to all peers */

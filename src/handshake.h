@@ -54,12 +54,13 @@ typedef enum fastd_reply_code {
 #define RECORD_LEN(len) ((len) + 4)
 
 
-/** The handshake packet structure (not including the initial packet type byte) */
+/** The handshake packet structure */
 typedef struct __attribute__((packed)) fastd_handshake_packet {
-	uint8_t rsv;        /**< Reserved (must be 0) */
-	uint16_t tlv_len;   /**< Length of the TLV records (before fastd v11 this was always 0, which is interpreted as
-			       "the whole packet") */
-	uint8_t tlv_data[]; /**< TLV record data */
+	uint8_t packet_type; /**< Packet type (must be PACKET_HANDSHAKE) */
+	uint8_t rsv;         /**< Reserved (must be 0) */
+	uint16_t tlv_len;    /**< Length of the TLV records (before fastd v11 this was always 0, which is interpreted as
+				"the whole packet") */
+	uint8_t tlv_data[];  /**< TLV record data */
 } fastd_handshake_packet_t;
 
 /** A record descriptor */

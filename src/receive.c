@@ -151,7 +151,6 @@ static inline void handle_socket_receive_known(
 	}
 
 	const uint8_t *packet_type = buffer.data;
-	fastd_buffer_pull(&buffer, 1);
 
 	switch (*packet_type) {
 	case PACKET_DATA:
@@ -183,7 +182,6 @@ static inline void handle_socket_receive_unknown(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_buffer_t buffer) {
 	const uint8_t *packet_type = buffer.data;
-	fastd_buffer_pull(&buffer, 1);
 
 	switch (*packet_type) {
 	case PACKET_DATA:
@@ -229,7 +227,7 @@ static inline void handle_socket_receive(
 
 /** Reads a packet from a socket */
 void fastd_receive(fastd_socket_t *sock) {
-	size_t max_len = 1 + fastd_max_payload(ctx.max_mtu) + conf.overhead;
+	size_t max_len = fastd_max_payload(ctx.max_mtu) + conf.overhead;
 	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, conf.decrypt_headroom, conf.decrypt_tailroom);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;

@@ -79,6 +79,10 @@ static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out,
 	fastd_buffer_t in) {
 	*out = in;
+
+	const uint8_t packet_type = PACKET_DATA;
+	fastd_buffer_push_from(out, &packet_type, 1);
+
 	return true;
 }
 
@@ -86,15 +90,17 @@ static bool method_encrypt(
 static bool method_decrypt(
 	UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
 	UNUSED bool *reordered) {
+	fastd_buffer_pull(&in, 1);
 	*out = in;
+
 	return true;
 }
 
 
 /** The null method provider */
 const fastd_method_provider_t fastd_method_null = {
-	.overhead = 0,
-	.encrypt_headroom = 0,
+	.overhead = 1,
+	.encrypt_headroom = 1,
 	.decrypt_headroom = 0,
 	.decrypt_tailroom = 0,
 

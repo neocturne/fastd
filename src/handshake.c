@@ -164,7 +164,7 @@ static fastd_buffer_t new_handshake(
 		method_list = create_method_list(methods, &method_list_len);
 
 	fastd_buffer_t buffer = fastd_buffer_alloc(
-		sizeof(fastd_handshake_packet_t), 1,
+		sizeof(fastd_handshake_packet_t), 0,
 		3 * RECORD_LEN(1) +                   /* handshake type, mode, reply code */
 			(mtu ? RECORD_LEN(2) : 0) +   /* MTU */
 			RECORD_LEN(version_len) +     /* version name */
@@ -174,6 +174,7 @@ static fastd_buffer_t new_handshake(
 			tail_space);
 	fastd_handshake_packet_t *packet = buffer.data;
 
+	packet->packet_type = PACKET_HANDSHAKE;
 	packet->rsv = 0;
 	packet->tlv_len = 0;
 
@@ -276,6 +277,7 @@ void fastd_handshake_send_error(
 		3 * RECORD_LEN(1) /* enough space for handshake type, reply code and error detail */);
 	fastd_handshake_packet_t *reply = buffer.data;
 
+	reply->packet_type = PACKET_HANDSHAKE;
 	reply->rsv = 0;
 	reply->tlv_len = 0;
 
@@ -283,7 +285,7 @@ void fastd_handshake_send_error(
 	fastd_handshake_add_uint8(&buffer, RECORD_REPLY_CODE, reply_code);
 	fastd_handshake_add_uint(&buffer, RECORD_ERROR_DETAIL, error_detail);
 
-	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer);
+	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
 }
 
 /** Parses the TLV records of a handshake */
