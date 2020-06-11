@@ -165,12 +165,12 @@ static fastd_buffer_t new_handshake(
 
 	fastd_buffer_t buffer = fastd_buffer_alloc(
 		sizeof(fastd_handshake_packet_t), 1,
-		3 * 5 +                       /* handshake type, mode, reply code */
-			(mtu ? 6 : 0) +       /* MTU */
-			4 + version_len +     /* version name */
-			4 + protocol_len +    /* protocol name */
-			4 + method_len +      /* method name */
-			4 + method_list_len + /* supported method name list */
+		3 * RECORD_LEN(1) +                   /* handshake type, mode, reply code */
+			(mtu ? RECORD_LEN(2) : 0) +   /* MTU */
+			RECORD_LEN(version_len) +     /* version name */
+			RECORD_LEN(protocol_len) +    /* protocol name */
+			RECORD_LEN(method_len) +      /* method name */
+			RECORD_LEN(method_list_len) + /* supported method name list */
 			tail_space);
 	fastd_handshake_packet_t *packet = buffer.data;
 
@@ -273,7 +273,7 @@ void fastd_handshake_send_error(
 
 	fastd_buffer_t buffer = fastd_buffer_alloc(
 		sizeof(fastd_handshake_packet_t), 0,
-		3 * 5 /* enough space for handshake type, reply code and error detail */);
+		3 * RECORD_LEN(1) /* enough space for handshake type, reply code and error detail */);
 	fastd_handshake_packet_t *reply = buffer.data;
 
 	reply->rsv = 0;
@@ -317,7 +317,7 @@ static inline fastd_handshake_t parse_tlvs(const fastd_buffer_t *buffer) {
 		type = ptr[0] + (ptr[1] << 8);
 		len = ptr[2] + (ptr[3] << 8);
 
-		if (ptr + 4 + len > end)
+		if (ptr + RECORD_LEN(len) > end)
 			break;
 
 		if (type < RECORD_MAX) {
@@ -325,7 +325,7 @@ static inline fastd_handshake_t parse_tlvs(const fastd_buffer_t *buffer) {
 			handshake.records[type].data = ptr + 4;
 		}
 
-		ptr += 4 + len;
+		ptr += RECORD_LEN(len);
 	}
 
 	return handshake;

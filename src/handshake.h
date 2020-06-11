@@ -50,6 +50,10 @@ typedef enum fastd_reply_code {
 } fastd_reply_code_t;
 
 
+/** Calculates the space needed for a TLV record of length len */
+#define RECORD_LEN(len) ((len) + 4)
+
+
 /** The handshake packet structure (not including the initial packet type byte) */
 typedef struct __attribute__((packed)) fastd_handshake_packet {
 	uint8_t rsv;        /**< Reserved (must be 0) */
@@ -112,13 +116,13 @@ static inline uint16_t fastd_handshake_tlv_len(const fastd_buffer_t *buffer) {
 static inline uint8_t *fastd_handshake_extend(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
 	uint8_t *dst = buffer->data + buffer->len;
 
-	if (buffer->data + buffer->len + 4 + len > buffer->base + buffer->base_len)
+	if (buffer->data + buffer->len + RECORD_LEN(len) > buffer->base + buffer->base_len)
 		exit_bug("not enough buffer allocated for handshake");
 
-	buffer->len += 4 + len;
+	buffer->len += RECORD_LEN(len);
 
 	fastd_handshake_packet_t *packet = buffer->data;
-	packet->tlv_len = htons(fastd_handshake_tlv_len(buffer) + 4 + len);
+	packet->tlv_len = htons(fastd_handshake_tlv_len(buffer) + RECORD_LEN(len));
 
 	dst[0] = type;
 	dst[1] = type >> 8;
