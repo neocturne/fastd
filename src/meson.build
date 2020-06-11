@@ -90,7 +90,7 @@ if with_capabilities
 	deps += dependency('libcap')
 endif
 
-with_status_socket = not get_option('capabilities').disabled()
+with_status_socket = not get_option('status_socket').disabled()
 if with_status_socket
 	deps += dependency('json-c')
 endif
