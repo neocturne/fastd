@@ -17,6 +17,15 @@
 
 
 /**
+   The maximum size of a handshake
+
+   The value is chosen to always allow unfragmented transmission over an IPV6
+   link with MTU 1280 (subtracting the 40-byte IPv6 and 8-byte UDP headers)
+ */
+#define MAX_HANDSHAKE_SIZE 1232
+
+
+/**
    The type field of a handshake TLV record
 
    In the handshake packet, the type field will be 2 bytes wide and little endian

@@ -163,15 +163,19 @@ static fastd_buffer_t new_handshake(
 	if (methods)
 		method_list = create_method_list(methods, &method_list_len);
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(
-		sizeof(fastd_handshake_packet_t), 0,
-		3 * RECORD_LEN(1) +                   /* handshake type, mode, reply code */
-			(mtu ? RECORD_LEN(2) : 0) +   /* MTU */
-			RECORD_LEN(version_len) +     /* version name */
-			RECORD_LEN(protocol_len) +    /* protocol name */
-			RECORD_LEN(method_len) +      /* method name */
-			RECORD_LEN(method_list_len) + /* supported method name list */
-			tail_space);
+	size_t buffer_space = 3 * RECORD_LEN(1) +           /* handshake type, mode, reply code */
+			      (mtu ? RECORD_LEN(2) : 0) +   /* MTU */
+			      RECORD_LEN(version_len) +     /* version name */
+			      RECORD_LEN(protocol_len) +    /* protocol name */
+			      RECORD_LEN(method_len) +      /* method name */
+			      RECORD_LEN(method_list_len) + /* supported method name list */
+			      tail_space;
+
+	/* TODO: Make this a soft error */
+	if (sizeof(fastd_handshake_packet_t) + buffer_space > MAX_HANDSHAKE_SIZE)
+		exit_bug("oversized handshake packet");
+
+	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_handshake_packet_t), 0, buffer_space);
 	fastd_handshake_packet_t *packet = buffer.data;
 
 	packet->packet_type = PACKET_HANDSHAKE;
