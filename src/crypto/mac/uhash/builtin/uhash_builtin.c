@@ -107,6 +107,20 @@ static fastd_mac_state_t *uhash_init(const uint8_t *key) {
 
 
 /**
+   The core of a single round of the UHASH NH function
+*/
+static inline void nh_round(const uint32_t *K, uint64_4_t *Y, const uint32_t b[8]) {
+	size_t j;
+
+	for (j = 0; j < 4; j++) {
+		Y->v[j] += mul64(b[0] + K[4 * j + 0], b[4] + K[4 * j + 4]);
+		Y->v[j] += mul64(b[1] + K[4 * j + 1], b[5] + K[4 * j + 5]);
+		Y->v[j] += mul64(b[2] + K[4 * j + 2], b[6] + K[4 * j + 6]);
+		Y->v[j] += mul64(b[3] + K[4 * j + 3], b[7] + K[4 * j + 7]);
+	}
+}
+
+/**
    The UHASH NH function
 
    The four iterations are interleaved to improve cache locality.
@@ -114,19 +128,24 @@ static fastd_mac_state_t *uhash_init(const uint8_t *key) {
 static uint64_4_t nh(const uint32_t *K, const uint32_t *M, size_t length) {
 	uint64_4_t Y = { { 8 * length, 8 * length, 8 * length, 8 * length } };
 
+	size_t blocks = max_size_t(block_count(length, 4), 4);
 	size_t i, j;
-	for (i = 0; i < max_size_t(block_count(length, 4), 1); i += 8) {
+	for (i = 0; i < blocks - 4; i += 8) {
 		uint32_t b[8];
 
 		for (j = 0; j < 8; j++)
 			b[j] = le32toh(M[i + j]);
 
-		for (j = 0; j < 4; j++) {
-			Y.v[j] += mul64(b[0] + K[i + 4 * j + 0], b[4] + K[i + 4 * j + 4]);
-			Y.v[j] += mul64(b[1] + K[i + 4 * j + 1], b[5] + K[i + 4 * j + 5]);
-			Y.v[j] += mul64(b[2] + K[i + 4 * j + 2], b[6] + K[i + 4 * j + 6]);
-			Y.v[j] += mul64(b[3] + K[i + 4 * j + 3], b[7] + K[i + 4 * j + 7]);
-		}
+		nh_round(&K[i], &Y, b);
+	}
+
+	if (i < blocks) {
+		uint32_t b[8] = {};
+
+		for (j = 0; j < 4; j++)
+			b[j] = le32toh(M[i + j]);
+
+		nh_round(&K[i], &Y, b);
 	}
 
 	return Y;
@@ -243,7 +262,7 @@ static uint32_t l3hash(const uint64_t *K1, uint32_t K2, uint64_t M) {
 	return mod_p36(y) ^ K2;
 }
 
-static const fastd_block128_t empty_input[2] = {};
+static const fastd_block128_t empty_input = {};
 
 /** Calculates the UHASH of the supplied blocks */
 static bool
@@ -252,7 +271,7 @@ uhash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_
 	size_t i;
 
 	uint64_4_t A[blocks];
-	l1hash(A, state->L1Key, length ? in : empty_input, length);
+	l1hash(A, state->L1Key, length ? in : &empty_input, length);
 
 	uint64_4_t B;
 	if (blocks <= 1)

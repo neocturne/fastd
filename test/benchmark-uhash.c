@@ -23,7 +23,7 @@ static int64_t get_time(void) {
 static void run_benchmark(fastd_mac_state_t *mac_state, size_t iters, size_t size) {
 	printf("Running %zd iterations with input size %zd... ", iters, size);
 
-	size_t allocsize = alignto(size, 32);
+	size_t allocsize = alignto(size, 16);
 	fastd_block128_t *inblocks = fastd_alloc_aligned(allocsize, 16);
 	memset(inblocks, 0, allocsize);
 
