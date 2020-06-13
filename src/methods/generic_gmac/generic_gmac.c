@@ -163,7 +163,7 @@ static bool method_encrypt(
 	fastd_buffer_push_zero(&in, sizeof(fastd_block128_t));
 
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
-	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
+	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, sizeof(fastd_block128_t) + tail_len);
 
 	if (tail_len)
 		memset(in.data + in.len, 0, tail_len);

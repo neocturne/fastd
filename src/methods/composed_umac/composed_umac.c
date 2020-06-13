@@ -163,7 +163,7 @@ static bool method_encrypt(
 	size_t tail_len = alignto(in.len, 2 * sizeof(fastd_block128_t)) - in.len;
 
 	*out = fastd_buffer_alloc(
-		sizeof(fastd_block128_t) + in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
+		sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, sizeof(fastd_block128_t) + tail_len);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 

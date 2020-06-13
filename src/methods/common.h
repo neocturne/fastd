@@ -22,6 +22,9 @@
 /** The length of the common method packet header */
 #define COMMON_HEADBYTES (2 + COMMON_NONCEBYTES)
 
+/** The headroom to reserve in common methods */
+#define COMMON_HEADROOM (alignto(COMMON_HEADBYTES, sizeof(fastd_block128_t)))
+
 
 /** Common method session state */
 typedef struct fastd_method_common {

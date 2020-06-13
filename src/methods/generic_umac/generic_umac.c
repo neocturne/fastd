@@ -133,7 +133,7 @@ static bool method_encrypt(
 
 	fastd_buffer_push_zero(&in, sizeof(fastd_block128_t));
 
-	*out = fastd_buffer_alloc(in.len, alignto(COMMON_HEADBYTES, 16), tail_len);
+	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, tail_len);
 
 	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));

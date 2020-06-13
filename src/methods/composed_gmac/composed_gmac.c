@@ -192,7 +192,7 @@ static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
 	*out = fastd_buffer_alloc(
-		sizeof(fastd_block128_t) + in.len, alignto(COMMON_HEADBYTES, 16), sizeof(fastd_block128_t) + tail_len);
+		sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, sizeof(fastd_block128_t) + tail_len);
 
 	if (tail_len)
 		memset(in.data + in.len, 0, tail_len);
