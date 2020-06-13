@@ -174,29 +174,22 @@ static bool method_encrypt(
 	uint8_t umac_nonce[session->method->umac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(umac_nonce, session->common.send_nonce, sizeof(umac_nonce));
 
-	bool ok = session->umac_cipher->crypt(
-		session->umac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), umac_nonce);
+	uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
+	fastd_method_expand_nonce(nonce, session->common.send_nonce, session->method->cipher_info->iv_length);
 
-	if (ok) {
-		uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
-		fastd_method_expand_nonce(nonce, session->common.send_nonce, session->method->cipher_info->iv_length);
+	if (!session->umac_cipher->crypt(
+		    session->umac_cipher_state, outblocks, &ZERO_BLOCK, sizeof(fastd_block128_t), umac_nonce))
+		goto fail;
 
-		ok = session->cipher->crypt(
-			session->cipher_state, outblocks + 1, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
-	}
+	if (!session->cipher->crypt(
+		    session->cipher_state, outblocks + 1, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
+		goto fail;
 
-	if (ok) {
-		if (tail_len)
-			memset(out->data + out->len, 0, tail_len);
+	if (tail_len)
+		memset(out->data + out->len, 0, tail_len);
 
-		ok = session->uhash->digest(
-			session->uhash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t));
-	}
-
-	if (!ok) {
-		fastd_buffer_free(*out);
-		return false;
-	}
+	if (!session->uhash->digest(session->uhash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t)))
+		goto fail;
 
 	block_xor_a(&outblocks[0], &tag);
 
@@ -206,6 +199,10 @@ static bool method_encrypt(
 	fastd_method_increment_nonce(&session->common);
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+	return false;
 }
 
 /** Verifies and decrypts a packet */
@@ -243,25 +240,22 @@ static bool method_decrypt(
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
-	bool ok = session->umac_cipher->crypt(
-		session->umac_cipher_state, outblocks, inblocks, sizeof(fastd_block128_t), umac_nonce);
+	if (!session->umac_cipher->crypt(
+		    session->umac_cipher_state, outblocks, inblocks, sizeof(fastd_block128_t), umac_nonce))
+		goto fail;
 
-	if (ok)
-		ok = session->cipher->crypt(
-			session->cipher_state, outblocks + 1, inblocks + 1, (n_blocks - 1) * sizeof(fastd_block128_t),
-			nonce);
+	if (!session->cipher->crypt(
+		    session->cipher_state, outblocks + 1, inblocks + 1, (n_blocks - 1) * sizeof(fastd_block128_t),
+		    nonce))
+		goto fail;
 
-	if (ok) {
-		if (tail_len)
-			memset(in.data + in.len, 0, tail_len);
+	memset(in.data + in.len, 0, tail_len);
 
-		ok = session->uhash->digest(session->uhash_state, &tag, inblocks + 1, in_len);
-	}
+	if (!session->uhash->digest(session->uhash_state, &tag, inblocks + 1, in_len))
+		goto fail;
 
-	if (!ok || !block_equal(&tag, &outblocks[0])) {
-		fastd_buffer_free(*out);
-		return false;
-	}
+	if (!block_equal(&tag, &outblocks[0]))
+		goto fail;
 
 	fastd_buffer_pull(out, sizeof(fastd_block128_t));
 
@@ -274,6 +268,10 @@ static bool method_decrypt(
 	fastd_buffer_free(in);
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+	return false;
 }
 
 

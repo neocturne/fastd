@@ -147,13 +147,9 @@ static bool method_encrypt(
 	fastd_block128_t *outblocks = out->data;
 	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
 
-	bool ok = session->cipher->crypt(
-		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
-
-	if (!ok) {
-		fastd_buffer_free(*out);
-		return false;
-	}
+	if (!session->cipher->crypt(
+		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
+		goto fail;
 
 	const unsigned char *key = outblocks->b;
 	fastd_buffer_pull(out, KEYBYTES);
@@ -168,6 +164,10 @@ static bool method_encrypt(
 	fastd_method_increment_nonce(&session->common);
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+	return false;
 }
 
 /** Verifies and decrypts a packet */
@@ -211,18 +211,11 @@ static bool method_decrypt(
 
 	fastd_buffer_pull(&in, KEYBYTES);
 
-	if (ok)
-		ok = (crypto_onetimeauth_poly1305_verify(tag, in.data, in.len, out->data) == 0);
+	if (!ok)
+		goto fail;
 
-	if (!ok) {
-		fastd_buffer_free(*out);
-
-		/* restore input buffer */
-		fastd_buffer_push_from(&in, tag, TAGBYTES);
-		fastd_method_put_common_header(&in, in_nonce, 0);
-
-		return false;
-	}
+	if (crypto_onetimeauth_poly1305_verify(tag, in.data, in.len, out->data) != 0)
+		goto fail;
 
 	fastd_buffer_free(in);
 
@@ -235,6 +228,15 @@ static bool method_decrypt(
 		out->len = 0;
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+
+	/* restore input buffer */
+	fastd_buffer_push_from(&in, tag, TAGBYTES);
+	fastd_method_put_common_header(&in, in_nonce, 0);
+
+	return false;
 }
 
 

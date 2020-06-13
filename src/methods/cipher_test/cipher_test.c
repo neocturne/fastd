@@ -130,13 +130,9 @@ static bool method_encrypt(
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
-	bool ok = session->cipher->crypt(
-		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
-
-	if (!ok) {
-		fastd_buffer_free(*out);
-		return false;
-	}
+	if (!session->cipher->crypt(
+		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
+		goto fail;
 
 	fastd_buffer_free(in);
 
@@ -144,6 +140,10 @@ static bool method_encrypt(
 	fastd_method_increment_nonce(&session->common);
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+	return false;
 }
 
 /** Decrypts a packet */
@@ -179,13 +179,9 @@ static bool method_decrypt(
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
-	bool ok = session->cipher->crypt(
-		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
-
-	if (!ok) {
-		fastd_buffer_free(*out);
-		return false;
-	}
+	if (!session->cipher->crypt(
+		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
+		goto fail;
 
 	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
 	if (reorder_check.set)
@@ -196,6 +192,10 @@ static bool method_decrypt(
 	fastd_buffer_free(in);
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+	return false;
 }
 
 

@@ -144,21 +144,15 @@ static bool method_encrypt(
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
-	bool ok = session->cipher->crypt(
-		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
+	if (!session->cipher->crypt(
+		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
+		goto fail;
 
-	if (ok) {
-		if (tail_len)
-			memset(out->data + out->len, 0, tail_len);
+	if (tail_len)
+		memset(out->data + out->len, 0, tail_len);
 
-		ok = session->uhash->digest(
-			session->uhash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t));
-	}
-
-	if (!ok) {
-		fastd_buffer_free(*out);
-		return false;
-	}
+	if (!session->uhash->digest(session->uhash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t)))
+		goto fail;
 
 	block_xor_a(&outblocks[0], &tag);
 
@@ -168,6 +162,10 @@ static bool method_encrypt(
 	fastd_method_increment_nonce(&session->common);
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+	return false;
 }
 
 /** Verifies and decrypts a packet */
@@ -205,16 +203,15 @@ static bool method_decrypt(
 	if (tail_len)
 		memset(in.data + in.len, 0, tail_len);
 
-	bool ok = session->cipher->crypt(
-		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
+	if (!session->cipher->crypt(
+		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
+		goto fail;
 
-	if (ok)
-		ok = session->uhash->digest(session->uhash_state, &tag, inblocks + 1, in_len);
+	if (!session->uhash->digest(session->uhash_state, &tag, inblocks + 1, in_len))
+		goto fail;
 
-	if (!ok || !block_equal(&tag, &outblocks[0])) {
-		fastd_buffer_free(*out);
-		return false;
-	}
+	if (!block_equal(&tag, &outblocks[0]))
+		goto fail;
 
 	fastd_buffer_free(in);
 
@@ -227,6 +224,10 @@ static bool method_decrypt(
 		out->len = 0;
 
 	return true;
+
+fail:
+	fastd_buffer_free(*out);
+	return false;
 }
 
 
