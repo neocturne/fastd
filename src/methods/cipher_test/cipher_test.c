@@ -171,6 +171,9 @@ static bool method_decrypt(
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
 	*out = fastd_buffer_alloc(in.len, 0, tail_len);
 
+	if (tail_len)
+		memset(in.data + in.len, 0, tail_len);
+
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
 	fastd_block128_t *inblocks = in.data;
