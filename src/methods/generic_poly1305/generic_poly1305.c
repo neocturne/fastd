@@ -155,9 +155,11 @@ static bool method_encrypt(
 		return false;
 	}
 
-	crypto_onetimeauth_poly1305(tag, outblocks->b + KEYBYTES, in.len - KEYBYTES, outblocks->b);
-
+	const unsigned char *key = outblocks->b;
 	fastd_buffer_pull(out, KEYBYTES);
+
+	crypto_onetimeauth_poly1305(tag, out->data, out->len, key);
+
 	fastd_buffer_push_from(out, tag, TAGBYTES);
 
 	fastd_buffer_free(in);
@@ -207,14 +209,15 @@ static bool method_decrypt(
 	bool ok = session->cipher->crypt(
 		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
 
+	fastd_buffer_pull(&in, KEYBYTES);
+
 	if (ok)
-		ok = (crypto_onetimeauth_poly1305_verify(tag, in.data + KEYBYTES, in.len - KEYBYTES, out->data) == 0);
+		ok = (crypto_onetimeauth_poly1305_verify(tag, in.data, in.len, out->data) == 0);
 
 	if (!ok) {
 		fastd_buffer_free(*out);
 
 		/* restore input buffer */
-		fastd_buffer_pull(&in, KEYBYTES);
 		fastd_buffer_push_from(&in, tag, TAGBYTES);
 		fastd_method_put_common_header(&in, in_nonce, 0);
 
