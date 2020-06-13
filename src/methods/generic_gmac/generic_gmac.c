@@ -178,8 +178,7 @@ static bool method_encrypt(
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	if (tail_len)
-		memset(out->data + out->len, 0, tail_len);
+	fastd_buffer_zero_pad(*out);
 
 	put_size(&outblocks[n_blocks], in.len - sizeof(fastd_block128_t));
 
@@ -235,8 +234,7 @@ static bool method_decrypt(
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	if (tail_len)
-		memset(in.data + in.len, 0, tail_len);
+	fastd_buffer_zero_pad(in);
 
 	put_size(&inblocks[n_blocks], in.len - sizeof(fastd_block128_t));
 

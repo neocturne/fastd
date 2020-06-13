@@ -148,8 +148,7 @@ static bool method_encrypt(
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	if (tail_len)
-		memset(out->data + out->len, 0, tail_len);
+	fastd_buffer_zero_tail(*out, tail_len);
 
 	if (!session->uhash->digest(session->uhash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t)))
 		goto fail;
@@ -200,8 +199,7 @@ static bool method_decrypt(
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
-	if (tail_len)
-		memset(in.data + in.len, 0, tail_len);
+	fastd_buffer_zero_tail(in, tail_len);
 
 	if (!session->cipher->crypt(
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))

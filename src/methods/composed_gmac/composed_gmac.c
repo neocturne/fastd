@@ -214,9 +214,7 @@ static bool method_encrypt(
 		    session->cipher_state, outblocks + 1, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	if (tail_len)
-		memset(out->data + out->len, 0, tail_len);
-
+	fastd_buffer_zero_pad(*out);
 	put_size(&outblocks[n_blocks + 1], in.len);
 
 	if (!session->ghash->digest(
@@ -280,9 +278,7 @@ static bool method_decrypt(
 		    nonce))
 		goto fail;
 
-	if (tail_len)
-		memset(in.data + in.len, 0, tail_len);
-
+	fastd_buffer_zero_pad(in);
 	put_size(&inblocks[n_blocks], in.len - sizeof(fastd_block128_t));
 
 	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, n_blocks * sizeof(fastd_block128_t)))

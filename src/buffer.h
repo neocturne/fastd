@@ -54,6 +54,15 @@ static inline void fastd_buffer_free(fastd_buffer_t buffer) {
 	free(buffer.base);
 }
 
+/** Zeroes the trailing padding of a buffer, to a given number of bytes */
+static inline void fastd_buffer_zero_tail(fastd_buffer_t buffer, size_t len) {
+	memset(buffer.data + buffer.len, 0, len);
+}
+
+/** Zeroes the trailing padding of a buffer, aligned to a multiple of 16 bytes */
+static inline void fastd_buffer_zero_pad(fastd_buffer_t buffer) {
+	fastd_buffer_zero_tail(buffer, alignto(buffer.len, sizeof(fastd_block128_t)) - buffer.len);
+}
 
 /** Pushes the data head (decreases the head space) */
 static inline void fastd_buffer_push(fastd_buffer_t *buffer, size_t len) {

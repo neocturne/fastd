@@ -135,8 +135,7 @@ static bool method_encrypt(
 	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
 	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, sizeof(fastd_block128_t) + tail_len);
 
-	if (tail_len)
-		memset(in.data + in.len, 0, tail_len);
+	fastd_buffer_zero_pad(in);
 
 	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
@@ -203,8 +202,7 @@ static bool method_decrypt(
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
-	if (tail_len)
-		memset(in.data + in.len, 0, tail_len);
+	fastd_buffer_zero_pad(in);
 
 	bool ok = session->cipher->crypt(
 		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
