@@ -201,15 +201,14 @@ static bool method_decrypt(
 	fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
+	if (tail_len)
+		memset(in.data + in.len, 0, tail_len);
+
 	bool ok = session->cipher->crypt(
 		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
 
-	if (ok) {
-		if (tail_len)
-			memset(in.data + in.len, 0, tail_len);
-
+	if (ok)
 		ok = (crypto_onetimeauth_poly1305_verify(tag, in.data + KEYBYTES, in.len - KEYBYTES, out->data) == 0);
-	}
 
 	if (!ok) {
 		fastd_buffer_free(*out);
