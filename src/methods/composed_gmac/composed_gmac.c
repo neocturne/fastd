@@ -194,9 +194,6 @@ static bool method_encrypt(
 	*out = fastd_buffer_alloc(
 		sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, sizeof(fastd_block128_t) + tail_len);
 
-	if (tail_len)
-		memset(in.data + in.len, 0, tail_len);
-
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
 	fastd_block128_t *inblocks = in.data;
