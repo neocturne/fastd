@@ -190,9 +190,7 @@ static inline void put_size(fastd_block128_t *out, size_t len) {
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
-	*out = fastd_buffer_alloc(
-		sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, sizeof(fastd_block128_t) + tail_len);
+	*out = fastd_buffer_alloc(sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, sizeof(fastd_block128_t));
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -260,8 +258,7 @@ static bool method_decrypt(
 	uint8_t gmac_nonce[session->method->gmac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(gmac_nonce, in_nonce, sizeof(gmac_nonce));
 
-	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
-	*out = fastd_buffer_alloc(in.len, 0, tail_len);
+	*out = fastd_buffer_alloc(in.len, 0, 0);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 

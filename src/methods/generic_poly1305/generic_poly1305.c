@@ -132,8 +132,7 @@ static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_push_zero(&in, KEYBYTES);
 
-	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
-	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, sizeof(fastd_block128_t) + tail_len);
+	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, sizeof(fastd_block128_t));
 
 	fastd_buffer_zero_pad(in);
 
@@ -195,8 +194,7 @@ static bool method_decrypt(
 	fastd_buffer_pull_to(&in, tag, TAGBYTES);
 	fastd_buffer_push_zero(&in, KEYBYTES);
 
-	size_t tail_len = alignto(in.len, sizeof(fastd_block128_t)) - in.len;
-	*out = fastd_buffer_alloc(in.len, 0, tail_len);
+	*out = fastd_buffer_alloc(in.len, 0, 0);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 	fastd_block128_t *inblocks = in.data;
