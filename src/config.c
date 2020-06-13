@@ -720,4 +720,5 @@ void fastd_config_release(void) {
 	free(conf.secret);
 	free(conf.protocol_config);
 	free(conf.log_syslog_ident);
+	free(conf.pid_file);
 }
