@@ -139,6 +139,11 @@ static int fastd_vsnprintf(char *buffer, size_t size, const char *format, va_lis
 				buffer, buffer_end - buffer, "%llu", (unsigned long long)va_arg(ap, uint64_t));
 			break;
 
+		case 'Z':
+			buffer += snprintf_safe(
+				buffer, buffer_end - buffer, "%llu", (unsigned long long)va_arg(ap, size_t));
+			break;
+
 		case 's':
 			buffer += snprintf_safe(buffer, buffer_end - buffer, "%s", va_arg(ap, char *));
 			break;
