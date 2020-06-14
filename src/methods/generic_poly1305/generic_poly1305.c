@@ -132,7 +132,7 @@ static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_push_zero(&in, KEYBYTES);
 
-	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, sizeof(fastd_block128_t));
+	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, 0);
 
 	fastd_buffer_zero_pad(in);
 
