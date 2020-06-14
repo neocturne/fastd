@@ -28,7 +28,7 @@ struct fastd_method_provider {
 	size_t overhead;         /**< The maximum number of bytes of overhead the methods may add */
 	size_t encrypt_headroom; /**< The minimum head space needed for encrytion */
 	size_t decrypt_headroom; /**< The minimum head space needed for decryption */
-	size_t decrypt_tailroom; /**< The minimum tail space needed for decryption */
+	size_t tailroom;         /**< The minimum tail space needed for decryption */
 
 	/** Tries to create a method with the given name */
 	bool (*create_by_name)(const char *name, fastd_method_t **method);

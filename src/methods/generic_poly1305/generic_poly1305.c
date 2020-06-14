@@ -241,7 +241,7 @@ const fastd_method_provider_t fastd_method_generic_poly1305 = {
 	.overhead = COMMON_HEADBYTES + TAGBYTES,
 	.encrypt_headroom = KEYBYTES,
 	.decrypt_headroom = KEYBYTES - TAGBYTES,
-	.decrypt_tailroom = 0,
+	.tailroom = 0,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

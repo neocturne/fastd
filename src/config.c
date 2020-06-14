@@ -469,7 +469,7 @@ static void configure_method_parameters(void) {
 	conf.overhead = 0;
 	conf.encrypt_headroom = 0;
 	conf.decrypt_headroom = 0;
-	conf.decrypt_tailroom = 0;
+	conf.tailroom = 0;
 
 	size_t i;
 	for (i = 0; conf.methods[i].name; i++) {
@@ -478,7 +478,7 @@ static void configure_method_parameters(void) {
 		conf.overhead = max_size_t(conf.overhead, provider->overhead);
 		conf.encrypt_headroom = max_size_t(conf.encrypt_headroom, provider->encrypt_headroom);
 		conf.decrypt_headroom = max_size_t(conf.decrypt_headroom, provider->decrypt_headroom);
-		conf.decrypt_tailroom = max_size_t(conf.decrypt_tailroom, provider->decrypt_tailroom);
+		conf.tailroom = max_size_t(conf.tailroom, provider->tailroom);
 	}
 
 	conf.encrypt_headroom = alignto(conf.encrypt_headroom, 16);
