@@ -310,6 +310,7 @@ struct fastd_context {
 
 	bool has_floating; /**< Specifies if any of the configured peers have floating remotes */
 	uint16_t max_mtu;  /**< The maximum MTU of all peer-specific interfaces */
+	size_t max_buffer; /**< Maximum buffer size needed for any combination of peer MTU, method, or handshake */
 
 	uint32_t peer_addr_ht_seed;           /**< The hash seed used for peer_addr_ht */
 	size_t peer_addr_ht_size;             /**< The number of hash buckets in the peer address hashtable */

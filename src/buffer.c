@@ -11,8 +11,7 @@
 */
 
 
-#include "alloc.h"
-#include "buffer.h"
+#include "fastd.h"
 
 
 /**
@@ -25,6 +24,9 @@
 */
 fastd_buffer_t fastd_buffer_alloc(const size_t len, size_t head_space, size_t tail_space) {
 	size_t base_len = alignto(head_space + len + tail_space, sizeof(fastd_block128_t));
+	if (base_len > ctx.max_buffer)
+		exit_fatal("BUG: oversized buffer alloc", base_len, ctx.max_buffer);
+
 	void *ptr = fastd_alloc_aligned(base_len, sizeof(fastd_block128_t));
 
 	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr + head_space, .len = len };

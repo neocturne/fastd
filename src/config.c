@@ -19,6 +19,7 @@
 #include "config.yy.h"
 #include "crypto.h"
 #include "fastd.h"
+#include "handshake.h"
 #include "lex.h"
 #include "method.h"
 #include "peer.h"
@@ -659,6 +660,11 @@ static void configure_peers(bool dirs_only) {
 				fastd_peer_reset(peer);
 		}
 	}
+
+	size_t headroom = max_size_t(conf.encrypt_headroom, conf.decrypt_headroom + conf.overhead);
+	ctx.max_buffer =
+		alignto(max_size_t(headroom + fastd_max_payload(ctx.max_mtu) + conf.tailroom, MAX_HANDSHAKE_SIZE),
+			sizeof(fastd_block128_t));
 }
 
 /** Initialized the peers not configured through peer directories */
