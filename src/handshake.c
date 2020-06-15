@@ -301,17 +301,12 @@ static inline fastd_handshake_t parse_tlvs(const fastd_buffer_t *buffer) {
 
 	fastd_handshake_packet_t *packet = buffer->data;
 
-	size_t len = buffer->len - sizeof(fastd_handshake_packet_t);
-	if (packet->tlv_len) {
-		size_t tlv_len = fastd_handshake_tlv_len(buffer);
-		if (tlv_len > len)
-			return handshake;
+	size_t tlv_len = fastd_handshake_tlv_len(buffer);
+	if (buffer->len < sizeof(fastd_handshake_packet_t) + tlv_len)
+		return handshake;
 
-		len = tlv_len;
-	}
-
-	uint8_t *ptr = packet->tlv_data, *end = packet->tlv_data + len;
-	handshake.tlv_len = len;
+	uint8_t *ptr = packet->tlv_data, *end = packet->tlv_data + tlv_len;
+	handshake.tlv_len = tlv_len;
 	handshake.tlv_data = packet->tlv_data;
 
 	while (true) {
