@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "alloc.h"
+#include "log.h"
 #include "util.h"
 
 
@@ -27,20 +27,8 @@ struct fastd_buffer {
 };
 
 
-/**
-   Allocate a new buffer
+fastd_buffer_t fastd_buffer_alloc(const size_t len, size_t head_space, size_t tail_space);
 
-   A buffer can have head and tail space which allows changing with data size without moving the data.
-
-   The buffer is always allocated aligned to 16 bytes to allow efficient access for SIMD instructions
-   etc. in crypto implementations
-*/
-static inline fastd_buffer_t fastd_buffer_alloc(const size_t len, size_t head_space, size_t tail_space) {
-	size_t base_len = alignto(head_space + len + tail_space, sizeof(fastd_block128_t));
-	void *ptr = fastd_alloc_aligned(base_len, sizeof(fastd_block128_t));
-
-	return (fastd_buffer_t){ .base = ptr, .base_len = base_len, .data = ptr + head_space, .len = len };
-}
 
 /** Duplicates a buffer */
 static inline fastd_buffer_t fastd_buffer_dup(const fastd_buffer_t buffer, size_t head_space, size_t tail_space) {

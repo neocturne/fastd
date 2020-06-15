@@ -35,6 +35,7 @@ src = [
 	version_h,
 	'android.c',
 	'async.c',
+	'buffer.c',
 	'capabilities.c',
 	'config.c',
 	'fastd.c',
