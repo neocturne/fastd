@@ -125,7 +125,7 @@ static inline uint16_t fastd_handshake_tlv_len(const fastd_buffer_t *buffer) {
 static inline uint8_t *fastd_handshake_extend(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
 	uint8_t *dst = buffer->data + buffer->len;
 
-	if (buffer->data + buffer->len + RECORD_LEN(len) > buffer->base + buffer->base_len)
+	if ((uint8_t *)buffer->data + buffer->len + RECORD_LEN(len) > buffer->base + buffer->base_len)
 		exit_bug("not enough buffer allocated for handshake");
 
 	buffer->len += RECORD_LEN(len);
