@@ -243,8 +243,6 @@ static bool method_decrypt(
 		    nonce))
 		goto fail;
 
-	fastd_buffer_zero_pad(in);
-
 	if (!session->uhash->digest(session->uhash_state, &tag, inblocks + 1, in.len - sizeof(fastd_block128_t)))
 		goto fail;
 

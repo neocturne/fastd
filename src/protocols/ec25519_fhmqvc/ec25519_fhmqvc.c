@@ -113,6 +113,8 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	fastd_buffer_t recv_buffer;
 	bool ok = false, reordered = false;
 
+	fastd_buffer_zero_pad(buffer);
+
 	if (is_session_valid(&peer->protocol_state->old_session))
 		ok = peer->protocol_state->old_session.method->provider->decrypt(
 			peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer, &reordered);
@@ -161,6 +163,8 @@ fail:
 /** Encrypts and sends a packet to a peer using a specified session */
 static void session_send(fastd_peer_t *peer, fastd_buffer_t buffer, protocol_session_t *session) {
 	size_t stat_size = buffer.len;
+
+	fastd_buffer_zero_pad(buffer);
 
 	fastd_buffer_t send_buffer;
 	if (!session->method->provider->encrypt(peer, session->method_state, &send_buffer, buffer)) {

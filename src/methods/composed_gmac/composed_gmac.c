@@ -275,7 +275,6 @@ static bool method_decrypt(
 		    nonce))
 		goto fail;
 
-	fastd_buffer_zero_pad(in);
 	put_size(&inblocks[n_blocks], in.len - sizeof(fastd_block128_t));
 
 	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, n_blocks * sizeof(fastd_block128_t)))

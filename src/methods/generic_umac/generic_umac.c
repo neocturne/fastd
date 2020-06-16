@@ -195,8 +195,6 @@ static bool method_decrypt(
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
-	fastd_buffer_zero_pad(in);
-
 	if (!session->cipher->crypt(
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
