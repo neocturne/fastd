@@ -87,8 +87,8 @@ struct fastd_handshake {
 };
 
 
-fastd_buffer_t fastd_handshake_new_init(size_t tail_space);
-fastd_buffer_t fastd_handshake_new_reply(
+fastd_buffer_t *fastd_handshake_new_init(size_t tail_space);
+fastd_buffer_t *fastd_handshake_new_reply(
 	uint8_t type, uint16_t mtu, const fastd_method_info_t *method, const fastd_string_stack_t *methods,
 	size_t tail_space);
 
@@ -106,7 +106,7 @@ fastd_handshake_get_method_by_name(const fastd_peer_t *peer, const fastd_handsha
 
 void fastd_handshake_handle(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t buffer);
+	fastd_peer_t *peer, fastd_buffer_t *buffer);
 
 
 /** Returns the TLV data of a handshake packet in a given buffer */

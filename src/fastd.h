@@ -82,10 +82,10 @@ struct fastd_protocol {
 
 
 	/** Handles a received payload packet (performs decryption and validity check, etc.) */
-	void (*handle_recv)(fastd_peer_t *peer, fastd_buffer_t buffer);
+	void (*handle_recv)(fastd_peer_t *peer, fastd_buffer_t *buffer);
 
 	/** Sends a payload data packet to the given peer */
-	void (*send)(fastd_peer_t *peer, fastd_buffer_t buffer);
+	void (*send)(fastd_peer_t *peer, fastd_buffer_t *buffer);
 
 
 	/** Initializes the protocol state for a peer */
@@ -365,13 +365,13 @@ void fastd_main(int argc, char *argv[]);
 
 void fastd_send(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size);
-void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source, fastd_peer_t *dest);
+	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size);
+void fastd_send_data(fastd_buffer_t *buffer, fastd_peer_t *source, fastd_peer_t *dest);
 
 void fastd_receive_unknown_init(void);
 void fastd_receive_unknown_free(void);
 void fastd_receive(fastd_socket_t *sock);
-void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reordered);
+void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t *buffer, bool reordered);
 
 void fastd_close_all_fds(void);
 
@@ -384,7 +384,7 @@ void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
 fastd_iface_t *fastd_iface_open(fastd_peer_t *peer);
 void fastd_iface_handle(fastd_iface_t *iface);
-void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer);
+void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t *buffer);
 void fastd_iface_close(fastd_iface_t *iface);
 
 void fastd_random_bytes(void *buffer, size_t len, bool secure);
@@ -460,16 +460,16 @@ static inline size_t fastd_max_payload(uint16_t mtu) {
 
 
 /** Returns the source address of an ethernet packet */
-static inline fastd_eth_addr_t fastd_buffer_source_address(const fastd_buffer_t buffer) {
+static inline fastd_eth_addr_t fastd_buffer_source_address(const fastd_buffer_t *buffer) {
 	fastd_eth_addr_t ret;
-	memcpy(&ret, buffer.data + offsetof(fastd_eth_header_t, source), sizeof(fastd_eth_addr_t));
+	memcpy(&ret, buffer->data + offsetof(fastd_eth_header_t, source), sizeof(fastd_eth_addr_t));
 	return ret;
 }
 
 /** Returns the destination address of an ethernet packet */
-static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t buffer) {
+static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t *buffer) {
 	fastd_eth_addr_t ret;
-	memcpy(&ret, buffer.data + offsetof(fastd_eth_header_t, dest), sizeof(fastd_eth_addr_t));
+	memcpy(&ret, buffer->data + offsetof(fastd_eth_header_t, dest), sizeof(fastd_eth_addr_t));
 	return ret;
 }
 

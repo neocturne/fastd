@@ -115,15 +115,15 @@ static void method_session_free(fastd_method_session_state_t *session) {
 
 /** Encrypts a packet and adds the common method header */
 static bool method_encrypt(
-	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM);
+	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in) {
+	fastd_buffer_t *out = *outp = fastd_buffer_alloc(in->len, COMMON_HEADROOM);
 
 	uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
-	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
+	int n_blocks = block_count(in->len, sizeof(fastd_block128_t));
 
-	const fastd_block128_t *inblocks = in.data;
+	const fastd_block128_t *inblocks = in->data;
 	fastd_block128_t *outblocks = out->data;
 
 	if (!session->cipher->crypt(
@@ -138,21 +138,21 @@ static bool method_encrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 	return false;
 }
 
 /** Decrypts a packet */
 static bool method_decrypt(
-	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in,
 	bool *reordered) {
-	if (in.len < COMMON_HEADBYTES)
+	if (in->len < COMMON_HEADBYTES)
 		return false;
 
 	if (!method_session_is_valid(session))
 		return false;
 
-	fastd_buffer_view_t in_view = fastd_buffer_get_view(&in);
+	fastd_buffer_view_t in_view = fastd_buffer_get_view(in);
 
 	uint8_t in_nonce[COMMON_NONCEBYTES];
 	uint8_t flags;
@@ -166,7 +166,7 @@ static bool method_decrypt(
 	uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
-	*out = fastd_buffer_alloc(in_view.len, 0);
+	fastd_buffer_t *out = *outp = fastd_buffer_alloc(in_view.len, 0);
 
 	int n_blocks = block_count(in_view.len, sizeof(fastd_block128_t));
 
@@ -188,7 +188,7 @@ static bool method_decrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 	return false;
 }
 

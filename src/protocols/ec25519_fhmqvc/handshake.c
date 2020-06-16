@@ -273,21 +273,21 @@ static void respond_handshake(
 	if (!update_shared_handshake_key(peer, handshake_key, peer_handshake_key))
 		return;
 
-	fastd_buffer_t buffer = fastd_handshake_new_reply(
+	fastd_buffer_t *buffer = fastd_handshake_new_reply(
 		2, fastd_peer_get_mtu(peer), NULL, *fastd_peer_group_lookup_peer(peer, methods),
 		4 * RECORD_LEN(PUBLICKEYBYTES) + RECORD_LEN(HASHBYTES));
 
-	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
-	fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
-	fastd_handshake_add(&buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &handshake_key->key.public);
-	fastd_handshake_add(&buffer, RECORD_RECIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key);
+	fastd_handshake_add(buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
+	fastd_handshake_add(buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
+	fastd_handshake_add(buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &handshake_key->key.public);
+	fastd_handshake_add(buffer, RECORD_RECIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key);
 
 	fastd_sha256_t hmacbuf;
 
-	uint8_t *mac = fastd_handshake_add_zero(&buffer, RECORD_TLV_MAC, HASHBYTES);
+	uint8_t *mac = fastd_handshake_add_zero(buffer, RECORD_TLV_MAC, HASHBYTES);
 	fastd_hmacsha256(
-		&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer),
-		fastd_handshake_tlv_len(&buffer));
+		&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(buffer),
+		fastd_handshake_tlv_len(buffer));
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
 	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
@@ -330,18 +330,18 @@ static void finish_handshake(
 		    handshake_key->serial))
 		return;
 
-	fastd_buffer_t buffer = fastd_handshake_new_reply(
+	fastd_buffer_t *buffer = fastd_handshake_new_reply(
 		3, fastd_peer_get_mtu(peer), method, NULL, 4 * RECORD_LEN(PUBLICKEYBYTES) + RECORD_LEN(HASHBYTES));
 
-	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
-	fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
-	fastd_handshake_add(&buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &handshake_key->key.public);
-	fastd_handshake_add(&buffer, RECORD_RECIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key);
+	fastd_handshake_add(buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
+	fastd_handshake_add(buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
+	fastd_handshake_add(buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &handshake_key->key.public);
+	fastd_handshake_add(buffer, RECORD_RECIPIENT_HANDSHAKE_KEY, PUBLICKEYBYTES, peer_handshake_key);
 
 	fastd_sha256_t hmacbuf;
-	uint8_t *tlv_mac = fastd_handshake_add_zero(&buffer, RECORD_TLV_MAC, HASHBYTES);
+	uint8_t *tlv_mac = fastd_handshake_add_zero(buffer, RECORD_TLV_MAC, HASHBYTES);
 	fastd_hmacsha256(
-		&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(&buffer), fastd_handshake_tlv_len(&buffer));
+		&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(buffer), fastd_handshake_tlv_len(buffer));
 	memcpy(tlv_mac, hmacbuf.b, HASHBYTES);
 
 	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
@@ -455,13 +455,13 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(
 	fastd_peer_t *peer) {
 	fastd_protocol_ec25519_fhmqvc_maintenance();
 
-	fastd_buffer_t buffer =
+	fastd_buffer_t *buffer =
 		fastd_handshake_new_init(3 * RECORD_LEN(PUBLICKEYBYTES) /* sender key, recipient key, handshake key */);
 
-	fastd_handshake_add(&buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
+	fastd_handshake_add(buffer, RECORD_SENDER_KEY, PUBLICKEYBYTES, &conf.protocol_config->key.public);
 
 	if (peer) {
-		fastd_handshake_add(&buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
+		fastd_handshake_add(buffer, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES, &peer->key->key);
 
 		pr_verbose("sending handshake to %P[%I]...", peer, remote_addr);
 	} else {
@@ -469,7 +469,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(
 	}
 
 	fastd_handshake_add(
-		&buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx.protocol_state->handshake_key.key.public);
+		buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx.protocol_state->handshake_key.key.public);
 
 	if (!peer || !fastd_peer_is_established(peer)) {
 		const fastd_shell_command_t *on_connect = fastd_peer_group_lookup_peer_shell_command(peer, on_connect);

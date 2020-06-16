@@ -144,13 +144,13 @@ static bool backoff_unknown(const fastd_peer_address_t *addr) {
 /** Handles a packet received from a known peer address */
 static inline void handle_socket_receive_known(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t buffer) {
+	fastd_peer_t *peer, fastd_buffer_t *buffer) {
 	if (!fastd_peer_may_connect(peer)) {
 		fastd_buffer_free(buffer);
 		return;
 	}
 
-	const uint8_t *packet_type = buffer.data;
+	const uint8_t *packet_type = buffer->data;
 
 	switch (*packet_type) {
 	case PACKET_DATA:
@@ -180,8 +180,8 @@ static inline bool allow_unknown_peers(void) {
 /** Handles a packet received from an unknown address */
 static inline void handle_socket_receive_unknown(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_buffer_t buffer) {
-	const uint8_t *packet_type = buffer.data;
+	fastd_buffer_t *buffer) {
+	const uint8_t *packet_type = buffer->data;
 
 	switch (*packet_type) {
 	case PACKET_DATA:
@@ -201,7 +201,7 @@ static inline void handle_socket_receive_unknown(
 /** Handles a packet read from a socket */
 static inline void handle_socket_receive(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_buffer_t buffer) {
+	fastd_buffer_t *buffer) {
 	fastd_peer_t *peer = NULL;
 
 	if (sock->peer) {
@@ -228,10 +228,10 @@ static inline void handle_socket_receive(
 /** Reads a packet from a socket */
 void fastd_receive(fastd_socket_t *sock) {
 	size_t max_len = max_size_t(fastd_max_payload(ctx.max_mtu) + conf.overhead, MAX_HANDSHAKE_SIZE);
-	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, conf.decrypt_headroom);
+	fastd_buffer_t *buffer = fastd_buffer_alloc(max_len, conf.decrypt_headroom);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
-	struct iovec buffer_vec = { .iov_base = buffer.data, .iov_len = buffer.len };
+	struct iovec buffer_vec = { .iov_base = buffer->data, .iov_len = buffer->len };
 	uint8_t cbuf[1024] __attribute__((aligned(8)));
 
 	struct msghdr message = {
@@ -252,7 +252,7 @@ void fastd_receive(fastd_socket_t *sock) {
 		return;
 	}
 
-	buffer.len = len;
+	buffer->len = len;
 
 	handle_socket_control(&message, sock, &local_addr);
 
@@ -271,9 +271,9 @@ void fastd_receive(fastd_socket_t *sock) {
 }
 
 /** Handles a received and decrypted payload packet */
-void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reordered) {
+void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t *buffer, bool reordered) {
 	if (conf.mode == MODE_TAP) {
-		if (buffer.len < sizeof(fastd_eth_header_t)) {
+		if (buffer->len < sizeof(fastd_eth_header_t)) {
 			pr_debug("received truncated packet");
 			fastd_buffer_free(buffer);
 			return;
@@ -285,10 +285,10 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reorde
 			fastd_peer_eth_addr_add(peer, src_addr);
 	}
 
-	fastd_stats_add(peer, STAT_RX, buffer.len);
+	fastd_stats_add(peer, STAT_RX, buffer->len);
 
 	if (reordered)
-		fastd_stats_add(peer, STAT_RX_REORDERED, buffer.len);
+		fastd_stats_add(peer, STAT_RX_REORDERED, buffer->len);
 
 	fastd_iface_write(peer->iface, buffer);
 

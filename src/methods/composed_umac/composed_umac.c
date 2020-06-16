@@ -159,12 +159,12 @@ static void method_session_free(fastd_method_session_state_t *session) {
 
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
-	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	*out = fastd_buffer_alloc(sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM);
+	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in) {
+	fastd_buffer_t *out = *outp = fastd_buffer_alloc(sizeof(fastd_block128_t) + in->len, COMMON_HEADROOM);
 
-	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
+	int n_blocks = block_count(in->len, sizeof(fastd_block128_t));
 
-	const fastd_block128_t *inblocks = in.data;
+	const fastd_block128_t *inblocks = in->data;
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
@@ -182,7 +182,7 @@ static bool method_encrypt(
 		    session->cipher_state, outblocks + 1, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	fastd_buffer_zero_pad(*out);
+	fastd_buffer_zero_pad(out);
 
 	if (!session->uhash->digest(session->uhash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t)))
 		goto fail;
@@ -197,21 +197,21 @@ static bool method_encrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 	return false;
 }
 
 /** Verifies and decrypts a packet */
 static bool method_decrypt(
-	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in,
 	bool *reordered) {
-	if (in.len < COMMON_HEADBYTES + sizeof(fastd_block128_t))
+	if (in->len < COMMON_HEADBYTES + sizeof(fastd_block128_t))
 		return false;
 
 	if (!method_session_is_valid(session))
 		return false;
 
-	fastd_buffer_view_t in_view = fastd_buffer_get_view(&in);
+	fastd_buffer_view_t in_view = fastd_buffer_get_view(in);
 
 	uint8_t in_nonce[COMMON_NONCEBYTES];
 	uint8_t flags;
@@ -228,7 +228,7 @@ static bool method_decrypt(
 	uint8_t umac_nonce[session->method->umac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(umac_nonce, in_nonce, sizeof(umac_nonce));
 
-	*out = fastd_buffer_alloc(in_view.len, 0);
+	fastd_buffer_t *out = *outp = fastd_buffer_alloc(in_view.len, 0);
 
 	int n_blocks = block_count(in_view.len, sizeof(fastd_block128_t));
 
@@ -264,7 +264,7 @@ static bool method_decrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 	return false;
 }
 

@@ -400,33 +400,33 @@ static void cleanup_iface(UNUSED fastd_iface_t *iface) {}
 void fastd_iface_handle(fastd_iface_t *iface) {
 	size_t max_len = fastd_max_payload(iface->mtu);
 
-	fastd_buffer_t buffer;
+	fastd_buffer_t *buffer;
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
 		buffer = fastd_buffer_alloc(max_len + 4, conf.encrypt_headroom + 12);
 	else
 		buffer = fastd_buffer_alloc(max_len, conf.encrypt_headroom);
 
-	ssize_t len = read(iface->fd.fd, buffer.data, max_len);
+	ssize_t len = read(iface->fd.fd, buffer->data, max_len);
 	if (len < 0)
 		exit_errno("read");
 
-	buffer.len = len;
+	buffer->len = len;
 
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
-		fastd_buffer_pull(&buffer, 4);
+		fastd_buffer_pull(buffer, 4);
 
 	fastd_send_data(buffer, NULL, iface->peer);
 }
 
 /** Writes a packet to the TUN/TAP device */
-void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
-	if (!buffer.len) {
+void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t *buffer) {
+	if (!buffer->len) {
 		pr_debug("fastd_iface_write: truncated packet");
 		return;
 	}
 
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN) {
-		uint8_t version = *((uint8_t *)buffer.data) >> 4;
+		uint8_t version = *((uint8_t *)buffer->data) >> 4;
 		uint32_t af;
 
 		switch (version) {
@@ -443,11 +443,10 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t buffer) {
 			return;
 		}
 
-		fastd_buffer_push(&buffer, 4);
-		memcpy(buffer.data, &af, 4);
+		fastd_buffer_push_from(buffer, &af, sizeof(af));
 	}
 
-	if (write(iface->fd.fd, buffer.data, buffer.len) < 0)
+	if (write(iface->fd.fd, buffer->data, buffer->len) < 0)
 		pr_debug2_errno("write");
 }
 

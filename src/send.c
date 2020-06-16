@@ -68,7 +68,7 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 /** Sends a packet */
 void fastd_send(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t buffer, size_t stat_size) {
+	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
 
@@ -99,7 +99,7 @@ void fastd_send(
 		msg.msg_namelen = sizeof(struct sockaddr_in6);
 	}
 
-	struct iovec iov = { .iov_base = buffer.data, .iov_len = buffer.len };
+	struct iovec iov = { .iov_base = buffer->data, .iov_len = buffer->len };
 
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
@@ -158,7 +158,7 @@ void fastd_send(
 }
 
 /** Encrypts and sends a payload packet to all peers */
-static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
+static inline void send_all(fastd_buffer_t *buffer, fastd_peer_t *source) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *dest = VECTOR_INDEX(ctx.peers, i);
@@ -178,11 +178,11 @@ static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
 }
 
 /** Handles sending of a payload packet to a single peer in TAP mode */
-static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *source) {
+static inline bool send_data_tap_single(fastd_buffer_t *buffer, fastd_peer_t *source) {
 	if (conf.mode != MODE_TAP)
 		return false;
 
-	if (buffer.len < sizeof(fastd_eth_header_t)) {
+	if (buffer->len < sizeof(fastd_eth_header_t)) {
 		pr_debug("truncated ethernet packet");
 		fastd_buffer_free(buffer);
 		return true;
@@ -223,17 +223,17 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
    the transmit path again through fastd's forward feature, it will violate
    the fastd_block128_t alignment.
  */
-static void align_buffer(fastd_buffer_t *buffer) {
-	if (is_aligned(buffer->data, sizeof(fastd_block128_t)))
+static void align_buffer(fastd_buffer_t **buffer) {
+	if (is_aligned((*buffer)->data, sizeof(fastd_block128_t)))
 		return;
 
-	fastd_buffer_t new_buf = fastd_buffer_dup(*buffer, conf.encrypt_headroom);
+	fastd_buffer_t *new_buf = fastd_buffer_dup(*buffer, conf.encrypt_headroom);
 	fastd_buffer_free(*buffer);
 	*buffer = new_buf;
 }
 
 /** Sends a buffer of payload data to other peers */
-void fastd_send_data(fastd_buffer_t buffer, fastd_peer_t *source, fastd_peer_t *dest) {
+void fastd_send_data(fastd_buffer_t *buffer, fastd_peer_t *source, fastd_peer_t *dest) {
 	align_buffer(&buffer);
 
 	if (dest) {

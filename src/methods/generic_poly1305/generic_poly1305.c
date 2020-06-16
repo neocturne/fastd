@@ -129,17 +129,17 @@ static void method_session_free(fastd_method_session_state_t *session) {
 
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
-	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	fastd_buffer_push_zero(&in, KEYBYTES);
+	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in) {
+	fastd_buffer_push_zero(in, KEYBYTES);
 
-	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM);
+	fastd_buffer_t *out = *outp = fastd_buffer_alloc(in->len, COMMON_HEADROOM);
 
 	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
 
-	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
+	int n_blocks = block_count(in->len, sizeof(fastd_block128_t));
 
-	const fastd_block128_t *inblocks = in.data;
+	const fastd_block128_t *inblocks = in->data;
 	fastd_block128_t *outblocks = out->data;
 	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
 
@@ -162,15 +162,15 @@ static bool method_encrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 	return false;
 }
 
 /** Verifies and decrypts a packet */
 static bool method_decrypt(
-	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in,
+	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in,
 	bool *reordered) {
-	if (in.len < COMMON_HEADBYTES + TAGBYTES)
+	if (in->len < COMMON_HEADBYTES + TAGBYTES)
 		return false;
 
 	if (!method_session_is_valid(session))
@@ -181,7 +181,7 @@ static bool method_decrypt(
 	uint8_t flags;
 	int64_t age;
 
-	fastd_buffer_view_t in_view = fastd_buffer_get_view(&in);
+	fastd_buffer_view_t in_view = fastd_buffer_get_view(in);
 	if (!fastd_method_handle_common_header(&session->common, &in_view, in_nonce, &flags, &age))
 		return false;
 
@@ -192,25 +192,25 @@ static bool method_decrypt(
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
 	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
-	fastd_buffer_pull(&in, COMMON_HEADBYTES);
-	fastd_buffer_pull_to(&in, tag, TAGBYTES);
-	fastd_buffer_push_zero(&in, KEYBYTES);
+	fastd_buffer_pull(in, COMMON_HEADBYTES);
+	fastd_buffer_pull_to(in, tag, TAGBYTES);
+	fastd_buffer_push_zero(in, KEYBYTES);
 
-	*out = fastd_buffer_alloc(in.len, 0);
+	fastd_buffer_t *out = *outp = fastd_buffer_alloc(in->len, 0);
 
-	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
-	const fastd_block128_t *inblocks = in.data;
+	int n_blocks = block_count(in->len, sizeof(fastd_block128_t));
+	const fastd_block128_t *inblocks = in->data;
 	fastd_block128_t *outblocks = out->data;
 
 	bool ok = session->cipher->crypt(
 		session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce);
 
-	fastd_buffer_pull(&in, KEYBYTES);
+	fastd_buffer_pull(in, KEYBYTES);
 
 	if (!ok)
 		goto fail;
 
-	if (crypto_onetimeauth_poly1305_verify(tag, in.data, in.len, out->data) != 0)
+	if (crypto_onetimeauth_poly1305_verify(tag, in->data, in->len, out->data) != 0)
 		goto fail;
 
 	fastd_buffer_free(in);
@@ -226,11 +226,11 @@ static bool method_decrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 
 	/* restore input buffer */
-	fastd_buffer_push_from(&in, tag, TAGBYTES);
-	fastd_method_put_common_header(&in, in_nonce, 0);
+	fastd_buffer_push_from(in, tag, TAGBYTES);
+	fastd_method_put_common_header(in, in_nonce, 0);
 
 	return false;
 }

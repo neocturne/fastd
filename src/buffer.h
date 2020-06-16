@@ -19,11 +19,11 @@
 
 /** A buffer descriptor */
 struct fastd_buffer {
-	uint8_t *base;   /**< The beginning of the allocated memory area */
-	size_t base_len; /**< The size of the allocated memory area */
-
 	void *data; /**< The beginning of the actual data in the buffer */
 	size_t len; /**< The data length */
+
+	size_t base_len;                             /**< The size of the allocated memory area */
+	uint8_t base[] __attribute__((aligned(16))); /**< Buffer space */
 };
 
 /** A view on a buffer */
@@ -33,25 +33,25 @@ struct fastd_buffer_view {
 };
 
 
-fastd_buffer_t fastd_buffer_alloc(size_t len, size_t head_space);
+fastd_buffer_t *fastd_buffer_alloc(size_t len, size_t head_space);
 
 
 /** Duplicates a buffer */
-static inline fastd_buffer_t fastd_buffer_dup(fastd_buffer_t buffer, size_t head_space) {
-	fastd_buffer_t new_buffer = fastd_buffer_alloc(buffer.len, head_space);
-	memcpy(new_buffer.data, buffer.data, buffer.len);
+static inline fastd_buffer_t *fastd_buffer_dup(const fastd_buffer_t *buffer, size_t head_space) {
+	fastd_buffer_t *new_buffer = fastd_buffer_alloc(buffer->len, head_space);
+	memcpy(new_buffer->data, buffer->data, buffer->len);
 	return new_buffer;
 }
 
 /** Frees a buffer */
-static inline void fastd_buffer_free(fastd_buffer_t buffer) {
-	free(buffer.base);
+static inline void fastd_buffer_free(fastd_buffer_t *buffer) {
+	free(buffer);
 }
 
 /** Zeroes the trailing padding of a buffer, aligned to a multiple of 16 bytes */
-static inline void fastd_buffer_zero_pad(fastd_buffer_t buffer) {
-	uint8_t *end = buffer.data + buffer.len;
-	uint8_t *end_align = buffer.base + alignto(end - buffer.base, sizeof(fastd_block128_t));
+static inline void fastd_buffer_zero_pad(fastd_buffer_t *buffer) {
+	uint8_t *end = buffer->data + buffer->len;
+	uint8_t *end_align = buffer->base + alignto(end - buffer->base, sizeof(fastd_block128_t));
 	memset(end, 0, end_align - end);
 }
 
