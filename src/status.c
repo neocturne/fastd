@@ -21,6 +21,7 @@
 
 #include <json-c/json.h>
 #include <net/if.h>
+#include <sys/file.h>
 #include <sys/un.h>
 
 
@@ -195,7 +196,29 @@ static void unlink_status_socket(void) {
 		return;
 
 	if (unlink(conf.status_socket))
-		pr_warn_errno("fastd_status_cleanup: unlink");
+		pr_warn_errno("unlink_status_socket: unlink");
+}
+
+static void status_socket_lock(void) {
+	const char *lock_format = "%s.lock";
+
+	size_t lockname_len = strlen(lock_format) + strlen(conf.status_socket) + 1;
+	char lockname[lockname_len];
+	snprintf(lockname, lockname_len, lock_format, conf.status_socket);
+
+	int lock_fd = open(lockname, O_RDONLY | O_CREAT, 0600);
+	if (lock_fd < 0)
+		exit_errno("unable to open status socket lock file");
+
+	if (flock(lock_fd, LOCK_EX | LOCK_NB)) {
+		switch (errno) {
+		case EWOULDBLOCK:
+			exit_error("status socket already in use");
+
+		default:
+			exit_error("unable to set status socket lock");
+		}
+	}
 }
 
 /** Initialized the status socket */
@@ -216,6 +239,13 @@ void fastd_status_init(void) {
 			pr_debug_errno("seteuid");
 	}
 #endif
+
+	status_socket_lock();
+
+	if (unlink(conf.status_socket) == 0)
+		pr_info("removing old status socket");
+	else if (errno != ENOENT)
+		pr_warn_errno("unable to remove old status socket");
 
 	ctx.status_fd = FASTD_POLL_FD(POLL_TYPE_STATUS, socket(AF_UNIX, SOCK_STREAM, 0));
 	if (ctx.status_fd.fd < 0)
