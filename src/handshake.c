@@ -483,5 +483,5 @@ void fastd_handshake_handle(
 
 end_free:
 	free(peer_version);
-	fastd_buffer_free(buffer);
+	fastd_buffer_free(&buffer);
 }

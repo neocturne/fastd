@@ -146,7 +146,7 @@ static inline void handle_socket_receive_known(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!fastd_peer_may_connect(peer)) {
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 		return;
 	}
 
@@ -155,7 +155,7 @@ static inline void handle_socket_receive_known(
 	switch (*packet_type) {
 	case PACKET_DATA:
 		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
-			fastd_buffer_free(buffer);
+			fastd_buffer_free(&buffer);
 
 			if (!backoff_unknown(remote_addr)) {
 				pr_debug("unexpectedly received payload data from %P[%I]", peer, remote_addr);
@@ -185,7 +185,7 @@ static inline void handle_socket_receive_unknown(
 
 	switch (*packet_type) {
 	case PACKET_DATA:
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 
 		if (!backoff_unknown(remote_addr)) {
 			pr_debug("unexpectedly received payload data from unknown address %I", remote_addr);
@@ -206,7 +206,7 @@ static inline void handle_socket_receive(
 
 	if (sock->peer) {
 		if (!fastd_peer_address_equal(&sock->peer->address, remote_addr)) {
-			fastd_buffer_free(buffer);
+			fastd_buffer_free(&buffer);
 			return;
 		}
 
@@ -221,7 +221,7 @@ static inline void handle_socket_receive(
 		handle_socket_receive_unknown(sock, local_addr, remote_addr, buffer);
 	} else {
 		pr_debug("received packet from unknown peer %I", remote_addr);
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 	}
 }
 
@@ -248,7 +248,7 @@ void fastd_receive(fastd_socket_t *sock) {
 		if (len < 0)
 			pr_warn_errno("recvmsg");
 
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 		return;
 	}
 
@@ -259,7 +259,7 @@ void fastd_receive(fastd_socket_t *sock) {
 #ifdef USE_PKTINFO
 	if (!local_addr.sa.sa_family) {
 		pr_error("received packet without packet info");
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 		return;
 	}
 #endif
@@ -275,7 +275,7 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reorde
 	if (conf.mode == MODE_TAP) {
 		if (buffer.len < sizeof(fastd_eth_header_t)) {
 			pr_debug("received truncated packet");
-			fastd_buffer_free(buffer);
+			fastd_buffer_free(&buffer);
 			return;
 		}
 
@@ -297,5 +297,5 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t buffer, bool reorde
 		return;
 	}
 
-	fastd_buffer_free(buffer);
+	fastd_buffer_free(&buffer);
 }

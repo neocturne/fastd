@@ -113,7 +113,7 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	fastd_buffer_t recv_buffer;
 	bool ok = false, reordered = false;
 
-	fastd_buffer_zero_pad(buffer);
+	fastd_buffer_zero_pad(&buffer);
 
 	if (is_session_valid(&peer->protocol_state->old_session))
 		ok = peer->protocol_state->old_session.method->provider->decrypt(
@@ -152,23 +152,23 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (recv_buffer.len)
 		fastd_handle_receive(peer, recv_buffer, reordered);
 	else
-		fastd_buffer_free(recv_buffer);
+		fastd_buffer_free(&recv_buffer);
 
 	return;
 
 fail:
-	fastd_buffer_free(buffer);
+	fastd_buffer_free(&buffer);
 }
 
 /** Encrypts and sends a packet to a peer using a specified session */
 static void session_send(fastd_peer_t *peer, fastd_buffer_t buffer, protocol_session_t *session) {
 	size_t stat_size = buffer.len;
 
-	fastd_buffer_zero_pad(buffer);
+	fastd_buffer_zero_pad(&buffer);
 
 	fastd_buffer_t send_buffer;
 	if (!session->method->provider->encrypt(peer, session->method_state, &send_buffer, buffer)) {
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 		pr_error("failed to encrypt packet for %P", peer);
 		return;
 	}
@@ -180,7 +180,7 @@ static void session_send(fastd_peer_t *peer, fastd_buffer_t buffer, protocol_ses
 /** Encrypts and sends a packet to a peer */
 static void protocol_send(fastd_peer_t *peer, fastd_buffer_t buffer) {
 	if (!peer->protocol_state || !fastd_peer_is_established(peer) || !check_session(peer)) {
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 		return;
 	}
 

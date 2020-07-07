@@ -154,7 +154,7 @@ void fastd_send(
 		fastd_stats_add(peer, STAT_TX, stat_size);
 	}
 
-	fastd_buffer_free(buffer);
+	fastd_buffer_free(&buffer);
 }
 
 /** Encrypts and sends a payload packet to all peers */
@@ -171,10 +171,10 @@ static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
 			return;
 		}
 
-		conf.protocol->send(dest, fastd_buffer_dup(buffer, conf.encrypt_headroom, 0));
+		conf.protocol->send(dest, fastd_buffer_dup(&buffer, conf.encrypt_headroom, 0));
 	}
 
-	fastd_buffer_free(buffer);
+	fastd_buffer_free(&buffer);
 }
 
 /** Handles sending of a payload packet to a single peer in TAP mode */
@@ -184,7 +184,7 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
 
 	if (buffer.len < sizeof(fastd_eth_header_t)) {
 		pr_debug("truncated ethernet packet");
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 		return true;
 	}
 
@@ -206,7 +206,7 @@ static inline bool send_data_tap_single(fastd_buffer_t buffer, fastd_peer_t *sou
 		return false;
 
 	if (!dest || dest == source) {
-		fastd_buffer_free(buffer);
+		fastd_buffer_free(&buffer);
 		return true;
 	}
 

@@ -177,7 +177,7 @@ static bool method_encrypt(
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	fastd_buffer_zero_pad(*out);
+	fastd_buffer_zero_pad(out);
 
 	put_size(&outblocks[n_blocks], in.len - sizeof(fastd_block128_t));
 
@@ -186,7 +186,7 @@ static bool method_encrypt(
 
 	block_xor_a(&outblocks[0], &tag);
 
-	fastd_buffer_free(in);
+	fastd_buffer_free(&in);
 
 	fastd_method_put_common_header(out, session->common.send_nonce, 0);
 	fastd_method_increment_nonce(&session->common);
@@ -194,7 +194,7 @@ static bool method_encrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 	return false;
 }
 
@@ -240,7 +240,7 @@ static bool method_decrypt(
 	if (!block_equal(&tag, &outblocks[0]))
 		goto fail;
 
-	fastd_buffer_free(in);
+	fastd_buffer_free(&in);
 
 	fastd_buffer_pull(out, sizeof(fastd_block128_t));
 
@@ -253,7 +253,7 @@ static bool method_decrypt(
 	return true;
 
 fail:
-	fastd_buffer_free(*out);
+	fastd_buffer_free(out);
 	return false;
 }
 
