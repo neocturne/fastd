@@ -3,8 +3,8 @@ if get_option('mac_ghash').disabled()
 endif
 
 impls = []
-subdir('builtin')
 subdir('pclmulqdq')
+subdir('builtin')
 macs += { 'ghash' : impls }
 
 src += files('ghash.c')

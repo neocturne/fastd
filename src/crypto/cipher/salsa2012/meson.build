@@ -3,8 +3,8 @@ if get_option('cipher_salsa2012').disabled()
 endif
 
 impls = []
-subdir('nacl')
 subdir('xmm')
+subdir('nacl')
 ciphers += { 'salsa2012' : impls }
 
 src += files('salsa2012.c')
