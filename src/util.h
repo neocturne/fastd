@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <string.h>
 
 #include <sys/types.h>
@@ -60,6 +61,13 @@ static inline size_t block_count(size_t l, size_t a) {
  */
 static inline size_t alignto(size_t l, size_t a) {
 	return block_count(l, a) * a;
+}
+
+/**
+   Checks whether a pointer satisfies a given alignment
+ */
+static inline bool is_aligned(const void *p, size_t a) {
+	return !((uintptr_t)p & (a - 1));
 }
 
 /**
