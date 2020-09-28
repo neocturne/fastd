@@ -241,8 +241,6 @@ struct fastd_config {
 				  *   encrypt */
 	size_t decrypt_headroom; /**< The minimum space a configured methods needs a the beginning of a source buffer to
 				  *   decrypt */
-	size_t tailroom;         /**< The minimum space a configured methods needs a the end of a source buffer to
-				  *   decrypt, or that is allocated in the destination buffer to encrypt */
 
 	char *secret; /**< The configured secret key */
 

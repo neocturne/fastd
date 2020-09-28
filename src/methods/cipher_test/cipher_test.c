@@ -196,7 +196,6 @@ const fastd_method_provider_t fastd_method_cipher_test = {
 	.overhead = COMMON_HEADBYTES,
 	.encrypt_headroom = 0,
 	.decrypt_headroom = 0,
-	.tailroom = 0,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

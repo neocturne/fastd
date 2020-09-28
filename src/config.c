@@ -470,7 +470,6 @@ static void configure_method_parameters(void) {
 	conf.overhead = 0;
 	conf.encrypt_headroom = 0;
 	conf.decrypt_headroom = 0;
-	conf.tailroom = 0;
 
 	size_t i;
 	for (i = 0; conf.methods[i].name; i++) {
@@ -479,7 +478,6 @@ static void configure_method_parameters(void) {
 		conf.overhead = max_size_t(conf.overhead, provider->overhead);
 		conf.encrypt_headroom = max_size_t(conf.encrypt_headroom, provider->encrypt_headroom);
 		conf.decrypt_headroom = max_size_t(conf.decrypt_headroom, provider->decrypt_headroom);
-		conf.tailroom = max_size_t(conf.tailroom, provider->tailroom);
 	}
 
 	conf.encrypt_headroom = alignto(conf.encrypt_headroom, 16);
@@ -662,9 +660,8 @@ static void configure_peers(bool dirs_only) {
 	}
 
 	size_t headroom = max_size_t(conf.encrypt_headroom, conf.decrypt_headroom + conf.overhead);
-	ctx.max_buffer =
-		alignto(max_size_t(headroom + fastd_max_payload(ctx.max_mtu) + conf.tailroom, MAX_HANDSHAKE_SIZE),
-			sizeof(fastd_block128_t));
+	ctx.max_buffer = alignto(
+		max_size_t(headroom + fastd_max_payload(ctx.max_mtu), MAX_HANDSHAKE_SIZE), sizeof(fastd_block128_t));
 }
 
 /** Initialized the peers not configured through peer directories */
