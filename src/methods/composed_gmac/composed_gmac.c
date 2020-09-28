@@ -15,6 +15,8 @@
 */
 
 
+#include "../../crypto/mac/ghash/ghash.h"
+
 #include "../../crypto.h"
 #include "../../method.h"
 #include "../common.h"
@@ -141,7 +143,7 @@ method_session_init(const fastd_method_t *method, const uint8_t *secret, bool in
 	}
 
 	session->ghash = fastd_mac_get(method->ghash_info);
-	session->ghash_state = session->ghash->init(H.b, 0);
+	session->ghash_state = session->ghash->init(H.b, GHASH_SHIFT_SIZE);
 
 	return session;
 }
@@ -177,20 +179,10 @@ static void method_session_free(fastd_method_session_state_t *session) {
 	}
 }
 
-/** Writes the size of the input in bits to a block (in a way different from the generic-gmac methods) */
-static inline void put_size(fastd_block128_t *out, size_t len) {
-	memset(out, 0, sizeof(fastd_block128_t));
-	out->b[3] = len >> 29;
-	out->b[4] = len >> 21;
-	out->b[5] = len >> 13;
-	out->b[6] = len >> 5;
-	out->b[7] = len << 3;
-}
-
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	*out = fastd_buffer_alloc(sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, sizeof(fastd_block128_t));
+	*out = fastd_buffer_alloc(sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, 0);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -213,10 +205,8 @@ static bool method_encrypt(
 		goto fail;
 
 	fastd_buffer_zero_pad(*out);
-	put_size(&outblocks[n_blocks + 1], in.len);
 
-	if (!session->ghash->digest(
-		    session->ghash_state, &tag, outblocks + 1, (n_blocks + 1) * sizeof(fastd_block128_t)))
+	if (!session->ghash->digest(session->ghash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t)))
 		goto fail;
 
 	block_xor_a(&outblocks[0], &tag);
@@ -275,9 +265,7 @@ static bool method_decrypt(
 		    nonce))
 		goto fail;
 
-	put_size(&inblocks[n_blocks], in.len - sizeof(fastd_block128_t));
-
-	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, n_blocks * sizeof(fastd_block128_t)))
+	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, in.len - sizeof(fastd_block128_t)))
 		goto fail;
 
 	if (!block_equal(&tag, &outblocks[0]))
@@ -306,7 +294,7 @@ const fastd_method_provider_t fastd_method_composed_gmac = {
 	.overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
 	.encrypt_headroom = 0,
 	.decrypt_headroom = 0,
-	.tailroom = sizeof(fastd_block128_t),
+	.tailroom = 0,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

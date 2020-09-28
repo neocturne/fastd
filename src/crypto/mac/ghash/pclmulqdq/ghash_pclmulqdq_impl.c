@@ -11,7 +11,10 @@
 */
 
 
+#include "../ghash.h"
+
 #include "../../../../alloc.h"
+#include "../../../../util.h"
 #include "ghash_pclmulqdq.h"
 
 #include <assert.h>
@@ -30,6 +33,7 @@ typedef union vecblock {
 /** The MAC state used by this GHASH implementation */
 struct fastd_mac_state {
 	vecblock_t H; /**< The hash key used by GHASH */
+	bool shift_size;
 };
 
 
@@ -61,10 +65,12 @@ static inline __m128i byteswap(__m128i v) {
 
 
 /** Initializes the state used by this GHASH implementation */
-fastd_mac_state_t *fastd_ghash_pclmulqdq_init(const uint8_t *key, UNUSED int flags) {
-	assert(flags == 0);
+fastd_mac_state_t *fastd_ghash_pclmulqdq_init(const uint8_t *key, int flags) {
+	assert((flags & ~GHASH_MASK) == 0);
 
 	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
+
+	state->shift_size = flags & GHASH_SHIFT_SIZE;
 
 	memcpy(&state->H, key, sizeof(__m128i));
 	state->H.v = byteswap(state->H.v);
@@ -134,13 +140,25 @@ static __m128i gmul(__m128i v, __m128i h) {
 }
 
 
+static __m128i make_size(size_t len, bool shift) {
+	if (len >= (1U << 29))
+		exit_bug("ghash: oversized input");
+
+	uint32_t size = htobe32((uint32_t)len << 3);
+
+	vecblock_t ret = {};
+	if (shift)
+		ret.b.dw[1] = size;
+	else
+		ret.b.dw[3] = size;
+
+	return ret.v;
+}
+
 /** Calculates the GHASH of the supplied input blocks */
 bool fastd_ghash_pclmulqdq_digest(
 	const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
-	if (length % sizeof(fastd_block128_t))
-		exit_bug("ghash_digest (pclmulqdq): invalid length");
-
-	size_t n_blocks = length / sizeof(fastd_block128_t);
+	size_t n_blocks = block_count(length, sizeof(fastd_block128_t));
 
 	vecblock_t v = { .v = _mm_setzero_si128() };
 
@@ -150,6 +168,9 @@ bool fastd_ghash_pclmulqdq_digest(
 		v.v = _mm_xor_si128(v.v, byteswap(b));
 		v.v = gmul(v.v, state->H.v);
 	}
+
+	v.v = _mm_xor_si128(v.v, byteswap(make_size(length, state->shift_size)));
+	v.v = gmul(v.v, state->H.v);
 
 	v.v = byteswap(v.v);
 	*out = v.b;

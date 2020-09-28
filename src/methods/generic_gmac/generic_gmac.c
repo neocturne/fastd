@@ -146,23 +146,12 @@ static void method_session_free(fastd_method_session_state_t *session) {
 	}
 }
 
-/** Writes the size of the input in bits to a block */
-static inline void put_size(fastd_block128_t *out, size_t len) {
-	memset(out, 0, sizeof(fastd_block128_t));
-	out->b[11] = len >> 29;
-	out->b[12] = len >> 21;
-	out->b[13] = len >> 13;
-	out->b[14] = len >> 5;
-	out->b[15] = len << 3;
-}
-
-
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
 	fastd_buffer_push_zero(&in, sizeof(fastd_block128_t));
 
-	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, sizeof(fastd_block128_t));
+	*out = fastd_buffer_alloc(in.len, COMMON_HEADROOM, 0);
 
 	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
@@ -179,9 +168,7 @@ static bool method_encrypt(
 
 	fastd_buffer_zero_pad(*out);
 
-	put_size(&outblocks[n_blocks], in.len - sizeof(fastd_block128_t));
-
-	if (!session->ghash->digest(session->ghash_state, &tag, outblocks + 1, n_blocks * sizeof(fastd_block128_t)))
+	if (!session->ghash->digest(session->ghash_state, &tag, outblocks + 1, out->len - sizeof(fastd_block128_t)))
 		goto fail;
 
 	block_xor_a(&outblocks[0], &tag);
@@ -232,9 +219,7 @@ static bool method_decrypt(
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	put_size(&inblocks[n_blocks], in.len - sizeof(fastd_block128_t));
-
-	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, n_blocks * sizeof(fastd_block128_t)))
+	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, in.len - sizeof(fastd_block128_t)))
 		goto fail;
 
 	if (!block_equal(&tag, &outblocks[0]))
@@ -263,7 +248,7 @@ const fastd_method_provider_t fastd_method_generic_gmac = {
 	.overhead = COMMON_HEADBYTES + sizeof(fastd_block128_t),
 	.encrypt_headroom = sizeof(fastd_block128_t),
 	.decrypt_headroom = 0,
-	.tailroom = sizeof(fastd_block128_t),
+	.tailroom = 0,
 
 	.create_by_name = method_create_by_name,
 	.destroy = method_destroy,

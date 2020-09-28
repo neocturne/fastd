@@ -10,9 +10,11 @@
    Portable, table-based GHASH implementation
 */
 
+#include "../ghash.h"
 
 #include "../../../../alloc.h"
 #include "../../../../crypto.h"
+#include "../../../../util.h"
 
 #include <assert.h>
 
@@ -20,6 +22,7 @@
 /** MAC state used by this GHASH implmentation */
 struct fastd_mac_state {
 	fastd_block128_t H[32][16]; /**< Lookup table unpacked from the hash key */
+	bool shift_size;
 };
 
 
@@ -56,10 +59,12 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 
 
 /** Initializes the MAC state with the unpacked key data */
-static fastd_mac_state_t *ghash_init(const uint8_t *key, UNUSED int flags) {
-	assert(flags == 0);
+static fastd_mac_state_t *ghash_init(const uint8_t *key, int flags) {
+	assert((flags & ~GHASH_MASK) == 0);
 
 	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
+
+	state->shift_size = flags & GHASH_SHIFT_SIZE;
 
 	fastd_block128_t Hbase[4];
 	fastd_block128_t Rbase[4];
@@ -102,13 +107,25 @@ static fastd_mac_state_t *ghash_init(const uint8_t *key, UNUSED int flags) {
 	return state;
 }
 
+static fastd_block128_t make_size(size_t len, bool shift) {
+	if (len >= (1U << 29))
+		exit_bug("ghash: oversized input");
+
+	uint32_t size = htobe32((uint32_t)len << 3);
+
+	fastd_block128_t ret = {};
+	if (shift)
+		ret.dw[1] = size;
+	else
+		ret.dw[3] = size;
+
+	return ret;
+}
+
 /** Calculates the GHASH of the supplied blocks */
 static bool
 ghash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length) {
-	if (length % sizeof(fastd_block128_t))
-		exit_bug("ghash_digest (builtin): invalid length");
-
-	size_t n_blocks = length / sizeof(fastd_block128_t);
+	size_t n_blocks = block_count(length, sizeof(fastd_block128_t));
 
 	memset(out, 0, sizeof(fastd_block128_t));
 
@@ -117,6 +134,10 @@ ghash_digest(const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_
 		block_xor_a(out, &in[i]);
 		mulH_a(out, state);
 	}
+
+	fastd_block128_t size = make_size(length, state->shift_size);
+	block_xor_a(out, &size);
+	mulH_a(out, state);
 
 	return true;
 }
