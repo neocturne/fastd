@@ -171,7 +171,7 @@ static inline void send_all(fastd_buffer_t buffer, fastd_peer_t *source) {
 			return;
 		}
 
-		conf.protocol->send(dest, fastd_buffer_dup(buffer, conf.encrypt_headroom, 0));
+		conf.protocol->send(dest, fastd_buffer_dup(buffer, conf.encrypt_headroom));
 	}
 
 	fastd_buffer_free(buffer);
@@ -227,7 +227,7 @@ static void align_buffer(fastd_buffer_t *buffer) {
 	if (is_aligned(buffer->data, sizeof(fastd_block128_t)))
 		return;
 
-	fastd_buffer_t new_buf = fastd_buffer_dup(*buffer, conf.encrypt_headroom, 0);
+	fastd_buffer_t new_buf = fastd_buffer_dup(*buffer, conf.encrypt_headroom);
 	fastd_buffer_free(*buffer);
 	*buffer = new_buf;
 }

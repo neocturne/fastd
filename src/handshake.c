@@ -175,12 +175,13 @@ static fastd_buffer_t new_handshake(
 	if (sizeof(fastd_handshake_packet_t) + buffer_space > MAX_HANDSHAKE_SIZE)
 		exit_bug("oversized handshake packet");
 
-	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_handshake_packet_t), 0, buffer_space);
-	fastd_handshake_packet_t *packet = buffer.data;
+	fastd_buffer_t buffer = fastd_buffer_alloc(sizeof(fastd_handshake_packet_t) + buffer_space, 0);
 
+	fastd_handshake_packet_t *packet = buffer.data;
 	packet->packet_type = PACKET_HANDSHAKE;
 	packet->rsv = 0;
 	packet->tlv_len = 0;
+	buffer.len = sizeof(*packet);
 
 	fastd_handshake_add_uint8(&buffer, RECORD_HANDSHAKE_TYPE, type);
 	fastd_handshake_add_uint8(&buffer, RECORD_MODE, get_mode_id());
@@ -277,13 +278,15 @@ void fastd_handshake_send_error(
 	print_error("sending", peer, remote_addr, reply_code, error_detail);
 
 	fastd_buffer_t buffer = fastd_buffer_alloc(
-		sizeof(fastd_handshake_packet_t), 0,
-		3 * RECORD_LEN(1) /* enough space for handshake type, reply code and error detail */);
-	fastd_handshake_packet_t *reply = buffer.data;
+		sizeof(fastd_handshake_packet_t) +
+			3 * RECORD_LEN(1) /* enough space for handshake type, reply code and error detail */,
+		0);
 
+	fastd_handshake_packet_t *reply = buffer.data;
 	reply->packet_type = PACKET_HANDSHAKE;
 	reply->rsv = 0;
 	reply->tlv_len = 0;
+	buffer.len = sizeof(*reply);
 
 	fastd_handshake_add_uint8(&buffer, RECORD_HANDSHAKE_TYPE, handshake->type + 1);
 	fastd_handshake_add_uint8(&buffer, RECORD_REPLY_CODE, reply_code);

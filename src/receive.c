@@ -228,7 +228,7 @@ static inline void handle_socket_receive(
 /** Reads a packet from a socket */
 void fastd_receive(fastd_socket_t *sock) {
 	size_t max_len = max_size_t(fastd_max_payload(ctx.max_mtu) + conf.overhead, MAX_HANDSHAKE_SIZE);
-	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, conf.decrypt_headroom, 0);
+	fastd_buffer_t buffer = fastd_buffer_alloc(max_len, conf.decrypt_headroom);
 	fastd_peer_address_t local_addr;
 	fastd_peer_address_t recvaddr;
 	struct iovec buffer_vec = { .iov_base = buffer.data, .iov_len = buffer.len };

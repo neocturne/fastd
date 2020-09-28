@@ -950,7 +950,7 @@ void fastd_peer_handle_task(fastd_task_t *task) {
 	/* check for keepalive timeout */
 	if (fastd_timed_out(peer->keepalive_timeout)) {
 		pr_debug2("sending keepalive to %P", peer);
-		conf.protocol->send(peer, fastd_buffer_alloc(0, conf.encrypt_headroom, 0));
+		conf.protocol->send(peer, fastd_buffer_alloc(0, conf.encrypt_headroom));
 	}
 
 	if (fastd_timed_out(peer->next_handshake))

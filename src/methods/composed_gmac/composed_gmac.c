@@ -182,7 +182,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 /** Encrypts and authenticates a packet */
 static bool method_encrypt(
 	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *out, fastd_buffer_t in) {
-	*out = fastd_buffer_alloc(sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM, 0);
+	*out = fastd_buffer_alloc(sizeof(fastd_block128_t) + in.len, COMMON_HEADROOM);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
@@ -248,7 +248,7 @@ static bool method_decrypt(
 	uint8_t gmac_nonce[session->method->gmac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(gmac_nonce, in_nonce, sizeof(gmac_nonce));
 
-	*out = fastd_buffer_alloc(in.len, 0, 0);
+	*out = fastd_buffer_alloc(in.len, 0);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
