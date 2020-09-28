@@ -14,6 +14,7 @@
 
 extern const fastd_mac_t fastd_mac_uhash_builtin __attribute__((weak));
 
+/* clang-format off */
 
 /* K = "abcdefghijklmnop" */
 static const uint8_t key[1024 + 3 * 16 + 4 * 24 + 4 * 64 + 4 * 4] = {
@@ -120,3 +121,5 @@ static const uint8_t key[1024 + 3 * 16 + 4 * 24 + 4 * 64 + 4 * 4] = {
 static const fastd_block128_t pad = { .b = {
 	0x8d, 0xdc, 0xc1, 0x69, 0x1a, 0xa6, 0xbe, 0xfb, 0xf0, 0x1a, 0x26, 0x61, 0xb7, 0x76, 0x0a, 0xf8,
 }};
+
+/* clang-format on */

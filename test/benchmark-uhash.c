@@ -5,9 +5,9 @@
 */
 
 
-#include "uhash-common.h"
 #include "alloc.h"
 #include "log.h"
+#include "uhash-common.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -17,7 +17,7 @@ static int64_t get_time(void) {
 	struct timespec ts;
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
 
-	return (1000*(int64_t)ts.tv_sec) + ts.tv_nsec/1000000;
+	return (1000 * (int64_t)ts.tv_sec) + ts.tv_nsec / 1000000;
 }
 
 static void run_benchmark(fastd_mac_state_t *mac_state, size_t iters, size_t size) {
@@ -38,7 +38,7 @@ static void run_benchmark(fastd_mac_state_t *mac_state, size_t iters, size_t siz
 
 	int64_t end = get_time();
 
-	printf("done in %"PRId64" ms\n", end - start);
+	printf("done in %" PRId64 " ms\n", end - start);
 }
 
 

@@ -5,15 +5,15 @@
 */
 
 
-#include "uhash-common.h"
 #include "alloc.h"
+#include "uhash-common.h"
 
+#include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <setjmp.h>
-#include <cmocka.h>
 
+#include <cmocka.h>
 
 static int setup(void **state) {
 	fastd_mac_state_t *mac_state = fastd_mac_uhash_builtin.init(key);
@@ -61,7 +61,7 @@ static void test_uhash2(void **state) {
 	const uint8_t expected[16] = {
 		0x18, 0x5e, 0x4f, 0xe9, 0x05, 0xcb, 0xa7, 0xbd, 0x85, 0xe4, 0xc2, 0xdc, 0x3d, 0x11, 0x7d, 0x8d,
 	};
-	const uint8_t in[] = {'a', 'a', 'a'};
+	const uint8_t in[] = { 'a', 'a', 'a' };
 
 	test_uhash(state, expected, in, array_size(in));
 }
@@ -106,11 +106,8 @@ int main(void) {
 	}
 
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_uhash1),
-		cmocka_unit_test(test_uhash2),
-		cmocka_unit_test(test_uhash3),
-		cmocka_unit_test(test_uhash4),
-		cmocka_unit_test(test_uhash5),
+		cmocka_unit_test(test_uhash1), cmocka_unit_test(test_uhash2), cmocka_unit_test(test_uhash3),
+		cmocka_unit_test(test_uhash4), cmocka_unit_test(test_uhash5),
 	};
 	return cmocka_run_group_tests(tests, setup, teardown);
 }
