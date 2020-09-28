@@ -16,6 +16,8 @@
 #include "../../../../log.h"
 #include "../../../../util.h"
 
+#include <assert.h>
+
 
 /** MAC state used by this UHASH implmentation */
 struct fastd_mac_state {
@@ -78,7 +80,9 @@ static inline uint64_t mod_p36(uint64_t a) {
 
 
 /** Initializes the MAC state with the unpacked key data */
-static fastd_mac_state_t *uhash_init(const uint8_t *key) {
+static fastd_mac_state_t *uhash_init(const uint8_t *key, UNUSED int flags) {
+	assert(flags == 0);
+
 	fastd_mac_state_t *state = fastd_new(fastd_mac_state_t);
 
 	const uint32_t *key32 = (const uint32_t *)key;

@@ -88,10 +88,10 @@ method_session_init(const fastd_method_t *method, const uint8_t *secret, bool in
 	session->method = method;
 
 	session->cipher = fastd_cipher_get(method->cipher_info);
-	session->cipher_state = session->cipher->init(secret);
+	session->cipher_state = session->cipher->init(secret, 0);
 
 	session->uhash = fastd_mac_get(method->uhash_info);
-	session->uhash_state = session->uhash->init(secret + method->cipher_info->key_length);
+	session->uhash_state = session->uhash->init(secret + method->cipher_info->key_length, 0);
 
 	return session;
 }

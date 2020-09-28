@@ -95,7 +95,7 @@ method_session_init(const fastd_method_t *method, const uint8_t *secret, bool in
 	session->method = method;
 
 	session->cipher = fastd_cipher_get(method->cipher_info);
-	session->cipher_state = session->cipher->init(secret);
+	session->cipher_state = session->cipher->init(secret, 0);
 
 	static const fastd_block128_t zeroblock = {};
 	fastd_block128_t H;
@@ -111,7 +111,7 @@ method_session_init(const fastd_method_t *method, const uint8_t *secret, bool in
 	}
 
 	session->ghash = fastd_mac_get(method->ghash_info);
-	session->ghash_state = session->ghash->init(H.b);
+	session->ghash_state = session->ghash->init(H.b, 0);
 
 	return session;
 }

@@ -20,6 +20,8 @@
 #include <nacl/crypto_stream_salsa20.h>
 #endif
 
+#include <assert.h>
+
 
 /** The cipher state */
 struct fastd_cipher_state {
@@ -28,7 +30,9 @@ struct fastd_cipher_state {
 
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t *salsa20_init(const uint8_t *key) {
+static fastd_cipher_state_t *salsa20_init(const uint8_t *key, UNUSED int flags) {
+	assert(flags == 0);
+
 	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 	memcpy(state->key, key, crypto_stream_salsa20_KEYBYTES);
 

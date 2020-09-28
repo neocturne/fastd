@@ -120,10 +120,10 @@ method_session_init(const fastd_method_t *method, const uint8_t *secret, bool in
 	session->method = method;
 
 	session->cipher = fastd_cipher_get(method->cipher_info);
-	session->cipher_state = session->cipher->init(secret);
+	session->cipher_state = session->cipher->init(secret, 0);
 
 	session->gmac_cipher = fastd_cipher_get(method->gmac_cipher_info);
-	session->gmac_cipher_state = session->gmac_cipher->init(secret + method->cipher_info->key_length);
+	session->gmac_cipher_state = session->gmac_cipher->init(secret + method->cipher_info->key_length, 0);
 
 	fastd_block128_t H;
 
@@ -141,7 +141,7 @@ method_session_init(const fastd_method_t *method, const uint8_t *secret, bool in
 	}
 
 	session->ghash = fastd_mac_get(method->ghash_info);
-	session->ghash_state = session->ghash->init(H.b);
+	session->ghash_state = session->ghash->init(H.b, 0);
 
 	return session;
 }

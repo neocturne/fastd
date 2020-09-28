@@ -30,8 +30,8 @@ struct fastd_cipher {
 	/**< Checks if the algorithm is available on the platform used. If NULL, the algorithm is always available. */
 	bool (*available)(void);
 
-	/** Initializes a cipher context with the given key */
-	fastd_cipher_state_t *(*init)(const uint8_t *key);
+	/** Initializes a cipher context with the given key and cipher-specific flags */
+	fastd_cipher_state_t *(*init)(const uint8_t *key, int flags);
 	/** Encrypts or decrypts data */
 	bool (*crypt)(
 		const fastd_cipher_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t len,
@@ -51,8 +51,8 @@ struct fastd_mac {
 	/**< Checks if the algorithm is available on the platform used. If NULL, the algorithm is always available. */
 	bool (*available)(void);
 
-	/** Initializes a MAC context with the given key */
-	fastd_mac_state_t *(*init)(const uint8_t *key);
+	/** Initializes a MAC context with the given key and mac-specific flags */
+	fastd_mac_state_t *(*init)(const uint8_t *key, int flags);
 	/** Computes the MAC of data blocks */
 	bool (*digest)(
 		const fastd_mac_state_t *state, fastd_block128_t *out, const fastd_block128_t *in, size_t length);

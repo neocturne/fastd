@@ -47,7 +47,7 @@ int main(void) {
 		return 77;
 	}
 
-	fastd_mac_state_t *mac_state = fastd_mac_uhash_builtin.init(key);
+	fastd_mac_state_t *mac_state = fastd_mac_uhash_builtin.init(key, 0);
 
 	run_benchmark(mac_state, 100000000, 20);
 	run_benchmark(mac_state, 100000000, 100);

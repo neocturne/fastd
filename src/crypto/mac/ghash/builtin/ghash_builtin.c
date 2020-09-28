@@ -14,6 +14,8 @@
 #include "../../../../alloc.h"
 #include "../../../../crypto.h"
 
+#include <assert.h>
+
 
 /** MAC state used by this GHASH implmentation */
 struct fastd_mac_state {
@@ -54,7 +56,9 @@ static inline void mulH_a(fastd_block128_t *x, const fastd_mac_state_t *cstate) 
 
 
 /** Initializes the MAC state with the unpacked key data */
-static fastd_mac_state_t *ghash_init(const uint8_t *key) {
+static fastd_mac_state_t *ghash_init(const uint8_t *key, UNUSED int flags) {
+	assert(flags == 0);
+
 	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
 
 	fastd_block128_t Hbase[4];

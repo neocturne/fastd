@@ -14,6 +14,8 @@
 #include "../../../../alloc.h"
 #include "ghash_pclmulqdq.h"
 
+#include <assert.h>
+
 #include <emmintrin.h>
 #include <tmmintrin.h>
 #include <wmmintrin.h>
@@ -59,7 +61,9 @@ static inline __m128i byteswap(__m128i v) {
 
 
 /** Initializes the state used by this GHASH implementation */
-fastd_mac_state_t *fastd_ghash_pclmulqdq_init(const uint8_t *key) {
+fastd_mac_state_t *fastd_ghash_pclmulqdq_init(const uint8_t *key, UNUSED int flags) {
+	assert(flags == 0);
+
 	fastd_mac_state_t *state = fastd_new_aligned(fastd_mac_state_t, 16);
 
 	memcpy(&state->H, key, sizeof(__m128i));

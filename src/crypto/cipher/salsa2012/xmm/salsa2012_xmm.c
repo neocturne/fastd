@@ -18,6 +18,8 @@
 #include "../../../../cpuid.h"
 #include "../../../../crypto.h"
 
+#include <assert.h>
+
 
 /** The length of the key used by Salsa20/12 */
 #define KEYBYTES 32
@@ -41,7 +43,9 @@ static bool salsa2012_available(void) {
 }
 
 /** Initializes the cipher state */
-static fastd_cipher_state_t *salsa2012_init(const uint8_t *key) {
+static fastd_cipher_state_t *salsa2012_init(const uint8_t *key, UNUSED int flags) {
+	assert(flags == 0);
+
 	fastd_cipher_state_t *state = fastd_new(fastd_cipher_state_t);
 	memcpy(state->key, key, KEYBYTES);
 

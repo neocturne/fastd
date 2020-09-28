@@ -13,9 +13,13 @@
 
 #include "../../../../crypto.h"
 
+#include <assert.h>
+
 
 /** Doesn't do anything as the null cipher doesn't use any state */
-static fastd_cipher_state_t *null_init(UNUSED const uint8_t *key) {
+static fastd_cipher_state_t *null_init(UNUSED const uint8_t *key, UNUSED int flags) {
+	assert(flags == 0);
+
 	return NULL;
 }
 

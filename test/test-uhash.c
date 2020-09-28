@@ -16,7 +16,7 @@
 #include <cmocka.h>
 
 static int setup(void **state) {
-	fastd_mac_state_t *mac_state = fastd_mac_uhash_builtin.init(key);
+	fastd_mac_state_t *mac_state = fastd_mac_uhash_builtin.init(key, 0);
 	*state = mac_state;
 	return 0;
 }
