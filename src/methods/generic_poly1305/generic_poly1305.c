@@ -139,7 +139,7 @@ static bool method_encrypt(
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
-	fastd_block128_t *inblocks = in.data;
+	const fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
 
@@ -176,10 +176,13 @@ static bool method_decrypt(
 	if (!method_session_is_valid(session))
 		return false;
 
+
 	uint8_t in_nonce[COMMON_NONCEBYTES];
 	uint8_t flags;
 	int64_t age;
-	if (!fastd_method_handle_common_header(&session->common, &in, in_nonce, &flags, &age))
+
+	fastd_buffer_view_t in_view = fastd_buffer_get_view(&in);
+	if (!fastd_method_handle_common_header(&session->common, &in_view, in_nonce, &flags, &age))
 		return false;
 
 	if (flags)
@@ -189,13 +192,14 @@ static bool method_decrypt(
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
 
 	uint8_t tag[TAGBYTES] __attribute__((aligned(8)));
+	fastd_buffer_pull(&in, COMMON_HEADBYTES);
 	fastd_buffer_pull_to(&in, tag, TAGBYTES);
 	fastd_buffer_push_zero(&in, KEYBYTES);
 
 	*out = fastd_buffer_alloc(in.len, 0);
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
-	fastd_block128_t *inblocks = in.data;
+	const fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 
 	bool ok = session->cipher->crypt(

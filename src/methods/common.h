@@ -120,18 +120,18 @@ fastd_method_put_common_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMO
 	fastd_buffer_push_from(buffer, &packet_type, 1);
 }
 
-/** Removes the common header from a packet buffer */
+/** Removes the common header from a view of a packet buffer */
 static inline void
-fastd_method_take_common_header(fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
-	fastd_buffer_pull(buffer, 1);
-	fastd_buffer_pull_to(buffer, flags, 1);
-	fastd_buffer_pull_to(buffer, nonce, COMMON_NONCEBYTES);
+fastd_method_take_common_header(fastd_buffer_view_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
+	fastd_buffer_view_pull(buffer, 1);
+	fastd_buffer_view_pull_to(buffer, flags, 1);
+	fastd_buffer_view_pull_to(buffer, nonce, COMMON_NONCEBYTES);
 }
 
 /** Handles the common header of a packet */
 static inline bool fastd_method_handle_common_header(
-	const fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags,
-	int64_t *age) {
+	const fastd_method_common_t *session, fastd_buffer_view_t *buffer, uint8_t nonce[COMMON_NONCEBYTES],
+	uint8_t *flags, int64_t *age) {
 	fastd_method_take_common_header(buffer, nonce, flags);
 	return fastd_method_is_nonce_valid(session, nonce, age);
 }

@@ -186,7 +186,7 @@ static bool method_encrypt(
 
 	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
 
-	fastd_block128_t *inblocks = in.data;
+	const fastd_block128_t *inblocks = in.data;
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
@@ -233,10 +233,12 @@ static bool method_decrypt(
 	if (!method_session_is_valid(session))
 		return false;
 
+	fastd_buffer_view_t in_view = fastd_buffer_get_view(&in);
+
 	uint8_t in_nonce[COMMON_NONCEBYTES];
 	uint8_t flags;
 	int64_t age;
-	if (!fastd_method_handle_common_header(&session->common, &in, in_nonce, &flags, &age))
+	if (!fastd_method_handle_common_header(&session->common, &in_view, in_nonce, &flags, &age))
 		return false;
 
 	if (flags)
@@ -248,11 +250,11 @@ static bool method_decrypt(
 	uint8_t gmac_nonce[session->method->gmac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(gmac_nonce, in_nonce, sizeof(gmac_nonce));
 
-	*out = fastd_buffer_alloc(in.len, 0);
+	*out = fastd_buffer_alloc(in_view.len, 0);
 
-	int n_blocks = block_count(in.len, sizeof(fastd_block128_t));
+	int n_blocks = block_count(in_view.len, sizeof(fastd_block128_t));
 
-	fastd_block128_t *inblocks = in.data;
+	const fastd_block128_t *inblocks = in_view.data;
 	fastd_block128_t *outblocks = out->data;
 	fastd_block128_t tag;
 
@@ -265,7 +267,7 @@ static bool method_decrypt(
 		    nonce))
 		goto fail;
 
-	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, in.len - sizeof(fastd_block128_t)))
+	if (!session->ghash->digest(session->ghash_state, &tag, inblocks + 1, in_view.len - sizeof(fastd_block128_t)))
 		goto fail;
 
 	if (!block_equal(&tag, &outblocks[0]))
