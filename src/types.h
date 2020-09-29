@@ -84,6 +84,7 @@ typedef int64_t fastd_timeout_t;
 
 
 typedef struct fastd_buffer fastd_buffer_t;
+typedef struct fastd_buffer_view fastd_buffer_view_t;
 typedef struct fastd_poll_fd fastd_poll_fd_t;
 typedef struct fastd_pqueue fastd_pqueue_t;
 typedef struct fastd_task fastd_task_t;

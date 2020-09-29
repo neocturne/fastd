@@ -26,6 +26,12 @@ struct fastd_buffer {
 	size_t len; /**< The data length */
 };
 
+/** A view on a buffer */
+struct fastd_buffer_view {
+	const void *data; /**< The beginning of the data in the buffer view */
+	size_t len;       /**< The data length */
+};
+
 
 fastd_buffer_t fastd_buffer_alloc(size_t len, size_t head_space);
 
@@ -84,4 +90,24 @@ static inline void fastd_buffer_pull(fastd_buffer_t *buffer, size_t len) {
 static inline void fastd_buffer_pull_to(fastd_buffer_t *buffer, void *data, size_t len) {
 	memcpy(data, buffer->data, len);
 	fastd_buffer_pull(buffer, len);
+}
+
+/** Creates a read-only view of a buffer */
+static inline fastd_buffer_view_t fastd_buffer_get_view(const fastd_buffer_t *buffer) {
+	return (fastd_buffer_view_t){ .data = buffer->data, .len = buffer->len };
+}
+
+/** Pulls the view head (increases the head space) */
+static inline void fastd_buffer_view_pull(fastd_buffer_view_t *view, size_t len) {
+	if (view->len < len)
+		exit_bug("tried to pull view across tail");
+
+	view->data += len;
+	view->len -= len;
+}
+
+/** Pulls the view head, copying the removed view data somewhere else */
+static inline void fastd_buffer_view_pull_to(fastd_buffer_view_t *view, void *data, size_t len) {
+	memcpy(data, view->data, len);
+	fastd_buffer_view_pull(view, len);
 }
