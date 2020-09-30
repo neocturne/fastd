@@ -110,19 +110,19 @@ static void protocol_handle_recv(fastd_peer_t *peer, fastd_buffer_t *buffer) {
 	if (!peer->protocol_state || !check_session(peer))
 		goto fail;
 
-	fastd_buffer_t *recv_buffer;
-	bool ok = false, reordered = false;
+	fastd_buffer_t *recv_buffer = NULL;
+	bool reordered = false;
 
 	fastd_buffer_zero_pad(buffer);
 
 	if (is_session_valid(&peer->protocol_state->old_session))
-		ok = peer->protocol_state->old_session.method->provider->decrypt(
-			peer, peer->protocol_state->old_session.method_state, &recv_buffer, buffer, &reordered);
+		recv_buffer = peer->protocol_state->old_session.method->provider->decrypt(
+			peer, peer->protocol_state->old_session.method_state, buffer, &reordered);
 
-	if (!ok) {
-		ok = peer->protocol_state->session.method->provider->decrypt(
-			peer, peer->protocol_state->session.method_state, &recv_buffer, buffer, &reordered);
-		if (!ok) {
+	if (!recv_buffer) {
+		recv_buffer = peer->protocol_state->session.method->provider->decrypt(
+			peer, peer->protocol_state->session.method_state, buffer, &reordered);
+		if (!recv_buffer) {
 			pr_debug2("verification failed for packet received from %P", peer);
 			goto fail;
 		}
@@ -166,8 +166,8 @@ static void session_send(fastd_peer_t *peer, fastd_buffer_t *buffer, protocol_se
 
 	fastd_buffer_zero_pad(buffer);
 
-	fastd_buffer_t *send_buffer;
-	if (!session->method->provider->encrypt(peer, session->method_state, &send_buffer, buffer)) {
+	fastd_buffer_t *send_buffer = session->method->provider->encrypt(peer, session->method_state, buffer);
+	if (!send_buffer) {
 		fastd_buffer_free(buffer);
 		pr_error("failed to encrypt packet for %P", peer);
 		return;

@@ -128,11 +128,11 @@ static void method_session_free(fastd_method_session_state_t *session) {
 
 
 /** Encrypts and authenticates a packet */
-static bool method_encrypt(
-	UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in) {
+static fastd_buffer_t *
+method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *in) {
 	fastd_buffer_push_zero(in, KEYBYTES);
 
-	fastd_buffer_t *out = *outp = fastd_buffer_alloc(in->len, COMMON_HEADROOM);
+	fastd_buffer_t *out = fastd_buffer_alloc(in->len, COMMON_HEADROOM);
 
 	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, session->common.send_nonce, sizeof(nonce));
@@ -159,22 +159,21 @@ static bool method_encrypt(
 	fastd_method_put_common_header(out, session->common.send_nonce, 0);
 	fastd_method_increment_nonce(&session->common);
 
-	return true;
+	return out;
 
 fail:
 	fastd_buffer_free(out);
-	return false;
+	return NULL;
 }
 
 /** Verifies and decrypts a packet */
-static bool method_decrypt(
-	fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t **outp, fastd_buffer_t *in,
-	bool *reordered) {
+static fastd_buffer_t *
+method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *in, bool *reordered) {
 	if (in->len < COMMON_HEADBYTES + TAGBYTES)
-		return false;
+		return NULL;
 
 	if (!method_session_is_valid(session))
-		return false;
+		return NULL;
 
 
 	uint8_t in_nonce[COMMON_NONCEBYTES];
@@ -183,10 +182,10 @@ static bool method_decrypt(
 
 	fastd_buffer_view_t in_view = fastd_buffer_get_view(in);
 	if (!fastd_method_handle_common_header(&session->common, &in_view, in_nonce, &flags, &age))
-		return false;
+		return NULL;
 
 	if (flags)
-		return false;
+		return NULL;
 
 	uint8_t nonce[session->method->cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(nonce, in_nonce, sizeof(nonce));
@@ -196,7 +195,7 @@ static bool method_decrypt(
 	fastd_buffer_pull_to(in, tag, TAGBYTES);
 	fastd_buffer_push_zero(in, KEYBYTES);
 
-	fastd_buffer_t *out = *outp = fastd_buffer_alloc(in->len, 0);
+	fastd_buffer_t *out = fastd_buffer_alloc(in->len, 0);
 
 	int n_blocks = block_count(in->len, sizeof(fastd_block128_t));
 	const fastd_block128_t *inblocks = in->data;
@@ -223,7 +222,7 @@ static bool method_decrypt(
 	else
 		out->len = 0;
 
-	return true;
+	return out;
 
 fail:
 	fastd_buffer_free(out);
@@ -232,7 +231,7 @@ fail:
 	fastd_buffer_push_from(in, tag, TAGBYTES);
 	fastd_method_put_common_header(in, in_nonce, 0);
 
-	return false;
+	return NULL;
 }
 
 
