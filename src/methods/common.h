@@ -28,6 +28,8 @@
 
 /** Common method session state */
 typedef struct fastd_method_common {
+	fastd_peer_t *peer;
+
 	fastd_timeout_t valid_till;    /**< How long the session is valid */
 	fastd_timeout_t refresh_after; /**< When to try refreshing the session */
 
@@ -41,7 +43,7 @@ typedef struct fastd_method_common {
 } fastd_method_common_t;
 
 
-void fastd_method_common_init(fastd_method_common_t *session, bool initiator);
+void fastd_method_common_init(fastd_method_common_t *session, fastd_peer_t *peer, bool initiator);
 bool fastd_method_is_nonce_valid(
 	const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age);
 fastd_tristate_t fastd_method_reorder_check(

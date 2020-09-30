@@ -15,8 +15,10 @@
 
 
 /** Common initialization for a new session */
-void fastd_method_common_init(fastd_method_common_t *session, bool initiator) {
+void fastd_method_common_init(fastd_method_common_t *session, fastd_peer_t *peer, bool initiator) {
 	memset(session, 0, sizeof(*session));
+
+	session->peer = peer;
 
 	session->valid_till = ctx.now + KEY_VALID;
 	session->refresh_after = ctx.now + KEY_REFRESH - fastd_rand(0, KEY_REFRESH_SPLAY);

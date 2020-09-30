@@ -94,7 +94,7 @@ static inline bool new_session(
 	derive_key(secret, blocks, salt, method->name, A, B, X, Y, sigma);
 
 	peer->protocol_state->session.method_state =
-		method->provider->session_init(method->method, (const uint8_t *)secret, initiator);
+		method->provider->session_init(peer, method->method, (const uint8_t *)secret, initiator);
 
 	if (!peer->protocol_state->session.method_state)
 		return false;

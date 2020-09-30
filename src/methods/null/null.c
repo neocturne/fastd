@@ -34,8 +34,8 @@ static size_t method_key_length(UNUSED const fastd_method_t *method) {
 }
 
 /** Initiates a new null session */
-static fastd_method_session_state_t *
-method_session_init(UNUSED const fastd_method_t *method, UNUSED const uint8_t *secret, bool initiator) {
+static fastd_method_session_state_t *method_session_init(
+	UNUSED fastd_peer_t *peer, UNUSED const fastd_method_t *method, UNUSED const uint8_t *secret, bool initiator) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
 	session->valid = true;
