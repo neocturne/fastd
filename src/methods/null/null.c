@@ -75,8 +75,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Just returns the input buffer as the output */
-static fastd_buffer_t *
-method_encrypt(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *in) {
+static fastd_buffer_t *method_encrypt(UNUSED fastd_method_session_state_t *session, fastd_buffer_t *in) {
 	const uint8_t packet_type = PACKET_DATA;
 	fastd_buffer_push_from(in, &packet_type, 1);
 
@@ -84,9 +83,8 @@ method_encrypt(UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *s
 }
 
 /** Just returns the input buffer as the output */
-static fastd_buffer_t *method_decrypt(
-	UNUSED fastd_peer_t *peer, UNUSED fastd_method_session_state_t *session, fastd_buffer_t *in,
-	UNUSED bool *reordered) {
+static fastd_buffer_t *
+method_decrypt(UNUSED fastd_method_session_state_t *session, fastd_buffer_t *in, UNUSED bool *reordered) {
 	fastd_buffer_pull(in, 1);
 
 	return in;

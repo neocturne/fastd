@@ -127,8 +127,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Encrypts and authenticates a packet */
-static fastd_buffer_t *
-method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *in) {
+static fastd_buffer_t *method_encrypt(fastd_method_session_state_t *session, fastd_buffer_t *in) {
 	fastd_buffer_push_zero(in, sizeof(fastd_block128_t));
 
 	fastd_buffer_t *out = fastd_buffer_alloc(in->len, COMMON_HEADROOM);
@@ -166,8 +165,7 @@ fail:
 }
 
 /** Verifies and decrypts a packet */
-static fastd_buffer_t *
-method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *in, bool *reordered) {
+static fastd_buffer_t *method_decrypt(fastd_method_session_state_t *session, fastd_buffer_t *in, bool *reordered) {
 	if (in->len < COMMON_HEADBYTES + sizeof(fastd_block128_t))
 		return NULL;
 
@@ -210,7 +208,7 @@ method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_
 
 	fastd_buffer_pull(out, sizeof(fastd_block128_t));
 
-	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
+	fastd_tristate_t reorder_check = fastd_method_reorder_check(&session->common, in_nonce, age);
 	if (reorder_check.set)
 		*reordered = reorder_check.state;
 	else

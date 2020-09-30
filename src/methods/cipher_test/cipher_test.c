@@ -114,8 +114,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 
 
 /** Encrypts a packet and adds the common method header */
-static fastd_buffer_t *
-method_encrypt(UNUSED fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *in) {
+static fastd_buffer_t *method_encrypt(fastd_method_session_state_t *session, fastd_buffer_t *in) {
 	fastd_buffer_t *out = fastd_buffer_alloc(in->len, COMMON_HEADROOM);
 
 	uint8_t nonce[session->method->cipher_info->iv_length ?: 1] __attribute__((aligned(8)));
@@ -143,8 +142,7 @@ fail:
 }
 
 /** Decrypts a packet */
-static fastd_buffer_t *
-method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_buffer_t *in, bool *reordered) {
+static fastd_buffer_t *method_decrypt(fastd_method_session_state_t *session, fastd_buffer_t *in, bool *reordered) {
 	if (in->len < COMMON_HEADBYTES)
 		return NULL;
 
@@ -176,7 +174,7 @@ method_decrypt(fastd_peer_t *peer, fastd_method_session_state_t *session, fastd_
 		    session->cipher_state, outblocks, inblocks, n_blocks * sizeof(fastd_block128_t), nonce))
 		goto fail;
 
-	fastd_tristate_t reorder_check = fastd_method_reorder_check(peer, &session->common, in_nonce, age);
+	fastd_tristate_t reorder_check = fastd_method_reorder_check(&session->common, in_nonce, age);
 	if (reorder_check.set)
 		*reordered = reorder_check.state;
 	else
