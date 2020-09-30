@@ -293,6 +293,14 @@ void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t *buffer, bool reord
 	fastd_iface_write(peer->iface, buffer);
 
 	if (conf.mode == MODE_TAP && conf.forward) {
+		/*
+		  Misaligned buffers come from the null method, as it uses a 1-byte header
+		  rather than (16*n+8)-byte like all other methods. When such a buffer enters
+		  the transmit path again through fastd's forward feature, it will violate
+		  the fastd_block128_t alignment.
+		*/
+		buffer = fastd_buffer_align(buffer, conf.encrypt_headroom);
+
 		fastd_send_data(buffer, peer, NULL);
 		return;
 	}

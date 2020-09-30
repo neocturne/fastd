@@ -64,13 +64,6 @@ static inline size_t alignto(size_t l, size_t a) {
 }
 
 /**
-   Checks whether a pointer satisfies a given alignment
- */
-static inline bool is_aligned(const void *p, size_t a) {
-	return !((uintptr_t)p & (a - 1));
-}
-
-/**
    Checks if two strings are equal
 
    @param str1 The first string (may be NULL)

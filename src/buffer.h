@@ -48,6 +48,31 @@ static inline void fastd_buffer_free(fastd_buffer_t *buffer) {
 	free(buffer);
 }
 
+/**
+   Returns the amount of headroom a buffer has
+   (the number of bytes that can be pushed)
+*/
+static inline size_t fastd_buffer_headroom(const fastd_buffer_t *buffer) {
+	return (const uint8_t *)buffer->data - buffer->base;
+}
+
+/**
+   Realigns a buffer so that it has a given minimal headroom and, subtracting
+   the minimal headroom, is aligned for fastd_block128_t
+
+   Consumes the passed buffer.
+*/
+static inline fastd_buffer_t *fastd_buffer_align(fastd_buffer_t *buffer, size_t min_headroom) {
+	ssize_t surplus = fastd_buffer_headroom(buffer) - min_headroom;
+	if (surplus >= 0 && surplus % sizeof(fastd_block128_t) == 0)
+		return buffer;
+
+	fastd_buffer_t *new_buffer = fastd_buffer_dup(buffer, min_headroom);
+	fastd_buffer_free(buffer);
+
+	return new_buffer;
+}
+
 /** Zeroes the trailing padding of a buffer, aligned to a multiple of 16 bytes */
 static inline void fastd_buffer_zero_pad(fastd_buffer_t *buffer) {
 	uint8_t *end = buffer->data + buffer->len;
@@ -57,7 +82,7 @@ static inline void fastd_buffer_zero_pad(fastd_buffer_t *buffer) {
 
 /** Pushes the data head (decreases the head space) */
 static inline void fastd_buffer_push(fastd_buffer_t *buffer, size_t len) {
-	if (len > (size_t)((uint8_t *)buffer->data - buffer->base))
+	if (len > fastd_buffer_headroom(buffer))
 		exit_bug("tried to push buffer across base");
 
 	buffer->data -= len;

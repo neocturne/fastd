@@ -214,28 +214,8 @@ static inline bool send_data_tap_single(fastd_buffer_t *buffer, fastd_peer_t *so
 	return true;
 }
 
-/**
-   Realigns a buffer so that its data pointer is aligned to 16 bytes
-   (the alignment of fastd_block128_t)
-
-   Misaligned buffers come from the null method, as it uses a 1-byte header
-   rather than (16*n+8)-byte like all other methods. When such a buffer enters
-   the transmit path again through fastd's forward feature, it will violate
-   the fastd_block128_t alignment.
- */
-static void align_buffer(fastd_buffer_t **buffer) {
-	if (is_aligned((*buffer)->data, sizeof(fastd_block128_t)))
-		return;
-
-	fastd_buffer_t *new_buf = fastd_buffer_dup(*buffer, conf.encrypt_headroom);
-	fastd_buffer_free(*buffer);
-	*buffer = new_buf;
-}
-
 /** Sends a buffer of payload data to other peers */
 void fastd_send_data(fastd_buffer_t *buffer, fastd_peer_t *source, fastd_peer_t *dest) {
-	align_buffer(&buffer);
-
 	if (dest) {
 		conf.protocol->send(dest, buffer);
 		return;
