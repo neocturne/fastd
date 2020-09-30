@@ -33,12 +33,12 @@ struct fastd_buffer_view {
 };
 
 
-fastd_buffer_t *fastd_buffer_alloc(size_t len, size_t head_space);
+fastd_buffer_t *fastd_buffer_alloc(size_t len, size_t headroom);
 
 
 /** Duplicates a buffer */
-static inline fastd_buffer_t *fastd_buffer_dup(const fastd_buffer_t *buffer, size_t head_space) {
-	fastd_buffer_t *new_buffer = fastd_buffer_alloc(buffer->len, head_space);
+static inline fastd_buffer_t *fastd_buffer_dup(const fastd_buffer_t *buffer, size_t headroom) {
+	fastd_buffer_t *new_buffer = fastd_buffer_alloc(buffer->len, headroom);
 	memcpy(new_buffer->data, buffer->data, buffer->len);
 	return new_buffer;
 }
