@@ -225,7 +225,8 @@ static fastd_buffer_t *method_decrypt(fastd_method_session_state_t *session, fas
 	uint8_t umac_nonce[session->method->umac_cipher_info->iv_length] __attribute__((aligned(8)));
 	fastd_method_expand_nonce(umac_nonce, in_nonce, sizeof(umac_nonce));
 
-	fastd_buffer_t *out = fastd_buffer_alloc(in_view.len, 0);
+	fastd_buffer_t *out =
+		fastd_buffer_alloc(in_view.len, ssub_size_t(conf.encrypt_headroom, sizeof(fastd_block128_t)));
 
 	int n_blocks = block_count(in_view.len, sizeof(fastd_block128_t));
 

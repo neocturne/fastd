@@ -88,6 +88,11 @@ static inline size_t min_size_t(size_t a, size_t b) {
 	return (a < b) ? a : b;
 }
 
+/** Saturating substraction of two size_t values */
+static inline size_t ssub_size_t(size_t a, size_t b) {
+	return (a > b) ? (a - b) : 0;
+}
+
 
 #ifdef __APPLE__
 

@@ -193,7 +193,7 @@ static fastd_buffer_t *method_decrypt(fastd_method_session_state_t *session, fas
 	fastd_buffer_pull_to(in, tag, TAGBYTES);
 	fastd_buffer_push_zero(in, KEYBYTES);
 
-	fastd_buffer_t *out = fastd_buffer_alloc(in->len, 0);
+	fastd_buffer_t *out = fastd_buffer_alloc(in->len, ssub_size_t(conf.encrypt_headroom, KEYBYTES));
 
 	int n_blocks = block_count(in->len, sizeof(fastd_block128_t));
 	const fastd_block128_t *inblocks = in->data;
