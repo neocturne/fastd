@@ -524,6 +524,7 @@ static inline void init(int argc, char *argv[]) {
 		on_up(ctx.iface);
 
 	fastd_configure_peers();
+	fastd_init_buffers();
 
 	if (conf.drop_caps == DROP_CAPS_ON)
 		drop_caps();
@@ -607,6 +608,8 @@ static inline void cleanup(void) {
 	pr_info("terminating fastd");
 
 	delete_peers();
+
+	fastd_cleanup_buffers();
 
 	if (ctx.iface) {
 		on_down(ctx.iface);

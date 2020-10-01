@@ -22,7 +22,6 @@ struct fastd_buffer {
 	void *data; /**< The beginning of the actual data in the buffer */
 	size_t len; /**< The data length */
 
-	size_t base_len;                             /**< The size of the allocated memory area */
 	uint8_t base[] __attribute__((aligned(16))); /**< Buffer space */
 };
 
@@ -33,7 +32,12 @@ struct fastd_buffer_view {
 };
 
 
+void fastd_init_buffers(void);
+void fastd_cleanup_buffers(void);
+
+
 fastd_buffer_t *fastd_buffer_alloc(size_t len, size_t headroom);
+void fastd_buffer_free(fastd_buffer_t *buffer);
 
 
 /** Duplicates a buffer */
@@ -41,11 +45,6 @@ static inline fastd_buffer_t *fastd_buffer_dup(const fastd_buffer_t *buffer, siz
 	fastd_buffer_t *new_buffer = fastd_buffer_alloc(buffer->len, headroom);
 	memcpy(new_buffer->data, buffer->data, buffer->len);
 	return new_buffer;
-}
-
-/** Frees a buffer */
-static inline void fastd_buffer_free(fastd_buffer_t *buffer) {
-	free(buffer);
 }
 
 /**
