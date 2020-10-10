@@ -1,0 +1,37 @@
+fastd v20
+=========
+
+New features
+~~~~~~~~~~~~
+
+* The OpenWrt init script has been migrated to *USE_PROCD*. This allows
+  automatic restarts of fastd in the case of crashes.
+
+  - The UCI options ``up`` and ``down`` have been removed, as their
+    implementation was incompatible with procd-managed services. Use the options
+    ``on_up`` and ``on_down`` instead.
+
+Bugfixes
+~~~~~~~~
+
+* The *forward* feature was implemented incorrectly for configurations that use
+  different encryption methods for different peers. As *forward* is generally
+  disabled when running mesh routing protocols over fastd, affected
+  configurations are very uncommon.
+
+  - Packets forwarded from peers using the *null* method were not aligned
+    correctly, which could lead to inferior performance or crashes on non-x86
+    platforms.
+  - Certain combinations of encryption methods led to crashes due to
+    insuffucient buffer space, triggering an assertion failure.
+
+Other changes
+~~~~~~~~~~~~~
+
+* The CMake-based build system of fastd has been replaced with the more modern
+  `Meson <https://mesonbuild.com/>`_. Updated build instructions can be found
+  in the :doc:`../devel/building` section.
+* Memory management of fastd's packet buffers has been optimized, increasing
+  throughput by 5~10% for many encryption methods, especially on low-end
+  hardware.
+* The fastd build requires at least Bison 2.6 now.
