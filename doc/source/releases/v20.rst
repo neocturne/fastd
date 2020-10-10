@@ -11,6 +11,10 @@ New features
     implementation was incompatible with procd-managed services. Use the options
     ``on_up`` and ``on_down`` instead.
 
+* Stale status sockets are deleted automatically now, so a restart after a crash
+  does not fail. To avoid deleting active status sockets, a lock file is created
+  next to the socket file.
+
 Bugfixes
 ~~~~~~~~
 
