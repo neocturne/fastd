@@ -28,6 +28,13 @@ config_y = custom_target(
 version_h = vcs_tag(
 	output : 'version.h',
 	input : 'version.h.in',
+	command : [
+		'git',
+		'--work-tree=' + meson.source_root(),
+		'--git-dir=' + meson.source_root() / '.git',
+		'describe',
+		'--dirty=+',
+	],
 )
 
 src = [
