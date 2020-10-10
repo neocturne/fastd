@@ -318,12 +318,6 @@ start_instance() {
 		error "$s: startup failed"
 		return 1
 	fi
-
-	# Used for `up` script only - may be unset in multi-interface configs
-	config_get interface "$s" interface
-
-	config_get up "$s" up
-	[ -n "$up" ] && sh -c "$up" - "$interface"
 }
 
 stop_instance() {
@@ -332,12 +326,6 @@ stop_instance() {
 	section_enabled "$s" || return 1
 
 	SERVICE_PID_FILE="/var/run/fastd.$s.pid"
-
-	# Used for `down` script only - may be unset in multi-interface configs
-	config_get interface "$s" interface
-
-	config_get down "$s" down
-	[ -n "$down" ] && sh -c "$down" - "$interface"
 
 	service_stop "$FASTD_COMMAND"
 
