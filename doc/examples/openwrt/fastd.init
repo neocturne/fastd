@@ -5,13 +5,11 @@ set -o pipefail
 
 START=95
 
-SERVICE_USE_PID=1
+USE_PROCD=1
 
 EXTRA_COMMANDS='up down show_key generate_key'
 
 EXTRA_HELP='
-	up		starts the instances given as additional arguments
-	down		stops the instances given as additional arguments
 	show_key	shows the public keys of the instances given as
 			additional arguments
 	generate_key	generates the private keys for the instances given as
@@ -36,7 +34,7 @@ error() {
 }
 
 instance_usage() {
-	echo "Usage: ${initscript} $1 instance..." 1>&2
+	echo "Usage: ${initscript} $1 instance" 1>&2
 	exit 1
 }
 
@@ -199,7 +197,7 @@ create_peer_config() {
 
 update_peer_group() {
 	local net="$1"; local group_dir="$2"; local group="$3"; local update_only="$4"
-	local path="$TMP_FASTD/fastd.$net/$group_dir"
+	local path="$TMP_FASTD/fastd.$net.peers/$group_dir"
 
 	rm -rf "$path"
 	mkdir -p "$path"
@@ -292,8 +290,6 @@ start_instance() {
 
 	section_enabled "$s" || return 1
 
-	SERVICE_PID_FILE="/var/run/fastd.$s.pid"
-
 	config_get mode "$s" mode
 	if [ -z "$mode" ]; then
 		error "$s: mode is not set"
@@ -306,115 +302,103 @@ start_instance() {
 		return 1
 	fi
 
-	rm -f "$SERVICE_PID_FILE"
-	touch "$SERVICE_PID_FILE"
+	local cfgfile="$TMP_FASTD/fastd.$s.conf"
+	local cfgfiletmp="${cfgfile}.$$"
 
-	config_get user "$s" user
-	if [ "$user" ]; then
-		chown "$user" "$SERVICE_PID_FILE"
-	fi
+	rm -f "$cfgfiletmp"
+	mkdir -p "$TMP_FASTD"
+	touch "$cfgfiletmp"
+	chmod 600 "$cfgfiletmp"
+	generate_config_secret "$secret" > "$cfgfiletmp" || return 1
+	generate_config "$s" >> "$cfgfiletmp" || return 1
+	mv -f "$cfgfiletmp" "$cfgfile"
 
-	if ! (generate_config_secret "$secret" && generate_config "$s") | service_start "$FASTD_COMMAND" --config - --daemon --pid-file "$SERVICE_PID_FILE"; then
-		error "$s: startup failed"
-		return 1
-	fi
-}
+	procd_open_instance "$s"
 
-stop_instance() {
-	local s="$1"
+	procd_set_param command "$FASTD_COMMAND" --config "$cfgfile"
+	procd_set_param file "$cfgfile"
+	procd_set_param respawn
 
-	section_enabled "$s" || return 1
-
-	SERVICE_PID_FILE="/var/run/fastd.$s.pid"
-
-	service_stop "$FASTD_COMMAND"
-
-	rm -rf "$TMP_FASTD/fastd.$s"
+	procd_close_instance
 }
 
 reload_instance() {
 	local s="$1"
 
-	section_enabled "$s" || return 1
-
-	config_get mode "$s" mode
-
 	update_peer_groups "$s" true
 
-	SERVICE_PID_FILE="/var/run/fastd.$s.pid"
-	service_reload "$FASTD_COMMAND"
+        rc_procd start_service "$s"
+        procd_send_signal fastd "$s"
 }
 
-start() {
-	config_load 'fastd'
-	config_foreach start_instance 'fastd'
-	return 0
-}
-
-stop() {
-	config_load 'fastd'
-	config_foreach stop_instance 'fastd'
-	return 0
-}
-
-reload() {
-	config_load 'fastd'
-	config_foreach reload_instance 'fastd'
-	return 0
-}
-
-up() {
-	[ $# -gt 0 ] || instance_usage 'up'
-
+start_service() {
+	local instance="$1"
 	local exists
-	local instance
+
 	config_load 'fastd'
-	for instance in "$@"; do
+	if [ -z "$instance" ]; then
+		config_foreach start_instance 'fastd'
+	else
 		config_get exists "$instance" 'TYPE'
-		if [ "$exists" = 'fastd' ]; then
-			start_instance "$instance"
+		if [ "$exists" != 'fastd' ]; then
+			echo >&2 "Invalid instance name '$instance'"
+			return 1
 		fi
-	done
+
+		start_instance "$instance"
+	fi
+
+	return 0
 }
 
-down() {
-	[ $# -gt 0 ] || instance_usage 'down'
-
+reload_service() {
+	local instance="$1"
 	local exists
-	local instance
+
 	config_load 'fastd'
-	for instance in "$@"; do
+	if [ -z "$instance" ]; then
+		config_foreach reload_instance 'fastd'
+	else
 		config_get exists "$instance" 'TYPE'
-		if [ "$exists" = 'fastd' ]; then
-			stop_instance "$instance"
+		if [ "$exists" != 'fastd' ]; then
+			echo >&2 "Invalid instance name '$instance'"
+			return 1
 		fi
-	done
+
+		reload_instance "$instance"
+	fi
+
+	return 0
 }
 
 show_key() {
-	[ $# -gt 0 ] || instance_usage 'show_key'
+	[ $# -eq 1 ] || instance_usage 'show_key'
 
+	local instance="$1"
 	local exists
-	local instance
+
 	config_load 'fastd'
-	for instance in "$@"; do
-		config_get exists "$instance" 'TYPE'
-		if [ "$exists" = 'fastd' ]; then
-			show_key_instance "$instance"
-		fi
-	done
+	config_get exists "$instance" 'TYPE'
+	if [ "$exists" != 'fastd' ]; then
+		echo >&2 "Invalid instance name '$instance'"
+		return 1
+	fi
+
+	show_key_instance "$instance"
 }
 
 generate_key() {
-	[ $# -gt 0 ] || instance_usage 'generate_key'
+	[ $# -eq 1 ] || instance_usage 'generate_key'
 
+	local instance="$1"
 	local exists
-	local instance
+
 	config_load 'fastd'
-	for instance in "$@"; do
-		config_get exists "$instance" 'TYPE'
-		if [ "$exists" = 'fastd' ]; then
-			generate_key_instance "$instance"
-		fi
-	done
+	config_get exists "$instance" 'TYPE'
+	if [ "$exists" != 'fastd' ]; then
+		echo >&2 "Invalid instance name '$instance'"
+		return 1
+	fi
+
+	generate_key_instance "$instance"
 }
