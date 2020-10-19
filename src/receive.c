@@ -169,6 +169,11 @@ static inline void handle_socket_receive_known(
 
 	case PACKET_HANDSHAKE:
 		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
+		break;
+
+	default:
+		fastd_buffer_free(buffer);
+		pr_debug("received packet with invalid type from %P[%I]", peer, remote_addr);
 	}
 }
 
@@ -195,6 +200,11 @@ static inline void handle_socket_receive_unknown(
 
 	case PACKET_HANDSHAKE:
 		fastd_handshake_handle(sock, local_addr, remote_addr, NULL, buffer);
+		break;
+
+	default:
+		fastd_buffer_free(buffer);
+		pr_debug("received packet with invalid type from unknown address %I", remote_addr);
 	}
 }
 
