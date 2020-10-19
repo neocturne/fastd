@@ -1,0 +1,17 @@
+fastd v21
+=========
+
+This is a critical bugfix release. All users of fastd v20 must update.
+
+Bugfixes
+~~~~~~~~
+
+The new buffer management of fastd v20 revealed that received packets with an
+invalid type code were handled incorrectly, leaking the packet buffer. This lead
+to an assertion failure as soon as the buffer pool was empty, crashing fastd.
+
+Older versions of fastd are affected as well, but display a different behaviour:
+instead of crashing, the buffer leaks will manifest as a regular memory leak.
+This can still be used for Denial of Service attacks, so a patch for older
+versions will be provided, for the case that users can't or do not want to
+update to a newer version yet.
