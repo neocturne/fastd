@@ -199,7 +199,7 @@ void fastd_protocol_ec25519_fhmqvc_send_empty(fastd_peer_t *peer, protocol_sessi
 	session_send(peer, fastd_buffer_alloc(0, alignto(session->method->provider->encrypt_headroom, 8)), session);
 }
 
-/** get_current_method implementation for ec25519-fhmqvp */
+/** get_current_method implementation for ec25519-fhmqvc */
 const fastd_method_info_t *protocol_get_current_method(const fastd_peer_t *peer) {
 	if (!peer->protocol_state || !fastd_peer_is_established(peer))
 		return NULL;
