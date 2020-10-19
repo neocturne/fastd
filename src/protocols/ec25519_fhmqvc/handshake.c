@@ -118,7 +118,7 @@ static bool establish(
 		return false;
 	}
 
-	pr_verbose("%I authorized as %P", remote_addr, peer);
+	pr_verbose("%I authenticated as %P", remote_addr, peer);
 
 	if (!fastd_peer_claim_address(peer, sock, local_addr, remote_addr, true)) {
 		pr_warn("can't establish session with %P[%I] as the address is used by another peer", peer,
