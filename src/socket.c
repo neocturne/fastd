@@ -31,6 +31,7 @@
 
 #include "fastd.h"
 #include "poll.h"
+#include "socket.h"
 
 #include <net/if.h>
 

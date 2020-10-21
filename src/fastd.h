@@ -41,6 +41,7 @@
 #include "poll.h"
 #include "sem.h"
 #include "shell.h"
+#include "socket.h"
 #include "task.h"
 #include "util.h"
 #include "vector.h"
@@ -151,14 +152,6 @@ struct fastd_bind_address {
 	fastd_bind_address_t *next;		/**< The next address in the list */
 	fastd_peer_address_t addr;		/**< The address to bind to */
 	char *bindtodev;			/**< May contain an interface name to limit the bind to */
-};
-
-/** A socket descriptor */
-struct fastd_socket {
-	fastd_poll_fd_t fd;			/**< The file descriptor for the socket */
-	const fastd_bind_address_t *addr;	/**< The address this socket is supposed to be bound to (or NULL) */
-	fastd_peer_address_t *bound_addr;	/**< The actual address that was bound to (may differ from addr when addr has a random port) */
-	fastd_peer_t *peer;			/**< If the socket belongs to a single peer (as it was create dynamically when sending a handshake), contains that peer */
 };
 
 /** A TUN/TAP interface */
