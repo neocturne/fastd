@@ -184,6 +184,18 @@ static void set_bound_address(fastd_socket_t *sock) {
 	*sock->bound_addr = addr;
 }
 
+static void schedule_socket_task(fastd_socket_t *sock) {
+	if (sock->discovery_timeout == FASTD_TIMEOUT_INV) {
+		pr_debug2("removing scheduled task for socket %B", &sock->addr->addr);
+		fastd_task_unschedule(&sock->task);
+	} else if (fastd_task_timeout(&sock->task) > sock->discovery_timeout) {
+		pr_debug2("replacing scheduled task for socket %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+		fastd_task_unschedule(&sock->task);
+		fastd_task_schedule(&sock->task, TASK_TYPE_SOCKET, sock->discovery_timeout);
+	} else
+		pr_debug2("keeping scheduled task for socket %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+}
+
 /** Tries to initialize sockets for all configured bind addresses */
 void fastd_socket_bind_all(void) {
 	size_t i;
@@ -210,6 +222,7 @@ void fastd_socket_bind_all(void) {
 			pr_info("bound to %B", &bound_addr);
 
 		fastd_poll_fd_register(&sock->fd);
+		schedule_socket_task(sock);
 	}
 }
 
@@ -242,10 +255,12 @@ fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 	sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, fd);
 	sock->addr = NULL;
 	sock->peer = peer;
+	sock->discovery_timeout = FASTD_TIMEOUT_INV;
 
 	set_bound_address(sock);
 
 	fastd_poll_fd_register(&sock->fd);
+	schedule_socket_task(sock);
 
 	return sock;
 }
@@ -275,4 +290,16 @@ void fastd_socket_error(fastd_socket_t *sock) {
 		exit_error("error on socket bound to %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
 	else
 		exit_error("error on socket bound to %B", &sock->addr->addr);
+}
+
+/** Handle socket task for a socket, dispatching discovery */
+void fastd_socket_handle_task(fastd_task_t *task) {
+	fastd_socket_t *sock = container_of(task, fastd_socket_t, task);
+
+	if (fastd_timed_out(sock->discovery_timeout)) {
+		pr_debug("dispatching discovery task to multicast address %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+		// TODO: handle discovery packet.
+	}
+
+	schedule_socket_task(sock);
 }

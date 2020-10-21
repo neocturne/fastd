@@ -33,7 +33,7 @@
 #pragma once
 
 
-#include "types.h"
+#include "task.h"
 
 
 /** A socket descriptor */
@@ -42,4 +42,9 @@ struct fastd_socket {
 	const fastd_bind_address_t *addr;	/**< The address this socket is supposed to be bound to (or NULL) */
 	fastd_peer_address_t *bound_addr;	/**< The actual address that was bound to (may differ from addr when addr has a random port) */
 	fastd_peer_t *peer;			/**< If the socket belongs to a single peer (as it was create dynamically when sending a handshake), contains that peer */
+	fastd_task_t task;			/**< Socket task for managing discovery packets (multicast bind) */
+	fastd_timeout_t discovery_timeout;	/**< Timeout of next discovery packet */
 };
+
+
+void fastd_socket_handle_task(fastd_task_t *task);

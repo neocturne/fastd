@@ -91,6 +91,7 @@ typedef enum fastd_task_type {
 	TASK_TYPE_UNSPEC = 0,	/**< Unspecified task type */
 	TASK_TYPE_MAINTENANCE,	/**< Scheduled maintenance */
 	TASK_TYPE_PEER,		/**< Peer maintenance (handshake, reset, keepalive) */
+	TASK_TYPE_SOCKET,	/**< Socket discovery task */
 } fastd_task_type_t;
 
 

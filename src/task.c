@@ -31,6 +31,7 @@
 
 #include "task.h"
 #include "peer.h"
+#include "socket.h"
 
 
 /** Performs periodic maintenance tasks */
@@ -51,6 +52,10 @@ static void handle_task(void) {
 
 	case TASK_TYPE_PEER:
 		fastd_peer_handle_task(task);
+		break;
+
+	case TASK_TYPE_SOCKET:
+		fastd_socket_handle_task(task);
 		break;
 
 	default:
