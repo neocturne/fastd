@@ -70,7 +70,6 @@ Example config:
   * ``aes128-ctr``: AES128 in counter mode
 
     - ``openssl``: Use implementation from OpenSSL's libcrypto
-    - ``nacl``: Use implementation from NaCl or libsodium
 
   * ``null``: No encryption (for authenticated-only methods using composed_gmac)
 
