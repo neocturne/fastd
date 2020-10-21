@@ -171,17 +171,20 @@ static inline void handle_socket_receive_known(fastd_socket_t *sock, const fastd
 
 	switch (*packet_type) {
 	case PACKET_DATA:
-		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
+		if (fastd_peer_address_is_multicast(local_addr)) {
+			fastd_buffer_free(buffer);
+
+			pr_warn("unexpected multicast data packet from peer %P[%I]", peer, remote_addr);
+		} else if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
 			fastd_buffer_free(buffer);
 
 			if (!backoff_unknown(remote_addr)) {
 				pr_debug("unexpectedly received payload data from %P[%I]", peer, remote_addr);
 				conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
 			}
-			return;
-		}
+		} else
+			conf.protocol->handle_recv(peer, buffer);
 
-		conf.protocol->handle_recv(peer, buffer);
 		break;
 
 	case PACKET_HANDSHAKE:
@@ -203,10 +206,13 @@ static inline void handle_socket_receive_unknown(fastd_socket_t *sock, const fas
 	case PACKET_DATA:
 		fastd_buffer_free(buffer);
 
-		if (!backoff_unknown(remote_addr)) {
+		if (fastd_peer_address_is_multicast(local_addr)) {
+			pr_warn("unexpected multicast data packet from address %I", remote_addr);
+		} else if (!backoff_unknown(remote_addr)) {
 			pr_debug("unexpectedly received payload data from unknown address %I", remote_addr);
 			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
 		}
+
 		break;
 
 	case PACKET_HANDSHAKE:
@@ -217,6 +223,13 @@ static inline void handle_socket_receive_unknown(fastd_socket_t *sock, const fas
 /** Handles a packet read from a socket */
 static inline void handle_socket_receive(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_buffer_t buffer) {
 	fastd_peer_t *peer = NULL;
+
+	if (fastd_peer_address_is_multicast(local_addr) && sock->discovery_timeout == FASTD_TIMEOUT_INV) {
+		fastd_buffer_free(buffer);
+
+		pr_warn("received multicast packet from %I on non-discovery-enabled socket", remote_addr);
+		return;
+	}
 
 	if (sock->peer) {
 		if (!fastd_peer_address_equal(&sock->peer->address, remote_addr)) {
