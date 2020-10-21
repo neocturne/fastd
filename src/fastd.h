@@ -456,10 +456,29 @@ static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t bu
 	return ret;
 }
 
+/** Checks if a fastd_peer_address_t is the IPv4 any address */
+static inline bool fastd_peer_address_is_v4_any(const fastd_peer_address_t *addr) {
+	return addr->sa.sa_family == AF_INET && ntohl(addr->in.sin_addr.s_addr) == INADDR_ANY;
+}
+
+/** Checks if a fastd_peer_address_t is an IPv4 multicast address */
+static inline bool fastd_peer_address_is_v4_multicast(const fastd_peer_address_t *addr) {
+	return addr->sa.sa_family == AF_INET && IN_MULTICAST(ntohl(addr->in.sin_addr.s_addr));
+}
 
 /** Checks if a fastd_peer_address_t is an IPv6 link-local address */
 static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
-	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));
+	return addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr);
+}
+
+/** Checks if a fastd_peer_address_t is an IPv6 multicast address */
+static inline bool fastd_peer_address_is_v6_multicast(const fastd_peer_address_t *addr) {
+	return addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_MULTICAST(&addr->in6.sin6_addr);
+}
+
+/** Checks if a fastd_peer_address_t is a multicast address (IPv4 or v6) */
+static inline bool fastd_peer_address_is_multicast(const fastd_peer_address_t *addr) {
+	return fastd_peer_address_is_v4_multicast(addr) || fastd_peer_address_is_v6_multicast(addr);
 }
 
 /** Duplicates a string, creating a one-element string stack */
