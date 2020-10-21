@@ -158,6 +158,7 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 
 	addr->addr = *address;
 	addr->bindtodev = fastd_strdup(bindtodev);
+	addr->discovery_interval = FASTD_TIMEOUT_INV;
 
 	fastd_peer_address_simplify(&addr->addr);
 

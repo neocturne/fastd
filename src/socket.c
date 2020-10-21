@@ -184,6 +184,15 @@ static void set_bound_address(fastd_socket_t *sock) {
 	*sock->bound_addr = addr;
 }
 
+/** Set up discovery timeout based on socket binding state */
+static void reset_discovery_timeout(fastd_socket_t *sock) {
+	if (sock->addr->discovery_interval != FASTD_TIMEOUT_INV)
+		sock->discovery_timeout = ctx.now + sock->addr->discovery_interval;
+	else
+		sock->discovery_timeout = FASTD_TIMEOUT_INV;
+}
+
+/** (Re)schedule socket task based on the timeout bound to socket */
 static void schedule_socket_task(fastd_socket_t *sock) {
 	if (sock->discovery_timeout == FASTD_TIMEOUT_INV) {
 		pr_debug2("removing scheduled task for socket %B", &sock->addr->addr);
@@ -211,6 +220,7 @@ void fastd_socket_bind_all(void) {
 			exit(1); /* message has already been printed */
 
 		set_bound_address(sock);
+		reset_discovery_timeout(sock);
 
 		fastd_peer_address_t bound_addr = *sock->bound_addr;
 		if (!sock->addr->addr.sa.sa_family)
@@ -228,7 +238,7 @@ void fastd_socket_bind_all(void) {
 
 /** Opens a single socket bound to a random port for the given address family */
 fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
-	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
+	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af, .discovery_interval = FASTD_TIMEOUT_INV };
 
 	const fastd_bind_address_t *bind_address;
 
@@ -255,9 +265,9 @@ fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 	sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, fd);
 	sock->addr = NULL;
 	sock->peer = peer;
-	sock->discovery_timeout = FASTD_TIMEOUT_INV;
 
 	set_bound_address(sock);
+	reset_discovery_timeout(sock);
 
 	fastd_poll_fd_register(&sock->fd);
 	schedule_socket_task(sock);
@@ -278,6 +288,9 @@ void fastd_socket_close(fastd_socket_t *sock) {
 		free(sock->bound_addr);
 		sock->bound_addr = NULL;
 	}
+
+	sock->discovery_timeout = FASTD_TIMEOUT_INV;
+	schedule_socket_task(sock);
 }
 
 /** Handles an error that occured on a socket */
@@ -299,6 +312,8 @@ void fastd_socket_handle_task(fastd_task_t *task) {
 	if (fastd_timed_out(sock->discovery_timeout)) {
 		pr_debug("dispatching discovery task to multicast address %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
 		// TODO: handle discovery packet.
+
+		reset_discovery_timeout(sock);
 	}
 
 	schedule_socket_task(sock);

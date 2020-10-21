@@ -152,6 +152,7 @@ struct fastd_bind_address {
 	fastd_bind_address_t *next;		/**< The next address in the list */
 	fastd_peer_address_t addr;		/**< The address to bind to */
 	char *bindtodev;			/**< May contain an interface name to limit the bind to */
+	fastd_timeout_t discovery_interval;	/**< Discovery interval for this bind address */
 };
 
 /** A TUN/TAP interface */
