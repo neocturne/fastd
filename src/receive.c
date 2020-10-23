@@ -141,79 +141,24 @@ static bool backoff_unknown(const fastd_peer_address_t *addr) {
 	return false;
 }
 
-/** Handles a packet received from a known peer address */
-static inline void handle_socket_receive_known(
-	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer) {
-	if (!fastd_peer_may_connect(peer)) {
-		fastd_buffer_free(buffer);
-		return;
-	}
+/** Returns true the peer is non-null and has an established connection with the correct local address */
+static inline bool can_receive_data(const fastd_peer_t *peer, const fastd_peer_address_t *local_addr) {
+	if (!peer || !fastd_peer_is_established(peer))
+		return false;
 
-	const uint8_t *packet_type = buffer->data;
-
-	switch (*packet_type) {
-	case PACKET_DATA:
-		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
-			fastd_buffer_free(buffer);
-
-			if (!backoff_unknown(remote_addr)) {
-				pr_debug("unexpectedly received payload data from %P[%I]", peer, remote_addr);
-				conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
-			}
-			return;
-		}
-
-		conf.protocol->handle_recv(peer, buffer);
-		break;
-
-	case PACKET_HANDSHAKE:
-		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
-		fastd_buffer_free(buffer);
-		break;
-
-	default:
-		fastd_buffer_free(buffer);
-		pr_debug("received packet with invalid type from %P[%I]", peer, remote_addr);
-	}
+	return fastd_peer_address_equal(&peer->local_address, local_addr);
 }
 
-/** Determines if packets from known addresses are accepted */
+/** Determines if packets from unknown addresses are accepted */
 static inline bool allow_unknown_peers(void) {
 	return ctx.has_floating || fastd_allow_verify();
 }
 
-/** Handles a packet received from an unknown address */
-static inline void handle_socket_receive_unknown(
-	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_buffer_t *buffer) {
-	const uint8_t *packet_type = buffer->data;
-
-	switch (*packet_type) {
-	case PACKET_DATA:
-		fastd_buffer_free(buffer);
-
-		if (!backoff_unknown(remote_addr)) {
-			pr_debug("unexpectedly received payload data from unknown address %I", remote_addr);
-			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
-		}
-		break;
-
-	case PACKET_HANDSHAKE:
-		fastd_handshake_handle(sock, local_addr, remote_addr, NULL, buffer);
-		fastd_buffer_free(buffer);
-		break;
-
-	default:
-		fastd_buffer_free(buffer);
-		pr_debug("received packet with invalid type from unknown address %I", remote_addr);
-	}
-}
-
 /** Handles a packet read from a socket */
-static inline void handle_socket_receive(
+static void handle_socket_receive(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_buffer_t *buffer) {
+	const uint8_t packet_type = *(const uint8_t *)buffer->data;
 	fastd_peer_t *peer = NULL;
 
 	if (sock->peer) {
@@ -227,14 +172,36 @@ static inline void handle_socket_receive(
 		peer = fastd_peer_hashtable_lookup(remote_addr);
 	}
 
-	if (peer) {
-		handle_socket_receive_known(sock, local_addr, remote_addr, peer, buffer);
-	} else if (allow_unknown_peers()) {
-		handle_socket_receive_unknown(sock, local_addr, remote_addr, buffer);
-	} else {
-		pr_debug("received packet from unknown peer %I", remote_addr);
-		fastd_buffer_free(buffer);
+	if (packet_type == PACKET_DATA && can_receive_data(peer, local_addr)) {
+		/* Consumes the buffer */
+		conf.protocol->handle_recv(peer, buffer);
+		return;
 	}
+
+	if (!peer && !allow_unknown_peers()) {
+		pr_debug("received packet from unknown address %I", remote_addr);
+		fastd_buffer_free(buffer);
+		return;
+	}
+
+	switch (packet_type) {
+	case PACKET_HANDSHAKE:
+		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
+		break;
+
+	case PACKET_DATA:
+		if (!backoff_unknown(remote_addr)) {
+			pr_debug("unexpectedly received payload data from %I", remote_addr);
+			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
+		}
+
+		break;
+
+	default:
+		pr_debug("received packet with invalid type from %I", remote_addr);
+	}
+
+	fastd_buffer_free(buffer);
 }
 
 /** Reads a packet from a socket */
