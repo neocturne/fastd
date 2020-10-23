@@ -456,24 +456,25 @@ fastd_handshake_get_method_by_name(const fastd_peer_t *peer, const fastd_handsha
 void fastd_handshake_handle(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, fastd_buffer_t *buffer) {
-	char *peer_version = NULL;
 
 	fastd_handshake_t handshake = parse_tlvs(buffer);
 
 	if (!handshake.tlv_data) {
 		pr_warn("received a short handshake from %I", remote_addr);
-		goto end_free;
+		return;
 	}
 
 	if (handshake.records[RECORD_HANDSHAKE_TYPE].length != 1) {
 		pr_debug("received handshake without handshake type from %I", remote_addr);
-		goto end_free;
+		return;
 	}
 
 	handshake.type = as_uint8(&handshake.records[RECORD_HANDSHAKE_TYPE]);
 
 	if (!check_records(sock, local_addr, remote_addr, peer, &handshake))
-		goto end_free;
+		return;
+
+	char *peer_version = NULL;
 
 	if (handshake.type > 1) {
 		if (handshake.records[RECORD_VERSION_NAME].data)
@@ -484,7 +485,5 @@ void fastd_handshake_handle(
 
 	conf.protocol->handshake_handle(sock, local_addr, remote_addr, peer, &handshake);
 
-end_free:
 	free(peer_version);
-	fastd_buffer_free(buffer);
 }

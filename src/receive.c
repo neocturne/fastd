@@ -169,6 +169,7 @@ static inline void handle_socket_receive_known(
 
 	case PACKET_HANDSHAKE:
 		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
+		fastd_buffer_free(buffer);
 		break;
 
 	default:
@@ -200,6 +201,7 @@ static inline void handle_socket_receive_unknown(
 
 	case PACKET_HANDSHAKE:
 		fastd_handshake_handle(sock, local_addr, remote_addr, NULL, buffer);
+		fastd_buffer_free(buffer);
 		break;
 
 	default:
