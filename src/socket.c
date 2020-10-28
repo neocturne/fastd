@@ -355,8 +355,11 @@ void fastd_socket_handle_task(fastd_task_t *task) {
 	fastd_socket_t *sock = container_of(task, fastd_socket_t, task);
 
 	if (fastd_timed_out(sock->discovery_timeout)) {
-		pr_debug("dispatching discovery task to multicast address %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
-		// TODO: handle discovery packet.
+		pr_debug("dispatching discovery task to multicast address %B", &sock->addr->addr);
+		if (sock->addr->sourceaddr.sa.sa_family != AF_UNSPEC)
+			conf.protocol->handshake_init(sock, &sock->bound_addr, &sock->addr->addr, NULL);
+		else
+			conf.protocol->handshake_init(sock, NULL, &sock->addr->addr, NULL);
 
 		reset_discovery_timeout(sock);
 	}
