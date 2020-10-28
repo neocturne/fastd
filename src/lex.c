@@ -117,6 +117,7 @@ static const keyword_t keywords[] = {
 	{ "secret", TOK_SECRET },
 	{ "secure", TOK_SECURE },
 	{ "socket", TOK_SOCKET },
+	{ "source", TOK_SOURCE },
 	{ "status", TOK_STATUS },
 	{ "stderr", TOK_STDERR },
 	{ "sync", TOK_SYNC },

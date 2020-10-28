@@ -311,7 +311,8 @@ static void option_bind(const char *arg) {
 
 	free(addrstr);
 
-	fastd_config_bind_address(&addr, ifname, false, false);
+	fastd_peer_address_t sourceaddr = { .sa = { .sa_family = AF_UNSPEC } };
+	fastd_config_bind_address(&addr, ifname, &sourceaddr, false, false);
 }
 
 /** Handles the --protocol option */

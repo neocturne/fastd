@@ -284,6 +284,11 @@ static void print_error(const char *prefix, const fastd_peer_t *peer, const fast
 
 /** Sends an error reply to a peer */
 void fastd_handshake_send_error(fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint16_t error_detail) {
+	if (fastd_peer_address_host_multicast(local_addr)) {
+		pr_debug("ignoring handshake error from multicast packet on %I", local_addr);
+		return;
+	}
+
 	print_error("sending", peer, remote_addr, reply_code, error_detail);
 
 	fastd_handshake_buffer_t buffer = {

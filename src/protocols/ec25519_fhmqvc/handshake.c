@@ -332,7 +332,13 @@ static void respond_handshake(const fastd_socket_t *sock, const fastd_peer_addre
 	fastd_hmacsha256(&hmacbuf, peer->protocol_state->shared_handshake_key.w, fastd_handshake_tlv_data(&buffer.buffer), fastd_handshake_tlv_len(&buffer.buffer));
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
-	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer.buffer);
+	if (fastd_peer_address_host_multicast(local_addr)) {
+		if (sock->addr->sourceaddr.sa.sa_family != AF_UNSPEC)
+			fastd_send_handshake(sock, &sock->bound_addr, remote_addr, peer, buffer.buffer);
+		else
+			fastd_send_handshake(sock, NULL, remote_addr, peer, buffer.buffer);
+	} else
+		fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer.buffer);
 }
 
 /** Sends a reply to a handshake response (type 2) */
@@ -511,9 +517,9 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(fastd_socket_t *sock, const fa
 
 	fastd_handshake_add(&buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx.protocol_state->handshake_key.key.public);
 
-	if (!fastd_peer_address_is_multicast(remote_addr) && (!peer || !fastd_peer_is_established(peer))) {
+	if (!fastd_peer_address_host_multicast(remote_addr) && (!peer || !fastd_peer_is_established(peer))) {
 		const fastd_shell_command_t *on_connect = fastd_peer_group_lookup_peer_shell_command(peer, on_connect);
-		fastd_peer_exec_shell_command(on_connect, peer, (local_addr && local_addr->sa.sa_family) ? local_addr : sock->bound_addr, remote_addr, false);
+		fastd_peer_exec_shell_command(on_connect, peer, (local_addr && local_addr->sa.sa_family != AF_UNSPEC) ? local_addr : &sock->bound_addr, remote_addr, false);
 	}
 
 	fastd_send_handshake(sock, local_addr, remote_addr, peer, buffer.buffer);
@@ -651,6 +657,11 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		return;
 	}
 
+	if (fastd_peer_address_host_multicast(local_addr) && handshake->type != 1) {
+		pr_warn("received unknown multicast handshake type %u from %I", handshake->type, remote_addr);
+		return;
+	}
+
 	peer = match_sender_key(sock, remote_addr, peer, handshake->records[RECORD_SENDER_KEY].data);
 	if (!peer) {
 		switch (errno) {
@@ -670,7 +681,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 		}
 	}
 
-	if (fastd_peer_address_is_multicast(local_addr) && fastd_peer_is_established(peer)) {
+	if (fastd_peer_address_host_multicast(local_addr) && fastd_peer_is_established(peer)) {
 		pr_debug("ignoring discovery packet from established peer %P[%I]", peer, remote_addr);
 		return;
 	}
@@ -733,7 +744,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(fastd_socket_t *sock, const 
 	}
 
 	if (!has_field(handshake, RECORD_RECIPIENT_KEY, PUBLICKEYBYTES)) {
-		pr_debug("recived handshake reply without recipient key from %P[%I]", peer, remote_addr);
+		pr_debug("received handshake reply without recipient key from %P[%I]", peer, remote_addr);
 		return;
 	}
 

@@ -121,6 +121,7 @@
 %token TOK_SECRET
 %token TOK_SECURE
 %token TOK_SOCKET
+%token TOK_SOURCE
 %token TOK_STATUS
 %token TOK_STDERR
 %token TOK_SYNC
@@ -157,6 +158,7 @@
 %type <uint64> maybe_af
 %type <addr> bind_address
 %type <str> maybe_bind_interface
+%type <addr> maybe_source_address
 %type <int64> maybe_bind_default
 %type <uint64> bind_default
 %type <uint64> drop_capabilities_enabled
@@ -321,21 +323,23 @@ interface:	TOK_STRING	{
 		}
 	;
 
-bind:		bind_address maybe_bind_interface maybe_bind_default {
-			fastd_config_bind_address(&$1, $2 ? $2->str : NULL, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+bind:		bind_address maybe_bind_interface maybe_source_address maybe_bind_default {
+			fastd_config_bind_address(&$1, $2 ? $2->str : NULL, &$3, $4 == AF_UNSPEC || $4 == AF_INET, $4 == AF_UNSPEC || $4 == AF_INET6);
 		}
-	|	TOK_ADDR6_SCOPED maybe_port maybe_bind_default {
+	|	TOK_ADDR6_SCOPED maybe_port maybe_source_address maybe_bind_default {
 			fastd_peer_address_t addr = { .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1.addr, .sin6_port = htons($2) } };
-			fastd_config_bind_address(&addr, $1.ifname, $3 == AF_UNSPEC || $3 == AF_INET, $3 == AF_UNSPEC || $3 == AF_INET6);
+			fastd_config_bind_address(&addr, $1.ifname, &$3, $4 == AF_UNSPEC || $4 == AF_INET, $4 == AF_UNSPEC || $4 == AF_INET6);
 		}
 	;
 
 bind_address:
 		TOK_ADDR4 maybe_port {
 			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_INET, .sin_addr = $1, .sin_port = htons($2) } };
+			fastd_peer_address_simplify(&$$);
 		}
 	|	TOK_ADDR6 maybe_port {
 			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1, .sin6_port = htons($2) } };
+			fastd_peer_address_simplify(&$$);
 		}
 	|	TOK_ANY maybe_port {
 			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_UNSPEC, .sin_port = htons($2) } };
@@ -348,6 +352,20 @@ maybe_bind_interface:
 		}
 	|	{
 			$$ = NULL;
+		}
+	;
+
+maybe_source_address:
+		TOK_SOURCE TOK_ADDR4 {
+			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_INET, .sin_addr = $2 } };
+			fastd_peer_address_simplify(&$$);
+		}
+	|	TOK_SOURCE TOK_ADDR6 {
+			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $2 } };
+			fastd_peer_address_simplify(&$$);
+		}
+	|	{
+			$$ = (fastd_peer_address_t){ .sa = { .sa_family = AF_UNSPEC } };
 		}
 	;
 

@@ -30,6 +30,7 @@
 */
 
 #include "fastd.h"
+#include "peer.h"
 #include "poll.h"
 #include "socket.h"
 
@@ -42,111 +43,163 @@
    \return The new socket's file descriptor
 */
 static int bind_socket(const fastd_bind_address_t *addr) {
+	const int zero = 0;
+	const int one = 1;
 	int fd = -1;
 	int af = AF_UNSPEC;
+	fastd_peer_address_t bind_address = addr->addr;
 
-	if (addr->addr.sa.sa_family != AF_INET) {
+	if (!fastd_peer_address_host_v4_multicast(&addr->addr)) {
 		fd = socket(PF_INET6, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd >= 0) {
 			af = AF_INET6;
 
-			int val = (addr->addr.sa.sa_family == AF_INET6);
+			const int val = addr->addr.sa.sa_family == AF_INET6 || addr->sourceaddr.sa.sa_family == AF_INET6;
 			if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val))) {
-				pr_warn_errno("setsockopt");
+				pr_error_errno("setsockopt: unable to set socket to IPv6 only");
 				goto error;
 			}
 		}
 	}
-	if (fd < 0 && addr->addr.sa.sa_family != AF_INET6) {
+
+	if (fd < 0 && addr->addr.sa.sa_family != AF_INET6 && addr->sourceaddr.sa.sa_family != AF_INET6) {
 		fd = socket(PF_INET, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
-		if (fd < 0)
-			exit_errno("unable to create socket");
-		else
+		if (fd >= 0)
 			af = AF_INET;
 	}
 
-	if (fd < 0)
+	if (fd < 0) {
+		pr_error_errno("socket: unable to initialize socket");
 		goto error;
+	}
+
+	if ((addr->addr.sa.sa_family == AF_UNSPEC && (af == AF_INET || addr->sourceaddr.sa.sa_family == AF_INET)) ||
+		fastd_peer_address_host_v4_multicast(&addr->addr)) {
+		bind_address.in.sin_family = AF_INET;
+		bind_address.in.sin_addr.s_addr = INADDR_ANY;
+		bind_address.in.sin_port = addr->addr.in.sin_port;
+
+		if (af == AF_INET6)
+			fastd_peer_address_widen(&bind_address);
+	} else if (addr->addr.sa.sa_family == AF_UNSPEC || fastd_peer_address_host_v6_multicast(&addr->addr)) {
+		bind_address.in6.sin6_family = AF_INET6;
+		bind_address.in6.sin6_addr = in6addr_any;
+		bind_address.in6.sin6_port = addr->addr.sa.sa_family == AF_INET6 ? addr->addr.in6.sin6_port : addr->addr.in.sin_port;
+	} else {
+		if (fastd_peer_address_host_v6_ll(&bind_address) && addr->bindtodev) {
+			char *end;
+			bind_address.in6.sin6_scope_id = strtoul(addr->bindtodev, &end, 10);
+
+			if (*end || !bind_address.in6.sin6_scope_id)
+				bind_address.in6.sin6_scope_id = if_nametoindex(addr->bindtodev);
+
+			if (!bind_address.in6.sin6_scope_id) {
+				pr_warn_errno("if_nametoindex: failed to resolve IPv6 LL scope interface");
+				goto error;
+			}
+		} else if (af == AF_INET6)
+			fastd_peer_address_widen(&bind_address);
+	}
 
 #ifdef NO_HAVE_SOCK_NONBLOCK
 	fastd_setnonblock(fd);
 #endif
 
-	int one = 1;
-
 #ifdef USE_PKTINFO
-	if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
+	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
 		pr_error_errno("setsockopt: unable to set IP_PKTINFO");
 		goto error;
 	}
 #endif
+	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
+		pr_error_errno("setsockopt: unable to set IPV6_RECVPKTINFO");
+		goto error;
+	}
 
 #ifdef USE_FREEBIND
-	if (setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
+	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
 		pr_warn_errno("setsockopt: unable to set IP_FREEBIND");
 #endif
 
-	if (af == AF_INET6) {
-		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
-			pr_error_errno("setsockopt: unable to set IPV6_RECVPKTINFO");
-			goto error;
-		}
-	}
-
 #ifdef USE_BINDTODEVICE
-	if (addr->bindtodev && !fastd_peer_address_is_v6_ll(&addr->addr)) {
-		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
-			pr_warn_errno("setsockopt: unable to bind to device");
-			goto error;
-		}
+	if (addr->bindtodev && !fastd_peer_address_host_v6_ll(&addr->addr) &&
+		setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
+		pr_error_errno("setsockopt: unable to bind to device");
+		goto error;
 	}
 #endif
 
 #ifdef USE_PMTU
 	int pmtu = IP_PMTUDISC_DONT;
-	if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
-		pr_error_errno("setsockopt: unable to disable PMTU discovery");
+	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+		pr_error_errno("setsockopt: unable to disable IPv4 PMTU discovery");
+		goto error;
+	}
+	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+		pr_error_errno("setsockopt: unable to disable IPv6 PMTU discovery");
 		goto error;
 	}
 #endif
 
 #ifdef USE_PACKET_MARK
-	if (conf.packet_mark) {
-		if (setsockopt(fd, SOL_SOCKET, SO_MARK, &conf.packet_mark, sizeof(conf.packet_mark))) {
-			pr_error_errno("setsockopt: unable to set packet mark");
-			goto error;
-		}
+	if (conf.packet_mark && setsockopt(fd, SOL_SOCKET, SO_MARK, &conf.packet_mark, sizeof(conf.packet_mark))) {
+		pr_error_errno("setsockopt: unable to set packet mark");
+		goto error;
 	}
 #endif
 
-	fastd_peer_address_t bind_address = addr->addr;
+	if (bind(fd, &bind_address.sa, bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
+		pr_error_errno("bind: unable to bind socket");
+		goto error;
+	}
 
-	if (fastd_peer_address_is_v6_ll(&addr->addr) && addr->bindtodev) {
-		char *end;
-		bind_address.in6.sin6_scope_id = strtoul(addr->bindtodev, &end, 10);
-
-		if (*end)
-			bind_address.in6.sin6_scope_id = if_nametoindex(addr->bindtodev);
-
-		if (!bind_address.in6.sin6_scope_id) {
-			pr_warn_errno("if_nametoindex");
+	if (fastd_peer_address_host_v4_multicast(&addr->addr)) {
+		if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &zero, sizeof(zero))) {
+			pr_error_errno("setsockopt: unable to disable IPv4 multicast loop");
 			goto error;
 		}
-	}
 
-	if (bind_address.sa.sa_family == AF_UNSPEC) {
-		memset(&bind_address, 0, sizeof(bind_address));
-		bind_address.sa.sa_family = af;
+		struct ip_mreqn mreq = { .imr_multiaddr = addr->addr.in.sin_addr, .imr_address = { .s_addr = INADDR_ANY } };
+		if (addr->sourceaddr.sa.sa_family != AF_UNSPEC)
+			mreq.imr_address = addr->sourceaddr.in.sin_addr;
+		if (addr->bindtodev) {
+			mreq.imr_ifindex = if_nametoindex(addr->bindtodev);
+			if (!mreq.imr_ifindex) {
+				pr_error_errno("if_nametoindex: failed to resolve IPv4 multicast device");
+				goto error;
+			}
+		}
 
-		if (af == AF_INET6)
-			bind_address.in6.sin6_port = addr->addr.in.sin_port;
-		else
-			bind_address.in.sin_port = addr->addr.in.sin_port;
-	}
+		if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, &mreq, sizeof(mreq))) {
+			pr_error_errno("setsockopt: unable to set up IPv4 multicast binding");
+			goto error;
+		}
 
-	if (bind(fd, &bind_address.sa, bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
-		pr_warn_errno("bind");
-		goto error;
+		if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) {
+			pr_error_errno("setsockopt: unable to join IPv4 multicast group");
+			goto error;
+		}
+	} else if (fastd_peer_address_host_v6_multicast(&addr->addr)) {
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &zero, sizeof(zero))) {
+			pr_error_errno("setsockopt: unable to disable IPv6 multicast loop");
+			goto error;
+		}
+
+		struct ipv6_mreq mreq = { .ipv6mr_multiaddr = addr->addr.in6.sin6_addr, .ipv6mr_interface = if_nametoindex(addr->bindtodev) };
+		if (!mreq.ipv6mr_interface) {
+			pr_error_errno("if_nametoindex: failed to resolve IPv6 multicast device");
+			goto error;
+		}
+
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF, &mreq.ipv6mr_interface, sizeof(mreq.ipv6mr_interface))) {
+			pr_error_errno("setsockopt: unable to set up IPv6 multicast binding");
+			goto error;
+		}
+
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))) {
+			pr_error_errno("setsockopt: unable to join IPv6 multicast group");
+			goto error;
+		}
 	}
 
 #ifdef __ANDROID__
@@ -158,16 +211,14 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 
 	return fd;
 
- error:
-	if (fd >= 0) {
-		if (close(fd))
-			pr_error_errno("close");
-	}
+error:
+	if (fd >= 0 && close(fd))
+		pr_error_errno("close");
 
 	if (addr->bindtodev)
-		pr_error(fastd_peer_address_is_v6_ll(&addr->addr) ? "unable to bind to %L" : "unable to bind to %B on `%s'", &addr->addr, addr->bindtodev);
+		pr_error(fastd_peer_address_host_v6_ll(&bind_address) ? "unable to bind to %L" : "unable to bind to %B on `%s'", &bind_address, addr->bindtodev);
 	else
-		pr_error("unable to bind to %B", &addr->addr);
+		pr_error("unable to bind to %B", &bind_address);
 
 	return -1;
 }
@@ -180,8 +231,16 @@ static void set_bound_address(fastd_socket_t *sock) {
 	if (getsockname(sock->fd.fd, &addr.sa, &len) < 0)
 		exit_errno("getsockname");
 
-	sock->bound_addr = fastd_new(fastd_peer_address_t);
-	*sock->bound_addr = addr;
+	if (sock->addr->sourceaddr.sa.sa_family != AF_UNSPEC) {
+		sock->bound_addr = sock->addr->sourceaddr;
+
+		if (addr.sa.sa_family == AF_INET6) {
+			fastd_peer_address_widen(&sock->bound_addr);
+			sock->bound_addr.in6.sin6_port = addr.in6.sin6_port;
+		} else
+			sock->bound_addr.in.sin_port = addr.in.sin_port;
+	} else
+		sock->bound_addr = addr;
 }
 
 /** Set up discovery timeout based on socket binding state */
@@ -195,14 +254,14 @@ static void reset_discovery_timeout(fastd_socket_t *sock) {
 /** (Re)schedule socket task based on the timeout bound to socket */
 static void schedule_socket_task(fastd_socket_t *sock) {
 	if (sock->discovery_timeout == FASTD_TIMEOUT_INV) {
-		pr_debug2("removing scheduled task for socket %B", &sock->addr->addr);
+		pr_debug2("removing scheduled task for socket %B", &sock->bound_addr);
 		fastd_task_unschedule(&sock->task);
 	} else if (fastd_task_timeout(&sock->task) > sock->discovery_timeout) {
-		pr_debug2("replacing scheduled task for socket %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+		pr_debug2("replacing scheduled task for socket %B", &sock->bound_addr);
 		fastd_task_unschedule(&sock->task);
 		fastd_task_schedule(&sock->task, TASK_TYPE_SOCKET, sock->discovery_timeout);
 	} else
-		pr_debug2("keeping scheduled task for socket %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+		pr_debug2("keeping scheduled task for socket %B", &sock->bound_addr);
 }
 
 /** Tries to initialize sockets for all configured bind addresses */
@@ -222,14 +281,10 @@ void fastd_socket_bind_all(void) {
 		set_bound_address(sock);
 		reset_discovery_timeout(sock);
 
-		fastd_peer_address_t bound_addr = *sock->bound_addr;
-		if (!sock->addr->addr.sa.sa_family)
-			bound_addr.sa.sa_family = AF_UNSPEC;
-
-		if (sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
-			pr_info("bound to %B on `%s'", &bound_addr, sock->addr->bindtodev);
+		if (sock->addr->bindtodev && !fastd_peer_address_host_v6_ll(&sock->bound_addr))
+			pr_info("bound to %B on `%s'", &sock->bound_addr, sock->addr->bindtodev);
 		else
-			pr_info("bound to %B", &bound_addr);
+			pr_info("bound to %B", &sock->bound_addr);
 
 		fastd_poll_fd_register(&sock->fd);
 		schedule_socket_task(sock);
@@ -239,7 +294,6 @@ void fastd_socket_bind_all(void) {
 /** Opens a single socket bound to a random port for the given address family */
 fastd_socket_t * fastd_socket_open(fastd_peer_t *peer, int af) {
 	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af, .discovery_interval = FASTD_TIMEOUT_INV };
-
 	const fastd_bind_address_t *bind_address;
 
 	if (af == AF_INET && conf.bind_addr_default_v4) {
@@ -284,25 +338,16 @@ void fastd_socket_close(fastd_socket_t *sock) {
 		sock->fd.fd = -1;
 	}
 
-	if (sock->bound_addr) {
-		free(sock->bound_addr);
-		sock->bound_addr = NULL;
-	}
-
 	sock->discovery_timeout = FASTD_TIMEOUT_INV;
 	schedule_socket_task(sock);
 }
 
 /** Handles an error that occured on a socket */
 void fastd_socket_error(fastd_socket_t *sock) {
-	fastd_peer_address_t bound_addr = *sock->bound_addr;
-	if (!sock->addr->addr.sa.sa_family)
-		bound_addr.sa.sa_family = AF_UNSPEC;
-
-	if (sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
-		exit_error("error on socket bound to %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+	if (sock->addr->bindtodev && !fastd_peer_address_host_v6_ll(&sock->bound_addr))
+		exit_error("error on socket bound to %B on `%s'", &sock->bound_addr, sock->addr->bindtodev);
 	else
-		exit_error("error on socket bound to %B", &sock->addr->addr);
+		exit_error("error on socket bound to %B", &sock->bound_addr);
 }
 
 /** Handle socket task for a socket, dispatching discovery */
