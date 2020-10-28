@@ -100,6 +100,7 @@
 %token TOK_KEY
 %token TOK_LEVEL
 %token TOK_LIMIT
+%token TOK_LL6
 %token TOK_LOG
 %token TOK_MAC
 %token TOK_MARK
@@ -337,11 +338,12 @@ bind:		bind_address maybe_bind_interface maybe_source_address maybe_interval may
 bind_address:
 		TOK_ADDR4 maybe_port {
 			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_INET, .sin_addr = $1, .sin_port = htons($2) } };
-			fastd_peer_address_simplify(&$$);
 		}
 	|	TOK_ADDR6 maybe_port {
 			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1, .sin6_port = htons($2) } };
-			fastd_peer_address_simplify(&$$);
+		}
+	|	TOK_LL6 maybe_port {
+			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_port = htons($2), .sin6_scope_id = 1 } };
 		}
 	|	TOK_ANY maybe_port {
 			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_UNSPEC, .sin_port = htons($2) } };
@@ -360,11 +362,12 @@ maybe_bind_interface:
 maybe_source_address:
 		TOK_SOURCE TOK_ADDR4 {
 			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_INET, .sin_addr = $2 } };
-			fastd_peer_address_simplify(&$$);
 		}
 	|	TOK_SOURCE TOK_ADDR6 {
 			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $2 } };
-			fastd_peer_address_simplify(&$$);
+		}
+	|	TOK_SOURCE TOK_LL6 {
+			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_scope_id = 1 } };
 		}
 	|	{
 			$$ = (fastd_peer_address_t){ .sa = { .sa_family = AF_UNSPEC } };

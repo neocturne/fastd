@@ -49,12 +49,12 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	int af = AF_UNSPEC;
 	fastd_peer_address_t bind_address = addr->addr;
 
-	if (!fastd_peer_address_host_v4_multicast(&addr->addr)) {
+	if (!fastd_peer_address_host_v4_multicast(&bind_address)) {
 		fd = socket(PF_INET6, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd >= 0) {
 			af = AF_INET6;
 
-			const int val = addr->addr.sa.sa_family == AF_INET6 || addr->sourceaddr.sa.sa_family == AF_INET6;
+			const int val = bind_address.sa.sa_family == AF_INET6 || addr->sourceaddr.sa.sa_family == AF_INET6;
 			if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val))) {
 				pr_error_errno("setsockopt: unable to set socket to IPv6 only");
 				goto error;
@@ -62,7 +62,7 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 		}
 	}
 
-	if (fd < 0 && addr->addr.sa.sa_family != AF_INET6 && addr->sourceaddr.sa.sa_family != AF_INET6) {
+	if (fd < 0 && bind_address.sa.sa_family != AF_INET6 && addr->sourceaddr.sa.sa_family != AF_INET6) {
 		fd = socket(PF_INET, SOCK_DGRAM|SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd >= 0)
 			af = AF_INET;
@@ -73,33 +73,20 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 		goto error;
 	}
 
-	if ((addr->addr.sa.sa_family == AF_UNSPEC && (af == AF_INET || addr->sourceaddr.sa.sa_family == AF_INET)) ||
-		fastd_peer_address_host_v4_multicast(&addr->addr)) {
+	if ((bind_address.sa.sa_family == AF_UNSPEC && (af == AF_INET || addr->sourceaddr.sa.sa_family == AF_INET)) || fastd_peer_address_host_v4_multicast(&bind_address)) {
 		bind_address.in.sin_family = AF_INET;
 		bind_address.in.sin_addr.s_addr = INADDR_ANY;
-		bind_address.in.sin_port = addr->addr.in.sin_port;
 
 		if (af == AF_INET6)
 			fastd_peer_address_widen(&bind_address);
-	} else if (addr->addr.sa.sa_family == AF_UNSPEC || fastd_peer_address_host_v6_multicast(&addr->addr)) {
+	} else if (bind_address.sa.sa_family == AF_UNSPEC || fastd_peer_address_host_v6_multicast(&bind_address)) {
 		bind_address.in6.sin6_family = AF_INET6;
 		bind_address.in6.sin6_addr = in6addr_any;
-		bind_address.in6.sin6_port = addr->addr.sa.sa_family == AF_INET6 ? addr->addr.in6.sin6_port : addr->addr.in.sin_port;
-	} else {
-		if (fastd_peer_address_host_v6_ll(&bind_address) && addr->bindtodev) {
-			char *end;
-			bind_address.in6.sin6_scope_id = strtoul(addr->bindtodev, &end, 10);
 
-			if (*end || !bind_address.in6.sin6_scope_id)
-				bind_address.in6.sin6_scope_id = if_nametoindex(addr->bindtodev);
-
-			if (!bind_address.in6.sin6_scope_id) {
-				pr_warn_errno("if_nametoindex: failed to resolve IPv6 LL scope interface");
-				goto error;
-			}
-		} else if (af == AF_INET6)
-			fastd_peer_address_widen(&bind_address);
-	}
+		if (addr->addr.sa.sa_family == AF_UNSPEC)
+			bind_address.in6.sin6_port = addr->addr.in.sin_port;
+	} else if (af == AF_INET6)
+		fastd_peer_address_widen(&bind_address);
 
 #ifdef NO_HAVE_SOCK_NONBLOCK
 	fastd_setnonblock(fd);

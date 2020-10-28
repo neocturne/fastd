@@ -96,6 +96,7 @@ static const keyword_t keywords[] = {
 	{ "key", TOK_KEY },
 	{ "level", TOK_LEVEL },
 	{ "limit", TOK_LIMIT },
+	{ "ll6", TOK_LL6 },
 	{ "log", TOK_LOG },
 	{ "mac", TOK_MAC },
 	{ "mark", TOK_MARK },
