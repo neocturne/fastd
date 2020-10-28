@@ -135,7 +135,7 @@ void fastd_config_mac(const char *name, const char *impl) {
 }
 
 /** Handles the configuration of a bind address */
-void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, const fastd_peer_address_t *sourceaddr, bool default_v4, bool default_v6) {
+void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, const fastd_peer_address_t *sourceaddr, fastd_timeout_t interval, bool default_v4, bool default_v6) {
 	if (fastd_peer_address_host_multicast(address)) {
 		if (address->sa.sa_family == AF_INET) {
 			if (!address->in.sin_port)
@@ -155,16 +155,28 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 
 		if (sourceaddr->sa.sa_family != AF_UNSPEC && address->sa.sa_family != sourceaddr->sa.sa_family)
 			exit_error("config error: family of source address does not match multicast address family");
-	}
+
+		if (interval != FASTD_TIMEOUT_INV) {
+			interval *= 1000;
+			if (interval < MIN_DISCOVERY_INTERVAL)
+				exit_error("config error: discovery interval smaller than minimum");
+		} else
+			interval = DEFAULT_DISCOVERY_INTERVAL;
+	} else {
 #ifndef USE_BINDTODEVICE
-	else if (bindtodev && !fastd_peer_address_host_v6_ll(address))
-		exit_error("config error: device bind configuration not supported on this system");
+		if (bindtodev && !fastd_peer_address_host_v6_ll(address))
+			exit_error("config error: device bind configuration not supported on this system");
 #endif
-	else if (address->sa.sa_family != AF_UNSPEC && sourceaddr->sa.sa_family != AF_UNSPEC) {
-		if (address->sa.sa_family != sourceaddr->sa.sa_family)
-			exit_error("config error: address family of source address does not match bind address family");
-		if (!fastd_peer_address_host_any(address) && !fastd_peer_address_host_equal(address, sourceaddr))
-			exit_error("config error: source address is different from explicit bind address");
+
+		if (address->sa.sa_family != AF_UNSPEC && sourceaddr->sa.sa_family != AF_UNSPEC) {
+			if (address->sa.sa_family != sourceaddr->sa.sa_family)
+				exit_error("config error: address family of source address does not match bind address family");
+			if (!fastd_peer_address_host_any(address) && !fastd_peer_address_host_equal(address, sourceaddr))
+				exit_error("config error: source address is different from explicit bind address");
+		}
+
+		if (interval != FASTD_TIMEOUT_INV)
+			exit_error("config error: interval on non-discovery socket is not allowed");
 	}
 
 	if (sourceaddr->sa.sa_family != AF_UNSPEC && !fastd_peer_address_host_unicast(sourceaddr))
@@ -191,7 +203,7 @@ void fastd_config_bind_address(const fastd_peer_address_t *address, const char *
 	addr->addr = *address;
 	addr->bindtodev = fastd_strdup(bindtodev);
 	addr->sourceaddr = *sourceaddr;
-	addr->discovery_interval = FASTD_TIMEOUT_INV;
+	addr->discovery_interval = interval;
 
 	if (addr->addr.sa.sa_family != AF_INET6 && (default_v4 || !conf.bind_addr_default_v4))
 		conf.bind_addr_default_v4 = addr;

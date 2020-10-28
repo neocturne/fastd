@@ -136,6 +136,13 @@
 #define ETH_ADDR_STALE_TIME 300000	/* 5 minutes */
 
 
+/* Minimum discovery interval */
+#define MIN_DISCOVERY_INTERVAL 1000	/* 1 second */
+
+/** The default interval for discovery packets on multicast sockets */
+#define DEFAULT_DISCOVERY_INTERVAL 10000 /* 10 seconds */
+
+
 /** The time after a packet is received and no packets with lower sequence numbers are accepted anymore */
 #define REORDER_TIME 10000
 

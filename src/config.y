@@ -93,6 +93,7 @@
 %token TOK_INCLUDE
 %token TOK_INFO
 %token TOK_INTERFACE
+%token TOK_INTERVAL
 %token TOK_IP
 %token TOK_IPV4
 %token TOK_IPV6
@@ -159,6 +160,7 @@
 %type <addr> bind_address
 %type <str> maybe_bind_interface
 %type <addr> maybe_source_address
+%type <int64> maybe_interval
 %type <int64> maybe_bind_default
 %type <uint64> bind_default
 %type <uint64> drop_capabilities_enabled
@@ -323,12 +325,12 @@ interface:	TOK_STRING	{
 		}
 	;
 
-bind:		bind_address maybe_bind_interface maybe_source_address maybe_bind_default {
-			fastd_config_bind_address(&$1, $2 ? $2->str : NULL, &$3, $4 == AF_UNSPEC || $4 == AF_INET, $4 == AF_UNSPEC || $4 == AF_INET6);
+bind:		bind_address maybe_bind_interface maybe_source_address maybe_interval maybe_bind_default {
+			fastd_config_bind_address(&$1, $2 ? $2->str : NULL, &$3, $4, $5 == AF_UNSPEC || $5 == AF_INET, $5 == AF_UNSPEC || $5 == AF_INET6);
 		}
-	|	TOK_ADDR6_SCOPED maybe_port maybe_source_address maybe_bind_default {
+	|	TOK_ADDR6_SCOPED maybe_port maybe_source_address maybe_interval maybe_bind_default {
 			fastd_peer_address_t addr = { .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1.addr, .sin6_port = htons($2) } };
-			fastd_config_bind_address(&addr, $1.ifname, &$3, $4 == AF_UNSPEC || $4 == AF_INET, $4 == AF_UNSPEC || $4 == AF_INET6);
+			fastd_config_bind_address(&addr, $1.ifname, &$3, $4, $5 == AF_UNSPEC || $5 == AF_INET, $5 == AF_UNSPEC || $5 == AF_INET6);
 		}
 	;
 
@@ -366,6 +368,15 @@ maybe_source_address:
 		}
 	|	{
 			$$ = (fastd_peer_address_t){ .sa = { .sa_family = AF_UNSPEC } };
+		}
+	;
+
+maybe_interval:
+		TOK_INTERVAL TOK_UINT {
+			$$ = $2;
+		}
+	|	{
+			$$ = FASTD_TIMEOUT_INV;
 		}
 	;
 

@@ -89,6 +89,7 @@ static const keyword_t keywords[] = {
 	{ "include", TOK_INCLUDE },
 	{ "info", TOK_INFO },
 	{ "interface", TOK_INTERFACE },
+	{ "interval", TOK_INTERVAL },
 	{ "ip", TOK_IP },
 	{ "ipv4", TOK_IPV4 },
 	{ "ipv6", TOK_IPV6 },
