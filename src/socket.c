@@ -199,7 +199,7 @@ void fastd_socket_bind_all(void) {
 
 /** Opens a single socket bound to a random port for the given address family */
 fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af) {
-	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
+	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af, .sourceaddr.sa.sa_family = AF_UNSPEC, .interval = FASTD_TIMEOUT_INV };
 
 	const fastd_bind_address_t *bind_address;
 

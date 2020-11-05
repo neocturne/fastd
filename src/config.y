@@ -74,12 +74,14 @@
 %token TOK_INCLUDE
 %token TOK_INFO
 %token TOK_INTERFACE
+%token TOK_INTERVAL
 %token TOK_IP
 %token TOK_IPV4
 %token TOK_IPV6
 %token TOK_KEY
 %token TOK_LEVEL
 %token TOK_LIMIT
+%token TOK_LL6
 %token TOK_LOG
 %token TOK_MAC
 %token TOK_MARK
@@ -102,6 +104,7 @@
 %token TOK_SECRET
 %token TOK_SECURE
 %token TOK_SOCKET
+%token TOK_SOURCE
 %token TOK_STATUS
 %token TOK_STDERR
 %token TOK_SYNC
@@ -126,7 +129,8 @@
 	#include <limits.h>
 
 	static void fastd_config_handle_bind_address(
-		fastd_peer_address_t address, int64_t maybe_port, const char *bindtodevice, unsigned bind_default);
+		fastd_peer_address_t address, int64_t maybe_port, const char *bindtodevice, fastd_peer_address_t source,
+		fastd_timeout_t interval, unsigned bind_default);
 
 	static void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s);
 }
@@ -142,6 +146,8 @@
 %type <uint64> maybe_af
 %type <addr> bind_address
 %type <str> maybe_bind_interface
+%type <addr> maybe_source_address
+%type <int64> maybe_interval
 %type <uint64> maybe_bind_default
 %type <uint64> bind_default
 %type <uint64> drop_capabilities_enabled
@@ -306,12 +312,12 @@ interface:	TOK_STRING	{
 		}
 	;
 
-bind:		bind_address maybe_bind_port maybe_bind_interface maybe_bind_default {
-			fastd_config_handle_bind_address($1, $2, $3 ? $3->str : NULL, $4);
+bind:		bind_address maybe_bind_port maybe_bind_interface maybe_source_address maybe_interval maybe_bind_default {
+			fastd_config_handle_bind_address($1, $2, $3 ? $3->str : NULL, $4, $5, $6);
 		}
-	|	TOK_ADDR6_SCOPED maybe_bind_port maybe_bind_default {
+	|	TOK_ADDR6_SCOPED maybe_bind_port maybe_source_address maybe_interval maybe_bind_default {
 			fastd_peer_address_t addr = { .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1.addr } };
-			fastd_config_handle_bind_address(addr, $2, $1.ifname, $3);
+			fastd_config_handle_bind_address(addr, $2, $1.ifname, $3, $4, $5);
 		}
 	;
 
@@ -322,8 +328,11 @@ bind_address:
 	|	TOK_ADDR6 {
 			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $1 } };
 		}
+	|	TOK_LL6 {
+			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_scope_id = -1 } };
+		}
 	|	TOK_ANY {
-			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_UNSPEC } };
+			$$ = (fastd_peer_address_t){ .sa = { .sa_family = AF_UNSPEC } };
 		}
 	;
 
@@ -333,6 +342,30 @@ maybe_bind_interface:
 		}
 	|	{
 			$$ = NULL;
+		}
+	;
+
+maybe_source_address:
+		TOK_SOURCE TOK_ADDR4 {
+			$$ = (fastd_peer_address_t){ .in = { .sin_family = AF_INET, .sin_addr = $2 } };
+		}
+	|	TOK_SOURCE TOK_ADDR6 {
+			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_addr = $2 } };
+		}
+	|	TOK_SOURCE TOK_LL6 {
+			$$ = (fastd_peer_address_t){ .in6 = { .sin6_family = AF_INET6, .sin6_scope_id = -1 } };
+		}
+	|	{
+			$$ = (fastd_peer_address_t){ .sa = { .sa_family = AF_UNSPEC } };
+		}
+	;
+
+maybe_interval:
+		TOK_INTERVAL TOK_UINT {
+			$$ = $2;
+		}
+	|	{
+			$$ = FASTD_TIMEOUT_INV;
 		}
 	;
 
@@ -671,7 +704,8 @@ bind_port:	colon_or_port TOK_UINT {
 
 %%
 static void fastd_config_handle_bind_address(
-	fastd_peer_address_t address, int64_t maybe_port, const char *bindtodevice, unsigned bind_default) {
+	fastd_peer_address_t address, int64_t maybe_port, const char *bindtodevice,
+	fastd_peer_address_t source, fastd_timeout_t interval, unsigned bind_default) {
 
 	unsigned flags = bind_default;
 	uint16_t port = 0;
@@ -686,7 +720,10 @@ static void fastd_config_handle_bind_address(
 	else
 		address.in6.sin6_port = port;
 
-	fastd_config_bind_address(&address, bindtodevice, flags);
+	if (interval != FASTD_TIMEOUT_INV)
+		interval *= 1000;
+
+	fastd_config_bind_address(&address, bindtodevice, &source, interval, flags);
 }
 
 static void fastd_config_error(YYLTYPE *loc, fastd_parser_state_t *state, const char *s) {

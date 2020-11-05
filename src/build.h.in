@@ -118,6 +118,13 @@
 #define REORDER_TIME 10000
 
 
+/** Minimal discovery interval */
+#define MIN_DISCOVERY_INTERVAL 1000	/* 1 second */
+
+/** Default discovery interval */
+#define DEFAULT_DISCOVERY_INTERVAL 5000	/* 5 seconds */
+
+
 /** The minimum time that must pass between two on-verify calls on the same peer */
 #define MIN_VERIFY_INTERVAL 10000	/* 10 seconds */
 
