@@ -11,6 +11,7 @@
 */
 
 #include "fastd.h"
+#include "peer.h"
 #include "polling.h"
 
 #include <net/if.h>
@@ -28,28 +29,45 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	int af = AF_UNSPEC;
 	fastd_peer_address_t bind_address = addr->addr;
 
-	if (addr->addr.sa.sa_family != AF_INET) {
+	if (!fastd_peer_address_is_v4_multicast(&bind_address)) {
 		fd = socket(PF_INET6, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd >= 0) {
 			af = AF_INET6;
 
-			int val = (addr->addr.sa.sa_family == AF_INET6);
+			const int val = bind_address.sa.sa_family == AF_INET6 || addr->sourceaddr.sa.sa_family == AF_INET6;
 			if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val))) {
-				pr_warn_errno("setsockopt");
+				pr_warn_errno("setsockopt: unable to set socket for IPv6 only");
 				goto error;
 			}
 		}
 	}
-	if (fd < 0 && addr->addr.sa.sa_family != AF_INET6) {
+
+	if (fd < 0 && bind_address.sa.sa_family != AF_INET6 && addr->sourceaddr.sa.sa_family != AF_INET6) {
 		fd = socket(PF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
-		if (fd < 0)
-			exit_errno("unable to create socket");
-		else
+		if (fd >= 0)
 			af = AF_INET;
 	}
 
-	if (fd < 0)
+	if (fd < 0) {
+		pr_error_errno("socket: unable to create socket");
 		goto error;
+	}
+
+	if ((bind_address.sa.sa_family == AF_UNSPEC && (af == AF_INET || addr->sourceaddr.sa.sa_family == AF_INET)) ||
+			fastd_peer_address_is_v4_multicast(&bind_address)) {
+		bind_address.in.sin_family = AF_INET;
+		bind_address.in.sin_addr.s_addr = INADDR_ANY;
+
+		if (af == AF_INET6)
+			fastd_peer_address_widen(&bind_address);
+	} else if (bind_address.sa.sa_family == AF_UNSPEC || fastd_peer_address_is_v6_multicast(&bind_address)) {
+		bind_address.in6.sin6_family = AF_INET6;
+		bind_address.in6.sin6_addr = in6addr_any;
+
+		if (addr->addr.sa.sa_family == AF_UNSPEC)
+			bind_address.in6.sin6_port = addr->addr.in.sin_port;
+	} else if (af == AF_INET6)
+		fastd_peer_address_widen(&bind_address);
 
 #ifdef NO_HAVE_SOCK_NONBLOCK
 	fastd_setnonblock(fd);
@@ -80,7 +98,7 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 #endif
 
 #ifdef USE_BINDTODEVICE
-	if (addr->bindtodev && !fastd_peer_address_is_v6_ll(&addr->addr) &&
+	if (addr->bindtodev && !fastd_peer_address_is_v6_ll(&bind_address) &&
 			setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
 		pr_warn_errno("setsockopt: unable to bind to device");
 		goto error;
@@ -106,20 +124,58 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	}
 #endif
 
-	if (bind_address.sa.sa_family == AF_UNSPEC) {
-		memset(&bind_address, 0, sizeof(bind_address));
-		bind_address.sa.sa_family = af;
-
-		if (af == AF_INET6)
-			bind_address.in6.sin6_port = addr->addr.in.sin_port;
-		else
-			bind_address.in.sin_port = addr->addr.in.sin_port;
+	if (bind(fd, &bind_address.sa, af == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
+		pr_warn_errno("bind: unable to bind socket");
+		goto error;
 	}
 
-	if (bind(fd, &bind_address.sa,
-		 bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
-		pr_warn_errno("bind");
-		goto error;
+	if (fastd_peer_address_is_v4_multicast(&addr->addr)) {
+		if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &zero, sizeof(zero))) {
+			pr_error_errno("setsockopt: unable to disable IPv4 multicast loop");
+			goto error;
+		}
+
+		struct ip_mreqn mreq = { .imr_multiaddr = addr->addr.in.sin_addr };
+		if (addr->sourceaddr.sa.sa_family != AF_UNSPEC)
+			mreq.imr_address = addr->sourceaddr.in.sin_addr;
+		if (addr->bindtodev) {
+			mreq.imr_ifindex = if_nametoindex(addr->bindtodev);
+			if (!mreq.imr_ifindex) {
+				pr_error_errno("if_nametoindex: failed to resolve IPv4 multicast device");
+				goto error;
+			}
+		}
+
+		if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, &mreq, sizeof(mreq))) {
+			pr_error_errno("setsockopt: unable to set ip IPv4 multicast interface binding");
+			goto error;
+		}
+
+		if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq))) {
+			pr_error_errno("setsockopt: failed to join IPv4 multicast group");
+			goto error;
+		}
+	} else if (fastd_peer_address_is_v6_multicast(&addr->addr)) {
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &zero, sizeof(zero))) {
+			pr_error_errno("setsockopt: unable to disable IPv6 multicast loop");
+			goto error;
+		}
+
+		struct ipv6_mreq mreq = { .ipv6mr_multiaddr = addr->addr.in6.sin6_addr, .ipv6mr_interface = if_nametoindex(addr->bindtodev) };
+		if (!mreq.ipv6mr_interface) {
+			pr_error_errno("if_nametoindex: failed to resolve IPv6 multicast device");
+			goto error;
+		}
+
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF, &mreq.ipv6mr_interface, sizeof(mreq.ipv6mr_interface))) {
+			pr_error_errno("setsockopt: unable to set up IPv6 multicast interface binding");
+			goto error;
+		}
+
+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))) {
+			pr_error_errno("setsockopt: failed to join IPv6 multicast group");
+			goto error;
+		}
 	}
 
 #ifdef __ANDROID__
@@ -132,18 +188,16 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	return fd;
 
 error:
-	if (fd >= 0) {
-		if (close(fd))
-			pr_error_errno("close");
-	}
+	if (fd >= 0 && close(fd))
+		pr_error_errno("close");
 
 	if (addr->bindtodev)
 		pr_error(
-			fastd_peer_address_is_v6_ll(&addr->addr) ? "unable to bind to %L"
-								 : "unable to bind to %B on `%s'",
-			&addr->addr, addr->bindtodev);
+			fastd_peer_address_is_v6_ll(&bind_address) ? "unable to bind to %L"
+								   : "unable to bind to %B on `%s'",
+			&bind_address, addr->bindtodev);
 	else
-		pr_error("unable to bind to %B", &addr->addr);
+		pr_error("unable to bind to %B", &bind_address);
 
 	return -1;
 }
