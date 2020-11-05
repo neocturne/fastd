@@ -208,10 +208,18 @@ static void set_bound_address(fastd_socket_t *sock) {
 	socklen_t len = sizeof(addr);
 
 	if (getsockname(sock->fd.fd, &addr.sa, &len) < 0)
-		exit_errno("getsockname");
+		exit_errno("getsockname: failed to resolve bound address for socket");
 
-	sock->bound_addr = fastd_new(fastd_peer_address_t);
-	*sock->bound_addr = addr;
+	if (sock->addr && sock->addr->sourceaddr.sa.sa_family != AF_UNSPEC) {
+		sock->bound_addr = sock->addr->sourceaddr;
+
+		if (addr.sa.sa_family == AF_INET6) {
+			fastd_peer_address_widen(&sock->bound_addr);
+			sock->bound_addr.in6.sin6_port = addr.in6.sin6_port;
+		} else
+			sock->bound_addr.in.sin_port = addr.in.sin_port;
+	} else
+		sock->bound_addr = addr;
 }
 
 /** Tries to initialize sockets for all configured bind addresses */
@@ -230,14 +238,10 @@ void fastd_socket_bind_all(void) {
 
 		set_bound_address(sock);
 
-		fastd_peer_address_t bound_addr = *sock->bound_addr;
-		if (!sock->addr->addr.sa.sa_family)
-			bound_addr.sa.sa_family = AF_UNSPEC;
-
-		if (sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
-			pr_info("bound to %B on `%s'", &bound_addr, sock->addr->bindtodev);
+		if (sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&sock->bound_addr))
+			pr_info("bound to %B on `%s'", &sock->bound_addr, sock->addr->bindtodev);
 		else
-			pr_info("bound to %B", &bound_addr);
+			pr_info("bound to %B", &sock->bound_addr);
 
 		fastd_poll_fd_register(&sock->fd);
 	}
@@ -287,21 +291,12 @@ void fastd_socket_close(fastd_socket_t *sock) {
 
 		sock->fd.fd = -1;
 	}
-
-	if (sock->bound_addr) {
-		free(sock->bound_addr);
-		sock->bound_addr = NULL;
-	}
 }
 
 /** Handles an error that occured on a socket */
 void fastd_socket_error(fastd_socket_t *sock) {
-	fastd_peer_address_t bound_addr = *sock->bound_addr;
-	if (!sock->addr->addr.sa.sa_family)
-		bound_addr.sa.sa_family = AF_UNSPEC;
-
-	if (sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
-		exit_error("error on socket bound to %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+	if (sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&sock->bound_addr))
+		exit_error("error on socket bound to %B on `%s'", &sock->bound_addr, sock->addr->bindtodev);
 	else
-		exit_error("error on socket bound to %B", &sock->addr->addr);
+		exit_error("error on socket bound to %B", &sock->bound_addr);
 }

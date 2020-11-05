@@ -91,7 +91,7 @@ void fastd_send(
 		exit_bug("unsupported address family");
 	}
 
-	if (sock->bound_addr->sa.sa_family == AF_INET6) {
+	if (sock->bound_addr.sa.sa_family == AF_INET6) {
 		remote_addr6 = *remote_addr;
 		fastd_peer_address_widen(&remote_addr6);
 

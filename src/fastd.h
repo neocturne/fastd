@@ -152,8 +152,8 @@ struct fastd_bind_address {
 struct fastd_socket {
 	fastd_poll_fd_t fd;               /**< The file descriptor for the socket */
 	const fastd_bind_address_t *addr; /**< The address this socket is supposed to be bound to (or NULL) */
-	fastd_peer_address_t *bound_addr; /**< The actual address that was bound to (may differ from addr when addr has
-					     a random port) */
+	fastd_peer_address_t bound_addr;  /**< The actual address that was bound to (may differ from addr when addr has
+					     a random port) and also the source address to require for incoming packets */
 	fastd_peer_t *peer; /**< If the socket belongs to a single peer (as it was create dynamically when sending a
 			       handshake), contains that peer */
 };

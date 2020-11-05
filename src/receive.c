@@ -43,7 +43,7 @@ handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_
 
 			local_addr->in.sin_family = AF_INET;
 			local_addr->in.sin_addr = pktinfo.ipi_addr;
-			local_addr->in.sin_port = fastd_peer_address_get_port(sock->bound_addr);
+			local_addr->in.sin_port = fastd_peer_address_get_port(&sock->bound_addr);
 
 			return;
 		}
@@ -59,7 +59,7 @@ handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_
 
 			local_addr->in6.sin6_family = AF_INET6;
 			local_addr->in6.sin6_addr = pktinfo.ipi6_addr;
-			local_addr->in6.sin6_port = fastd_peer_address_get_port(sock->bound_addr);
+			local_addr->in6.sin6_port = fastd_peer_address_get_port(&sock->bound_addr);
 
 			if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
 				local_addr->in6.sin6_scope_id = pktinfo.ipi6_ifindex;
