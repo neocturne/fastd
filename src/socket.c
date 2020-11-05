@@ -22,8 +22,11 @@
    \return The new socket's file descriptor
 */
 static int bind_socket(const fastd_bind_address_t *addr) {
+	const int zero = 0;
+	const int one = 1;
 	int fd = -1;
 	int af = AF_UNSPEC;
+	fastd_peer_address_t bind_address = addr->addr;
 
 	if (addr->addr.sa.sa_family != AF_INET) {
 		fd = socket(PF_INET6, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
@@ -52,67 +55,56 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	fastd_setnonblock(fd);
 #endif
 
-	int one = 1;
-
 #ifdef USE_PKTINFO
-	if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
+	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
 		pr_error_errno("setsockopt: unable to set IP_PKTINFO");
 		goto error;
 	}
 #endif
 
+	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
+		pr_error_errno("setsockopt: unable to set IPV6_RECVPKTINFO");
+		goto error;
+	}
+
 #ifdef USE_FREEBIND
+#ifdef USE_FREEBIND6
+	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
+		pr_warn_errno("setsockopt: unable to set IP_FREEBIND");
+	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_FREEBIND, &one, sizeof(one)))
+		pr_warn_errno("setsockopt: unable to set IPV6_FREEBIND");
+#else
 	if (setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
 		pr_warn_errno("setsockopt: unable to set IP_FREEBIND");
 #endif
-
-	if (af == AF_INET6) {
-		if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
-			pr_error_errno("setsockopt: unable to set IPV6_RECVPKTINFO");
-			goto error;
-		}
-	}
+#endif
 
 #ifdef USE_BINDTODEVICE
-	if (addr->bindtodev && !fastd_peer_address_is_v6_ll(&addr->addr)) {
-		if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
-			pr_warn_errno("setsockopt: unable to bind to device");
-			goto error;
-		}
+	if (addr->bindtodev && !fastd_peer_address_is_v6_ll(&addr->addr) &&
+			setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, addr->bindtodev, strlen(addr->bindtodev))) {
+		pr_warn_errno("setsockopt: unable to bind to device");
+		goto error;
 	}
 #endif
 
 #ifdef USE_PMTU
-	int pmtu = IP_PMTUDISC_DONT;
-	if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+	const int pmtu = IP_PMTUDISC_DONT;
+	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+		pr_error_errno("setsockopt: unable to disable PMTU discovery");
+		goto error;
+	}
+	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
 		pr_error_errno("setsockopt: unable to disable PMTU discovery");
 		goto error;
 	}
 #endif
 
 #ifdef USE_PACKET_MARK
-	if (conf.packet_mark) {
-		if (setsockopt(fd, SOL_SOCKET, SO_MARK, &conf.packet_mark, sizeof(conf.packet_mark))) {
-			pr_error_errno("setsockopt: unable to set packet mark");
-			goto error;
-		}
+	if (conf.packet_mark && setsockopt(fd, SOL_SOCKET, SO_MARK, &conf.packet_mark, sizeof(conf.packet_mark))) {
+		pr_error_errno("setsockopt: unable to set packet mark");
+		goto error;
 	}
 #endif
-
-	fastd_peer_address_t bind_address = addr->addr;
-
-	if (fastd_peer_address_is_v6_ll(&addr->addr) && addr->bindtodev) {
-		char *end;
-		bind_address.in6.sin6_scope_id = strtoul(addr->bindtodev, &end, 10);
-
-		if (*end)
-			bind_address.in6.sin6_scope_id = if_nametoindex(addr->bindtodev);
-
-		if (!bind_address.in6.sin6_scope_id) {
-			pr_warn_errno("if_nametoindex");
-			goto error;
-		}
-	}
 
 	if (bind_address.sa.sa_family == AF_UNSPEC) {
 		memset(&bind_address, 0, sizeof(bind_address));
