@@ -139,7 +139,7 @@ static void init_sockets(void) {
 	if (ctx.ioctl_sock < 0)
 		exit_errno("unable to create ioctl socket");
 
-	ctx.socks = fastd_new_array(conf.n_bind_addrs, fastd_socket_t);
+	ctx.socks = fastd_new0_array(conf.n_bind_addrs, fastd_socket_t);
 
 	size_t i;
 	fastd_bind_address_t *addr = conf.bind_addrs;

@@ -13,6 +13,7 @@
 #include "fastd.h"
 #include "peer.h"
 #include "polling.h"
+#include "socket.h"
 
 #include <net/if.h>
 
@@ -244,6 +245,11 @@ void fastd_socket_bind_all(void) {
 			pr_info("bound to %B", &sock->bound_addr);
 
 		fastd_poll_fd_register(&sock->fd);
+
+		if (sock->addr->interval && sock->addr->interval != FASTD_TIMEOUT_INV) {
+			fastd_task_schedule(&sock->task, TASK_TYPE_SOCKET, ctx.now);
+			pr_info("scheduled discovery task for socket bound to %B", &sock->bound_addr);
+		}
 	}
 }
 
@@ -270,7 +276,7 @@ fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af) {
 	if (fd < 0)
 		return NULL;
 
-	fastd_socket_t *sock = fastd_new(fastd_socket_t);
+	fastd_socket_t *sock = fastd_new0(fastd_socket_t);
 
 	sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, fd);
 	sock->addr = NULL;
@@ -291,6 +297,8 @@ void fastd_socket_close(fastd_socket_t *sock) {
 
 		sock->fd.fd = -1;
 	}
+
+	fastd_task_unschedule(&sock->task);
 }
 
 /** Handles an error that occured on a socket */
@@ -299,4 +307,12 @@ void fastd_socket_error(fastd_socket_t *sock) {
 		exit_error("error on socket bound to %B on `%s'", &sock->bound_addr, sock->addr->bindtodev);
 	else
 		exit_error("error on socket bound to %B", &sock->bound_addr);
+}
+
+/** Handles socket task periodically dispatched on a socket */
+void fastd_socket_handle_task(fastd_task_t *task) {
+	fastd_socket_t *sock = container_of(task, fastd_socket_t, task);
+
+	pr_debug2("rescheduling socket task for socket bound to %B", &sock->bound_addr);
+	fastd_task_reschedule_relative(task, sock->addr->interval);
 }
