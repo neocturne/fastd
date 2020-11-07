@@ -3,7 +3,7 @@ cc = meson.get_compiler('c')
 default_args = [ '-D_GNU_SOURCE' ]
 
 if host_machine.system() == 'darwin'
-	default_args += '__APPLE_USE_RFC_3542'
+	default_args += '-D__APPLE_USE_RFC_3542'
 endif
 
 if cc.has_argument('-Wno-format-truncation')
