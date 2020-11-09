@@ -23,8 +23,6 @@
 /** Handles the ancillary control messages of received packets */
 static inline void
 handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_peer_address_t *local_addr) {
-	memset(local_addr, 0, sizeof(fastd_peer_address_t));
-
 	const uint8_t *end = (const uint8_t *)message->msg_control + message->msg_controllen;
 
 	struct cmsghdr *cmsg;
@@ -34,15 +32,12 @@ handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_
 
 #ifdef USE_PKTINFO
 		if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
-			struct in_pktinfo pktinfo;
-
-			if ((const uint8_t *)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
+			const struct in_pktinfo *pktinfo = (const struct in_pktinfo *)CMSG_DATA(cmsg);
+			if ((const uint8_t *)CMSG_DATA(cmsg) + sizeof(*pktinfo) > end)
 				return;
 
-			memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
-
 			local_addr->in.sin_family = AF_INET;
-			local_addr->in.sin_addr = pktinfo.ipi_addr;
+			local_addr->in.sin_addr = pktinfo->ipi_addr;
 			local_addr->in.sin_port = fastd_peer_address_get_port(&sock->bound_addr);
 
 			return;
@@ -50,19 +45,14 @@ handle_socket_control(struct msghdr *message, const fastd_socket_t *sock, fastd_
 #endif
 
 		if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
-			struct in6_pktinfo pktinfo;
-
-			if ((uint8_t *)CMSG_DATA(cmsg) + sizeof(pktinfo) > end)
+			const struct in6_pktinfo *pktinfo = (const struct in6_pktinfo *)CMSG_DATA(cmsg);
+			if ((const uint8_t *)CMSG_DATA(cmsg) + sizeof(*pktinfo) > end)
 				return;
 
-			memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
-
 			local_addr->in6.sin6_family = AF_INET6;
-			local_addr->in6.sin6_addr = pktinfo.ipi6_addr;
+			local_addr->in6.sin6_addr = pktinfo->ipi6_addr;
 			local_addr->in6.sin6_port = fastd_peer_address_get_port(&sock->bound_addr);
-
-			if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
-				local_addr->in6.sin6_scope_id = pktinfo.ipi6_ifindex;
+			local_addr->in6.sin6_scope_id = IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr) ? pktinfo->ipi6_ifindex : 0;
 
 			return;
 		}
@@ -239,10 +229,10 @@ static inline void handle_socket_receive(
 void fastd_receive(fastd_socket_t *sock) {
 	size_t max_len = max_size_t(fastd_max_payload(ctx.max_mtu) + conf.overhead, MAX_HANDSHAKE_SIZE);
 	fastd_buffer_t *buffer = fastd_buffer_alloc(max_len, conf.decrypt_headroom);
-	fastd_peer_address_t local_addr;
+	fastd_peer_address_t local_addr = {};
 	fastd_peer_address_t recvaddr;
 	struct iovec buffer_vec = { .iov_base = buffer->data, .iov_len = buffer->len };
-	uint8_t cbuf[1024] __attribute__((aligned(8)));
+	uint8_t cbuf[128] __attribute__((aligned(8)));
 
 	struct msghdr message = {
 		.msg_name = &recvaddr,
