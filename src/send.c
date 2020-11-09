@@ -69,6 +69,8 @@ void fastd_send(
 	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
+	if (local_addr && fastd_peer_address_is_multicast(local_addr))
+		exit_bug("send: local address is multicast");
 
 	struct msghdr msg = {};
 	uint8_t cbuf[128] __attribute__((aligned(8))) = {};
@@ -109,25 +111,7 @@ void fastd_send(
 	if (!msg.msg_controllen)
 		msg.msg_control = NULL;
 
-	int ret = sendmsg(sock->fd.fd, &msg, 0);
-
-	if (ret < 0 && msg.msg_controllen) {
-		switch (errno) {
-		case EINVAL:
-		case ENETUNREACH:
-			pr_debug2("sendmsg: %s (trying again without pktinfo)", strerror(errno));
-
-			if (peer && !fastd_peer_handshake_scheduled(peer))
-				fastd_peer_schedule_handshake_default(peer);
-
-			msg.msg_control = NULL;
-			msg.msg_controllen = 0;
-
-			ret = sendmsg(sock->fd.fd, &msg, 0);
-		}
-	}
-
-	if (ret < 0) {
+	if (sendmsg(sock->fd.fd, &msg, 0) < 0) {
 		switch (errno) {
 		case EAGAIN:
 #if EAGAIN != EWOULDBLOCK
