@@ -313,6 +313,12 @@ void fastd_socket_error(fastd_socket_t *sock) {
 void fastd_socket_handle_task(fastd_task_t *task) {
 	fastd_socket_t *sock = container_of(task, fastd_socket_t, task);
 
+	pr_debug("dispatching discovery packet to multicast address %B", &sock->addr->addr);
+	if (sock->addr->sourceaddr.sa.sa_family != AF_UNSPEC)
+		conf.protocol->handshake_init(sock, &sock->bound_addr, &sock->addr->addr, NULL);
+	else
+		conf.protocol->handshake_init(sock, NULL, &sock->addr->addr, NULL);
+
 	pr_debug2("rescheduling socket task for socket bound to %B", &sock->bound_addr);
 	fastd_task_reschedule_relative(task, sock->addr->interval);
 }
