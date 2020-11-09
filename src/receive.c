@@ -135,36 +135,35 @@ static bool backoff_unknown(const fastd_peer_address_t *addr) {
 static inline void handle_socket_receive_known(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, fastd_buffer_t *buffer) {
-	if (!fastd_peer_may_connect(peer)) {
-		fastd_buffer_free(buffer);
-		return;
-	}
+	if (!fastd_peer_may_connect(peer))
+		goto error;
 
 	const uint8_t *packet_type = buffer->data;
 
 	switch (*packet_type) {
 	case PACKET_DATA:
 		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
-			fastd_buffer_free(buffer);
-
 			if (!backoff_unknown(remote_addr)) {
 				pr_debug("unexpectedly received payload data from %P[%I]", peer, remote_addr);
 				conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
 			}
-			return;
+
+			goto error;
 		}
 
 		conf.protocol->handle_recv(peer, buffer);
-		break;
+		return;
 
 	case PACKET_HANDSHAKE:
 		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
-		break;
+		return;
 
 	default:
-		fastd_buffer_free(buffer);
 		pr_debug("received packet with invalid type from %P[%I]", peer, remote_addr);
 	}
+
+error:
+	fastd_buffer_free(buffer);
 }
 
 /** Determines if packets from known addresses are accepted */
@@ -180,22 +179,23 @@ static inline void handle_socket_receive_unknown(
 
 	switch (*packet_type) {
 	case PACKET_DATA:
-		fastd_buffer_free(buffer);
-
 		if (!backoff_unknown(remote_addr)) {
 			pr_debug("unexpectedly received payload data from unknown address %I", remote_addr);
 			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
 		}
-		break;
+
+		goto error;
 
 	case PACKET_HANDSHAKE:
 		fastd_handshake_handle(sock, local_addr, remote_addr, NULL, buffer);
-		break;
+		return;
 
 	default:
-		fastd_buffer_free(buffer);
 		pr_debug("received packet with invalid type from unknown address %I", remote_addr);
 	}
+
+error:
+	fastd_buffer_free(buffer);
 }
 
 /** Handles a packet read from a socket */
@@ -205,11 +205,8 @@ static inline void handle_socket_receive(
 	fastd_peer_t *peer = NULL;
 
 	if (sock->peer) {
-		if (!fastd_peer_address_equal(&sock->peer->address, remote_addr)) {
-			fastd_buffer_free(buffer);
-			return;
-		}
-
+		if (!fastd_peer_address_equal(&sock->peer->address, remote_addr))
+			goto error;
 		peer = sock->peer;
 	} else {
 		peer = fastd_peer_hashtable_lookup(remote_addr);
@@ -217,12 +214,16 @@ static inline void handle_socket_receive(
 
 	if (peer) {
 		handle_socket_receive_known(sock, local_addr, remote_addr, peer, buffer);
+		return;
 	} else if (allow_unknown_peers()) {
 		handle_socket_receive_unknown(sock, local_addr, remote_addr, buffer);
-	} else {
-		pr_debug("received packet from unknown peer %I", remote_addr);
-		fastd_buffer_free(buffer);
+		return;
 	}
+
+	pr_debug("received packet from unknown peer %I", remote_addr);
+
+error:
+	fastd_buffer_free(buffer);
 }
 
 /** Reads a packet from a socket */
@@ -247,9 +248,7 @@ void fastd_receive(fastd_socket_t *sock) {
 	if (len <= 0) {
 		if (len < 0)
 			pr_warn_errno("recvmsg");
-
-		fastd_buffer_free(buffer);
-		return;
+		goto error;
 	}
 
 	buffer->len = len;
@@ -259,8 +258,7 @@ void fastd_receive(fastd_socket_t *sock) {
 #ifdef USE_PKTINFO
 	if (!local_addr.sa.sa_family) {
 		pr_error("received packet without packet info");
-		fastd_buffer_free(buffer);
-		return;
+		goto error;
 	}
 #endif
 
@@ -268,6 +266,10 @@ void fastd_receive(fastd_socket_t *sock) {
 	fastd_peer_address_simplify(&recvaddr);
 
 	handle_socket_receive(sock, &local_addr, &recvaddr, buffer);
+	return;
+
+error:
+	fastd_buffer_free(buffer);
 }
 
 /** Handles a received and decrypted payload packet */
