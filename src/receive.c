@@ -142,6 +142,11 @@ static inline void handle_socket_receive_known(
 
 	switch (*packet_type) {
 	case PACKET_DATA:
+		if (fastd_peer_address_is_multicast(local_addr)) {
+			pr_warn("unexpected multicast data packet from peer %P[%I]", peer, remote_addr);
+			goto error;
+		}
+
 		if (!fastd_peer_is_established(peer) || !fastd_peer_address_equal(&peer->local_address, local_addr)) {
 			if (!backoff_unknown(remote_addr)) {
 				pr_debug("unexpectedly received payload data from %P[%I]", peer, remote_addr);
@@ -179,6 +184,11 @@ static inline void handle_socket_receive_unknown(
 
 	switch (*packet_type) {
 	case PACKET_DATA:
+		if (fastd_peer_address_is_multicast(local_addr)) {
+			pr_warn("unexpected multicast data packet from address %I", remote_addr);
+			goto error;
+		}
+
 		if (!backoff_unknown(remote_addr)) {
 			pr_debug("unexpectedly received payload data from unknown address %I", remote_addr);
 			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
@@ -203,6 +213,22 @@ static inline void handle_socket_receive(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_buffer_t *buffer) {
 	fastd_peer_t *peer = NULL;
+
+	if (fastd_peer_address_is_multicast(local_addr)) {
+		if (!sock->addr || sock->addr->interval == FASTD_TIMEOUT_INV) {
+			pr_debug("received multicast packet from %I on non-discovery-enabled socket", remote_addr);
+			goto error;
+		}
+
+		if (!fastd_peer_address_is_host_equal(&sock->addr->addr, local_addr)) {
+			pr_debug("received multicast packet on different multicat address %I", local_addr);
+			goto error;
+		}
+	} else if (sock->addr && local_addr->sa.sa_family != AF_UNSPEC && sock->addr->sourceaddr.sa.sa_family != AF_UNSPEC &&
+		!fastd_peer_address_is_host_equal(&sock->bound_addr, local_addr)) {
+		pr_debug("received packet on non-source address %I, expected %I", local_addr, &sock->bound_addr);
+		goto error;
+	}
 
 	if (sock->peer) {
 		if (!fastd_peer_address_equal(&sock->peer->address, remote_addr))
@@ -256,13 +282,14 @@ void fastd_receive(fastd_socket_t *sock) {
 	handle_socket_control(&message, sock, &local_addr);
 
 #ifdef USE_PKTINFO
-	if (!local_addr.sa.sa_family) {
+	if (local_addr.sa.sa_family == AF_UNSPEC) {
+#else
+	if (sock->bound_addr.sa.sa_family == AF_INET6 && local_addr.sa.sa_family == AF_UNSPEC) {
+#endif
 		pr_error("received packet without packet info");
 		goto error;
 	}
-#endif
 
-	fastd_peer_address_simplify(&local_addr);
 	fastd_peer_address_simplify(&recvaddr);
 
 	handle_socket_receive(sock, &local_addr, &recvaddr, buffer);
