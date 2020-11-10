@@ -327,8 +327,8 @@ reload_instance() {
 
 	update_peer_groups "$s" true
 
-        rc_procd start_service "$s"
-        procd_send_signal fastd "$s"
+	rc_procd start_service "$s"
+	procd_send_signal fastd "$s"
 }
 
 start_service() {
@@ -401,4 +401,24 @@ generate_key() {
 	fi
 
 	generate_key_instance "$instance"
+}
+
+service_triggers_instance() {
+	local s="$1"
+
+	section_enabled "$s" || return 0
+
+	config_get triggers "$s" triggers
+	if [ -n "$triggers" ]
+	then
+		for trigger in $triggers
+		do
+			procd_add_interface_trigger "interface.*" $trigger /etc/init.d/fastd restart "$s"
+		done
+	fi
+}
+
+service_triggers() {
+	config_foreach service_triggers_instance 'fastd'
+	procd_add_reload_trigger 'fastd'
 }
