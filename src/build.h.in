@@ -46,6 +46,9 @@
 /** Defined if the platform supports SO_FREEBIND */
 #mesondefine USE_FREEBIND
 
+/** Defined if the platform supports SO_FREEBIND6 */
+#mesondefine USE_FREEBIND6
+
 /** Defined if the platform supports IP_MTU_DISCOVER */
 #mesondefine USE_PMTU
 
