@@ -30,13 +30,13 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	int af = AF_UNSPEC;
 	fastd_peer_address_t bind_address = addr->addr;
 
+	const int v6only = bind_address.sa.sa_family == AF_INET6 || addr->sourceaddr.sa.sa_family == AF_INET6;
 	if (!fastd_peer_address_is_v4_multicast(&bind_address)) {
 		fd = socket(PF_INET6, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP);
 		if (fd >= 0) {
 			af = AF_INET6;
 
-			const int val = bind_address.sa.sa_family == AF_INET6 || addr->sourceaddr.sa.sa_family == AF_INET6;
-			if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val, sizeof(val))) {
+			if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only))) {
 				pr_warn_errno("setsockopt: unable to set socket for IPv6 only");
 				goto error;
 			}
@@ -75,22 +75,22 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 #endif
 
 #ifdef USE_PKTINFO
-	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
+	if ((af == AF_INET || !v6only) && setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
 		pr_error_errno("setsockopt: unable to set IP_PKTINFO");
 		goto error;
 	}
 #endif
 
-	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
+	if (af != AF_INET && setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &one, sizeof(one))) {
 		pr_error_errno("setsockopt: unable to set IPV6_RECVPKTINFO");
 		goto error;
 	}
 
 #ifdef USE_FREEBIND
 #ifdef USE_FREEBIND6
-	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
+	if ((af == AF_INET || !v6only) && setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
 		pr_warn_errno("setsockopt: unable to set IP_FREEBIND");
-	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_FREEBIND, &one, sizeof(one)))
+	if (af != AF_INET && setsockopt(fd, IPPROTO_IPV6, IPV6_FREEBIND, &one, sizeof(one)))
 		pr_warn_errno("setsockopt: unable to set IPV6_FREEBIND");
 #else
 	if (setsockopt(fd, IPPROTO_IP, IP_FREEBIND, &one, sizeof(one)))
@@ -108,11 +108,11 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 
 #ifdef USE_PMTU
 	const int pmtu = IP_PMTUDISC_DONT;
-	if (af == AF_INET && setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+	if ((af == AF_INET || !v6only) && setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
 		pr_error_errno("setsockopt: unable to disable PMTU discovery");
 		goto error;
 	}
-	if (af == AF_INET6 && setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
+	if (af != AF_INET && setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &pmtu, sizeof(pmtu))) {
 		pr_error_errno("setsockopt: unable to disable PMTU discovery");
 		goto error;
 	}
