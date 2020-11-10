@@ -37,6 +37,10 @@
 
 #include <sys/stat.h>
 
+#ifdef USE_IFAFLAGS
+#include <linux/if_addr.h>
+#endif
+
 
 /** The global configuration */
 fastd_config_t conf = {};
@@ -138,6 +142,10 @@ static void normalize_address(fastd_peer_address_t *address, const fastd_peer_ad
 			const fastd_peer_address_t *addr = (const fastd_peer_address_t *)ifa->ifa_addr;
 			if (!fastd_peer_address_is_v6_ll(addr))
 				continue;
+#ifdef USE_IFAFLAGS
+			if ((ifa->ifa_flags & IFA_F_DEPRECATED) || (ifa->ifa_flags & IFA_F_DADFAILED))
+				continue;
+#endif
 
 			address->in6 = addr->in6;
 			address->in6.sin6_port = config->in6.sin6_port;

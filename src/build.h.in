@@ -52,6 +52,9 @@
 /** Defined if the platform supports IP_PKTINFO */
 #mesondefine USE_PKTINFO
 
+/** Defined if the platform support IFA_F_* for address types */
+#mesondefine USE_IFAFLAGS
+
 /** Defined if the platform supports SO_MARK */
 #mesondefine USE_PACKET_MARK
 

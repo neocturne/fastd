@@ -192,6 +192,7 @@ conf_data.set('HAVE_SETRESGID',
 
 conf_data.set('USE_BINDTODEVICE', is_android or is_linux)
 conf_data.set('USE_EPOLL', is_android or is_linux)
+conf_data.set('USE_IFAFLAGS', is_linux)
 conf_data.set('USE_SELECT', is_darwin)
 conf_data.set('USE_FREEBIND', is_android or is_linux)
 conf_data.set('USE_FREEBIND6', cc.has_header_symbol('netinet/in.h', 'IPV6_FREEBIND'))
