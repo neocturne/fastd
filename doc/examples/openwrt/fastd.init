@@ -327,8 +327,8 @@ reload_instance() {
 
 	update_peer_groups "$s" true
 
-        rc_procd start_service "$s"
-        procd_send_signal fastd "$s"
+	rc_procd start_service "$s"
+	procd_send_signal fastd "$s"
 }
 
 start_service() {
