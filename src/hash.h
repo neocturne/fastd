@@ -21,7 +21,7 @@
 
 
 /** Adds data bytes to the 32bit hash value */
-static inline void fastd_hash(uint32_t *hash, const void *data, size_t len) {
+static inline void fastd_hash(uint32_t * const hash, const void *data, const size_t len) {
 	size_t i;
 	for (i = 0; i < len; ++i) {
 		*hash += ((uint8_t *)data)[i];
@@ -31,7 +31,7 @@ static inline void fastd_hash(uint32_t *hash, const void *data, size_t len) {
 }
 
 /** Finalizes a hash value */
-static inline void fastd_hash_final(uint32_t *hash) {
+static inline void fastd_hash_final(uint32_t * const hash) {
 	*hash += (*hash << 3);
 	*hash ^= (*hash >> 11);
 	*hash += (*hash << 15);

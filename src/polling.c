@@ -47,7 +47,7 @@ static inline int task_timeout(void) {
 
 
 /** Handles a file descriptor that was selected on */
-static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
+static inline void handle_fd(fastd_poll_fd_t * const fd, const bool input, const bool error) {
 	switch (fd->type) {
 	case POLL_TYPE_ASYNC:
 		if (input)
@@ -103,7 +103,7 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 #endif
 
 /** Simplified epoll_pwait wrapper (as there are systems without or with broken epoll_pwait) */
-static inline int epoll_wait_unblocked(int epfd, struct epoll_event *events, int maxevents, int timeout) {
+static inline int epoll_wait_unblocked(const int epfd, struct epoll_event * const events, const int maxevents, const int timeout) {
 	const uint8_t buf[_NSIG / 8] = {};
 	return syscall(SYS_epoll_pwait, epfd, events, maxevents, timeout, buf, sizeof(buf));
 }
@@ -121,7 +121,7 @@ void fastd_poll_free(void) {
 }
 
 
-void fastd_poll_fd_register(fastd_poll_fd_t *fd) {
+void fastd_poll_fd_register(fastd_poll_fd_t * const fd) {
 	if (fd->fd < 0)
 		exit_bug("fastd_poll_fd_register: invalid FD");
 
@@ -134,7 +134,7 @@ void fastd_poll_fd_register(fastd_poll_fd_t *fd) {
 		exit_errno("epoll_ctl");
 }
 
-bool fastd_poll_fd_close(fastd_poll_fd_t *fd) {
+bool fastd_poll_fd_close(fastd_poll_fd_t * const fd) {
 	if (epoll_ctl(ctx.epoll_fd, EPOLL_CTL_DEL, fd->fd, NULL) < 0)
 		exit_errno("epoll_ctl");
 
@@ -170,7 +170,7 @@ void fastd_poll_free(void) {
 }
 
 
-void fastd_poll_fd_register(fastd_poll_fd_t *fd) {
+void fastd_poll_fd_register(fastd_poll_fd_t * const fd) {
 	if (fd->fd < 0)
 		exit_bug("fastd_poll_fd_register: invalid FD");
 
@@ -182,7 +182,7 @@ void fastd_poll_fd_register(fastd_poll_fd_t *fd) {
 	VECTOR_RESIZE(ctx.pollfds, 0);
 }
 
-bool fastd_poll_fd_close(fastd_poll_fd_t *fd) {
+bool fastd_poll_fd_close(fastd_poll_fd_t * const fd) {
 	if (fd->fd < 0 || (size_t)fd->fd >= VECTOR_LEN(ctx.fds))
 		exit_bug("fastd_poll_fd_close: invalid FD");
 

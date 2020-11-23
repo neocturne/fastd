@@ -27,9 +27,9 @@ struct fastd_pqueue {
 
 
 /** Checks if an element is currently part of a priority queue */
-static inline bool fastd_pqueue_linked(fastd_pqueue_t *elem) {
+static inline bool fastd_pqueue_linked(const fastd_pqueue_t * const elem) {
 	return elem->pprev;
 }
 
-void fastd_pqueue_insert(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem);
-void fastd_pqueue_remove(fastd_pqueue_t *elem);
+void fastd_pqueue_insert(fastd_pqueue_t ** const pqueue, fastd_pqueue_t * const elem);
+void fastd_pqueue_remove(fastd_pqueue_t * const elem);

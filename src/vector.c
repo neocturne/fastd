@@ -28,17 +28,18 @@
 
    Internal function, use VECTOR_RESIZE() instead.
 */
-void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize) {
+void _fastd_vector_resize(fastd_vector_desc_t * const desc, void ** const data, const size_t n, const size_t elemsize) {
 	desc->length = n;
 
 	size_t alloc = desc->allocated;
+	size_t n_alloc = n;
 
 	if (!alloc) {
 		alloc = MIN_VECTOR_ALLOC;
-		n = n * 3 / 2;
+		n_alloc = n_alloc * 3 / 2;
 	}
 
-	while (alloc < n) {
+	while (alloc < n_alloc) {
 		alloc <<= 1;
 		if (!alloc) {
 			errno = EOVERFLOW;
@@ -57,7 +58,7 @@ void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size
 
    Internal function, use VECTOR_INSERT() and VECTOR_ADD() instead.
 */
-void _fastd_vector_insert(fastd_vector_desc_t *desc, void **data, void *element, size_t pos, size_t elemsize) {
+void _fastd_vector_insert(fastd_vector_desc_t * const desc, void ** const data, const void * const element, const size_t pos, const size_t elemsize) {
 	_fastd_vector_resize(desc, data, desc->length + 1, elemsize);
 
 	void *p = *data + pos * elemsize;
@@ -71,7 +72,7 @@ void _fastd_vector_insert(fastd_vector_desc_t *desc, void **data, void *element,
 
    Internal function, use VECTOR_DELETE() instead.
 */
-void _fastd_vector_delete(fastd_vector_desc_t *desc, void **data, size_t pos, size_t elemsize) {
+void _fastd_vector_delete(fastd_vector_desc_t * const desc, void ** const data, const size_t pos, const size_t elemsize) {
 	void *p = *data + pos * elemsize;
 	memmove(p, p + elemsize, (desc->length - pos - 1) * elemsize);
 

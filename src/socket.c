@@ -21,7 +21,7 @@
 
    \return The new socket's file descriptor
 */
-static int bind_socket(const fastd_bind_address_t *addr) {
+static int bind_socket(const fastd_bind_address_t * const addr) {
 	int fd = -1;
 	int af = AF_UNSPEC;
 
@@ -157,7 +157,7 @@ error:
 }
 
 /** Gets the address a socket is bound to and sets it in the socket structure */
-static void set_bound_address(fastd_socket_t *sock) {
+static void set_bound_address(fastd_socket_t * const sock) {
 	fastd_peer_address_t addr = {};
 	socklen_t len = sizeof(addr);
 
@@ -198,7 +198,7 @@ void fastd_socket_bind_all(void) {
 }
 
 /** Opens a single socket bound to a random port for the given address family */
-fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af) {
+fastd_socket_t *fastd_socket_open(fastd_peer_t * const peer, const int af) {
 	const fastd_bind_address_t any_address = { .addr.sa.sa_family = af };
 
 	const fastd_bind_address_t *bind_address;
@@ -234,7 +234,7 @@ fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af) {
 }
 
 /** Closes a socket */
-void fastd_socket_close(fastd_socket_t *sock) {
+void fastd_socket_close(fastd_socket_t * const sock) {
 	if (sock->fd.fd >= 0) {
 		if (!fastd_poll_fd_close(&sock->fd))
 			pr_error_errno("closing socket: close");
@@ -249,7 +249,7 @@ void fastd_socket_close(fastd_socket_t *sock) {
 }
 
 /** Handles an error that occured on a socket */
-void fastd_socket_error(fastd_socket_t *sock) {
+void fastd_socket_error(fastd_socket_t * const sock) {
 	fastd_peer_address_t bound_addr = *sock->bound_addr;
 	if (!sock->addr->addr.sa.sa_family)
 		bound_addr.sa.sa_family = AF_UNSPEC;

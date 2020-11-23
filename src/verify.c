@@ -28,7 +28,7 @@
    do_verify() may be called from secondary threads as all information about the peer
    to verify is encoded in the supplied environment
 */
-static bool do_verify(const fastd_shell_env_t *env) {
+static bool do_verify(const fastd_shell_env_t * const env) {
 	int ret;
 	if (!fastd_shell_command_isset(&conf.on_verify))
 		exit_bug("tried to verify peer without on-verify command");
@@ -55,7 +55,7 @@ typedef struct verify_arg {
 } verify_arg_t;
 
 /** Verifier thread main function */
-static void *do_verify_thread(void *p) {
+static void *do_verify_thread(void * const p) {
 	verify_arg_t *arg = p;
 
 	arg->ret.ok = do_verify(arg->env);
@@ -78,8 +78,8 @@ static void *do_verify_thread(void *p) {
    notification mechanism.
 */
 fastd_tristate_t fastd_verify_peer(
-	fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *remote_addr, const void *data, size_t data_len) {
+	fastd_peer_t * const peer, fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr,
+	const fastd_peer_address_t * const remote_addr, const void *data, const size_t data_len) {
 	if (!fastd_shell_command_isset(&conf.on_verify))
 		exit_bug("tried to verify peer without on-verify command");
 

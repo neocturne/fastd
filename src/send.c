@@ -22,7 +22,7 @@
 
 
 /** Adds packet info to ancillary control messages */
-static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *local_addr) {
+static inline void add_pktinfo(struct msghdr * const msg, const fastd_peer_address_t * const local_addr) {
 #ifdef __ANDROID__
 	/* PKTINFO will mess with Android VpnService.protect(socket) */
 	if (conf.android_integration)
@@ -67,8 +67,8 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 
 /** Sends a packet */
 void fastd_send(
-	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size) {
+	const fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr, const fastd_peer_address_t * const remote_addr,
+	fastd_peer_t * const peer, fastd_buffer_t * const buffer, const size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
 
@@ -158,7 +158,7 @@ void fastd_send(
 }
 
 /** Encrypts and sends a payload packet to all peers */
-static inline void send_all(fastd_buffer_t *buffer, fastd_peer_t *source) {
+static inline void send_all(fastd_buffer_t * const buffer, const fastd_peer_t * const source) {
 	size_t i;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *dest = VECTOR_INDEX(ctx.peers, i);
@@ -178,7 +178,7 @@ static inline void send_all(fastd_buffer_t *buffer, fastd_peer_t *source) {
 }
 
 /** Handles sending of a payload packet to a single peer in TAP mode */
-static inline bool send_data_tap_single(fastd_buffer_t *buffer, fastd_peer_t *source) {
+static inline bool send_data_tap_single(fastd_buffer_t * const buffer, const fastd_peer_t * const source) {
 	if (conf.mode != MODE_TAP)
 		return false;
 
@@ -215,7 +215,7 @@ static inline bool send_data_tap_single(fastd_buffer_t *buffer, fastd_peer_t *so
 }
 
 /** Sends a buffer of payload data to other peers */
-void fastd_send_data(fastd_buffer_t *buffer, fastd_peer_t *source, fastd_peer_t *dest) {
+void fastd_send_data(fastd_buffer_t * const buffer, fastd_peer_t * const source, fastd_peer_t * const dest) {
 	if (dest) {
 		conf.protocol->send(dest, buffer);
 		return;

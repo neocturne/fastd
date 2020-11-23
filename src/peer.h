@@ -116,44 +116,44 @@ struct fastd_remote {
 };
 
 
-bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2);
-void fastd_peer_address_simplify(fastd_peer_address_t *addr);
-void fastd_peer_address_widen(fastd_peer_address_t *addr);
+bool fastd_peer_address_equal(const fastd_peer_address_t * const addr1, const fastd_peer_address_t * const addr2);
+void fastd_peer_address_simplify(fastd_peer_address_t * const addr);
+void fastd_peer_address_widen(fastd_peer_address_t * const addr);
 
-bool fastd_peer_add(fastd_peer_t *peer);
-void fastd_peer_reset(fastd_peer_t *peer);
-void fastd_peer_delete(fastd_peer_t *peer);
-void fastd_peer_free(fastd_peer_t *peer);
-bool fastd_peer_set_established(fastd_peer_t *peer);
-bool fastd_peer_may_connect(fastd_peer_t *peer);
+bool fastd_peer_add(fastd_peer_t * const peer);
+void fastd_peer_reset(fastd_peer_t * const peer);
+void fastd_peer_delete(fastd_peer_t * const peer);
+void fastd_peer_free(fastd_peer_t * const peer);
+bool fastd_peer_set_established(fastd_peer_t * const peer);
+bool fastd_peer_may_connect(fastd_peer_t * const peer);
 void fastd_peer_handle_resolve(
-	fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);
-bool fastd_peer_owns_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr);
-bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr);
+	fastd_peer_t * const peer, fastd_remote_t * const remote, const size_t n_addresses, const fastd_peer_address_t * const addresses);
+bool fastd_peer_owns_address(const fastd_peer_t * const peer, const fastd_peer_address_t * const addr);
+bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_address_t * const addr);
 bool fastd_peer_claim_address(
-	fastd_peer_t *peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *remote_addr, bool force);
-void fastd_peer_reset_socket(fastd_peer_t *peer);
-void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay);
-fastd_peer_t *fastd_peer_find_by_id(uint64_t id);
+	fastd_peer_t * const peer, fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr,
+	const fastd_peer_address_t * const remote_addr, const bool force);
+void fastd_peer_reset_socket(fastd_peer_t * const peer);
+void fastd_peer_schedule_handshake(fastd_peer_t * const peer, const int delay);
+fastd_peer_t *fastd_peer_find_by_id(const uint64_t id);
 
 void fastd_peer_set_shell_env(
-	fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *peer_addr);
+	fastd_shell_env_t * const env, const fastd_peer_t * const peer, const fastd_peer_address_t * const local_addr,
+	const fastd_peer_address_t * const peer_addr);
 void fastd_peer_exec_shell_command(
-	const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *peer_addr, bool sync);
+	const fastd_shell_command_t * const command, const fastd_peer_t * const peer, const fastd_peer_address_t * const local_addr,
+	const fastd_peer_address_t * const peer_addr, const bool sync);
 
-void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr);
-bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer);
+void fastd_peer_eth_addr_add(fastd_peer_t * const peer, const fastd_eth_addr_t addr);
+bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t ** const peer);
 
-void fastd_peer_handle_task(fastd_task_t *task);
+void fastd_peer_handle_task(fastd_task_t * const task);
 void fastd_peer_eth_addr_cleanup(void);
 void fastd_peer_reset_all(void);
 
 
 /** Returns the port of a fastd_peer_address_t (in network byte order) */
-static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t *addr) {
+static inline uint16_t fastd_peer_address_get_port(const fastd_peer_address_t * const addr) {
 	switch (addr->sa.sa_family) {
 	case AF_INET:
 		return addr->in.sin_port;
@@ -174,25 +174,25 @@ static inline int fastd_peer_handshake_default_rand(void) {
 }
 
 /** Schedules a handshake with the default delay and jitter */
-static inline void fastd_peer_schedule_handshake_default(fastd_peer_t *peer) {
+static inline void fastd_peer_schedule_handshake_default(fastd_peer_t * const peer) {
 	fastd_peer_schedule_handshake(peer, fastd_peer_handshake_default_rand());
 }
 
 /** Cancels a scheduled handshake */
-static inline void fastd_peer_unschedule_handshake(fastd_peer_t *peer) {
+static inline void fastd_peer_unschedule_handshake(fastd_peer_t * const peer) {
 	peer->next_handshake = FASTD_TIMEOUT_INV;
 }
 
 #ifdef WITH_DYNAMIC_PEERS
 /** Call to signal that there is currently an asychronous on-verify command running for the peer */
-static inline void fastd_peer_set_verifying(fastd_peer_t *peer) {
+static inline void fastd_peer_set_verifying(fastd_peer_t * const peer) {
 	peer->verify_timeout = ctx.now + MIN_VERIFY_INTERVAL;
 
 	fastd_timeout_advance(&peer->reset_timeout, peer->verify_timeout);
 }
 
 /** Marks the peer verification as successful or failed */
-static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
+static inline void fastd_peer_set_verified(fastd_peer_t * const peer, const bool ok) {
 	peer->verify_valid_timeout = ctx.now + (ok ? VERIFY_VALID_TIME : 0);
 
 	fastd_timeout_advance(&peer->reset_timeout, peer->verify_valid_timeout);
@@ -200,17 +200,17 @@ static inline void fastd_peer_set_verified(fastd_peer_t *peer, bool ok) {
 #endif
 
 /** Checks if there's a handshake queued for the peer */
-static inline bool fastd_peer_handshake_scheduled(fastd_peer_t *peer) {
+static inline bool fastd_peer_handshake_scheduled(fastd_peer_t * const peer) {
 	return (peer->next_handshake != FASTD_TIMEOUT_INV);
 }
 
 /** Checks if a peer is floating (is has at least one floating remote or no remotes at all) */
-static inline bool fastd_peer_is_floating(const fastd_peer_t *peer) {
+static inline bool fastd_peer_is_floating(const fastd_peer_t * const peer) {
 	return (!VECTOR_LEN(peer->remotes) || peer->floating);
 }
 
 /** Checks if a peer is not statically configured, but added after a on-verify run */
-static inline bool fastd_peer_is_dynamic(UNUSED const fastd_peer_t *peer) {
+static inline bool fastd_peer_is_dynamic(UNUSED const fastd_peer_t * const peer) {
 #ifdef WITH_DYNAMIC_PEERS
 	return peer->config_state == CONFIG_DYNAMIC;
 #else
@@ -219,7 +219,7 @@ static inline bool fastd_peer_is_dynamic(UNUSED const fastd_peer_t *peer) {
 }
 
 /** Checks if a peer is enabled */
-static inline bool fastd_peer_is_enabled(const fastd_peer_t *peer) {
+static inline bool fastd_peer_is_enabled(const fastd_peer_t * const peer) {
 	switch (peer->config_state) {
 	case CONFIG_STATIC:
 #ifdef WITH_DYNAMIC_PEERS
@@ -232,7 +232,7 @@ static inline bool fastd_peer_is_enabled(const fastd_peer_t *peer) {
 }
 
 /** Returns the currently active remote entry */
-static inline fastd_remote_t *fastd_peer_get_next_remote(fastd_peer_t *peer) {
+static inline fastd_remote_t *fastd_peer_get_next_remote(fastd_peer_t * const peer) {
 	if (peer->next_remote < 0)
 		return NULL;
 
@@ -240,7 +240,7 @@ static inline fastd_remote_t *fastd_peer_get_next_remote(fastd_peer_t *peer) {
 }
 
 /** Checks if the peer currently has an established connection */
-static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
+static inline bool fastd_peer_is_established(const fastd_peer_t * const peer) {
 	switch (peer->state) {
 	case STATE_ESTABLISHED:
 		return true;
@@ -251,22 +251,22 @@ static inline bool fastd_peer_is_established(const fastd_peer_t *peer) {
 }
 
 /** Signals that a valid packet was received from the peer */
-static inline void fastd_peer_seen(fastd_peer_t *peer) {
+static inline void fastd_peer_seen(fastd_peer_t * const peer) {
 	peer->reset_timeout = ctx.now + PEER_STALE_TIME;
 }
 
 /** Resets the keepalive timeout */
-static inline void fastd_peer_clear_keepalive(fastd_peer_t *peer) {
+static inline void fastd_peer_clear_keepalive(fastd_peer_t * const peer) {
 	peer->keepalive_timeout = ctx.now + KEEPALIVE_TIMEOUT;
 }
 
 /** Checks if a peer uses dynamic sockets (which means that each connection attempt uses a new socket) */
-static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t *peer) {
+static inline bool fastd_peer_is_socket_dynamic(const fastd_peer_t * const peer) {
 	return (!peer->sock || !peer->sock->addr);
 }
 
 /** Returns the MTU to use for a peer */
-static inline uint16_t fastd_peer_get_mtu(const fastd_peer_t *peer) {
+static inline uint16_t fastd_peer_get_mtu(const fastd_peer_t * const peer) {
 	if (conf.mode == MODE_TAP)
 		return conf.mtu;
 
@@ -277,12 +277,12 @@ static inline uint16_t fastd_peer_get_mtu(const fastd_peer_t *peer) {
 }
 
 /** Checks if a MAC address is a normal unicast address */
-static inline bool fastd_eth_addr_is_unicast(fastd_eth_addr_t addr) {
+static inline bool fastd_eth_addr_is_unicast(const fastd_eth_addr_t addr) { // FIXME: this should not be passed by value
 	return ((addr.data[0] & 1) == 0);
 }
 
 /** Adds statistics for a single packet of a given size */
-static inline void fastd_stats_add(UNUSED fastd_peer_t *peer, UNUSED fastd_stat_type_t stat, UNUSED size_t bytes) {
+static inline void fastd_stats_add(UNUSED fastd_peer_t * const peer, UNUSED fastd_stat_type_t stat, UNUSED size_t bytes) {
 #ifdef WITH_STATUS_SOCKET
 	if (!bytes)
 		return;

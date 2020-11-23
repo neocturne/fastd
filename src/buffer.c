@@ -50,8 +50,8 @@ void fastd_cleanup_buffers(void) {
    The buffer is always allocated aligned to 16 bytes to allow efficient access for SIMD instructions
    etc. in crypto implementations
 */
-fastd_buffer_t *fastd_buffer_alloc(size_t len, size_t headroom) {
-	size_t base_len = alignto(headroom + len, sizeof(fastd_block128_t));
+fastd_buffer_t *fastd_buffer_alloc(const size_t len, const size_t headroom) {
+	const size_t base_len = alignto(headroom + len, sizeof(fastd_block128_t));
 	if (base_len > ctx.max_buffer)
 		exit_fatal("BUG: oversized buffer alloc (%Z > %Z)", base_len, ctx.max_buffer);
 
@@ -71,7 +71,7 @@ fastd_buffer_t *fastd_buffer_alloc(size_t len, size_t headroom) {
 }
 
 /** Returns a buffer to the buffer pool */
-void fastd_buffer_free(fastd_buffer_t *buffer) {
+void fastd_buffer_free(fastd_buffer_t * const buffer) {
 	buffer->len = SIZE_MAX;
 	buffer->data = buffers;
 	buffers = buffer;

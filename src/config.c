@@ -62,13 +62,13 @@ static void default_config(void) {
 }
 
 /** Handles the configuration of a handshake protocol */
-void fastd_config_protocol(const char *name) {
+void fastd_config_protocol(const char * const name) {
 	if (strcmp(name, conf.protocol->name))
 		exit_error("config error: protocol `%s' not supported", name);
 }
 
 /** Handles the configuration of a crypto method */
-void fastd_config_method(fastd_peer_group_t *group, const char *name) {
+void fastd_config_method(fastd_peer_group_t *group, const char * const name) {
 	fastd_string_stack_t **method;
 
 	for (method = &group->methods; *method; method = &(*method)->next) {
@@ -82,7 +82,7 @@ void fastd_config_method(fastd_peer_group_t *group, const char *name) {
 }
 
 /** Configures an interface name or name pattern */
-bool fastd_config_ifname(fastd_peer_t *peer, const char *ifname) {
+bool fastd_config_ifname(fastd_peer_t *peer, const char * const ifname) {
 	if (strchr(ifname, '/'))
 		return false;
 
@@ -104,7 +104,7 @@ bool fastd_config_ifname(fastd_peer_t *peer, const char *ifname) {
 }
 
 /** Handles the configuration of a cipher implementation */
-void fastd_config_cipher(const char *name, const char *impl) {
+void fastd_config_cipher(const char * const name, const char * const impl) {
 	if (!fastd_cipher_config(name, impl))
 		exit_error(
 			"config error: implementation `%s' is not supported for cipher `%s' (or cipher `%s' is not supported)",
@@ -112,7 +112,7 @@ void fastd_config_cipher(const char *name, const char *impl) {
 }
 
 /** Handles the configuration of a MAC implementation */
-void fastd_config_mac(const char *name, const char *impl) {
+void fastd_config_mac(const char * const name, const char * const impl) {
 	if (!fastd_mac_config(name, impl))
 		exit_error(
 			"config error: implementation `%s' is not supported for MAC `%s' (or MAC `%s' is not supported)",
@@ -120,7 +120,7 @@ void fastd_config_mac(const char *name, const char *impl) {
 }
 
 /** Handles the configuration of a bind address */
-void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, unsigned flags) {
+void fastd_config_bind_address(const fastd_peer_address_t * const address, const char * const bindtodev, const unsigned flags) {
 #ifndef USE_BINDTODEVICE
 	if (bindtodev && !fastd_peer_address_is_v6_ll(address))
 		exit_error("config error: device bind configuration not supported on this system");

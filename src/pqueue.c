@@ -18,7 +18,7 @@
 
 
 /** Links an element at the position specified by \e pqueue */
-static inline void pqueue_link(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
+static inline void pqueue_link(fastd_pqueue_t ** const pqueue, fastd_pqueue_t * const elem) {
 	if (elem->next)
 		exit_bug("pqueue_link: element already linked");
 
@@ -31,7 +31,7 @@ static inline void pqueue_link(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
 }
 
 /** Unlinks an element */
-static inline void pqueue_unlink(fastd_pqueue_t *elem) {
+static inline void pqueue_unlink(fastd_pqueue_t * const elem) {
 	*elem->pprev = elem->next;
 	if (elem->next)
 		elem->next->pprev = elem->pprev;
@@ -45,7 +45,7 @@ static inline void pqueue_unlink(fastd_pqueue_t *elem) {
 
    \e pqueue2 may be empty (NULL)
 */
-static fastd_pqueue_t *pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pqueue2) {
+static fastd_pqueue_t *pqueue_merge(fastd_pqueue_t * const pqueue1, fastd_pqueue_t * const pqueue2) {
 	if (!pqueue1)
 		exit_bug("pqueue_merge: pqueue1 unset");
 	if (pqueue1->next)
@@ -73,7 +73,7 @@ static fastd_pqueue_t *pqueue_merge(fastd_pqueue_t *pqueue1, fastd_pqueue_t *pqu
 }
 
 /** Merges a list of priority queues */
-static fastd_pqueue_t *pqueue_merge_pairs(fastd_pqueue_t *pqueue0) {
+static fastd_pqueue_t *pqueue_merge_pairs(fastd_pqueue_t * const pqueue0) {
 	if (!pqueue0)
 		return NULL;
 
@@ -93,7 +93,7 @@ static fastd_pqueue_t *pqueue_merge_pairs(fastd_pqueue_t *pqueue0) {
 }
 
 /** Inserts a new element into a priority queue */
-void fastd_pqueue_insert(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
+void fastd_pqueue_insert(fastd_pqueue_t ** const pqueue, fastd_pqueue_t * const elem) {
 	if (elem->pprev || elem->next || elem->children)
 		exit_bug("fastd_pqueue_insert: tried to insert linked pqueue element");
 
@@ -102,7 +102,7 @@ void fastd_pqueue_insert(fastd_pqueue_t **pqueue, fastd_pqueue_t *elem) {
 }
 
 /** Removes an element from a priority queue */
-void fastd_pqueue_remove(fastd_pqueue_t *elem) {
+void fastd_pqueue_remove(fastd_pqueue_t * const elem) {
 	if (!fastd_pqueue_linked(elem)) {
 		if (elem->children || elem->next)
 			exit_bug("fastd_pqueue_remove: corrupted pqueue item");

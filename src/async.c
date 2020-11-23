@@ -44,7 +44,7 @@ void fastd_async_init(void) {
 }
 
 /** Handles a DNS resolver response */
-static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_return) {
+static void handle_resolve_return(const fastd_async_resolve_return_t * const resolve_return) {
 	fastd_peer_t *peer = fastd_peer_find_by_id(resolve_return->peer_id);
 	if (!peer || !fastd_peer_is_enabled(peer))
 		return;
@@ -59,7 +59,7 @@ static void handle_resolve_return(const fastd_async_resolve_return_t *resolve_re
 #ifdef WITH_DYNAMIC_PEERS
 
 /** Handles a on-verify response */
-static void handle_verify_return(const fastd_async_verify_return_t *verify_return) {
+static void handle_verify_return(const fastd_async_verify_return_t * const verify_return) {
 	fastd_peer_t *peer = fastd_peer_find_by_id(verify_return->peer_id);
 	if (!peer)
 		return;
@@ -119,7 +119,7 @@ void fastd_async_handle(void) {
 }
 
 /** Enqueues a new async notification */
-void fastd_async_enqueue(fastd_async_type_t type, const void *data, size_t len) {
+void fastd_async_enqueue(const fastd_async_type_t type, const void * const data, const size_t len) {
 	fastd_async_hdr_t header;
 	/* use memset to zero the holes in the struct to make valgrind happy */
 	memset(&header, 0, sizeof(header));

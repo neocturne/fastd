@@ -33,9 +33,9 @@ void fastd_poll_free(void);
 #define FASTD_POLL_FD(type, fd) ((fastd_poll_fd_t){ type, fd })
 
 /** Registers a new file descriptor to poll on */
-void fastd_poll_fd_register(fastd_poll_fd_t *fd);
+void fastd_poll_fd_register(fastd_poll_fd_t * const fd);
 /** Unregisters and closes a file descriptor */
-bool fastd_poll_fd_close(fastd_poll_fd_t *fd);
+bool fastd_poll_fd_close(fastd_poll_fd_t * const fd);
 
 /** Waits for the next input event */
 void fastd_poll_handle(void);

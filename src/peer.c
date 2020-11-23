@@ -22,7 +22,7 @@
 
 /** Adds address and port of an fastd_peer_address_t to \e env */
 static void fastd_peer_set_shell_env_addr(
-	fastd_shell_env_t *env, const fastd_peer_address_t *addr, const char *address_var, const char *port_var) {
+	fastd_shell_env_t * const env, const fastd_peer_address_t * const addr, const char * const address_var, const char * const port_var) {
 	/* both INET6_ADDRSTRLEN and IFNAMSIZ already include space for the zero termination, so there is no need to add
 	 * space for the '%' here. */
 	char buf[INET6_ADDRSTRLEN + IFNAMSIZ];
@@ -60,7 +60,7 @@ static void fastd_peer_set_shell_env_addr(
 
 /** Adds peer-specific fields to \e env */
 void fastd_peer_set_shell_env(
-	fastd_shell_env_t *env, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr,
+	fastd_shell_env_t * const env, const fastd_peer_t * const peer, const fastd_peer_address_t * const local_addr,
 	const fastd_peer_address_t *peer_addr) {
 
 	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->name : NULL);
@@ -75,8 +75,8 @@ void fastd_peer_set_shell_env(
 
 /** Executes a shell command, providing peer-specific enviroment fields */
 void fastd_peer_exec_shell_command(
-	const fastd_shell_command_t *command, const fastd_peer_t *peer, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *peer_addr, bool sync) {
+	const fastd_shell_command_t * const command, const fastd_peer_t * const peer, const fastd_peer_address_t * const local_addr,
+	const fastd_peer_address_t * const peer_addr, const bool sync) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_peer_set_shell_env(env, peer, local_addr, peer_addr);
 
@@ -89,32 +89,32 @@ void fastd_peer_exec_shell_command(
 }
 
 /** Calls the on-up command */
-static inline void on_up(const fastd_peer_t *peer, bool sync) {
+static inline void on_up(const fastd_peer_t * const peer, const bool sync) {
 	const fastd_shell_command_t *on_up = fastd_peer_group_lookup_peer_shell_command(peer, on_up);
 	fastd_peer_exec_shell_command(on_up, peer, NULL, NULL, sync);
 }
 
 /** Calls the on-down command */
-static inline void on_down(const fastd_peer_t *peer, bool sync) {
+static inline void on_down(const fastd_peer_t * const peer, const bool sync) {
 	const fastd_shell_command_t *on_down = fastd_peer_group_lookup_peer_shell_command(peer, on_down);
 	fastd_peer_exec_shell_command(on_down, peer, NULL, NULL, sync);
 }
 
 /** Executes the on-establish command for a peer */
-static inline void on_establish(const fastd_peer_t *peer) {
-	const fastd_shell_command_t *on_establish = fastd_peer_group_lookup_peer_shell_command(peer, on_establish);
+static inline void on_establish(const fastd_peer_t * const peer) {
+	const fastd_shell_command_t * const on_establish = fastd_peer_group_lookup_peer_shell_command(peer, on_establish);
 	fastd_peer_exec_shell_command(on_establish, peer, &peer->local_address, &peer->address, false);
 }
 
 /** Executes the on-disestablish command for a peer */
-static inline void on_disestablish(const fastd_peer_t *peer) {
-	const fastd_shell_command_t *on_disestablish =
+static inline void on_disestablish(const fastd_peer_t * const peer) {
+	const fastd_shell_command_t * const on_disestablish =
 		fastd_peer_group_lookup_peer_shell_command(peer, on_disestablish);
 	fastd_peer_exec_shell_command(on_disestablish, peer, &peer->local_address, &peer->address, false);
 }
 
 /** Compares two peers by their peer ID */
-static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
+static int peer_id_cmp(fastd_peer_t *const *const a, fastd_peer_t *const *const b) {
 	if ((*a)->id == (*b)->id)
 		return 0;
 	else if ((*a)->id < (*b)->id)
@@ -124,7 +124,7 @@ static int peer_id_cmp(fastd_peer_t *const *a, fastd_peer_t *const *b) {
 }
 
 /** Finds the entry for a peer with a specified ID in the array \e ctx.peers */
-static fastd_peer_t **peer_p_find_by_id(uint64_t id) {
+static fastd_peer_t **peer_p_find_by_id(const uint64_t id) {
 	fastd_peer_t key = { .id = id };
 	fastd_peer_t *const keyp = &key;
 
@@ -132,7 +132,7 @@ static fastd_peer_t **peer_p_find_by_id(uint64_t id) {
 }
 
 /** Finds the index of a peer with a specified ID in the array \e ctx.peers */
-static size_t peer_index_find_by_id(uint64_t id) {
+static size_t peer_index_find_by_id(const uint64_t id) {
 	fastd_peer_t **ret = peer_p_find_by_id(id);
 
 	if (!ret)
@@ -142,12 +142,12 @@ static size_t peer_index_find_by_id(uint64_t id) {
 }
 
 /** Finds the index of a peer in the array \e ctx.peers */
-static inline size_t peer_index(fastd_peer_t *peer) {
+static inline size_t peer_index(const fastd_peer_t *const peer) {
 	return peer_index_find_by_id(peer->id);
 }
 
 /** Finds a peer with a specified ID */
-fastd_peer_t *fastd_peer_find_by_id(uint64_t id) {
+fastd_peer_t *fastd_peer_find_by_id(const uint64_t id) {
 	fastd_peer_t **ret = peer_p_find_by_id(id);
 
 	if (ret)
@@ -157,7 +157,7 @@ fastd_peer_t *fastd_peer_find_by_id(uint64_t id) {
 }
 
 /** Closes and frees a peer's dynamic socket */
-static inline void free_socket(fastd_peer_t *peer) {
+static inline void free_socket(fastd_peer_t * const peer) {
 	if (!peer->sock)
 		return;
 
@@ -173,9 +173,9 @@ static inline void free_socket(fastd_peer_t *peer) {
 }
 
 /** Checks if a peer group has any contraints which might cause connection attempts to be rejected */
-static inline bool has_group_config_constraints(const fastd_peer_group_t *group) {
-	for (; group; group = group->parent) {
-		if (group->max_connections >= 0)
+static inline bool has_group_config_constraints(const fastd_peer_group_t * const group) {
+	for (const fastd_peer_group_t *group_iterator=group; group_iterator; group_iterator = group_iterator->parent) {
+		if (group_iterator->max_connections >= 0)
 			return true;
 	}
 
@@ -188,7 +188,7 @@ static inline bool has_group_config_constraints(const fastd_peer_group_t *group)
    If the peer's old socket is dynamic, it is closed. Then either a new dynamic socket is opened
    or a default socket is used.
 */
-void fastd_peer_reset_socket(fastd_peer_t *peer) {
+void fastd_peer_reset_socket(fastd_peer_t * const peer) {
 	if (peer->address.sa.sa_family == AF_UNSPEC) {
 		free_socket(peer);
 		return;
@@ -218,7 +218,7 @@ void fastd_peer_reset_socket(fastd_peer_t *peer) {
 }
 
 /** Schedules the peer maintenance task (or removes the scheduled task if there's nothing to do) */
-static void schedule_peer_task(fastd_peer_t *peer) {
+static void schedule_peer_task(fastd_peer_t * const peer) {
 	fastd_timeout_t timeout = fastd_timeout_min(
 		peer->reset_timeout, fastd_timeout_min(peer->keepalive_timeout, peer->next_handshake));
 
@@ -235,12 +235,12 @@ static void schedule_peer_task(fastd_peer_t *peer) {
 }
 
 /** Sets the timeout for the next handshake without actually rescheduling */
-static void set_next_handshake(fastd_peer_t *peer, int delay) {
+static void set_next_handshake(fastd_peer_t * const peer, const int delay) {
 	peer->next_handshake = ctx.now + delay;
 }
 
 /** Sets the timeout for the next handshake to the default delay and jitter without actually rescheduling */
-static void set_next_handshake_default(fastd_peer_t *peer) {
+static void set_next_handshake_default(fastd_peer_t * const peer) {
 	set_next_handshake(peer, fastd_peer_handshake_default_rand());
 }
 
@@ -250,25 +250,26 @@ static void set_next_handshake_default(fastd_peer_t *peer) {
    @param peer	the peer
    @param delay	the delay in milliseconds
 */
-void fastd_peer_schedule_handshake(fastd_peer_t *peer, int delay) {
+void fastd_peer_schedule_handshake(fastd_peer_t * const peer, const int delay) {
 	set_next_handshake(peer, delay);
 	schedule_peer_task(peer);
 }
 
 /** Checks if the peer group \e group1 lies in \e group2 */
-static inline bool is_group_in(const fastd_peer_group_t *group1, const fastd_peer_group_t *group2) {
-	while (group1) {
-		if (group1 == group2)
+static inline bool is_group_in(const fastd_peer_group_t * const group1, const fastd_peer_group_t * const group2) {
+	for (const fastd_peer_group_t * group_iterator=group1;
+	     group_iterator;
+	     group_iterator = group_iterator->parent) {
+		if (group_iterator == group2) {
 			return true;
-
-		group1 = group1->parent;
+		}
 	}
 
 	return false;
 }
 
 /** Checks if a peer lies in a peer group */
-static bool is_peer_in_group(const fastd_peer_t *peer, const fastd_peer_group_t *group) {
+static bool is_peer_in_group(const fastd_peer_t * const peer, const fastd_peer_group_t * const group) {
 	return is_group_in(peer->group, group);
 }
 
@@ -279,7 +280,7 @@ static bool is_peer_in_group(const fastd_peer_t *peer, const fastd_peer_group_t 
 
    After a call to reset_peer a peer must be deleted by delete_peer or re-initialized by setup_peer.
 */
-static void reset_peer(fastd_peer_t *peer) {
+static void reset_peer(fastd_peer_t * const peer) {
 	if (fastd_peer_is_established(peer)) {
 		on_disestablish(peer);
 		pr_info("connection with %P disestablished.", peer);
@@ -327,7 +328,7 @@ static void reset_peer(fastd_peer_t *peer) {
    make the choice of peers random (it will be biased by the latency, which might or might not be
    what a user wants)
 */
-static void init_handshake(fastd_peer_t *peer) {
+static void init_handshake(fastd_peer_t * const peer) {
 	unsigned delay = 0;
 	if (has_group_config_constraints(peer->group))
 		delay = fastd_rand(0, 3000);
@@ -339,7 +340,7 @@ static void init_handshake(fastd_peer_t *peer) {
 
 /** Handles an asynchronous DNS resolve response */
 void fastd_peer_handle_resolve(
-	fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses) {
+	fastd_peer_t * const peer, fastd_remote_t * const remote, const size_t n_addresses, const fastd_peer_address_t * const addresses) {
 	free(remote->addresses);
 	remote->addresses = fastd_new_array(n_addresses, fastd_peer_address_t);
 	memcpy(remote->addresses, addresses, n_addresses * sizeof(fastd_peer_address_t));
@@ -352,7 +353,7 @@ void fastd_peer_handle_resolve(
 }
 
 /** Initializes a peer */
-static void setup_peer(fastd_peer_t *peer) {
+static void setup_peer(fastd_peer_t * const peer) {
 	if (VECTOR_LEN(peer->remotes) == 0) {
 		peer->next_remote = -1;
 	} else {
@@ -431,7 +432,7 @@ static void setup_peer(fastd_peer_t *peer) {
    If the peer has already been added to the peer list,
    use fastd_peer_delete() instead.
 */
-void fastd_peer_free(fastd_peer_t *peer) {
+void fastd_peer_free(fastd_peer_t * const peer) {
 	free(peer->key);
 
 	size_t i;
@@ -452,7 +453,7 @@ void fastd_peer_free(fastd_peer_t *peer) {
 }
 
 /** Deletes a peer */
-static void delete_peer(fastd_peer_t *peer) {
+static void delete_peer(fastd_peer_t * const peer) {
 	if (fastd_peer_is_dynamic(peer) || peer->config_source_dir)
 		pr_verbose("deleting peer %P", peer);
 
@@ -471,7 +472,7 @@ static void delete_peer(fastd_peer_t *peer) {
 
 
 /** Checks if two fastd_peer_address_t are equal */
-bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_peer_address_t *addr2) {
+bool fastd_peer_address_equal(const fastd_peer_address_t * const addr1, const fastd_peer_address_t * const addr2) {
 	if (addr1->sa.sa_family != addr2->sa.sa_family)
 		return false;
 
@@ -501,7 +502,7 @@ bool fastd_peer_address_equal(const fastd_peer_address_t *addr1, const fastd_pee
 }
 
 /** If \e addr is a v4-mapped IPv6 address, it is converted to an IPv4 address */
-void fastd_peer_address_simplify(fastd_peer_address_t *addr) {
+void fastd_peer_address_simplify(fastd_peer_address_t * const addr) {
 	if (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&addr->in6.sin6_addr)) {
 		struct sockaddr_in6 mapped = addr->in6;
 
@@ -513,7 +514,7 @@ void fastd_peer_address_simplify(fastd_peer_address_t *addr) {
 }
 
 /** If \e addr is an IPv4 address, it is converted to a v4-mapped IPv6 address */
-void fastd_peer_address_widen(fastd_peer_address_t *addr) {
+void fastd_peer_address_widen(fastd_peer_address_t * const addr) {
 	if (addr->sa.sa_family == AF_INET) {
 		struct sockaddr_in addr4 = addr->in;
 
@@ -528,7 +529,7 @@ void fastd_peer_address_widen(fastd_peer_address_t *addr) {
 
 
 /** Resets a peer's address to the unspecified address */
-static inline void reset_peer_address(fastd_peer_t *peer) {
+static inline void reset_peer_address(fastd_peer_t * const peer) {
 	if (fastd_peer_is_established(peer)) {
 		fastd_peer_reset(peer);
 	} else {
@@ -538,7 +539,7 @@ static inline void reset_peer_address(fastd_peer_t *peer) {
 }
 
 /** Checks if an address is statically configured for a peer */
-bool fastd_peer_owns_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
+bool fastd_peer_owns_address(const fastd_peer_t * const peer, const fastd_peer_address_t * const addr) {
 	if (fastd_peer_is_floating(peer))
 		return false;
 
@@ -557,7 +558,7 @@ bool fastd_peer_owns_address(const fastd_peer_t *peer, const fastd_peer_address_
 }
 
 /** Checks if an address matches any of the configured or resolved remotes of a peer */
-bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_address_t *addr) {
+bool fastd_peer_matches_address(const fastd_peer_t * const peer, const fastd_peer_address_t * const addr) {
 	if (fastd_peer_is_floating(peer))
 		return true;
 
@@ -584,8 +585,8 @@ bool fastd_peer_matches_address(const fastd_peer_t *peer, const fastd_peer_addre
    in question.
  */
 bool fastd_peer_claim_address(
-	fastd_peer_t *new_peer, fastd_socket_t *sock, const fastd_peer_address_t *local_addr,
-	const fastd_peer_address_t *remote_addr, bool force) {
+	fastd_peer_t * const new_peer, fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr,
+	const fastd_peer_address_t * const remote_addr, const bool force) {
 	if (remote_addr->sa.sa_family == AF_UNSPEC) {
 		if (fastd_peer_is_established(new_peer))
 			fastd_peer_reset(new_peer);
@@ -633,7 +634,7 @@ bool fastd_peer_claim_address(
 }
 
 /** Resets and re-initializes a peer */
-void fastd_peer_reset(fastd_peer_t *peer) {
+void fastd_peer_reset(fastd_peer_t * const peer) {
 	if (peer->state != STATE_INACTIVE) {
 		pr_debug("resetting peer %P", peer);
 		reset_peer(peer);
@@ -643,13 +644,13 @@ void fastd_peer_reset(fastd_peer_t *peer) {
 }
 
 /** Deletes a peer */
-void fastd_peer_delete(fastd_peer_t *peer) {
+void fastd_peer_delete(fastd_peer_t * const peer) {
 	reset_peer(peer);
 	delete_peer(peer);
 }
 
 /** Counts how many peers in the given peer group have established a connection */
-static inline size_t count_established_group_peers(const fastd_peer_group_t *group) {
+static inline size_t count_established_group_peers(const fastd_peer_group_t * const group) {
 	size_t i, ret = 0;
 	for (i = 0; i < VECTOR_LEN(ctx.peers); i++) {
 		fastd_peer_t *peer = VECTOR_INDEX(ctx.peers, i);
@@ -662,7 +663,7 @@ static inline size_t count_established_group_peers(const fastd_peer_group_t *gro
 }
 
 /** Checks if a peer may currently establish a connection */
-bool fastd_peer_may_connect(fastd_peer_t *peer) {
+bool fastd_peer_may_connect(fastd_peer_t * const peer) {
 	if (fastd_peer_is_established(peer))
 		return true;
 
@@ -680,7 +681,7 @@ bool fastd_peer_may_connect(fastd_peer_t *peer) {
 }
 
 /** Checks if two peer configurations are equivalent (exept for the name) */
-static inline bool peer_configs_equal(const fastd_peer_t *peer1, const fastd_peer_t *peer2) {
+static inline bool peer_configs_equal(const fastd_peer_t * const peer1, const fastd_peer_t * const peer2) {
 	if (peer1->group != peer2->group)
 		return false;
 
@@ -709,7 +710,7 @@ static inline bool peer_configs_equal(const fastd_peer_t *peer1, const fastd_pee
 }
 
 /** Adds a new peer */
-bool fastd_peer_add(fastd_peer_t *peer) {
+bool fastd_peer_add(fastd_peer_t * const peer) {
 	if (!peer->key) {
 		pr_warn("no valid key configured for peer %P", peer);
 		goto error;
@@ -774,12 +775,12 @@ error:
 }
 
 /** Prints a debug message when no handshake could be sent because the current remote didn't resolve successfully */
-static inline void no_valid_address_debug(const fastd_peer_t *peer) {
+static inline void no_valid_address_debug(const fastd_peer_t * const peer) {
 	pr_debug("not sending a handshake to %P (no valid address resolved)", peer);
 }
 
 /** Sends a new handshake to the current address of the given remote of a peer */
-static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
+static void send_handshake(fastd_peer_t *peer, fastd_remote_t * const next_remote) {
 	if (!fastd_peer_is_established(peer)) {
 		if (!next_remote->n_addresses) {
 			no_valid_address_debug(peer);
@@ -811,7 +812,7 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 }
 
 /** Marks a peer as established */
-bool fastd_peer_set_established(fastd_peer_t *peer) {
+bool fastd_peer_set_established(fastd_peer_t * const peer) {
 	if (fastd_peer_is_established(peer))
 		return true;
 
@@ -837,18 +838,18 @@ bool fastd_peer_set_established(fastd_peer_t *peer) {
 }
 
 /** Compares two MAC addresses */
-static inline int eth_addr_cmp(const fastd_eth_addr_t *addr1, const fastd_eth_addr_t *addr2) {
+static inline int eth_addr_cmp(const fastd_eth_addr_t * const addr1, const fastd_eth_addr_t * const addr2) {
 	return memcmp(addr1->data, addr2->data, sizeof(fastd_eth_addr_t));
 }
 
 /** Compares two fastd_peer_eth_addr_t entries by their MAC addresses */
-static int peer_eth_addr_cmp(const fastd_peer_eth_addr_t *addr1, const fastd_peer_eth_addr_t *addr2) {
+static int peer_eth_addr_cmp(const fastd_peer_eth_addr_t * const addr1, const fastd_peer_eth_addr_t * const addr2) {
 	return eth_addr_cmp(&addr1->addr, &addr2->addr);
 }
 
 /** Adds a MAC address to the sorted list of addresses associated with a peer (or updates the timeout of an existing
  * entry) */
-void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
+void fastd_peer_eth_addr_add(fastd_peer_t * const peer, const fastd_eth_addr_t addr) {
 	size_t min = 0, max = VECTOR_LEN(ctx.eth_addrs);
 
 	if (peer && !fastd_peer_is_established(peer))
@@ -878,7 +879,7 @@ void fastd_peer_eth_addr_add(fastd_peer_t *peer, fastd_eth_addr_t addr) {
 }
 
 /** Finds the peer that is associated with a given MAC address */
-bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **peer) {
+bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t ** const peer) {
 	const fastd_peer_eth_addr_t key = { .addr = addr };
 	fastd_peer_eth_addr_t *peer_eth_addr = VECTOR_BSEARCH(&key, ctx.eth_addrs, peer_eth_addr_cmp);
 
@@ -890,7 +891,7 @@ bool fastd_peer_find_by_eth_addr(const fastd_eth_addr_t addr, fastd_peer_t **pee
 }
 
 /** Sends a handshake to one peer, if a scheduled handshake is due */
-static void handle_task_handshake(fastd_peer_t *peer) {
+static void handle_task_handshake(fastd_peer_t * const peer) {
 	set_next_handshake_default(peer);
 
 	if (!fastd_peer_may_connect(peer)) {
@@ -934,8 +935,8 @@ static void handle_task_handshake(fastd_peer_t *peer) {
    \li If no data was received from the peer for some time, it is reset.
    \li If no data was sent to the peer for some time, a keepalive is sent.
  */
-void fastd_peer_handle_task(fastd_task_t *task) {
-	fastd_peer_t *peer = container_of(task, fastd_peer_t, task);
+void fastd_peer_handle_task(fastd_task_t * const task) {
+	fastd_peer_t * const peer = container_of(task, fastd_peer_t, task);
 
 	/* check for peer timeout */
 	if (fastd_timed_out(peer->reset_timeout)) {

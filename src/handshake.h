@@ -87,42 +87,42 @@ struct fastd_handshake {
 };
 
 
-fastd_buffer_t *fastd_handshake_new_init(size_t tail_space);
+fastd_buffer_t *fastd_handshake_new_init(const size_t tail_space);
 fastd_buffer_t *fastd_handshake_new_reply(
-	uint8_t type, uint16_t mtu, const fastd_method_info_t *method, const fastd_string_stack_t *methods,
-	size_t tail_space);
+	const uint8_t type, const uint16_t mtu, const fastd_method_info_t * const method, const fastd_string_stack_t * const methods,
+	const size_t tail_space);
 
 void fastd_handshake_send_error(
-	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint16_t error_detail);
+	fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr, const fastd_peer_address_t * const remote_addr,
+	fastd_peer_t * const peer, const fastd_handshake_t * const handshake, const uint8_t reply_code, const uint16_t error_detail);
 bool fastd_handshake_check_mtu(
-	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, const fastd_handshake_t *handshake);
+	fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr, const fastd_peer_address_t * const remote_addr,
+	fastd_peer_t * const peer, const fastd_handshake_t * const handshake);
 
 const fastd_method_info_t *
-fastd_handshake_get_method_by_name_list(const fastd_peer_t *peer, const fastd_handshake_t *handshake);
+fastd_handshake_get_method_by_name_list(const fastd_peer_t * const peer, const fastd_handshake_t * const handshake);
 const fastd_method_info_t *
-fastd_handshake_get_method_by_name(const fastd_peer_t *peer, const fastd_handshake_t *handshake);
+fastd_handshake_get_method_by_name(const fastd_peer_t * const peer, const fastd_handshake_t * const handshake);
 
 void fastd_handshake_handle(
-	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer);
+	fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr, const fastd_peer_address_t * const remote_addr,
+	fastd_peer_t * const peer, fastd_buffer_t * const buffer);
 
 
 /** Returns the TLV data of a handshake packet in a given buffer */
-static inline void *fastd_handshake_tlv_data(const fastd_buffer_t *buffer) {
-	fastd_handshake_packet_t *packet = buffer->data;
+static inline void *fastd_handshake_tlv_data(const fastd_buffer_t * const buffer) {
+	fastd_handshake_packet_t * const packet = buffer->data;
 	return packet->tlv_data;
 }
 
 /** Returns the length the TLV data of a handshake packet in a given buffer */
-static inline uint16_t fastd_handshake_tlv_len(const fastd_buffer_t *buffer) {
-	fastd_handshake_packet_t *packet = buffer->data;
+static inline uint16_t fastd_handshake_tlv_len(const fastd_buffer_t * const buffer) {
+	const fastd_handshake_packet_t * const packet = buffer->data;
 	return ntohs(packet->tlv_len);
 }
 
 /** Adds an uninitialized TLV record of given type and length to a handshake buffer */
-static inline uint8_t *fastd_handshake_extend(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
+static inline uint8_t *fastd_handshake_extend(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const size_t len) {
 	uint8_t *dst = buffer->data + buffer->len;
 
 	if ((uint8_t *)buffer->data + buffer->len + RECORD_LEN(len) > buffer->base + ctx.max_buffer)
@@ -143,7 +143,7 @@ static inline uint8_t *fastd_handshake_extend(fastd_buffer_t *buffer, fastd_hand
 
 /** Adds an TLV record of given type and length initialized with arbitraty data to a handshake buffer */
 static inline void
-fastd_handshake_add(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len, const void *data) {
+fastd_handshake_add(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const size_t len, const void * const data) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, len);
 
 	memcpy(dst, data, len);
@@ -151,7 +151,7 @@ fastd_handshake_add(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, 
 
 /** Adds an TLV record of given type and length initialized with zeros to a handshake buffer */
 static inline uint8_t *
-fastd_handshake_add_zero(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, size_t len) {
+fastd_handshake_add_zero(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const size_t len) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, len);
 
 	memset(dst, 0, len);
@@ -160,7 +160,7 @@ fastd_handshake_add_zero(fastd_buffer_t *buffer, fastd_handshake_record_type_t t
 
 /** Adds an uint8 TLV record of given type and value to a handshake buffer */
 static inline void
-fastd_handshake_add_uint8(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint8_t value) {
+fastd_handshake_add_uint8(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const uint8_t value) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, 1);
 
 	dst[0] = value;
@@ -168,7 +168,7 @@ fastd_handshake_add_uint8(fastd_buffer_t *buffer, fastd_handshake_record_type_t 
 
 /** Adds an uint16 TLV record of given type and value to a handshake buffer */
 static inline void
-fastd_handshake_add_uint16(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint16_t value) {
+fastd_handshake_add_uint16(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const uint16_t value) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, 2);
 
 	dst[0] = value;
@@ -177,7 +177,7 @@ fastd_handshake_add_uint16(fastd_buffer_t *buffer, fastd_handshake_record_type_t
 
 /** Adds an uint24 TLV record of given type and value to a handshake buffer */
 static inline void
-fastd_handshake_add_uint24(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint32_t value) {
+fastd_handshake_add_uint24(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const uint32_t value) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, 3);
 
 	dst[0] = value;
@@ -187,7 +187,7 @@ fastd_handshake_add_uint24(fastd_buffer_t *buffer, fastd_handshake_record_type_t
 
 /** Adds an uint32 TLV record of given type and value to a handshake buffer */
 static inline void
-fastd_handshake_add_uint32(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint32_t value) {
+fastd_handshake_add_uint32(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const uint32_t value) {
 	uint8_t *dst = fastd_handshake_extend(buffer, type, 4);
 
 	dst[0] = value;
@@ -198,7 +198,7 @@ fastd_handshake_add_uint32(fastd_buffer_t *buffer, fastd_handshake_record_type_t
 
 /** Adds an TLV record of given type and value to a handshake buffer, automatically using a 1- to 4-byte value */
 static inline void
-fastd_handshake_add_uint(fastd_buffer_t *buffer, fastd_handshake_record_type_t type, uint32_t value) {
+fastd_handshake_add_uint(fastd_buffer_t * const buffer, const fastd_handshake_record_type_t type, const  uint32_t value) {
 	if (value > 0xffffff)
 		fastd_handshake_add_uint32(buffer, type, value);
 	else if (value > 0xffff)

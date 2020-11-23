@@ -364,30 +364,30 @@ void fastd_main(int argc, char *argv[]);
 
 
 void fastd_send(
-	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size);
-void fastd_send_data(fastd_buffer_t *buffer, fastd_peer_t *source, fastd_peer_t *dest);
+	const fastd_socket_t * const sock, const fastd_peer_address_t * const local_addr, const fastd_peer_address_t * const remote_addr,
+	fastd_peer_t * const peer, fastd_buffer_t * const buffer, const size_t stat_size);
+void fastd_send_data(fastd_buffer_t * const buffer, fastd_peer_t * const source, fastd_peer_t * const dest);
 
 void fastd_receive_unknown_init(void);
 void fastd_receive_unknown_free(void);
 void fastd_receive(fastd_socket_t *sock);
-void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t *buffer, bool reordered);
+void fastd_handle_receive(fastd_peer_t * const peer, fastd_buffer_t * const buffer, const bool reordered);
 
 void fastd_close_all_fds(void);
 
 void fastd_socket_bind_all(void);
-fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af);
-void fastd_socket_close(fastd_socket_t *sock);
-void fastd_socket_error(fastd_socket_t *sock);
+fastd_socket_t *fastd_socket_open(fastd_peer_t * const peer, const int af);
+void fastd_socket_close(fastd_socket_t * const sock);
+void fastd_socket_error(fastd_socket_t * const sock);
 
-void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
+void fastd_resolve_peer(fastd_peer_t * const peer, fastd_remote_t * const remote);
 
-fastd_iface_t *fastd_iface_open(fastd_peer_t *peer);
-void fastd_iface_handle(fastd_iface_t *iface);
-void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t *buffer);
-void fastd_iface_close(fastd_iface_t *iface);
+fastd_iface_t *fastd_iface_open(fastd_peer_t * const peer);
+void fastd_iface_handle(const fastd_iface_t * const iface);
+void fastd_iface_write(const fastd_iface_t * const iface, fastd_buffer_t * const buffer);
+void fastd_iface_close(fastd_iface_t * const iface);
 
-void fastd_random_bytes(void *buffer, size_t len, bool secure);
+void fastd_random_bytes(void * const buffer, const size_t len, const bool secure);
 int64_t fastd_get_time(void);
 
 
@@ -429,13 +429,13 @@ static inline void fastd_status_handle(void) {}
 
 
 /** Returns a random number between \a min (inclusively) and \a max (exclusively) */
-static inline int fastd_rand(int min, int max) {
+static inline int fastd_rand(const int min, const int max) {
 	unsigned int r = (unsigned int)random();
 	return (r % (max - min) + min);
 }
 
 /** Sets the O_NONBLOCK flag on a file descriptor */
-static inline void fastd_setnonblock(int fd) {
+static inline void fastd_setnonblock(const int fd) {
 	int flags = fcntl(fd, F_GETFL);
 	if (flags < 0)
 		exit_errno("Getting file status flags failed: fcntl");
@@ -446,7 +446,7 @@ static inline void fastd_setnonblock(int fd) {
 
 
 /** Returns the maximum payload size \em fastd is configured to transport */
-static inline size_t fastd_max_payload(uint16_t mtu) {
+static inline size_t fastd_max_payload(const uint16_t mtu) {
 	switch (conf.mode) {
 	case MODE_TAP:
 	case MODE_MULTITAP:
@@ -460,14 +460,14 @@ static inline size_t fastd_max_payload(uint16_t mtu) {
 
 
 /** Returns the source address of an ethernet packet */
-static inline fastd_eth_addr_t fastd_buffer_source_address(const fastd_buffer_t *buffer) {
+static inline fastd_eth_addr_t fastd_buffer_source_address(const fastd_buffer_t * const buffer) {
 	fastd_eth_addr_t ret;
 	memcpy(&ret, buffer->data + offsetof(fastd_eth_header_t, source), sizeof(fastd_eth_addr_t));
 	return ret;
 }
 
 /** Returns the destination address of an ethernet packet */
-static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t *buffer) {
+static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t * const buffer) {
 	fastd_eth_addr_t ret;
 	memcpy(&ret, buffer->data + offsetof(fastd_eth_header_t, dest), sizeof(fastd_eth_addr_t));
 	return ret;
@@ -475,12 +475,12 @@ static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t *b
 
 
 /** Checks if a fastd_peer_address_t is an IPv6 link-local address */
-static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
+static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t * const addr) {
 	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));
 }
 
 /** Duplicates a string, creating a one-element string stack */
-static inline fastd_string_stack_t *fastd_string_stack_dup(const char *str) {
+static inline fastd_string_stack_t *fastd_string_stack_dup(const char * const str) {
 	size_t str_len = strlen(str);
 	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
 
@@ -492,7 +492,7 @@ static inline fastd_string_stack_t *fastd_string_stack_dup(const char *str) {
 }
 
 /** Duplicates a string of a given maximum length, creating a one-element string stack */
-static inline fastd_string_stack_t *fastd_string_stack_dupn(const char *str, size_t len) {
+static inline fastd_string_stack_t *fastd_string_stack_dupn(const char * const str, const size_t len) {
 	size_t str_len = strnlen(str, len);
 	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
 
@@ -505,7 +505,7 @@ static inline fastd_string_stack_t *fastd_string_stack_dupn(const char *str, siz
 }
 
 /** Pushes the copy of a string onto the top of a string stack */
-static inline fastd_string_stack_t *fastd_string_stack_push(fastd_string_stack_t *stack, const char *str) {
+static inline fastd_string_stack_t *fastd_string_stack_push(fastd_string_stack_t * const stack, const char * const str) {
 	size_t str_len = strlen(str);
 	fastd_string_stack_t *ret = fastd_alloc(alignto(sizeof(fastd_string_stack_t) + str_len + 1, 8));
 
@@ -517,7 +517,7 @@ static inline fastd_string_stack_t *fastd_string_stack_push(fastd_string_stack_t
 }
 
 /** Gets the head of string stack (or NULL if the stack is NULL) */
-static inline const char *fastd_string_stack_get(const fastd_string_stack_t *stack) {
+static inline const char *fastd_string_stack_get(const fastd_string_stack_t * const stack) {
 	return stack ? stack->str : NULL;
 }
 
@@ -551,12 +551,12 @@ static inline void fastd_string_stack_free(fastd_string_stack_t *str) {
 
    \note The current time is updated only once per main loop iteration, after waiting for input.
 */
-static inline bool fastd_timed_out(fastd_timeout_t timeout) {
+static inline bool fastd_timed_out(const fastd_timeout_t timeout) {
 	return timeout <= ctx.now;
 }
 
 /** Returns the minimum of two fastd_timeout_t values */
-static inline fastd_timeout_t fastd_timeout_min(fastd_timeout_t a, fastd_timeout_t b) {
+static inline fastd_timeout_t fastd_timeout_min(const fastd_timeout_t a, const fastd_timeout_t b) {
 	return (a < b) ? a : b;
 }
 

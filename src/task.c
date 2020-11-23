@@ -46,7 +46,7 @@ void fastd_task_handle(void) {
 }
 
 /** Puts a task back into the queue with a new timeout */
-void fastd_task_reschedule(fastd_task_t *task, fastd_timeout_t timeout) {
+void fastd_task_reschedule(fastd_task_t * const task, const fastd_timeout_t timeout) {
 	task->entry.value = timeout;
 	fastd_pqueue_insert(&ctx.task_queue, &task->entry);
 }

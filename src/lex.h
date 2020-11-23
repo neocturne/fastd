@@ -19,7 +19,7 @@
 #include <stdio.h>
 
 
-fastd_lex_t *fastd_lex_init(FILE *file);
-void fastd_lex_destroy(fastd_lex_t *lex);
+fastd_lex_t *fastd_lex_init(FILE * const file);
+void fastd_lex_destroy(fastd_lex_t * const lex);
 
-int fastd_lex(FASTD_CONFIG_STYPE *yylval, FASTD_CONFIG_LTYPE *yylloc, fastd_lex_t *lex);
+int fastd_lex(FASTD_CONFIG_STYPE * const yylval, FASTD_CONFIG_LTYPE * const yylloc, fastd_lex_t * const lex);

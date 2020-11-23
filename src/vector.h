@@ -35,9 +35,9 @@ typedef struct fastd_vector_desc {
 	}
 
 
-void _fastd_vector_resize(fastd_vector_desc_t *desc, void **data, size_t n, size_t elemsize);
-void _fastd_vector_insert(fastd_vector_desc_t *desc, void **data, void *element, size_t pos, size_t elemsize);
-void _fastd_vector_delete(fastd_vector_desc_t *desc, void **data, size_t pos, size_t elemsize);
+void _fastd_vector_resize(fastd_vector_desc_t * const desc, void ** const data, const size_t n, const size_t elemsize);
+void _fastd_vector_insert(fastd_vector_desc_t * const desc, void ** const data, const void * const element, const size_t pos, size_t elemsize);
+void _fastd_vector_delete(fastd_vector_desc_t * const desc, void ** const data, const size_t pos, const size_t elemsize);
 
 
 /**

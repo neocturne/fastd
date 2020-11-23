@@ -51,7 +51,7 @@ static volatile int sig_terminate = 0;   /**< Holds the signal number when a SIG
 
 
 /** Signal handler; just saves the signals to be handled later */
-static void on_signal(int signo) {
+static void on_signal(const int signo) {
 	switch (signo) {
 	case SIGHUP:
 		sig_reload = true;
@@ -180,7 +180,7 @@ static inline void on_pre_up(void) {
 }
 
 /** Calls the on-up command */
-static inline void on_up(fastd_iface_t *iface) {
+static inline void on_up(fastd_iface_t * const iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_shell_env_set_iface(env, iface);
 	fastd_shell_command_exec_sync(&conf.peer_group->on_up, env, NULL);
@@ -188,7 +188,7 @@ static inline void on_up(fastd_iface_t *iface) {
 }
 
 /** Calls the on-down command */
-static inline void on_down(fastd_iface_t *iface) {
+static inline void on_down(fastd_iface_t * const iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
 	fastd_shell_env_set_iface(env, iface);
 	fastd_shell_command_exec_sync(&conf.peer_group->on_down, env, NULL);
@@ -413,7 +413,7 @@ static inline void init_early(void) {
 
    This also handles special run modes like \em generate-key and \em verify-config.
 */
-static inline void init_config(int *status_fd) {
+static inline void init_config(int *const status_fd) {
 	if (conf.verify_config) {
 		fastd_config_verify();
 		exit(0);

@@ -27,7 +27,7 @@ int64_t fastd_get_time(void) {
 	if (!timebase_info.denom)
 		mach_timebase_info(&timebase_info);
 
-	int64_t nsecs = (((long double)mach_absolute_time()) * timebase_info.numer) / timebase_info.denom;
+	const int64_t nsecs = (((long double)mach_absolute_time()) * timebase_info.numer) / timebase_info.denom;
 	return nsecs / 1000000;
 }
 

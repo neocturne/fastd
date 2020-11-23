@@ -25,20 +25,20 @@ typedef dispatch_semaphore_t fastd_sem_t;
 
 
 /** Initializes a semaphore with a given value */
-static inline void fastd_sem_init(fastd_sem_t *sem, unsigned value) {
+static inline void fastd_sem_init(fastd_sem_t * const sem, const unsigned value) {
 	*sem = dispatch_semaphore_create(value);
 	if (!*sem)
 		exit_errno("dispatch_semaphore_create");
 }
 
 /** Increments the semaphore */
-static inline void fastd_sem_post(fastd_sem_t *sem) {
+static inline void fastd_sem_post(fastd_sem_t * const sem) {
 	if (dispatch_semaphore_signal(*sem))
 		exit_errno("sem_post");
 }
 
 /** Tries to decrement the semaphore */
-static inline bool fastd_sem_trywait(fastd_sem_t *sem) {
+static inline bool fastd_sem_trywait(fastd_sem_t * const sem) {
 	return !dispatch_semaphore_wait(*sem, DISPATCH_TIME_NOW);
 }
 
@@ -51,19 +51,19 @@ typedef sem_t fastd_sem_t;
 
 
 /** Initializes a semaphore with a given value */
-static inline void fastd_sem_init(fastd_sem_t *sem, unsigned value) {
+static inline void fastd_sem_init(fastd_sem_t * const sem, const unsigned value) {
 	if (sem_init(sem, 0, value))
 		exit_errno("sem_init");
 }
 
 /** Increments the semaphore */
-static inline void fastd_sem_post(fastd_sem_t *sem) {
+static inline void fastd_sem_post(fastd_sem_t * const sem) {
 	if (sem_post(sem))
 		exit_errno("sem_post");
 }
 
 /** Tries to decrement the semaphore */
-static inline bool fastd_sem_trywait(fastd_sem_t *sem) {
+static inline bool fastd_sem_trywait(fastd_sem_t * const sem) {
 	return !sem_trywait(sem);
 }
 

@@ -19,7 +19,7 @@
 /**
    Provides a given amount of cryptographic random data
 */
-void fastd_random_bytes(void *buffer, size_t len, bool secure) {
+void fastd_random_bytes(void * const buffer, const size_t len, const bool secure) {
 	int fd;
 	size_t read_bytes = 0;
 
