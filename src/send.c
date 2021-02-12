@@ -35,33 +35,31 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 
 #ifdef USE_PKTINFO
 	if (local_addr->sa.sa_family == AF_INET) {
+		struct in_pktinfo *pktinfo = (struct in_pktinfo *)CMSG_DATA(cmsg);
+
 		cmsg->cmsg_level = IPPROTO_IP;
 		cmsg->cmsg_type = IP_PKTINFO;
-		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+		cmsg->cmsg_len = CMSG_LEN(sizeof(*pktinfo));
 
 		msg->msg_controllen += cmsg->cmsg_len;
 
-		struct in_pktinfo pktinfo = {};
-		pktinfo.ipi_spec_dst = local_addr->in.sin_addr;
-		memcpy(CMSG_DATA(cmsg), &pktinfo, sizeof(pktinfo));
+		pktinfo->ipi_spec_dst = local_addr->in.sin_addr;
+
 		return;
 	}
 #endif
 
 	if (local_addr->sa.sa_family == AF_INET6) {
+		struct in6_pktinfo *pktinfo = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+
 		cmsg->cmsg_level = IPPROTO_IPV6;
 		cmsg->cmsg_type = IPV6_PKTINFO;
-		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+		cmsg->cmsg_len = CMSG_LEN(sizeof(*pktinfo));
 
 		msg->msg_controllen += cmsg->cmsg_len;
 
-		struct in6_pktinfo pktinfo = {};
-		pktinfo.ipi6_addr = local_addr->in6.sin6_addr;
-
-		if (IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr))
-			pktinfo.ipi6_ifindex = local_addr->in6.sin6_scope_id;
-
-		memcpy(CMSG_DATA(cmsg), &pktinfo, sizeof(pktinfo));
+		pktinfo->ipi6_addr = local_addr->in6.sin6_addr;
+		pktinfo->ipi6_ifindex = IN6_IS_ADDR_LINKLOCAL(&local_addr->in6.sin6_addr) ? local_addr->in6.sin6_scope_id : 0;
 	}
 }
 
@@ -71,9 +69,11 @@ void fastd_send(
 	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
+	if (local_addr && fastd_peer_address_is_multicast(local_addr))
+		exit_bug("send: local address is multicast");
 
 	struct msghdr msg = {};
-	uint8_t cbuf[1024] __attribute__((aligned(8))) = {};
+	uint8_t cbuf[128] __attribute__((aligned(8))) = {};
 	fastd_peer_address_t remote_addr6;
 
 	switch (remote_addr->sa.sa_family) {
@@ -91,7 +91,7 @@ void fastd_send(
 		exit_bug("unsupported address family");
 	}
 
-	if (sock->bound_addr->sa.sa_family == AF_INET6) {
+	if (sock->bound_addr.sa.sa_family == AF_INET6) {
 		remote_addr6 = *remote_addr;
 		fastd_peer_address_widen(&remote_addr6);
 
@@ -111,25 +111,7 @@ void fastd_send(
 	if (!msg.msg_controllen)
 		msg.msg_control = NULL;
 
-	int ret = sendmsg(sock->fd.fd, &msg, 0);
-
-	if (ret < 0 && msg.msg_controllen) {
-		switch (errno) {
-		case EINVAL:
-		case ENETUNREACH:
-			pr_debug2("sendmsg: %s (trying again without pktinfo)", strerror(errno));
-
-			if (peer && !fastd_peer_handshake_scheduled(peer))
-				fastd_peer_schedule_handshake_default(peer);
-
-			msg.msg_control = NULL;
-			msg.msg_controllen = 0;
-
-			ret = sendmsg(sock->fd.fd, &msg, 0);
-		}
-	}
-
-	if (ret < 0) {
+	if (sendmsg(sock->fd.fd, &msg, 0) < 0) {
 		switch (errno) {
 		case EAGAIN:
 #if EAGAIN != EWOULDBLOCK

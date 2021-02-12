@@ -46,11 +46,17 @@
 /** Defined if the platform supports SO_FREEBIND */
 #mesondefine USE_FREEBIND
 
+/** Defined if the platform supports SO_FREEBIND6 */
+#mesondefine USE_FREEBIND6
+
 /** Defined if the platform supports IP_MTU_DISCOVER */
 #mesondefine USE_PMTU
 
 /** Defined if the platform supports IP_PKTINFO */
 #mesondefine USE_PKTINFO
+
+/** Defined if the platform support IFA_F_* for address types */
+#mesondefine USE_IFAFLAGS
 
 /** Defined if the platform supports SO_MARK */
 #mesondefine USE_PACKET_MARK
@@ -116,6 +122,13 @@
 
 /** The time after a packet is received and no packets with lower sequence numbers are accepted anymore */
 #define REORDER_TIME 10000
+
+
+/** Minimal discovery interval */
+#define MIN_DISCOVERY_INTERVAL 1000	/* 1 second */
+
+/** Default discovery interval */
+#define DEFAULT_DISCOVERY_INTERVAL 5000	/* 5 seconds */
 
 
 /** The minimum time that must pass between two on-verify calls on the same peer */

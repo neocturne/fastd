@@ -290,6 +290,13 @@ static void respond_handshake(
 		fastd_handshake_tlv_len(buffer));
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
+	if (local_addr && fastd_peer_address_is_multicast(local_addr)) {
+		if (sock->addr && sock->addr->sourceaddr.sa.sa_family != AF_UNSPEC)
+			local_addr = &sock->bound_addr;
+		else
+			local_addr = NULL;
+	}
+
 	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
 }
 
@@ -471,10 +478,10 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(
 	fastd_handshake_add(
 		buffer, RECORD_SENDER_HANDSHAKE_KEY, PUBLICKEYBYTES, &ctx.protocol_state->handshake_key.key.public);
 
-	if (!peer || !fastd_peer_is_established(peer)) {
+	if (!fastd_peer_address_is_multicast(remote_addr) && (!peer || !fastd_peer_is_established(peer))) {
 		const fastd_shell_command_t *on_connect = fastd_peer_group_lookup_peer_shell_command(peer, on_connect);
 		fastd_peer_exec_shell_command(
-			on_connect, peer, (local_addr && local_addr->sa.sa_family) ? local_addr : sock->bound_addr,
+			on_connect, peer, (local_addr && local_addr->sa.sa_family != AF_UNSPEC) ? local_addr : &sock->bound_addr,
 			remote_addr, false);
 	}
 
@@ -617,6 +624,11 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(
 		return;
 	}
 
+	if (fastd_peer_address_is_multicast(local_addr) && handshake->type != 1) {
+		pr_warn("received uunknown multicast handshake type %u from %I", handshake->type, remote_addr);
+		return;
+	}
+
 	peer = match_sender_key(sock, remote_addr, peer, handshake->records[RECORD_SENDER_KEY].data);
 	if (!peer) {
 		switch (errno) {
@@ -636,6 +648,11 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(
 		default:
 			exit_bug("match_sender_key: unknown error");
 		}
+	}
+
+	if (fastd_peer_address_is_multicast(local_addr) && fastd_peer_is_established(peer)) {
+		pr_debug("ignoring multicast handshake discovery packet from peer %P[%I]", peer, remote_addr);
+		return;
 	}
 
 	if (!fastd_handshake_check_mtu(sock, local_addr, remote_addr, peer, handshake))

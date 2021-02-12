@@ -26,6 +26,7 @@
 #include "peer_group.h"
 
 #include <dirent.h>
+#include <ifaddrs.h>
 #include <grp.h>
 #include <libgen.h>
 #include <pwd.h>
@@ -35,6 +36,10 @@
 #include <sys/types.h>
 
 #include <sys/stat.h>
+
+#ifdef USE_IFAFLAGS
+#include <linux/if_addr.h>
+#endif
 
 
 /** The global configuration */
@@ -119,34 +124,127 @@ void fastd_config_mac(const char *name, const char *impl) {
 			impl, name, name);
 }
 
-/** Handles the configuration of a bind address */
-void fastd_config_bind_address(const fastd_peer_address_t *address, const char *bindtodev, unsigned flags) {
-#ifndef USE_BINDTODEVICE
-	if (bindtodev && !fastd_peer_address_is_v6_ll(address))
-		exit_error("config error: device bind configuration not supported on this system");
+/** Normalization of a bind address, initializing the target address structure */
+static void normalize_address(fastd_peer_address_t *address, const fastd_peer_address_t *config, const char *bindtodev) {
+	if (config->sa.sa_family == AF_INET6 && config->in6.sin6_scope_id) {
+		if (!bindtodev)
+			exit_error("config error: need interface to bind to resolve ll6 address");
+
+		struct ifaddrs *ifaddrs;
+		if (getifaddrs(&ifaddrs))
+			exit_error("config error: failed to resolve interface addresses");
+
+		struct ifaddrs *ifa;
+		for (ifa = ifaddrs; ifa; ifa = ifa->ifa_next) {
+			if (strcmp(ifa->ifa_name, bindtodev) || !ifa->ifa_addr)
+				continue;
+
+			const fastd_peer_address_t *addr = (const fastd_peer_address_t *)ifa->ifa_addr;
+			if (!fastd_peer_address_is_v6_ll(addr))
+				continue;
+#ifdef USE_IFAFLAGS
+			if ((ifa->ifa_flags & IFA_F_DEPRECATED) || (ifa->ifa_flags & IFA_F_DADFAILED))
+				continue;
 #endif
 
+			address->in6 = addr->in6;
+			address->in6.sin6_port = config->in6.sin6_port;
+			break;
+		}
+
+		freeifaddrs(ifaddrs);
+		if (!ifa)
+			exit_error("config error: failed to resolve any ll6 address for interface");
+	} else {
+		*address = *config;
+		if (bindtodev && fastd_peer_address_is_v6_ll(address)) {
+			char *end;
+			address->in6.sin6_scope_id = strtoul(bindtodev, &end, 10);
+
+			if (*end || !address->in6.sin6_scope_id)
+				address->in6.sin6_scope_id = if_nametoindex(bindtodev);
+
+			if (!address->in6.sin6_scope_id)
+				exit_error("config error: failed to resolve IPv6 LL scope interface");
+		} else
+			fastd_peer_address_simplify(address);
+	}
+}
+
+/** Handles the configuration of a bind address */
+void fastd_config_bind_address(
+	const fastd_peer_address_t *address, const char *bindtodev, const fastd_peer_address_t *sourceaddr,
+	fastd_timeout_t interval, unsigned flags) {
 #ifndef USE_MULTIAF_BIND
 	if (address->sa.sa_family == AF_UNSPEC) {
 		fastd_peer_address_t addr4 = { .in = { .sin_family = AF_INET, .sin_port = address->in.sin_port } };
 		fastd_peer_address_t addr6 = { .in6 = { .sin6_family = AF_INET6, .sin6_port = address->in.sin_port } };
 
-		fastd_config_bind_address(&addr4, bindtodev, flags);
-		fastd_config_bind_address(&addr6, bindtodev, flags);
+		if (sourceaddr->sa.sa_family != AF_INET6)
+			fastd_config_bind_address(&addr4, bindtodev, sourceaddr, interval, flags);
+		if (sourceaddr->sa.sa_family != AF_INET)
+			fastd_config_bind_address(&addr6, bindtodev, sourceaddr, interval, flags);
 		return;
 	}
 #endif
 
 	fastd_bind_address_t *addr = fastd_new(fastd_bind_address_t);
+
+	normalize_address(&addr->addr, address, bindtodev);
+	normalize_address(&addr->sourceaddr, sourceaddr, bindtodev);
+
+	if (fastd_peer_address_is_multicast(&addr->addr)) {
+		if (addr->addr.sa.sa_family == AF_INET) {
+			if (!addr->addr.in.sin_port)
+				exit_error("config error: multicast bind requires port specification");
+#ifndef USE_PKTINFO
+			exit_error("config error: multicast IPv4 requires PKTINFO support");
+#endif
+		} else if (!addr->addr.in6.sin6_port)
+			exit_error("config error: multicast bind with no interface requires source address");
+
+		if (!bindtodev) {
+			if (addr->addr.sa.sa_family == AF_INET6)
+				exit_error("config error: multicast IPv6 bind requires bind interface");
+			if (addr->sourceaddr.sa.sa_family == AF_UNSPEC)
+				exit_error("config error: multicast IPv4 bind requires bind interface or source address");
+		}
+
+		if (addr->sourceaddr.sa.sa_family != AF_UNSPEC && addr->addr.sa.sa_family != addr->sourceaddr.sa.sa_family)
+			exit_error("config error: family of source address does not match family of multicast address");
+
+		if (interval != FASTD_TIMEOUT_INV) {
+			if (interval && interval < MIN_DISCOVERY_INTERVAL)
+				exit_error("config error: discovery interval is smaller than minimum 1 second");
+		} else
+			interval = DEFAULT_DISCOVERY_INTERVAL;
+	} else {
+#ifndef USE_BINDTODEVICE
+		if (bindtodev && !fastd_peer_address_is_v6_ll(&addr->addr))
+			exit_error("config error: device bind configuration not supported on this system");
+#endif
+
+		if (addr->addr.sa.sa_family != AF_UNSPEC && addr->sourceaddr.sa.sa_family != AF_UNSPEC) {
+			if (addr->addr.sa.sa_family != addr->sourceaddr.sa.sa_family)
+				exit_error("config error: family of source address does not match family of bind address");
+			if (!fastd_peer_address_is_any(&addr->addr) && !fastd_peer_address_is_host_equal(&addr->addr, &addr->sourceaddr))
+				exit_error("config error: source address is different from explicitly bound address");
+		}
+
+		if (interval != FASTD_TIMEOUT_INV)
+			exit_error("config error: discovery interval set on non-discovery enabled socket");
+	}
+
+	if (addr->sourceaddr.sa.sa_family != AF_UNSPEC && fastd_peer_address_is_multicast(&addr->sourceaddr))
+		exit_error("config error: source address is a multicast address");
+
 	addr->next = conf.bind_addrs;
 	conf.bind_addrs = addr;
 	conf.n_bind_addrs++;
 
-	addr->addr = *address;
 	addr->flags = flags;
 	addr->bindtodev = fastd_strdup(bindtodev);
-
-	fastd_peer_address_simplify(&addr->addr);
+	addr->interval = interval;
 
 	if (addr->addr.sa.sa_family != AF_INET6 && ((flags & FASTD_BIND_DEFAULT_IPV4) || !conf.bind_addr_default_v4))
 		conf.bind_addr_default_v4 = addr;

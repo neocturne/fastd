@@ -22,6 +22,7 @@
 #include "polling.h"
 #include "sem.h"
 #include "shell.h"
+#include "socket.h"
 #include "task.h"
 #include "util.h"
 #include "vector.h"
@@ -127,34 +128,20 @@ struct fastd_protocol {
 	bool (*describe_peer)(const fastd_peer_t *peer, char *buf, size_t len);
 };
 
-/** An union storing an IPv4 or IPv6 address */
-union fastd_peer_address {
-	struct sockaddr sa;      /**< A sockaddr field (for access to sa_family) */
-	struct sockaddr_in in;   /**< An IPv4 address */
-	struct sockaddr_in6 in6; /**< An IPv6 address */
-};
-
 #define FASTD_BIND_DEFAULT_IPV4 (1U << 1)
 #define FASTD_BIND_DEFAULT_IPV6 (1U << 2)
 #define FASTD_BIND_DYNAMIC (1U << 3)
 
 /** A linked list of addresses to bind to */
 struct fastd_bind_address {
-	fastd_bind_address_t *next; /**< The next address in the list */
-	fastd_peer_address_t addr;  /**< The address to bind to */
-	unsigned flags;             /**< FASTD_BIND_* flags */
-	char *bindtodev;            /**< May contain an interface name to limit the bind to */
+	fastd_bind_address_t *next;      /**< The next address in the list */
+	fastd_peer_address_t addr;       /**< The address to bind to */
+	fastd_peer_address_t sourceaddr; /**< Source address to use for packets */
+	unsigned flags;                  /**< FASTD_BIND_* flags */
+	char *bindtodev;                 /**< May contain an interface name to limit the bind to */
+	fastd_timeout_t interval;        /**< Discovery interval if discovery enabled, or FASTD_TIMEOUT_INV */
 };
 
-/** A socket descriptor */
-struct fastd_socket {
-	fastd_poll_fd_t fd;               /**< The file descriptor for the socket */
-	const fastd_bind_address_t *addr; /**< The address this socket is supposed to be bound to (or NULL) */
-	fastd_peer_address_t *bound_addr; /**< The actual address that was bound to (may differ from addr when addr has
-					     a random port) */
-	fastd_peer_t *peer; /**< If the socket belongs to a single peer (as it was create dynamically when sending a
-			       handshake), contains that peer */
-};
 
 /** A TUN/TAP interface */
 struct fastd_iface {
@@ -471,12 +458,6 @@ static inline fastd_eth_addr_t fastd_buffer_dest_address(const fastd_buffer_t *b
 	fastd_eth_addr_t ret;
 	memcpy(&ret, buffer->data + offsetof(fastd_eth_header_t, dest), sizeof(fastd_eth_addr_t));
 	return ret;
-}
-
-
-/** Checks if a fastd_peer_address_t is an IPv6 link-local address */
-static inline bool fastd_peer_address_is_v6_ll(const fastd_peer_address_t *addr) {
-	return (addr->sa.sa_family == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&addr->in6.sin6_addr));
 }
 
 /** Duplicates a string, creating a one-element string stack */
