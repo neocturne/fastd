@@ -27,6 +27,7 @@ option('method_generic-gmac', type : 'feature', value : 'enabled')
 option('method_generic-poly1305', type : 'feature', value : 'enabled')
 option('method_generic-umac', type : 'feature', value : 'enabled')
 option('method_null', type : 'feature', value : 'enabled')
+option('method_null_l2tp', type : 'feature', value : 'enabled')
 
 option('use_nacl', type : 'boolean', value : false)
 

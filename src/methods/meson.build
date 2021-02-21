@@ -7,6 +7,7 @@ subdir('generic_gmac')
 subdir('generic_poly1305')
 subdir('generic_umac')
 subdir('null')
+subdir('null-l2tp')
 
 method_defs = ''
 method_list = ''
