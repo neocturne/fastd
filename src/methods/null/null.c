@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -15,8 +15,8 @@
 
 /** The session state */
 struct fastd_method_session_state {
+	unsigned flags; /**< Session flags */
 	bool valid;     /**< true if the session has not been invalidated */
-	bool initiator; /**< true if this side is the initiator of the session */
 };
 
 
@@ -35,11 +35,12 @@ static size_t method_key_length(UNUSED const fastd_method_t *method) {
 
 /** Initiates a new null session */
 static fastd_method_session_state_t *method_session_init(
-	UNUSED fastd_peer_t *peer, UNUSED const fastd_method_t *method, UNUSED const uint8_t *secret, bool initiator) {
+	UNUSED fastd_peer_t *peer, UNUSED const fastd_method_t *method, UNUSED const uint8_t *secret,
+	unsigned session_flags) {
 	fastd_method_session_state_t *session = fastd_new(fastd_method_session_state_t);
 
+	session->flags = session_flags;
 	session->valid = true;
-	session->initiator = initiator;
 
 	return session;
 }
@@ -51,7 +52,7 @@ static bool method_session_is_valid(fastd_method_session_state_t *session) {
 
 /** Checks if this side is the initiator of the session */
 static bool method_session_is_initiator(fastd_method_session_state_t *session) {
-	return (session->initiator);
+	return (session->flags & FASTD_SESSION_INITIATOR);
 }
 
 /** Returns false */

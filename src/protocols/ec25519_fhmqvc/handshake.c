@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -83,7 +83,7 @@ static inline void supersede_session(fastd_peer_t *peer, const fastd_method_info
 
 /** Initalizes a new session with a peer using a specified method */
 static inline bool new_session(
-	fastd_peer_t *peer, const fastd_method_info_t *method, bool initiator, const aligned_int256_t *A,
+	fastd_peer_t *peer, const fastd_method_info_t *method, unsigned session_flags, const aligned_int256_t *A,
 	const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y, const aligned_int256_t *sigma,
 	const uint32_t *salt, uint64_t serial) {
 
@@ -94,7 +94,7 @@ static inline bool new_session(
 	derive_key(secret, blocks, salt, method->name, A, B, X, Y, sigma);
 
 	peer->protocol_state->session.method_state =
-		method->provider->session_init(peer, method->method, (const uint8_t *)secret, initiator);
+		method->provider->session_init(peer, method->method, (const uint8_t *)secret, session_flags);
 
 	if (!peer->protocol_state->session.method_state)
 		return false;
@@ -110,7 +110,7 @@ static inline bool new_session(
 /** Establishes a connection with a peer after a successful handshake */
 static bool establish(
 	fastd_peer_t *peer, const fastd_method_info_t *method, fastd_socket_t *sock,
-	const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, bool initiator,
+	const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr, unsigned session_flags,
 	const aligned_int256_t *A, const aligned_int256_t *B, const aligned_int256_t *X, const aligned_int256_t *Y,
 	const aligned_int256_t *sigma, const uint32_t *salt, uint64_t serial) {
 	if (serial <= peer->protocol_state->last_serial) {
@@ -127,7 +127,7 @@ static bool establish(
 		return false;
 	}
 
-	if (!new_session(peer, method, initiator, A, B, X, Y, sigma, salt, serial)) {
+	if (!new_session(peer, method, session_flags, A, B, X, Y, sigma, salt, serial)) {
 		pr_error("failed to initialize method session for %P (method `%s')", peer, method->name);
 		fastd_peer_reset(peer);
 		return false;
@@ -142,7 +142,7 @@ static bool establish(
 
 	pr_verbose("new session with %P established using method `%s'.", peer, method->name);
 
-	if (initiator)
+	if (session_flags & FASTD_SESSION_INITIATOR)
 		fastd_peer_schedule_handshake_default(peer);
 	else
 		fastd_protocol_ec25519_fhmqvc_send_empty(peer, &peer->protocol_state->session);
@@ -325,9 +325,9 @@ static void finish_handshake(
 	}
 
 	if (!establish(
-		    peer, method, sock, local_addr, remote_addr, true, &handshake_key->key.public, peer_handshake_key,
-		    &conf.protocol_config->key.public, &peer->key->key, &sigma, shared_handshake_key.w,
-		    handshake_key->serial))
+		    peer, method, sock, local_addr, remote_addr, FASTD_SESSION_INITIATOR, &handshake_key->key.public,
+		    peer_handshake_key, &conf.protocol_config->key.public, &peer->key->key, &sigma,
+		    shared_handshake_key.w, handshake_key->serial))
 		return;
 
 	fastd_buffer_t *buffer = fastd_handshake_new_reply(
@@ -377,7 +377,7 @@ static void handle_finish_handshake(
 	}
 
 	establish(
-		peer, method, sock, local_addr, remote_addr, false, peer_handshake_key, &handshake_key->key.public,
+		peer, method, sock, local_addr, remote_addr, 0, peer_handshake_key, &handshake_key->key.public,
 		&peer->key->key, &conf.protocol_config->key.public, &peer->protocol_state->sigma,
 		peer->protocol_state->shared_handshake_key.w, handshake_key->serial);
 

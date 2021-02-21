@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2016, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -30,6 +30,8 @@
 typedef struct fastd_method_common {
 	fastd_peer_t *peer;
 
+	unsigned flags; /**< Session flags */
+
 	fastd_timeout_t valid_till;    /**< How long the session is valid */
 	fastd_timeout_t refresh_after; /**< When to try refreshing the session */
 
@@ -43,7 +45,7 @@ typedef struct fastd_method_common {
 } fastd_method_common_t;
 
 
-void fastd_method_common_init(fastd_method_common_t *session, fastd_peer_t *peer, bool initiator);
+void fastd_method_common_init(fastd_method_common_t *session, fastd_peer_t *peer, unsigned session_flags);
 bool fastd_method_is_nonce_valid(
 	const fastd_method_common_t *session, const uint8_t nonce[COMMON_NONCEBYTES], int64_t *age);
 fastd_tristate_t
@@ -69,7 +71,7 @@ static inline bool fastd_method_session_common_is_valid(const fastd_method_commo
    The initiator of a session uses the odd nonces, the responder the even ones.
 */
 static inline bool fastd_method_session_common_is_initiator(const fastd_method_common_t *session) {
-	return (session->send_nonce[COMMON_NONCEBYTES - 1] & 1);
+	return (session->flags & FASTD_SESSION_INITIATOR);
 }
 
 /**

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2016, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -15,15 +15,16 @@
 
 
 /** Common initialization for a new session */
-void fastd_method_common_init(fastd_method_common_t *session, fastd_peer_t *peer, bool initiator) {
+void fastd_method_common_init(fastd_method_common_t *session, fastd_peer_t *peer, unsigned session_flags) {
 	memset(session, 0, sizeof(*session));
 
 	session->peer = peer;
+	session->flags = session_flags;
 
 	session->valid_till = ctx.now + KEY_VALID;
 	session->refresh_after = ctx.now + KEY_REFRESH - fastd_rand(0, KEY_REFRESH_SPLAY);
 
-	if (initiator) {
+	if (session_flags & FASTD_SESSION_INITIATOR) {
 		session->send_nonce[COMMON_NONCEBYTES - 1] = 3;
 	} else {
 		session->send_nonce[COMMON_NONCEBYTES - 1] = 2;

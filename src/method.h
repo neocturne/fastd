@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -39,7 +39,7 @@ struct fastd_method_provider {
 
 	/** Initiates a session */
 	fastd_method_session_state_t *(*session_init)(
-		fastd_peer_t *peer, const fastd_method_t *method, const uint8_t *secret, bool initiator);
+		fastd_peer_t *peer, const fastd_method_t *method, const uint8_t *secret, unsigned session_flags);
 	/** Closes a session */
 	void (*session_free)(fastd_method_session_state_t *session);
 

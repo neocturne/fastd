@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -81,6 +81,10 @@ typedef int64_t fastd_timeout_t;
 
 /** Invalid timestamp */
 #define FASTD_TIMEOUT_INV INT64_MAX
+
+
+/** Session flags */
+#define FASTD_SESSION_INITIATOR 0x01 /**< We initiated this session */
 
 
 typedef struct fastd_buffer fastd_buffer_t;
