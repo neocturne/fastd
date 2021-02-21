@@ -140,6 +140,8 @@ method_decrypt(UNUSED fastd_method_session_state_t *session, fastd_buffer_t *in,
 
 /** The null@l2tp method provider */
 const fastd_method_provider_t fastd_method_null_l2tp = {
+	.flags = METHOD_FORCE_KEEPALIVE,
+
 	.overhead = sizeof(struct method_l2tp_header),
 	.encrypt_headroom = sizeof(struct method_l2tp_header),
 	.decrypt_headroom = 0,

@@ -23,8 +23,12 @@ struct fastd_method_info {
 	fastd_method_t *method;                  /**< Provider-specific method data */
 };
 
+#define METHOD_FORCE_KEEPALIVE 0x01 /**< Send keepalives even in the presence of regular data transmissions */
+
 /** Describes a method provider (an implementation of a class of encryption methods) */
 struct fastd_method_provider {
+	unsigned flags;
+
 	size_t overhead;         /**< The maximum number of bytes of overhead the methods may add */
 	size_t encrypt_headroom; /**< The minimum head space needed for encrytion */
 	size_t decrypt_headroom; /**< The minimum head space needed for decryption */
