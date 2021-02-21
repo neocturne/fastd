@@ -154,8 +154,7 @@ static fastd_buffer_t *method_encrypt(fastd_method_session_state_t *session, fas
 
 	fastd_buffer_free(in);
 
-	fastd_method_put_common_header(out, session->common.send_nonce, 0);
-	fastd_method_increment_nonce(&session->common);
+	fastd_method_put_common_header(&session->common, out, 0);
 
 	return out;
 

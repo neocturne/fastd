@@ -116,12 +116,19 @@ static inline void fastd_method_increment_nonce(fastd_method_common_t *session) 
 }
 
 /** Adds the common header to a packet buffer */
-static inline void
-fastd_method_put_common_header(fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags) {
+static inline void fastd_method_put_common_header_raw(
+	fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags, UNUSED unsigned session_flags) {
 	const uint8_t packet_type = PACKET_DATA;
 	fastd_buffer_push_from(buffer, nonce, COMMON_NONCEBYTES);
 	fastd_buffer_push_from(buffer, &flags, 1);
 	fastd_buffer_push_from(buffer, &packet_type, 1);
+}
+
+/** Adds the common header to a packet buffer and increments the nonce in the session state */
+static inline void
+fastd_method_put_common_header(fastd_method_common_t *session, fastd_buffer_t *buffer, uint8_t flags) {
+	fastd_method_put_common_header_raw(buffer, session->send_nonce, flags, session->flags);
+	fastd_method_increment_nonce(session);
 }
 
 /** Removes the common header from a view of a packet buffer */

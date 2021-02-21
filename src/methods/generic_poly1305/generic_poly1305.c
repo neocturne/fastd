@@ -155,8 +155,7 @@ static fastd_buffer_t *method_encrypt(fastd_method_session_state_t *session, fas
 
 	fastd_buffer_free(in);
 
-	fastd_method_put_common_header(out, session->common.send_nonce, 0);
-	fastd_method_increment_nonce(&session->common);
+	fastd_method_put_common_header(&session->common, out, 0);
 
 	return out;
 
@@ -227,7 +226,7 @@ fail:
 
 	/* restore input buffer */
 	fastd_buffer_push_from(in, tag, TAGBYTES);
-	fastd_method_put_common_header(in, in_nonce, 0);
+	fastd_method_put_common_header_raw(in, in_nonce, 0, session->common.flags);
 
 	return NULL;
 }
