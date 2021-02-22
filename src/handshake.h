@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -64,7 +64,7 @@ typedef enum fastd_reply_code {
 
 
 /** The handshake packet structure */
-typedef struct __attribute__((packed)) fastd_handshake_packet {
+typedef struct fastd_handshake_packet {
 	uint8_t packet_type; /**< Packet type (must be PACKET_HANDSHAKE) */
 	uint8_t rsv;         /**< Reserved (must be 0) */
 	uint16_t tlv_len;    /**< Length of the TLV records */
