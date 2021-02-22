@@ -188,6 +188,8 @@ static void handle_socket_receive(
 	}
 
 	uint8_t packet_type = *(const uint8_t *)buffer->data;
+	bool has_control_header = false;
+
 	if (packet_type == PACKET_CONTROL) {
 		fastd_control_packet_t header;
 
@@ -203,6 +205,7 @@ static void handle_socket_receive(
 		}
 
 		packet_type = *(const uint8_t *)buffer->data;
+		has_control_header = true;
 	}
 
 	if (is_data_packet(packet_type) && can_receive_data(peer, local_addr)) {
@@ -217,7 +220,7 @@ static void handle_socket_receive(
 	}
 
 	if (is_handshake_packet(packet_type)) {
-		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
+		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer, has_control_header);
 	} else if (is_data_packet(packet_type)) {
 		if (!backoff_unknown(remote_addr)) {
 			pr_debug("unexpectedly received payload data from %I", remote_addr);

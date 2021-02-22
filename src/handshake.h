@@ -119,7 +119,7 @@ fastd_handshake_get_method_by_name(const fastd_peer_t *peer, const fastd_handsha
 
 void fastd_handshake_handle(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer);
+	fastd_peer_t *peer, fastd_buffer_t *buffer, bool has_control_header);
 
 
 /** Returns the TLV data of a handshake packet in a given buffer */

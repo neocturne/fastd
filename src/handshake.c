@@ -163,7 +163,8 @@ static fastd_buffer_t *new_handshake(
 	if (methods)
 		method_list = create_method_list(methods, &method_list_len);
 
-	size_t buffer_space = 4 * RECORD_LEN(1) +           /* handshake type, flags, mode, reply code */
+	size_t buffer_space = sizeof(fastd_control_packet_t) + sizeof(fastd_handshake_packet_t) +
+			      4 * RECORD_LEN(1) +           /* handshake type, flags, mode, reply code */
 			      (mtu ? RECORD_LEN(2) : 0) +   /* MTU */
 			      RECORD_LEN(version_len) +     /* version name */
 			      RECORD_LEN(protocol_len) +    /* protocol name */
@@ -172,15 +173,17 @@ static fastd_buffer_t *new_handshake(
 			      tail_space;
 
 	/* TODO: Make this a soft error */
-	if (sizeof(fastd_handshake_packet_t) + buffer_space > MAX_HANDSHAKE_SIZE)
+	if (buffer_space > MAX_HANDSHAKE_SIZE)
 		exit_bug("oversized handshake packet");
 
-	fastd_buffer_t *buffer = fastd_buffer_alloc(sizeof(fastd_handshake_packet_t) + buffer_space, 0);
+	fastd_buffer_t *buffer = fastd_buffer_alloc(buffer_space, 0);
+
+	fastd_buffer_pull(buffer, sizeof(fastd_control_packet_t));
 
 	fastd_handshake_packet_t *packet = buffer->data;
-	packet->packet_type = PACKET_HANDSHAKE;
-	packet->rsv = 0;
-	packet->tlv_len = 0;
+	*packet = (fastd_handshake_packet_t){
+		.packet_type = PACKET_HANDSHAKE,
+	};
 	buffer->len = sizeof(*packet);
 
 	fastd_handshake_add_uint8(buffer, RECORD_HANDSHAKE_TYPE, type);
@@ -275,8 +278,25 @@ static void print_error(
 /** Sends and frees a handshake packet */
 void fastd_handshake_send_free(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer, UNUSED unsigned flags) {
-	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+	fastd_peer_t *peer, fastd_buffer_t *buffer, unsigned flags) {
+
+	/* For the initial handshake, we send two handshakes: one for old
+	 * and one for new fastd versions */
+
+	if (flags == FLAG_INITIAL || !(flags & FLAG_L2TP_SUPPORT))
+		fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+
+	if (flags == FLAG_INITIAL || (flags & FLAG_L2TP_SUPPORT)) {
+		const fastd_control_packet_t header = {
+			.packet_type = PACKET_CONTROL,
+			.flags_ver = PACKET_L2TP_VERSION,
+			.length = htobe16(sizeof(header)),
+		};
+		fastd_buffer_push_from(buffer, &header, sizeof(header));
+
+		fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+	}
+
 	fastd_buffer_free(buffer);
 }
 
@@ -287,14 +307,17 @@ void fastd_handshake_send_error(
 	print_error("sending", peer, remote_addr, reply_code, error_detail);
 
 	fastd_buffer_t *buffer = fastd_buffer_alloc(
-		sizeof(fastd_handshake_packet_t) +
+		sizeof(fastd_control_packet_t) + sizeof(fastd_handshake_packet_t) +
 			4 * RECORD_LEN(1) /* enough space for handshake type, flags, reply code and error detail */,
 		0);
 
+	fastd_buffer_pull(buffer, sizeof(fastd_control_packet_t));
+
 	fastd_handshake_packet_t *reply = buffer->data;
-	reply->packet_type = PACKET_HANDSHAKE;
-	reply->rsv = 0;
-	reply->tlv_len = 0;
+	*reply = (fastd_handshake_packet_t){
+		.packet_type = PACKET_HANDSHAKE,
+	};
+
 	buffer->len = sizeof(*reply);
 
 	fastd_handshake_add_uint8(buffer, RECORD_HANDSHAKE_TYPE, handshake->type + 1);
@@ -473,7 +496,7 @@ fastd_handshake_get_method_by_name(const fastd_peer_t *peer, const fastd_handsha
 /** Handles a handshake packet */
 void fastd_handshake_handle(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer) {
+	fastd_peer_t *peer, fastd_buffer_t *buffer, bool has_control_header) {
 
 	fastd_handshake_t handshake = parse_tlvs(buffer);
 
@@ -491,6 +514,11 @@ void fastd_handshake_handle(
 
 	if (handshake.records[RECORD_FLAGS].length >= 1)
 		handshake.flags = as_uint8(&handshake.records[RECORD_FLAGS]);
+
+	/* If the peer has L2TP support, it has sent two handshakes, one for
+	 * old fastd versions and one for new ones. Ignore the old handshake. */
+	if (!has_control_header && (handshake.flags & FLAG_L2TP_SUPPORT))
+		return;
 
 	if (!check_records(sock, local_addr, remote_addr, peer, &handshake))
 		return;
