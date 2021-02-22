@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -163,7 +163,7 @@ static fastd_buffer_t *new_handshake(
 	if (methods)
 		method_list = create_method_list(methods, &method_list_len);
 
-	size_t buffer_space = 3 * RECORD_LEN(1) +           /* handshake type, mode, reply code */
+	size_t buffer_space = 4 * RECORD_LEN(1) +           /* handshake type, flags, mode, reply code */
 			      (mtu ? RECORD_LEN(2) : 0) +   /* MTU */
 			      RECORD_LEN(version_len) +     /* version name */
 			      RECORD_LEN(protocol_len) +    /* protocol name */
@@ -184,6 +184,7 @@ static fastd_buffer_t *new_handshake(
 	buffer->len = sizeof(*packet);
 
 	fastd_handshake_add_uint8(buffer, RECORD_HANDSHAKE_TYPE, type);
+	fastd_handshake_add_uint8(buffer, RECORD_FLAGS, FLAG_L2TP_SUPPORT);
 	fastd_handshake_add_uint8(buffer, RECORD_MODE, get_mode_id());
 
 	if (mtu)
@@ -279,7 +280,7 @@ void fastd_handshake_send_error(
 
 	fastd_buffer_t *buffer = fastd_buffer_alloc(
 		sizeof(fastd_handshake_packet_t) +
-			3 * RECORD_LEN(1) /* enough space for handshake type, reply code and error detail */,
+			4 * RECORD_LEN(1) /* enough space for handshake type, flags, reply code and error detail */,
 		0);
 
 	fastd_handshake_packet_t *reply = buffer->data;
@@ -289,6 +290,7 @@ void fastd_handshake_send_error(
 	buffer->len = sizeof(*reply);
 
 	fastd_handshake_add_uint8(buffer, RECORD_HANDSHAKE_TYPE, handshake->type + 1);
+	fastd_handshake_add_uint8(buffer, RECORD_FLAGS, FLAG_L2TP_SUPPORT);
 	fastd_handshake_add_uint8(buffer, RECORD_REPLY_CODE, reply_code);
 	fastd_handshake_add_uint(buffer, RECORD_ERROR_DETAIL, error_detail);
 

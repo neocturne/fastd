@@ -63,6 +63,10 @@ typedef enum fastd_reply_code {
 #define RECORD_LEN(len) ((len) + 4)
 
 
+/** fastd supports the new L2TP-compatible packet types; ignore packets using the old types */
+#define FLAG_L2TP_SUPPORT 0x01
+
+
 /** The handshake packet structure */
 typedef struct fastd_handshake_packet {
 	uint8_t packet_type; /**< Packet type (must be PACKET_HANDSHAKE) */
