@@ -275,7 +275,7 @@ static void print_error(
 /** Sends and frees a handshake packet */
 void fastd_handshake_send_free(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer) {
+	fastd_peer_t *peer, fastd_buffer_t *buffer, UNUSED unsigned flags) {
 	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
 	fastd_buffer_free(buffer);
 }
@@ -302,7 +302,7 @@ void fastd_handshake_send_error(
 	fastd_handshake_add_uint8(buffer, RECORD_REPLY_CODE, reply_code);
 	fastd_handshake_add_uint(buffer, RECORD_ERROR_DETAIL, error_detail);
 
-	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer, handshake->flags);
 }
 
 /** Parses the TLV records of a handshake */
@@ -361,6 +361,14 @@ static inline void print_error_reply(
 static inline bool check_records(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, const fastd_handshake_t *handshake) {
+	if (handshake->records[RECORD_FLAGS].data) {
+		if (handshake->records[RECORD_FLAGS].length != 1 || (handshake->flags & ~FLAG_ALL)) {
+			fastd_handshake_send_error(
+				sock, local_addr, remote_addr, peer, handshake, REPLY_UNACCEPTABLE_VALUE, RECORD_FLAGS);
+			return false;
+		}
+	}
+
 	if (handshake->records[RECORD_PROTOCOL_NAME].data) {
 		if (!record_equal(conf.protocol->name, &handshake->records[RECORD_PROTOCOL_NAME])) {
 			fastd_handshake_send_error(
@@ -480,6 +488,9 @@ void fastd_handshake_handle(
 	}
 
 	handshake.type = as_uint8(&handshake.records[RECORD_HANDSHAKE_TYPE]);
+
+	if (handshake.records[RECORD_FLAGS].length >= 1)
+		handshake.flags = as_uint8(&handshake.records[RECORD_FLAGS]);
 
 	if (!check_records(sock, local_addr, remote_addr, peer, &handshake))
 		return;

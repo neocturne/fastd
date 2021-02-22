@@ -65,6 +65,11 @@ typedef enum fastd_reply_code {
 
 /** fastd supports the new L2TP-compatible packet types; ignore packets using the old types */
 #define FLAG_L2TP_SUPPORT 0x01
+/** Union of all defined flags */
+#define FLAG_ALL 0x01
+
+/** Passed to fastd_handshake_send_free() for the initial handshake */
+#define FLAG_INITIAL ((unsigned)-1)
 
 
 /** The handshake packet structure */
@@ -84,6 +89,7 @@ typedef struct fastd_handshake_record {
 /** Describes a handshake packet */
 struct fastd_handshake {
 	uint8_t type;                                 /**< The handshake type */
+	uint8_t flags;                                /**< Handshake flags */
 	const char *peer_version;                     /**< The fastd version of the peer */
 	fastd_handshake_record_t records[RECORD_MAX]; /**< The TLV records of the handshake */
 	uint16_t tlv_len;                             /**< The length of the TLV record data */
@@ -98,7 +104,7 @@ fastd_buffer_t *fastd_handshake_new_reply(
 
 void fastd_handshake_send_free(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer);
+	fastd_peer_t *peer, fastd_buffer_t *buffer, unsigned flags);
 void fastd_handshake_send_error(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, const fastd_handshake_t *handshake, uint8_t reply_code, uint16_t error_detail);

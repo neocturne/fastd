@@ -265,7 +265,7 @@ static void clear_shared_handshake_key(const fastd_peer_t *peer) {
 /** Sends a reply to an initial handshake (type 1) */
 static void respond_handshake(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, const aligned_int256_t *peer_handshake_key) {
+	fastd_peer_t *peer, const aligned_int256_t *peer_handshake_key, unsigned handshake_flags) {
 	pr_debug("responding handshake with %P[%I]...", peer, remote_addr);
 
 	const handshake_key_t *handshake_key = &ctx.protocol_state->handshake_key;
@@ -290,7 +290,7 @@ static void respond_handshake(
 		fastd_handshake_tlv_len(buffer));
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
-	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer, handshake_flags);
 }
 
 /** Sends a reply to a handshake response (type 2) */
@@ -344,7 +344,7 @@ static void finish_handshake(
 		&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(buffer), fastd_handshake_tlv_len(buffer));
 	memcpy(tlv_mac, hmacbuf.b, HASHBYTES);
 
-	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer, handshake->flags);
 }
 
 /** Handles a reply to a handshake response (type 3) */
@@ -478,7 +478,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(
 			remote_addr, false);
 	}
 
-	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer, FLAG_INITIAL);
 }
 
 
@@ -493,6 +493,7 @@ static inline void print_unknown_key(const fastd_peer_address_t *addr, const uns
 /** Data attached to an asynchronous on-verify run */
 typedef struct verify_data {
 	aligned_int256_t peer_handshake_key; /**< The public key of the peer being verified */
+	uint8_t handshake_flags;             /**< The flags field of the received handshake */
 } verify_data_t;
 
 /** Adds a dynamic peer for an unknown key */
@@ -563,6 +564,7 @@ static bool handle_dynamic(
 	verify_data_t verify_data;
 	memset(&verify_data, 0, sizeof(verify_data));
 	memcpy(&verify_data.peer_handshake_key, handshake->records[RECORD_SENDER_HANDSHAKE_KEY].data, PUBLICKEYBYTES);
+	verify_data.handshake_flags = handshake->flags;
 
 	fastd_tristate_t verified =
 		fastd_verify_peer(peer, sock, local_addr, remote_addr, &verify_data, sizeof(verify_data));
@@ -591,7 +593,7 @@ void fastd_protocol_ec25519_fhmqvc_handle_verify_return(
 
 	peer->last_handshake_response_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 	peer->last_handshake_response_address = *remote_addr;
-	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key);
+	respond_handshake(sock, local_addr, remote_addr, peer, &data->peer_handshake_key, data->handshake_flags);
 }
 
 #else
@@ -688,7 +690,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(
 
 		peer->last_handshake_response_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 		peer->last_handshake_response_address = *remote_addr;
-		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key);
+		respond_handshake(sock, local_addr, remote_addr, peer, &peer_handshake_key, handshake->flags);
 		return;
 	}
 
