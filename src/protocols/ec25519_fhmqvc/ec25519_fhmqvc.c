@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2016, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -174,6 +174,7 @@ static void session_send(fastd_peer_t *peer, fastd_buffer_t *buffer, protocol_se
 	}
 
 	fastd_send(peer->sock, &peer->local_address, &peer->address, peer, send_buffer, stat_size);
+	fastd_buffer_free(send_buffer);
 	fastd_peer_clear_keepalive(peer);
 }
 

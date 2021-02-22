@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2019, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
   Android port contributor:
@@ -68,7 +68,7 @@ static inline void add_pktinfo(struct msghdr *msg, const fastd_peer_address_t *l
 /** Sends a packet */
 void fastd_send(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size) {
+	fastd_peer_t *peer, const fastd_buffer_t *buffer, size_t stat_size) {
 	if (!sock)
 		exit_bug("send: sock == NULL");
 
@@ -153,8 +153,6 @@ void fastd_send(
 	} else {
 		fastd_stats_add(peer, STAT_TX, stat_size);
 	}
-
-	fastd_buffer_free(buffer);
 }
 
 /** Encrypts and sends a payload packet to all peers */

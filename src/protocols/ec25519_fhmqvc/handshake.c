@@ -290,7 +290,7 @@ static void respond_handshake(
 		fastd_handshake_tlv_len(buffer));
 	memcpy(mac, hmacbuf.b, HASHBYTES);
 
-	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
 }
 
 /** Sends a reply to a handshake response (type 2) */
@@ -344,7 +344,7 @@ static void finish_handshake(
 		&hmacbuf, shared_handshake_key.w, fastd_handshake_tlv_data(buffer), fastd_handshake_tlv_len(buffer));
 	memcpy(tlv_mac, hmacbuf.b, HASHBYTES);
 
-	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
 }
 
 /** Handles a reply to a handshake response (type 3) */
@@ -478,7 +478,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(
 			remote_addr, false);
 	}
 
-	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
 }
 
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
   Android port contributor:
@@ -366,7 +366,7 @@ void fastd_main(int argc, char *argv[]);
 
 void fastd_send(
 	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer, fastd_buffer_t *buffer, size_t stat_size);
+	fastd_peer_t *peer, const fastd_buffer_t *buffer, size_t stat_size);
 void fastd_send_data(fastd_buffer_t *buffer, fastd_peer_t *source, fastd_peer_t *dest);
 
 void fastd_receive_unknown_init(void);

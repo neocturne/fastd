@@ -272,6 +272,14 @@ static void print_error(
 	}
 }
 
+/** Sends and frees a handshake packet */
+void fastd_handshake_send_free(
+	const fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
+	fastd_peer_t *peer, fastd_buffer_t *buffer) {
+	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+	fastd_buffer_free(buffer);
+}
+
 /** Sends an error reply to a peer */
 void fastd_handshake_send_error(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
@@ -294,7 +302,7 @@ void fastd_handshake_send_error(
 	fastd_handshake_add_uint8(buffer, RECORD_REPLY_CODE, reply_code);
 	fastd_handshake_add_uint(buffer, RECORD_ERROR_DETAIL, error_detail);
 
-	fastd_send(sock, local_addr, remote_addr, peer, buffer, 0);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer);
 }
 
 /** Parses the TLV records of a handshake */
