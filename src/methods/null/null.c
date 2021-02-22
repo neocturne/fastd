@@ -77,7 +77,7 @@ static void method_session_free(fastd_method_session_state_t *session) {
 
 /** Just returns the input buffer as the output */
 static fastd_buffer_t *method_encrypt(UNUSED fastd_method_session_state_t *session, fastd_buffer_t *in) {
-	const uint8_t packet_type = PACKET_DATA;
+	const uint8_t packet_type = PACKET_DATA_COMPAT;
 	fastd_buffer_push_from(in, &packet_type, 1);
 
 	return in;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2016, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 */
 
@@ -154,11 +154,26 @@ static inline bool allow_unknown_peers(void) {
 	return ctx.has_floating || fastd_allow_verify();
 }
 
+/** Returns true for handshake packet types sent by fastd */
+static inline bool is_handshake_packet(uint8_t packet_type) {
+	return packet_type == PACKET_HANDSHAKE;
+}
+
+/**
+   Returns true for data packet types
+
+   This is more lenient than is_handshake_packet to support future extensions
+   to the L2TP standard which may set additional flags in the packet header
+   (and fastd may not have full control over the header when offloading)
+*/
+static inline bool is_data_packet(uint8_t packet_type) {
+	return !(packet_type & PACKET_L2TP_T) && !is_handshake_packet(packet_type);
+}
+
 /** Handles a packet read from a socket */
 static void handle_socket_receive(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_buffer_t *buffer) {
-	const uint8_t packet_type = *(const uint8_t *)buffer->data;
 	fastd_peer_t *peer = NULL;
 
 	if (sock->peer) {
@@ -172,7 +187,25 @@ static void handle_socket_receive(
 		peer = fastd_peer_hashtable_lookup(remote_addr);
 	}
 
-	if (packet_type == PACKET_DATA && can_receive_data(peer, local_addr)) {
+	uint8_t packet_type = *(const uint8_t *)buffer->data;
+	if (packet_type == PACKET_CONTROL) {
+		fastd_control_packet_t header;
+
+		if (buffer->len < sizeof(header) + 1) {
+			pr_debug("received short control packet from %I", remote_addr);
+			goto end_free;
+		}
+
+		fastd_buffer_pull_to(buffer, &header, sizeof(header));
+		if ((header.flags_ver & PACKET_L2TP_VER_MASK) != PACKET_L2TP_VERSION) {
+			pr_debug("received control packet with unknown version from %I", remote_addr);
+			goto end_free;
+		}
+
+		packet_type = *(const uint8_t *)buffer->data;
+	}
+
+	if (is_data_packet(packet_type) && can_receive_data(peer, local_addr)) {
 		/* Consumes the buffer */
 		conf.protocol->handle_recv(peer, buffer);
 		return;
@@ -180,27 +213,21 @@ static void handle_socket_receive(
 
 	if (!peer && !allow_unknown_peers()) {
 		pr_debug("received packet from unknown address %I", remote_addr);
-		fastd_buffer_free(buffer);
-		return;
+		goto end_free;
 	}
 
-	switch (packet_type) {
-	case PACKET_HANDSHAKE:
+	if (is_handshake_packet(packet_type)) {
 		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer);
-		break;
-
-	case PACKET_DATA:
+	} else if (is_data_packet(packet_type)) {
 		if (!backoff_unknown(remote_addr)) {
 			pr_debug("unexpectedly received payload data from %I", remote_addr);
 			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
 		}
-
-		break;
-
-	default:
+	} else {
 		pr_debug("received packet with invalid type from %I", remote_addr);
 	}
 
+end_free:
 	fastd_buffer_free(buffer);
 }
 

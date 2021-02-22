@@ -36,12 +36,32 @@ typedef struct fastd_tristate {
 /** A fastd_tristate_t instance representing the value \em undefined */
 #define FASTD_TRISTATE_UNDEF ((fastd_tristate_t){ false, false })
 
+/** The L2TP "T" (control) flag */
+#define PACKET_L2TP_T 0x80
 
-/** The defined packet types */
-typedef enum fastd_packet_type {
-	PACKET_HANDSHAKE = 1, /**< Packet type \em handshake (used to negotiate a session) */
-	PACKET_DATA = 2,      /**< Packet type \em data (used for payload data) */
-} fastd_packet_type_t;
+/** L2TP-compatible packet type \em control (all packets that don't use PACKET_DATA in L2TP-compatible sessions) */
+#define PACKET_CONTROL 0xC8
+/** L2TP-compatible packet type \em data (used for payload data) */
+#define PACKET_DATA 0x00
+/** Packet type \em handshake (used to negotiate a session) */
+#define PACKET_HANDSHAKE 0x01
+/** Pre-v22 packet type \em data (used for payload data) */
+#define PACKET_DATA_COMPAT 0x02
+
+
+#define PACKET_L2TP_VER_MASK 0x0F /**< Mask of L2TP version number in flags_ver field */
+#define PACKET_L2TP_VERSION 3     /**< L2TP version used by fastd */
+
+/** The (L2TP) control packet header */
+typedef struct fastd_control_packet {
+	uint8_t packet_type; /**< Packet type / flags */
+	uint8_t flags_ver;   /**< More flags / L2TP version */
+	uint16_t length;     /**< Control packet length */
+	uint32_t conn_id;    /**< Control connection ID */
+	uint16_t ns;         /**< Send sequence number */
+	uint16_t nr;         /**< Receive sequence number */
+} fastd_control_packet_t;
+
 
 /** The supported modes of operation */
 typedef enum fastd_mode {
