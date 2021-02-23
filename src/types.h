@@ -105,6 +105,7 @@ typedef int64_t fastd_timeout_t;
 
 /** Session flags */
 #define FASTD_SESSION_INITIATOR 0x01 /**< We initiated this session */
+#define FASTD_SESSION_COMPAT 0x02    /**< Peer uses compat data packet type */
 
 
 typedef struct fastd_buffer fastd_buffer_t;

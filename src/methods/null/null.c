@@ -11,6 +11,7 @@
 */
 
 #include "../../method.h"
+#include "../common.h"
 
 
 /** The session state */
@@ -76,8 +77,8 @@ static void method_session_free(fastd_method_session_state_t *session) {
 }
 
 /** Just returns the input buffer as the output */
-static fastd_buffer_t *method_encrypt(UNUSED fastd_method_session_state_t *session, fastd_buffer_t *in) {
-	const uint8_t packet_type = PACKET_DATA_COMPAT;
+static fastd_buffer_t *method_encrypt(fastd_method_session_state_t *session, fastd_buffer_t *in) {
+	const uint8_t packet_type = fastd_method_packet_type(session->flags);
 	fastd_buffer_push_from(in, &packet_type, 1);
 
 	return in;

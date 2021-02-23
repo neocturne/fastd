@@ -115,10 +115,18 @@ static inline void fastd_method_increment_nonce(fastd_method_common_t *session) 
 	}
 }
 
+static inline uint8_t fastd_method_packet_type(unsigned session_flags) {
+	if (session_flags & FASTD_SESSION_COMPAT)
+		return PACKET_DATA_COMPAT;
+	else
+		return PACKET_DATA;
+}
+
 /** Adds the common header to a packet buffer */
 static inline void fastd_method_put_common_header_raw(
-	fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags, UNUSED unsigned session_flags) {
-	const uint8_t packet_type = PACKET_DATA_COMPAT;
+	fastd_buffer_t *buffer, const uint8_t nonce[COMMON_NONCEBYTES], uint8_t flags, unsigned session_flags) {
+	const uint8_t packet_type = fastd_method_packet_type(session_flags);
+
 	fastd_buffer_push_from(buffer, nonce, COMMON_NONCEBYTES);
 	fastd_buffer_push_from(buffer, &flags, 1);
 	fastd_buffer_push_from(buffer, &packet_type, 1);
@@ -132,9 +140,9 @@ fastd_method_put_common_header(fastd_method_common_t *session, fastd_buffer_t *b
 }
 
 /** Removes the common header from a view of a packet buffer */
-static inline void
-fastd_method_take_common_header(fastd_buffer_view_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *flags) {
-	fastd_buffer_view_pull(buffer, 1);
+static inline void fastd_method_take_common_header(
+	fastd_buffer_view_t *buffer, uint8_t nonce[COMMON_NONCEBYTES], uint8_t *packet_type, uint8_t *flags) {
+	fastd_buffer_view_pull_to(buffer, packet_type, 1);
 	fastd_buffer_view_pull_to(buffer, flags, 1);
 	fastd_buffer_view_pull_to(buffer, nonce, COMMON_NONCEBYTES);
 }
@@ -143,8 +151,11 @@ fastd_method_take_common_header(fastd_buffer_view_t *buffer, uint8_t nonce[COMMO
 static inline bool fastd_method_handle_common_header(
 	const fastd_method_common_t *session, fastd_buffer_view_t *buffer, uint8_t nonce[COMMON_NONCEBYTES],
 	uint8_t *flags, int64_t *age) {
-	fastd_method_take_common_header(buffer, nonce, flags);
-	return fastd_method_is_nonce_valid(session, nonce, age);
+	uint8_t packet_type;
+
+	fastd_method_take_common_header(buffer, nonce, &packet_type, flags);
+	return (packet_type == fastd_method_packet_type(session->flags)) &&
+	       fastd_method_is_nonce_valid(session, nonce, age);
 }
 
 

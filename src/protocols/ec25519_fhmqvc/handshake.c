@@ -140,7 +140,9 @@ static bool establish(
 
 	peer->establish_handshake_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 
-	pr_verbose("new session with %P established using method `%s'.", peer, method->name);
+	pr_verbose(
+		"new session with %P established using method `%s'%s.", peer, method->name,
+		(session_flags & FASTD_SESSION_COMPAT) ? " (compat mode)" : "");
 
 	if (session_flags & FASTD_SESSION_INITIATOR)
 		fastd_peer_schedule_handshake_default(peer);
@@ -148,6 +150,18 @@ static bool establish(
 		fastd_protocol_ec25519_fhmqvc_send_empty(peer, &peer->protocol_state->session);
 
 	return true;
+}
+
+static inline unsigned get_session_flags(bool initiator, uint8_t handshake_flags) {
+	unsigned session_flags = 0;
+
+	if (initiator)
+		session_flags |= FASTD_SESSION_INITIATOR;
+
+	if (!(handshake_flags & FLAG_L2TP_SUPPORT))
+		session_flags |= FASTD_SESSION_COMPAT;
+
+	return session_flags;
 }
 
 
@@ -325,9 +339,9 @@ static void finish_handshake(
 	}
 
 	if (!establish(
-		    peer, method, sock, local_addr, remote_addr, FASTD_SESSION_INITIATOR, &handshake_key->key.public,
-		    peer_handshake_key, &conf.protocol_config->key.public, &peer->key->key, &sigma,
-		    shared_handshake_key.w, handshake_key->serial))
+		    peer, method, sock, local_addr, remote_addr, get_session_flags(true, handshake->flags),
+		    &handshake_key->key.public, peer_handshake_key, &conf.protocol_config->key.public, &peer->key->key,
+		    &sigma, shared_handshake_key.w, handshake_key->serial))
 		return;
 
 	fastd_buffer_t *buffer = fastd_handshake_new_reply(
@@ -377,9 +391,9 @@ static void handle_finish_handshake(
 	}
 
 	establish(
-		peer, method, sock, local_addr, remote_addr, 0, peer_handshake_key, &handshake_key->key.public,
-		&peer->key->key, &conf.protocol_config->key.public, &peer->protocol_state->sigma,
-		peer->protocol_state->shared_handshake_key.w, handshake_key->serial);
+		peer, method, sock, local_addr, remote_addr, get_session_flags(false, handshake->flags),
+		peer_handshake_key, &handshake_key->key.public, &peer->key->key, &conf.protocol_config->key.public,
+		&peer->protocol_state->sigma, peer->protocol_state->shared_handshake_key.w, handshake_key->serial);
 
 	clear_shared_handshake_key(peer);
 }
