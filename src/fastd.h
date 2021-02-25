@@ -146,14 +146,24 @@ struct fastd_bind_address {
 	char *bindtodev;            /**< May contain an interface name to limit the bind to */
 };
 
-/** A socket descriptor */
+/**
+ * A socket descriptor
+ *
+ * Sockets come in three flavours:
+ *
+ * - Global sockets stored in \e ctx.socks. \e addr references a global bind
+ *   address, \e peer and \e parent are NULL.
+ * - Dynamic peer sockets used for a single connection (attempt).
+ *   \e peer points at the peer, \e addr and \e parent are NULL.
+ * - L2TP offload sockets. \e addr and peer are NULL,
+ *   \e parent is the original socket which was used before offload setup.
+ */
 struct fastd_socket {
 	fastd_poll_fd_t fd;               /**< The file descriptor for the socket */
 	const fastd_bind_address_t *addr; /**< The address this socket is supposed to be bound to (or NULL) */
-	fastd_peer_address_t *bound_addr; /**< The actual address that was bound to (may differ from addr when addr has
-					     a random port) */
-	fastd_peer_t *peer; /**< If the socket belongs to a single peer (as it was create dynamically when sending a
-			       handshake), contains that peer */
+	fastd_peer_address_t *bound_addr; /**< Address that was bound to (differs from addr when it has random port) */
+	fastd_peer_t *peer;               /**< If the socket belongs to a single peer, contains that peer */
+	fastd_socket_t *parent;           /**< Original of L2TP offload socket */
 };
 
 /** A TUN/TAP interface */
@@ -379,7 +389,7 @@ void fastd_close_all_fds(void);
 void fastd_socket_bind_all(void);
 fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af);
 void fastd_socket_close(fastd_socket_t *sock);
-void fastd_socket_error(fastd_socket_t *sock);
+void fastd_socket_error(const fastd_socket_t *sock);
 
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 

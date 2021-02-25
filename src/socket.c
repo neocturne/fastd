@@ -220,10 +220,9 @@ fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af) {
 	if (fd < 0)
 		return NULL;
 
-	fastd_socket_t *sock = fastd_new(fastd_socket_t);
+	fastd_socket_t *sock = fastd_new0(fastd_socket_t);
 
 	sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, fd);
-	sock->addr = NULL;
 	sock->peer = peer;
 
 	set_bound_address(sock);
@@ -249,13 +248,15 @@ void fastd_socket_close(fastd_socket_t *sock) {
 }
 
 /** Handles an error that occured on a socket */
-void fastd_socket_error(fastd_socket_t *sock) {
+void fastd_socket_error(const fastd_socket_t *sock) {
+	/* This function is only called for sockets that have been registered
+	 * for polling. This implies that bound_addr is set. */
 	fastd_peer_address_t bound_addr = *sock->bound_addr;
-	if (!sock->addr->addr.sa.sa_family)
+	if (!sock->addr || !sock->addr->addr.sa.sa_family)
 		bound_addr.sa.sa_family = AF_UNSPEC;
 
-	if (sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
-		exit_error("error on socket bound to %B on `%s'", &sock->addr->addr, sock->addr->bindtodev);
+	if (sock->addr && sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
+		exit_error("error on socket bound to %B on `%s'", &bound_addr, sock->addr->bindtodev);
 	else
-		exit_error("error on socket bound to %B", &sock->addr->addr);
+		exit_error("error on socket bound to %B", &bound_addr);
 }

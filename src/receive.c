@@ -176,8 +176,13 @@ static void handle_socket_receive(
 	fastd_buffer_t *buffer) {
 	fastd_peer_t *peer = NULL;
 
+	/* Most of fastd's code should never have to deal with L2TP offload sockets */
+	if (sock->parent)
+		sock = sock->parent;
+
 	if (sock->peer) {
 		if (!fastd_peer_address_equal(&sock->peer->address, remote_addr)) {
+			pr_debug2("ignoring packet from %I on dynamic socket of %P", remote_addr, sock->peer);
 			fastd_buffer_free(buffer);
 			return;
 		}
