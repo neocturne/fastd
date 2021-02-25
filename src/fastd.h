@@ -392,6 +392,7 @@ void fastd_close_all_fds(void);
 
 void fastd_socket_bind_all(void);
 fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af);
+fastd_socket_t *fastd_socket_open_offload(fastd_socket_t *sock, const fastd_peer_address_t *local_addr);
 void fastd_socket_close(fastd_socket_t *sock);
 void fastd_socket_error(const fastd_socket_t *sock);
 

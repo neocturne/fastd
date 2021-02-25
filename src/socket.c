@@ -21,7 +21,7 @@
 
    \return The new socket's file descriptor
 */
-static int bind_socket(const fastd_bind_address_t *addr) {
+static int bind_socket(const fastd_bind_address_t *addr, bool reuseaddr_early) {
 	int fd = -1;
 	int af = AF_UNSPEC;
 
@@ -52,7 +52,7 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 	fastd_setnonblock(fd);
 #endif
 
-	int one = 1;
+	const int one = 1;
 
 #ifdef USE_PKTINFO
 	if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &one, sizeof(one))) {
@@ -124,10 +124,24 @@ static int bind_socket(const fastd_bind_address_t *addr) {
 			bind_address.in.sin_port = addr->addr.in.sin_port;
 	}
 
+	if (fastd_use_offload_l2tp() && reuseaddr_early) {
+		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+			pr_error_errno("setsockopt: unable to set SO_REUSEADDR");
+			goto error;
+		}
+	}
+
 	if (bind(fd, &bind_address.sa,
 		 bind_address.sa.sa_family == AF_INET6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))) {
 		pr_warn_errno("bind");
 		goto error;
+	}
+
+	if (fastd_use_offload_l2tp() && !reuseaddr_early) {
+		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+			pr_error_errno("setsockopt: unable to set SO_REUSEADDR");
+			goto error;
+		}
 	}
 
 #ifdef __ANDROID__
@@ -178,7 +192,7 @@ void fastd_socket_bind_all(void) {
 		if (!sock->addr)
 			continue;
 
-		sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, bind_socket(sock->addr));
+		sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, bind_socket(sock->addr, false));
 		if (sock->fd.fd < 0)
 			exit(1); /* message has already been printed */
 
@@ -195,6 +209,19 @@ void fastd_socket_bind_all(void) {
 
 		fastd_poll_fd_register(&sock->fd);
 	}
+}
+
+/** Opens a new socket for a given peer */
+static fastd_socket_t *open_dynamic_socket(const fastd_bind_address_t *addr, bool reuseaddr_early) {
+	int fd = bind_socket(addr, reuseaddr_early);
+	if (fd < 0)
+		return NULL;
+
+	fastd_socket_t *sock = fastd_new0(fastd_socket_t);
+	sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, fd);
+	set_bound_address(sock);
+
+	return sock;
 }
 
 /** Opens a single socket bound to a random port for the given address family */
@@ -216,20 +243,35 @@ fastd_socket_t *fastd_socket_open(fastd_peer_t *peer, int af) {
 		return NULL;
 	}
 
-	int fd = bind_socket(bind_address);
-	if (fd < 0)
+	fastd_socket_t *sock = open_dynamic_socket(bind_address, false);
+	if (!sock)
 		return NULL;
 
-	fastd_socket_t *sock = fastd_new0(fastd_socket_t);
-
-	sock->fd = FASTD_POLL_FD(POLL_TYPE_SOCKET, fd);
 	sock->peer = peer;
 
-	set_bound_address(sock);
-
 	fastd_poll_fd_register(&sock->fd);
-
 	return sock;
+}
+
+/** Opens a socket for L2TP offloading */
+fastd_socket_t *fastd_socket_open_offload(fastd_socket_t *sock, const fastd_peer_address_t *local_addr) {
+	if (!sock->bound_addr)
+		exit_bug("attempted to clone unbound socket");
+
+	fastd_bind_address_t bind_address = {
+		.addr = *local_addr,
+		.bindtodev = sock->addr ? sock->addr->bindtodev : NULL,
+	};
+
+	fastd_socket_t *offload_sock = open_dynamic_socket(&bind_address, true);
+	if (!offload_sock)
+		return NULL;
+
+	offload_sock->parent = sock;
+
+	fastd_poll_fd_register(&offload_sock->fd);
+
+	return offload_sock;
 }
 
 /** Closes a socket */
