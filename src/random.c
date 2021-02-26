@@ -17,28 +17,39 @@
 
 
 /**
+   Opens urandom
+*/
+void fastd_random_init(void) {
+	ctx.urandom = fopen("/dev/urandom", "rb");
+	if (!ctx.urandom)
+		exit_errno("unable to open /dev/urandom");
+}
+
+/**
+   Closes urandom
+*/
+void fastd_random_cleanup(void) {
+	fclose(ctx.urandom);
+}
+
+
+/**
    Provides a given amount of cryptographic random data
 */
 void fastd_random_bytes(void *buffer, size_t len, bool secure) {
-	int fd;
-	size_t read_bytes = 0;
+	FILE *f;
 
-	if (secure)
-		fd = open("/dev/random", O_RDONLY);
-	else
-		fd = open("/dev/urandom", O_RDONLY);
-
-	if (fd < 0)
-		exit_errno("unable to open random device");
-
-	while (read_bytes < len) {
-		ssize_t ret = read(fd, ((char *)buffer) + read_bytes, len - read_bytes);
-
-		if (ret < 0)
-			exit_errno("unable to read from random device");
-
-		read_bytes += ret;
+	if (secure) {
+		f = fopen("/dev/random", "rb");
+		if (!f)
+			exit_errno("unable to open /dev/random");
+	} else {
+		f = ctx.urandom;
 	}
 
-	close(fd);
+	if (fread(buffer, len, 1, f) != 1)
+		exit_errno("unable to read from random device");
+
+	if (secure)
+		fclose(f);
 }

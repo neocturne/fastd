@@ -400,6 +400,8 @@ static inline void notify_systemd(void) {
 static inline void init_early(void) {
 	fastd_close_all_fds();
 
+	fastd_random_init();
+
 	unsigned int seed;
 	fastd_random_bytes(&seed, sizeof(seed), false);
 	srandom(seed);
@@ -636,6 +638,8 @@ static inline void cleanup(void) {
 
 	close_log();
 	fastd_config_release();
+
+	fastd_random_cleanup();
 }
 
 /** Terminates fastd by re-raising the received signal */

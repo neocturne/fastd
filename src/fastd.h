@@ -329,6 +329,7 @@ struct fastd_context {
 	int android_ctrl_sock_fd; /**< The unix domain socket for communicating with Android GUI */
 #endif
 
+	FILE *urandom;  /**< /dev/urandom FILE */
 	int ioctl_sock; /**< The global ioctl socket */
 
 	size_t n_socks;        /**< The number of sockets in socks */
@@ -387,7 +388,10 @@ void fastd_iface_handle(fastd_iface_t *iface);
 void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t *buffer);
 void fastd_iface_close(fastd_iface_t *iface);
 
+void fastd_random_init(void);
 void fastd_random_bytes(void *buffer, size_t len, bool secure);
+void fastd_random_cleanup(void);
+
 int64_t fastd_get_time(void);
 
 
