@@ -551,6 +551,14 @@ static void config_check_base(void) {
 		if (!fastd_config_single_iface())
 			exit_error("In Android integration mode exactly one peer must be configured");
 	}
+
+	if (fastd_use_offload_l2tp()) {
+		if (conf.mode != MODE_MULTITAP)
+			exit_error("L2TP offload is available in multi-TAP mode only");
+
+		if (conf.iface_persist)
+			exit_error("`persist iface' must be set to `no' for L2TP offload");
+	}
 }
 
 /** Performs more checks on the configuration */

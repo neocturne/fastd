@@ -271,6 +271,10 @@ struct fastd_config {
 	char *status_socket; /**< The path of the status socket */
 #endif
 
+#ifdef WITH_OFFLOAD_L2TP
+	bool offload_l2tp; /**< Enable L2TP offloading */
+#endif
+
 #ifdef __ANDROID__
 	bool android_integration; /**< Enable Android GUI integration features */
 #endif
@@ -589,6 +593,15 @@ static inline void fastd_update_time(void) {
 static inline bool fastd_allow_verify(void) {
 #ifdef WITH_DYNAMIC_PEERS
 	return fastd_shell_command_isset(&conf.on_verify);
+#else
+	return false;
+#endif
+}
+
+/** Returns true if L2TP offloading is enabled */
+static inline bool fastd_use_offload_l2tp(void) {
+#ifdef WITH_OFFLOAD_L2TP
+	return conf.offload_l2tp;
 #else
 	return false;
 #endif

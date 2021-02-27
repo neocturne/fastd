@@ -78,6 +78,7 @@
 %token TOK_IPV4
 %token TOK_IPV6
 %token TOK_KEY
+%token TOK_L2TP
 %token TOK_LEVEL
 %token TOK_LIMIT
 %token TOK_LOG
@@ -88,6 +89,7 @@
 %token TOK_MTU
 %token TOK_MULTITAP
 %token TOK_NO
+%token TOK_OFFLOAD
 %token TOK_ON
 %token TOK_PACKET
 %token TOK_PEER
@@ -179,6 +181,7 @@ statement:	peer_group_statement
 	|	TOK_PMTU pmtu ';'
 	|	TOK_MODE mode ';'
 	|	TOK_PERSIST persist ';'
+	|	TOK_OFFLOAD offload ';'
 	|	TOK_PROTOCOL protocol ';'
 	|	TOK_SECRET secret ';'
 	|	TOK_ON TOK_PRE_UP on_pre_up ';'
@@ -273,6 +276,20 @@ log:		TOK_LEVEL log_level {
 
 persist:	TOK_INTERFACE boolean {
 			conf.iface_persist = $2;
+		}
+	;
+
+offload:	TOK_L2TP boolean {
+#ifdef WITH_OFFLOAD_L2TP
+			conf.offload_l2tp = $2;
+#else
+# ifdef __linux__
+			fastd_config_error(&@$, state, "L2TP offload is not supported by this build of fastd");
+# else
+			fastd_config_error(&@$, state, "L2TP offload is not supported on this platform");
+# endif
+			YYERROR;
+#endif
 		}
 	;
 
