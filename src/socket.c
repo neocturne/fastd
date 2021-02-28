@@ -251,12 +251,9 @@ void fastd_socket_close(fastd_socket_t *sock) {
 void fastd_socket_error(const fastd_socket_t *sock) {
 	/* This function is only called for sockets that have been registered
 	 * for polling. This implies that bound_addr is set. */
-	fastd_peer_address_t bound_addr = *sock->bound_addr;
-	if (!sock->addr || !sock->addr->addr.sa.sa_family)
-		bound_addr.sa.sa_family = AF_UNSPEC;
+	pr_debug2("error on socket bound to %B", sock->bound_addr);
 
-	if (sock->addr && sock->addr->bindtodev && !fastd_peer_address_is_v6_ll(&bound_addr))
-		exit_error("error on socket bound to %B on `%s'", &bound_addr, sock->addr->bindtodev);
-	else
-		exit_error("error on socket bound to %B", &bound_addr);
+	int error;
+	socklen_t errlen = sizeof(error);
+	getsockopt(sock->fd.fd, SOL_SOCKET, SO_ERROR, &error, &errlen);
 }

@@ -72,12 +72,8 @@ static inline void handle_fd(fastd_poll_fd_t *fd, bool input, bool error) {
 		fastd_socket_t *sock = container_of(fd, fastd_socket_t, fd);
 
 		if (error) {
-			if (sock->peer)
-				fastd_peer_reset_socket(sock->peer);
-			else
-				fastd_socket_error(sock);
-
-			return;
+			fastd_socket_error(sock);
+			error = false;
 		}
 
 		if (input)
