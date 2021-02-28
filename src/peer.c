@@ -16,7 +16,6 @@
 #include "polling.h"
 
 #include <arpa/inet.h>
-#include <net/if.h>
 #include <sys/wait.h>
 
 

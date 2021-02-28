@@ -37,6 +37,8 @@
 #include <string.h>
 #include <time.h>
 
+#include <net/if.h>
+
 
 /** An ethernet address */
 struct __attribute__((packed)) fastd_eth_addr {
@@ -398,6 +400,7 @@ void fastd_socket_error(const fastd_socket_t *sock);
 
 void fastd_resolve_peer(fastd_peer_t *peer, fastd_remote_t *remote);
 
+bool fastd_iface_format_name(char ifname[IFNAMSIZ], const fastd_peer_t *peer);
 fastd_iface_t *fastd_iface_open(fastd_peer_t *peer);
 void fastd_iface_handle(fastd_iface_t *iface);
 void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t *buffer);

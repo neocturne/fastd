@@ -15,7 +15,6 @@
 #include "shell.h"
 #include "fastd.h"
 
-#include <net/if.h>
 #include <signal.h>
 #include <sys/wait.h>
 

@@ -13,8 +13,6 @@
 #include "fastd.h"
 #include "polling.h"
 
-#include <net/if.h>
-
 
 /**
    Creates a new socket bound to a specific address

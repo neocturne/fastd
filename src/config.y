@@ -14,7 +14,6 @@
 %code requires {
 	#include "fastd.h"
 	#include <arpa/inet.h>
-	#include <net/if.h>
 }
 
 %union {

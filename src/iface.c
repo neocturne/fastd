@@ -19,7 +19,6 @@
 #include "peer.h"
 #include "polling.h"
 
-#include <net/if.h>
 #include <sys/ioctl.h>
 
 #ifdef __linux__
@@ -450,54 +449,71 @@ void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t *buffer) {
 		pr_debug2_errno("write");
 }
 
-/** Opens a new TUN/TAP interface, optionally associated with a specific peer */
-fastd_iface_t *fastd_iface_open(fastd_peer_t *peer) {
-	const char *ifname = conf.ifname;
-	char ifnamebuf[IFNAMSIZ];
+bool fastd_iface_format_name(char ifname[IFNAMSIZ], const fastd_peer_t *peer) {
+	const char *pattern = conf.ifname;
 
 	if (peer) {
 		if (peer->ifname)
-			ifname = peer->ifname;
-		else if (!fastd_config_single_iface() && !(ifname && strchr(ifname, '%')))
-			ifname = NULL;
+			pattern = peer->ifname;
+		else if (!fastd_config_single_iface() && !(pattern && strchr(pattern, '%')))
+			pattern = NULL;
 	}
 
-	const char *percent = ifname ? strchr(ifname, '%') : NULL;
-	if (percent) {
-		if (peer) {
-			char prefix[percent - ifname + 1];
-			memcpy(prefix, ifname, percent - ifname);
-			prefix[percent - ifname] = 0;
+	if (!pattern) {
+		ifname[0] = 0;
+		return true;
+	}
 
-			ifname = NULL;
+	const char *percent = strchr(pattern, '%');
+	if (!percent) {
+		strncpy(ifname, pattern, IFNAMSIZ - 1);
+		ifname[IFNAMSIZ - 1] = 0;
+		return true;
+	}
 
-			switch (percent[1]) {
-			case 'n':
-				if (peer->name) {
-					snprintf(
-						ifnamebuf, sizeof(ifnamebuf), "%s%s%s", prefix, peer->name,
-						percent + 2);
-					ifname = ifnamebuf;
-				}
+	if (!peer) {
+		pr_error("invalid TUN/TAP device name: `%%n' and `%%k' patterns can't be used in TAP mode");
+		return false;
+	}
 
-				break;
+	char prefix[percent - pattern + 1];
+	memcpy(prefix, pattern, percent - pattern);
+	prefix[percent - pattern] = 0;
 
-			case 'k': {
-				char buf[17];
-				if (conf.protocol->describe_peer(peer, buf, sizeof(buf))) {
-					snprintf(ifnamebuf, sizeof(ifnamebuf), "%s%s%s", prefix, buf, percent + 2);
-					ifname = ifnamebuf;
-				}
-			} break;
+	char buf[17];
 
-			default:
-				exit_bug("fastd_iface_open: invalid interface pattern");
-			}
-		} else {
-			pr_error("invalid TUN/TAP device name: `%%n' and `%%k' patterns can't be used in TAP mode");
-			return NULL;
+	switch (percent[1]) {
+	case 'n':
+		if (!peer->name) {
+			pr_error("invalid `%%n' interface pattern for peer without name");
+			return false;
 		}
+
+		snprintf(ifname, IFNAMSIZ, "%s%s%s", prefix, peer->name, percent + 2);
+		break;
+
+	case 'k':
+		if (!conf.protocol->describe_peer(peer, buf, sizeof(buf))) {
+			pr_error("invalid `%%k' interface pattern for peer without key");
+			return false;
+		}
+
+		snprintf(ifname, IFNAMSIZ, "%s%s%s", prefix, buf, percent + 2);
+		break;
+
+	default:
+		exit_bug("fastd_iface_open: invalid interface pattern");
 	}
+
+	return true;
+}
+
+/** Opens a new TUN/TAP interface, optionally associated with a specific peer */
+fastd_iface_t *fastd_iface_open(fastd_peer_t *peer) {
+	char ifname[IFNAMSIZ];
+
+	if (!fastd_iface_format_name(ifname, peer))
+		return NULL;
 
 	fastd_iface_t *iface = fastd_new0(fastd_iface_t);
 	iface->peer = peer;
@@ -506,7 +522,7 @@ fastd_iface_t *fastd_iface_open(fastd_peer_t *peer) {
 
 	pr_debug("initializing TUN/TAP device...");
 
-	if (!open_iface(iface, ifname, iface->mtu)) {
+	if (!open_iface(iface, ifname[0] ? ifname : NULL, iface->mtu)) {
 		if (iface->fd.fd >= 0) {
 			if (close(iface->fd.fd) == 0)
 				cleanup_iface(iface);

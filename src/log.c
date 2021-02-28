@@ -15,7 +15,6 @@
 #include "peer.h"
 
 #include <arpa/inet.h>
-#include <net/if.h>
 #include <syslog.h>
 
 
