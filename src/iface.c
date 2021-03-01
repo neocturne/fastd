@@ -74,6 +74,23 @@ static void cleanup_iface(fastd_iface_t *iface);
 
 #ifdef __linux__
 
+bool fastd_iface_set_mtu(const char *ifname, uint16_t mtu) {
+	struct ifreq ifr = {};
+	strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+
+	if (ioctl(ctx.ioctl_sock, SIOCGIFMTU, &ifr) < 0)
+		return false;
+
+	if (ifr.ifr_mtu == mtu)
+		return true;
+
+	ifr.ifr_mtu = mtu;
+	if (ioctl(ctx.ioctl_sock, SIOCSIFMTU, &ifr) < 0)
+		return false;
+
+	return true;
+}
+
 /** Opens the TUN/TAP device helper shared by Android and Linux targets */
 static bool open_iface_linux(fastd_iface_t *iface, const char *ifname, uint16_t mtu, const char *dev_name) {
 	struct ifreq ifr = {};
@@ -106,15 +123,9 @@ static bool open_iface_linux(fastd_iface_t *iface, const char *ifname, uint16_t 
 
 	iface->name = fastd_strndup(ifr.ifr_name, IFNAMSIZ - 1);
 
-	if (ioctl(ctx.ioctl_sock, SIOCGIFMTU, &ifr) < 0)
-		exit_errno("SIOCGIFMTU ioctl failed");
-
-	if (ifr.ifr_mtu != mtu) {
-		ifr.ifr_mtu = mtu;
-		if (ioctl(ctx.ioctl_sock, SIOCSIFMTU, &ifr) < 0) {
-			pr_error_errno("unable to set TUN/TAP interface MTU: SIOCSIFMTU ioctl failed");
-			return false;
-		}
+	if (!fastd_iface_set_mtu(iface->name, mtu)) {
+		pr_error_errno("failed to set TUN/TAP interface MTU");
+		return false;
 	}
 
 	return true;

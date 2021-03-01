@@ -405,6 +405,9 @@ fastd_iface_t *fastd_iface_open(fastd_peer_t *peer);
 void fastd_iface_handle(fastd_iface_t *iface);
 void fastd_iface_write(fastd_iface_t *iface, fastd_buffer_t *buffer);
 void fastd_iface_close(fastd_iface_t *iface);
+#ifdef __linux__
+bool fastd_iface_set_mtu(const char *ifname, uint16_t mtu);
+#endif
 
 void fastd_random_init(void);
 void fastd_random_bytes(void *buffer, size_t len, bool secure);
