@@ -182,7 +182,7 @@ static inline void on_pre_up(void) {
 /** Calls the on-up command */
 static inline void on_up(fastd_iface_t *iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
-	fastd_shell_env_set_iface(env, iface);
+	fastd_shell_env_set_iface(env, iface->name, iface->mtu);
 	fastd_shell_command_exec_sync(&conf.peer_group->on_up, env, NULL);
 	fastd_shell_env_free(env);
 }
@@ -190,7 +190,7 @@ static inline void on_up(fastd_iface_t *iface) {
 /** Calls the on-down command */
 static inline void on_down(fastd_iface_t *iface) {
 	fastd_shell_env_t *env = fastd_shell_env_alloc();
-	fastd_shell_env_set_iface(env, iface);
+	fastd_shell_env_set_iface(env, iface->name, iface->mtu);
 	fastd_shell_command_exec_sync(&conf.peer_group->on_down, env, NULL);
 	fastd_shell_env_free(env);
 }

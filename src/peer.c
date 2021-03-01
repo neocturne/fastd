@@ -64,7 +64,15 @@ void fastd_peer_set_shell_env(
 
 	fastd_shell_env_set(env, "PEER_NAME", peer ? peer->name : NULL);
 
-	fastd_shell_env_set_iface(env, peer ? peer->iface : NULL);
+	const char *ifname = NULL;
+	uint16_t mtu = 0;
+	if (peer) {
+		if (peer->iface) {
+			ifname = peer->iface->name;
+			mtu = peer->iface->mtu;
+		}
+	}
+	fastd_shell_env_set_iface(env, ifname, mtu);
 
 	fastd_peer_set_shell_env_addr(env, local_addr, "LOCAL_ADDRESS", "LOCAL_PORT");
 	fastd_peer_set_shell_env_addr(env, peer_addr, "PEER_ADDRESS", "PEER_PORT");

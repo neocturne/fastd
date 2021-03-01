@@ -55,17 +55,15 @@ void fastd_shell_env_free(fastd_shell_env_t *env) {
 	free(env);
 }
 
-/** Adds an interface name to a shell environment */
-void fastd_shell_env_set_iface(fastd_shell_env_t *env, const fastd_iface_t *iface) {
-	if (iface) {
+/** Adds an interface name and MTU to a shell environment */
+void fastd_shell_env_set_iface(fastd_shell_env_t *env, const char *ifname, uint16_t mtu) {
+	fastd_shell_env_set(env, "INTERFACE", ifname);
+
+	if (mtu) {
 		char buf[6];
-
-		fastd_shell_env_set(env, "INTERFACE", iface->name);
-
-		snprintf(buf, sizeof(buf), "%u", iface->mtu);
+		snprintf(buf, sizeof(buf), "%u", mtu);
 		fastd_shell_env_set(env, "INTERFACE_MTU", buf);
 	} else {
-		fastd_shell_env_set(env, "INTERFACE", NULL);
 		fastd_shell_env_set(env, "INTERFACE_MTU", NULL);
 	}
 }

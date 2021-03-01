@@ -52,7 +52,7 @@ static inline bool fastd_shell_command_isset(const fastd_shell_command_t *comman
 
 fastd_shell_env_t *fastd_shell_env_alloc(void);
 void fastd_shell_env_set(fastd_shell_env_t *env, const char *key, const char *value);
-void fastd_shell_env_set_iface(fastd_shell_env_t *env, const fastd_iface_t *iface);
+void fastd_shell_env_set_iface(fastd_shell_env_t *env, const char *ifname, uint16_t mtu);
 void fastd_shell_env_free(fastd_shell_env_t *env);
 
 bool fastd_shell_command_exec_sync(const fastd_shell_command_t *command, const fastd_shell_env_t *env, int *ret);
