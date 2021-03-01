@@ -149,6 +149,7 @@ typedef struct fastd_string_stack fastd_string_stack_t;
 typedef struct fastd_shell_command fastd_shell_command_t;
 typedef struct fastd_shell_env fastd_shell_env_t;
 
+typedef struct fastd_offload_l2tp fastd_offload_l2tp_t;
 typedef struct fastd_offload fastd_offload_t;
 typedef struct fastd_offload_state fastd_offload_state_t;
 

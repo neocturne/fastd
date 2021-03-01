@@ -322,6 +322,10 @@ struct fastd_context {
 	fastd_poll_fd_t status_fd; /**< The file descriptor of the status socket */
 #endif
 
+#ifdef WITH_OFFLOAD_L2TP
+	fastd_offload_l2tp_t *offload_l2tp; /**< Global L2TP offload state */
+#endif
+
 	bool has_floating; /**< Specifies if any of the configured peers have floating remotes */
 	uint16_t max_mtu;  /**< The maximum MTU of all peer-specific interfaces */
 	size_t max_buffer; /**< Maximum buffer size needed for any combination of peer MTU, method, or handshake */

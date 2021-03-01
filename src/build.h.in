@@ -87,6 +87,10 @@
 #mesondefine WITH_SYSTEMD
 
 
+/** Defined if L2TP offloading is enabled */
+#mesondefine WITH_OFFLOAD_L2TP
+
+
 /** Defined if libsodium is used */
 #mesondefine HAVE_LIBSODIUM
 

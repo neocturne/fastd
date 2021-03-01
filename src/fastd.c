@@ -19,6 +19,7 @@
 #include "async.h"
 #include "config.h"
 #include "crypto.h"
+#include "offload/l2tp/l2tp.h"
 #include "peer.h"
 #include "peer_group.h"
 #include "peer_hashtable.h"
@@ -474,6 +475,9 @@ static inline void init(int argc, char *argv[]) {
 	fastd_sem_init(&ctx.verify_limit, VERIFY_LIMIT);
 #endif
 
+	if (fastd_use_offload_l2tp())
+		fastd_offload_l2tp_init();
+
 	if (pthread_attr_init(&ctx.detached_thread))
 		exit_errno("pthread_attr_init");
 	if (pthread_attr_setdetachstate(&ctx.detached_thread, PTHREAD_CREATE_DETACHED))
@@ -625,6 +629,9 @@ static inline void cleanup(void) {
 	on_post_down();
 
 	fastd_peer_hashtable_free();
+
+	if (fastd_use_offload_l2tp())
+		fastd_offload_l2tp_cleanup();
 
 	pthread_attr_destroy(&ctx.detached_thread);
 

@@ -12,6 +12,7 @@
 */
 
 #include "../../method.h"
+#include "../../offload/l2tp/l2tp.h"
 
 /** The session state */
 struct fastd_method_session_state {
@@ -41,6 +42,14 @@ static void method_destroy(UNUSED fastd_method_t *method) {}
 /** Returns 0 */
 static size_t method_key_length(UNUSED const fastd_method_t *method) {
 	return 0;
+}
+
+/** Returns the L2TP offload implementation, if enabled */
+const fastd_offload_t *method_get_offload(UNUSED const fastd_method_t *method) {
+	if (fastd_use_offload_l2tp())
+		return fastd_offload_l2tp_get();
+
+	return NULL;
 }
 
 /** Initiates a new null@l2tp session */
@@ -150,6 +159,7 @@ const fastd_method_provider_t fastd_method_null_l2tp = {
 	.destroy = method_destroy,
 
 	.key_length = method_key_length,
+	.get_offload = method_get_offload,
 
 	.session_init = method_session_init,
 	.session_is_valid = method_session_is_valid,

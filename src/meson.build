@@ -74,17 +74,20 @@ libs = []
 srcdir = include_directories('.')
 
 need_libcrypto = false
+need_libmnl = false
 need_libsodium_nacl = false
-
-subdir('crypto')
-subdir('methods')
-subdir('protocols')
-
 
 is_android = host_machine.system() == 'android'
 is_darwin = host_machine.system() == 'darwin'
 is_openbsd = host_machine.system() == 'openbsd'
 is_linux = host_machine.system() == 'linux'
+
+
+subdir('crypto')
+subdir('methods')
+subdir('offload')
+subdir('protocols')
+
 
 conf_data = configuration_data()
 
@@ -112,6 +115,10 @@ endif
 
 if need_libcrypto
 	deps += dependency('libcrypto')
+endif
+
+if need_libmnl
+	deps += dependency('libmnl')
 endif
 
 if need_libsodium_nacl
@@ -209,6 +216,8 @@ conf_data.set('WITH_CMDLINE_COMMANDS', not get_option('cmdline_commands').disabl
 conf_data.set('WITH_DYNAMIC_PEERS', not get_option('dynamic_peers').disabled())
 conf_data.set('WITH_STATUS_SOCKET', with_status_socket)
 conf_data.set('WITH_SYSTEMD', with_systemd)
+
+conf_data.set('WITH_OFFLOAD_L2TP', with_offload_l2tp)
 
 configure_file(
 	input : 'build.h.in',

@@ -65,6 +65,9 @@ static bool need_cap_net_admin(void) {
 		return true;
 #endif
 
+	if (fastd_use_offload_l2tp())
+		return true;
+
 	return false;
 }
 
