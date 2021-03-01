@@ -133,7 +133,8 @@ static bool establish(
 		return false;
 	}
 
-	if (!fastd_peer_set_established(peer)) {
+	if (!fastd_peer_set_established(
+		    peer, method->provider->get_offload ? method->provider->get_offload(method->method) : NULL)) {
 		fastd_peer_reset(peer);
 		return false;
 	}

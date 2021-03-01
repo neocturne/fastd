@@ -11,6 +11,7 @@
 */
 
 #include "peer.h"
+#include "offload/offload.h"
 #include "peer_group.h"
 #include "peer_hashtable.h"
 #include "polling.h"
@@ -67,7 +68,9 @@ void fastd_peer_set_shell_env(
 	const char *ifname = NULL;
 	uint16_t mtu = 0;
 	if (peer) {
-		if (peer->iface) {
+		if (peer->offload) {
+			peer->offload->get_iface(peer->offload_state, &ifname, &mtu);
+		} else if (peer->iface) {
 			ifname = peer->iface->name;
 			mtu = peer->iface->mtu;
 		}
@@ -316,6 +319,12 @@ static void reset_peer(fastd_peer_t *peer) {
 	peer->address.sa.sa_family = AF_UNSPEC;
 	peer->local_address.sa.sa_family = AF_UNSPEC;
 	peer->state = STATE_INACTIVE;
+
+	if (peer->offload) {
+		on_down(peer, false);
+		peer->offload->free_session(peer->offload_state);
+		peer->offload = NULL;
+	}
 
 	if (!conf.iface_persist || peer->config_state == CONFIG_DISABLED || fastd_peer_is_dynamic(peer)) {
 		if (peer->iface && peer->iface->peer) {
@@ -818,17 +827,47 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 }
 
 /** Marks a peer as established */
-bool fastd_peer_set_established(fastd_peer_t *peer) {
-	if (fastd_peer_is_established(peer))
-		return true;
+bool fastd_peer_set_established(fastd_peer_t *peer, const fastd_offload_t *offload) {
+	if (peer->offload) {
+		bool need_reset;
 
-	if (!peer->iface) {
+		if (peer->offload == offload)
+			need_reset = !peer->offload->update_session(peer, peer->offload_state);
+		else
+			need_reset = true;
+
+		if (need_reset) {
+			on_down(peer, false);
+			peer->offload->free_session(peer->offload_state);
+			peer->offload = NULL;
+		}
+	}
+
+	if (offload && !peer->offload) {
+		if (peer->iface && peer->iface->peer) {
+			on_down(peer, false);
+			fastd_iface_close(peer->iface);
+		}
+		peer->iface = NULL;
+
+		peer->offload_state = offload->init_session(peer);
+		if (!peer->offload_state)
+			return false;
+
+		peer->offload = offload;
+		on_up(peer, false);
+	}
+
+	if (!peer->iface && !peer->offload) {
 		peer->iface = fastd_iface_open(peer);
 		if (!peer->iface)
 			return false;
 
 		on_up(peer, false);
 	}
+
+	if (fastd_peer_is_established(peer))
+		return true;
 
 	peer->state = STATE_ESTABLISHED;
 	peer->established = ctx.now;

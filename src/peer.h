@@ -63,8 +63,10 @@ struct fastd_peer {
 	/** The socket used by the peer. This can either be a common bound socket or a
 	    dynamic, unbound socket that is used exclusively by this peer */
 	fastd_socket_t *sock;
-	fastd_peer_address_t local_address; /**< The local address used to communicate with this peer */
-	fastd_peer_address_t address;       /**< The peers current address */
+	const fastd_offload_t *offload;       /**< Datapath kernel offloading provider */
+	fastd_offload_state_t *offload_state; /**< Datapath kernel offloading - provider-specific state */
+	fastd_peer_address_t local_address;   /**< The local address used to communicate with this peer */
+	fastd_peer_address_t address;         /**< The peers current address */
 
 	fastd_peer_address_t last_handshake_address;          /**< The address the last handshake was sent to */
 	fastd_peer_address_t last_handshake_response_address; /**< The address the last handshake was received from */
@@ -124,7 +126,7 @@ bool fastd_peer_add(fastd_peer_t *peer);
 void fastd_peer_reset(fastd_peer_t *peer);
 void fastd_peer_delete(fastd_peer_t *peer);
 void fastd_peer_free(fastd_peer_t *peer);
-bool fastd_peer_set_established(fastd_peer_t *peer);
+bool fastd_peer_set_established(fastd_peer_t *peer, const fastd_offload_t *offload);
 bool fastd_peer_may_connect(fastd_peer_t *peer);
 void fastd_peer_handle_resolve(
 	fastd_peer_t *peer, fastd_remote_t *remote, size_t n_addresses, const fastd_peer_address_t *addresses);

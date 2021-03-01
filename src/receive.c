@@ -286,6 +286,12 @@ void fastd_receive(fastd_socket_t *sock) {
 
 /** Handles a received and decrypted payload packet */
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t *buffer, bool reordered) {
+	if (!peer->iface) {
+		pr_debug("received packet from offloaded session");
+		fastd_buffer_free(buffer);
+		return;
+	}
+
 	if (conf.mode == MODE_TAP) {
 		if (buffer->len < sizeof(fastd_eth_header_t)) {
 			pr_debug("received truncated packet");

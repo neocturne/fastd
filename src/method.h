@@ -41,6 +41,9 @@ struct fastd_method_provider {
 	/** Returns the key length used by a method */
 	size_t (*key_length)(const fastd_method_t *method);
 
+	/** Returns an offload implementation, if used by the method */
+	const fastd_offload_t *(*get_offload)(const fastd_method_t *method);
+
 	/** Initiates a session */
 	fastd_method_session_state_t *(*session_init)(
 		fastd_peer_t *peer, const fastd_method_t *method, const uint8_t *secret, unsigned session_flags);
