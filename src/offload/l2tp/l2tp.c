@@ -254,6 +254,42 @@ static bool fastd_l2tp_session_delete(uint32_t conn_id) {
 	return do_nl(&ctx.offload_l2tp->nl, nlh, sizeof(struct genlmsghdr), NULL, NULL);
 }
 
+/**
+ * Checks if L2TP tunnel and session creation is working
+ *
+ * Error out during fastd start when L2TP Ethernet pseudowire support is not available
+ */
+static void l2tp_selftest(void) {
+	int fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		exit_errno("unable to create socket");
+
+
+	uint32_t conn_id;
+	while (true) {
+		conn_id = new_conn_id();
+		if (!conn_id)
+			continue;
+
+		if (!fastd_l2tp_tunnel_create(fd, conn_id)) {
+			if (errno == EEXIST)
+				continue;
+
+			exit_errno("unable to initialize L2TP offload: failed to create L2TP tunnel");
+		}
+
+		break;
+	}
+
+	if (!fastd_l2tp_session_create(conn_id, NULL))
+		exit_errno("unable to initialize L2TP offload: failed to create L2TP session");
+
+	if (!fastd_l2tp_session_delete(conn_id))
+		exit_errno("unable to initialize L2TP offload: failed to delete L2TP offload session");
+
+	close(fd);
+}
+
 /** Global L2TP offload initialization */
 void fastd_offload_l2tp_init(void) {
 	ctx.offload_l2tp = fastd_new0(fastd_offload_l2tp_t);
@@ -267,6 +303,8 @@ void fastd_offload_l2tp_init(void) {
 		exit_errno("unable to initialize L2TP offload: no kernel L2TP support");
 
 	ctx.offload_l2tp->family_id = family_id;
+
+	l2tp_selftest();
 }
 
 /** Frees resources allocated by \e fastd_offload_l2tp_init  */
