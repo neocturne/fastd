@@ -63,6 +63,14 @@ and makes the same security guarantees.
 
 The method names have the form "<cipher>+poly1305".
 
+null-l2tp
+~~~~~~~~~
+
+The "null\@l2tp" method doesn't procide any encryption or authentication. Unlike the older
+"null" method, this method uses the L2TPv3 (`RFC3931 <https://tools.ietf.org/html/rfc3931>`_) protocol for its data
+packets. This allows to use the L2TPv3 Ethernet Pseudowire implementation of the Linux kernel
+to offload data forwarding to kernel space in Multi-TAP mode.
+
 null
 ~~~~
 
