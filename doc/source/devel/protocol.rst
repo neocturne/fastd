@@ -9,18 +9,69 @@ to simplify the deployment of multiple fastd instances on the same host using di
 UDP ports and allow passing through common NAT routers without explicit configuration.
 
 The first byte of the UDP payload is used to discern the different packet types
-used by fastd. For now only two values for the first byte have been defined:
-``0x01`` indicates a handshake packet, and ``0x02`` a data packet. All other
-values are reserved for future use and must be ignored by current implementations.
+used by fastd. Since fastd v22, the following packet types are used:
+
+- ``0x00`` Data packet (v22+)
+- ``0x01`` Handshake packet (pre-v22)
+- ``0x02`` Data packet (pre-v22)
+- ``0xC8`` L2TP control message header (v22+)
+
+fastd v22 still supports the pre-v22 packet types, so communication between old
+and new versions is possible.
+
+L2TP control message headers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since fastd v22, all handshake packets may be prefixed with an L2TP control message header to make
+sure these packets are not considered data packets by the L2TP kernel code even with potential
+future extensions of the L2TP protocol. The basic format of this header is the following
+(as specified in `RFC3931 <https://tools.ietf.org/html/rfc3931>`_)::
+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |T|L|x|x|S|x|x|x|x|x|x|x|  Ver  |             Length            |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                     Control Connection ID                     |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |               Ns              |               Nr              |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+When sending a packet with an L2TP header, the following rules apply:
+
+- Only the *T*, *L*, and *S* flags are set (first byte is ``0xC8``)
+- *Ver* is set to 3 (second byte is ``0x03``)
+- *Length* is set to 12 (only the header itself is counted)
+- *Control Connection ID*, *Ns* and *Nr* are unused, they are set to 0
+
+When receiving packets, only the first two bytes are verified. Packets with unexpected values in these bytes
+are discarded.
+
+When replying to a handshake packet, fastd will insert the L2TP header when the peer has signaled that it
+supports such packets using the *L2TP_SUPPORT* flag. Initial handshakes will be sent twice at the same
+time, once with and once without an L2TP header, so both new and old versions of fastd can be supported.
+
+fastd v22 and newer ignore handshake packets without L2TP header when the *L2TP_SUPPORT* flag is set, so
+only one of the two handshake packets with identical content will be handled.
+
+In addition to handshakes, data packets may be prefixed with such L2TP control message headers as well, but
+this is rarely useful, as it reduces the usable MTU of a tunnel. The "null\@l2tp" method makes use of this
+for keepalive packets, so they are passed up to the fastd userspace when using the L2TP kernel offload feature.
 
 Handshake format
 ~~~~~~~~~~~~~~~~
-The initial ``0x01`` byte together with the next three bytes form the 4-byte handshake header; the rest of
-the packet after the header consists of a list of TLV records. The second header byte is reserved and must
-always be ``0x00``; the following two header bytes contain the length of the following TLV records in bytes
-encoded as Big Endian.
+The first 4 bytes (after the L2TP header if it exists, of the packet otherwise) form the handshake header::
 
-The following TLV records start with a 2-byte type field, followed by a 2-byte length field and the
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |      0x01     |      0x00     |          TLV Length           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+The rest of the handshake packet consists of TLV records, the total length of which is given by the *TLV Length*
+header field (in big-endian byte order).
+
+Each of the following TLV records starts with a 2-byte type field, followed by a 2-byte length field and the
 arbitrary-length value. There is no special alignment defined for the TLV records. All integers that are part of
 the TLV format (in particular, the type and length fields) are encoded in little-endian byte order.
 
@@ -32,7 +83,7 @@ Record ID  Value description             Format                     Values
 ``0x0000`` Handshake type                1-byte unsigned integer    {1, 2, 3}
 ``0x0001`` Reply code                    1-byte unsigned integer    {0 (success), 1 (mandatory record missing), 2 (unacceptable value)}
 ``0x0002`` Error detail                  1/2-byte unsigned integer  Record type which caused an error
-``0x0003`` Flags (currently unused)      variable-length bit field  So far, no values are defined
+``0x0003`` Flags                         variable-length bit field  L2TP_SUPPORT=0x01 (sender supports L2TP control message headers)
 ``0x0004`` Mode                          1-byte unsigned integer    {0 (TAP mode), 1 (TUN mode)}
 ``0x0005`` Protocol name                 variable-length string     "ec25519-fhmqvc"
 ``0x0006`` Sender key                    32-byte public key
@@ -120,9 +171,12 @@ Payload packets
 ~~~~~~~~~~~~~~~
 The payload packet structure is defined by the methods; at the moment most methods use the same format, starting with a 24 byte header, followed by the actual payload:
 
-* Byte 1: Packet type (0x02)
-* Byte 2: Flags (method-specific; unused, always 0x00)
+* Byte 1: Packet type (``0x00`` when both sides of a connection are fastd v22 or newer, ``0x02`` otherwise)
+* Byte 2: Flags (method-specific; unused, always ``0x00``)
 * Bytes 3-8: Packet sequence number/nonce (big endian; incremented by 2 for each packet; one side of a connection uses the even sequence numbers and the other side the odd ones)
 * Bytes 9-24: Authentication tag (method-specific)
 
-The ``null`` method uses only a 1 byte header: The packet type is directly followed by the payload data.
+The "null" method uses only a 1-byte header: The packet type is directly followed by the payload data.
+
+The "null\@l2tp" method uses an 8-byte header, which is the same as the L2TPv3 Session Header over UDP, with no Cookie and
+no L2-Specific Sublayer (as specified in `RFC3931 <https://tools.ietf.org/html/rfc3931>`_). fastd always uses the L2TP Session ID 1.
