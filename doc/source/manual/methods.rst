@@ -71,11 +71,12 @@ Method                    Method provider   Cipher      MAC    Notes
 
 Methods without security
 ------------------------
-========  ===============  ======  ====  =====
-Method    Method provider  Cipher  MAC   Notes
-========  ===============  ======  ====  =====
-``null``  null             none    none  [5]_
-========  ===============  ======  ====  =====
+=============  ===============  ======  ====  =====
+Method         Method provider  Cipher  MAC   Notes
+=============  ===============  ======  ====  =====
+``null@l2tp``  null-l2tp        none    none  [5]_
+``null``       null             none    none  [5]_
+=============  ===============  ======  ====  =====
 
 
 .. [1] The MAC is integrated in the method provider.
