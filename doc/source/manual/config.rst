@@ -190,6 +190,23 @@ Example config:
 
   Sets the MTU; must be at least 576. You should read the page :doc:`mtu` as the default 1500 is suboptimal in most setups.
 
+| ``offload l2tp yes|no;``
+
+  Use the L2TP kernel implementation for the "null\@l2tp" method. Enabling offloading allows for significantly higher
+  throughput, as data packets don't need to be copied between kernel and userspace.
+
+  L2TP offloading is only avaiable when the following conditions are met:
+
+  * A Linux kernel with L2TP Ethernet Pseudowire support is required
+  * L2TP offloading must be enabled in the fastd build (default on Linux)
+  * ``mode`` must be set to ``multitap``
+  * ``persist iface`` must be set to ``no``
+
+  Using the multi-TAP mode can be inconvenient with high numbers of peers, as it will create a separate network
+  interface for each peer. As peers in TAP and multi-TAP modes can communicate with each other, using TAP mode
+  without offloading on a powerful server, but multi-TAP on weak devices that only establish a single connection
+  anyways is an option that combines convenience with high performance.
+
 | ``on pre-up [ sync | async ] "<command>";``
 | ``on up [ sync | async ] "<command>";``
 | ``on down [ sync | async ] "<command>";``
