@@ -93,6 +93,7 @@ config_string_interface='interface $(escape_string "$value");'
 config_string_method='method $(escape_string "$value");'
 config_string_mode='mode $(guard_value "$value");'
 config_string_mtu='mtu $(guard_value "$value");'
+config_string_offload_l2tp='offload l2tp $(yes_no "$value");'
 config_string_peer_limit='peer limit $(guard_value "$value");'
 config_string_packet_mark='packet mark $(guard_value "$value");'
 config_string_persist_interface='persist interface $(yes_no "$value");'
@@ -252,7 +253,7 @@ generate_config() {
 
 	append_options "$s" config \
 		bind config config_peer config_peer_dir drop_capabilities method syslog_level mode interface mtu peer_limit \
-		user group status_socket forward hide_ip_addresses hide_mac_addresses packet_mark \
+		user group status_socket forward hide_ip_addresses hide_mac_addresses offload_l2tp packet_mark \
 		persist_interface on_pre_up on_post_down on_up on_down on_connect on_establish on_disestablish on_verify
 
 	config_get mode "$s" mode
