@@ -31,6 +31,7 @@ option('method_null_l2tp', type : 'feature', value : 'enabled')
 
 option('offload_l2tp', type : 'feature', value : 'auto')
 
+option('libmnl_builtin', type : 'boolean', value : false)
 option('use_nacl', type : 'boolean', value : false)
 
 option('build_tests', type : 'boolean', value : false)

@@ -118,7 +118,17 @@ if need_libcrypto
 endif
 
 if need_libmnl
-	deps += dependency('libmnl')
+	if get_option('libmnl_builtin')
+		subdir('dep/libmnl')
+		libmnl_dep = declare_dependency(
+			link_with : libmnl,
+			include_directories : 'dep/libmnl/include',
+		)
+	else
+		libmnl_dep = dependency('libmnl')
+	endif
+
+	deps += libmnl_dep
 endif
 
 if need_libsodium_nacl

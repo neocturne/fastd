@@ -52,3 +52,14 @@ OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+libmnl ( https://www.netfilter.org/projects/libmnl/ )
+
+The files in src/dep/libmnl were taken from libmnl 1.0.4 without changes, with
+the exception of internal.h, which was replaced with a fastd-specific file.
+libmnl is relased under LGPLv2.1+, which can be found in src/dep/libmnl/COYPING.
+
+The embedded version of libmnl is used only when the `offload_l2tp' and
+`libmnl_builtin' build flags are enabled. The default behaviour is to link
+to a libmnl found in the build sysroot, usually dynamically.
