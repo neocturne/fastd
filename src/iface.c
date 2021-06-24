@@ -348,7 +348,7 @@ static void cleanup_iface(UNUSED fastd_iface_t *iface) {}
 
 #endif
 
-#elif __APPLE__
+#elif defined(__APPLE__) || defined(__NetBSD__)
 
 /** Opens the TUN/TAP device */
 static bool open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
