@@ -24,7 +24,7 @@ custom_target(
 	command : [
 		'sh',
 		'-c',
-		'cd "$1" && find src test -type f -name "*.[ch]" | xargs "$2" -i --style=file',
+		'cd "$1" && find src test -type f -name "*.[ch]" | grep -v "^src/dep/" | xargs "$2" -i --style=file',
 		'-',
 		meson.current_source_dir(),
 		clang_format,
