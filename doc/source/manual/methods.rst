@@ -18,21 +18,6 @@ It has been chosed for the software profile in the `eSTREAM <http://en.wikipedia
 `UMAC <http://en.wikipedia.org/wiki/UMAC>`_ is an extremely fast message authentication code which is provably
 secure and optimized for software implementations.
 
-OpenWrt
--------
-Too keep the binary as small as possible, only the following methods are enabled on OpenWrt
-by default:
-
-* ``salsa2012+gmac``
-* ``salsa2012+umac``
-* ``null+salsa2012+gmac``
-* ``null+salsa2012+umac``
-* ``null``
-
-Of these, the GMAC-based methods may be dropped in the future to further reduce the binary size, as UMAC is
-the superior authentication scheme (it is faster than GMAC, provably secure and its software implementation
-isn't suspect to timing side channels).
-
 List of methods
 ~~~~~~~~~~~~~~~
 
