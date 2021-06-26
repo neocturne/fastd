@@ -54,7 +54,7 @@ copyright = '2012-2021, Matthias Schiffer'
 # built documents.
 #
 # The short X.Y version.
-version = '22'
+version = '22+'
 # The full version, including alpha/beta/rc tags.
 release = version
 
