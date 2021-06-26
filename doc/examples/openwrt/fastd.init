@@ -25,10 +25,8 @@ if ! command -v extra_command >/dev/null; then
 	}
 fi
 
-extra_command 'up' 'start instances passed as additional arguments'
-extra_command 'down' 'stop instances passed as additional arguments'
-extra_command 'show_key' 'show the public keys of instances passed as additional arguments'
-extra_command 'generate_key' 'generate keys for instances passed as additional arguments and store in UCI'
+extra_command 'show_key' 'show the public key of an instance'
+extra_command 'generate_key' 'generate key for an instance and store in UCI'
 
 
 LIST_SEP="
