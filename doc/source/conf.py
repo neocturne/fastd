@@ -47,14 +47,14 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'fastd'
-copyright = '2012-2020, Matthias Schiffer'
+copyright = '2012-2021, Matthias Schiffer'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = '21+'
+version = '22'
 # The full version, including alpha/beta/rc tags.
 release = version
 
