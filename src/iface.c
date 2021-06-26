@@ -350,6 +350,18 @@ static void cleanup_iface(UNUSED fastd_iface_t *iface) {}
 
 #elif defined(__APPLE__) || defined(__NetBSD__)
 
+/** Sets up the TUN device */
+static bool setup_tun(fastd_iface_t *iface) {
+#if defined(__NetBSD__)
+	int one = 1;
+	if (ioctl(iface->fd.fd, TUNSIFHEAD, &one) < 0) {
+		pr_error_errno("TUNSIFHEAD ioctl failed");
+		return false;
+	}
+#endif
+	return true;
+}
+
 /** Opens the TUN/TAP device */
 static bool open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	const char *devtype;
@@ -384,6 +396,11 @@ static bool open_iface(fastd_iface_t *iface, const char *ifname, uint16_t mtu) {
 	}
 
 	iface->name = fastd_strndup(ifname, IFNAMSIZ - 1);
+
+	if (get_iface_type() == IFACE_TYPE_TUN) {
+		if (!setup_tun(iface))
+			return false;
+	}
 
 	struct ifreq ifr = {};
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
