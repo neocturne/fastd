@@ -190,6 +190,8 @@ Example config:
 
   Sets the MTU; must be at least 576. You should read the page :doc:`mtu` as the default 1500 is suboptimal in most setups.
 
+.. _option-offload:
+
 | ``offload l2tp yes|no;``
 
   Use the L2TP kernel implementation for the "null\@l2tp" method. Enabling offloading allows for significantly higher

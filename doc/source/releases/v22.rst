@@ -1,0 +1,68 @@
+fastd v22
+=========
+
+The main improvement of fastd v22 is the L2TP kernel offloading support, which
+brings fastd's throughput for unsecured connections on par with other L2TP
+solutions like `Tunneldigger <https://github.com/wlanslovenija/tunneldigger>`_,
+while maintaining most of fastd's flexibility. It is even possible to use fast
+L2TP connections for some peers and secure encryption for others in a single
+fastd instance.
+
+New features
+~~~~~~~~~~~~
+
+* Added new method "null\@l2tp"
+
+  Like the old "null" method, "null\@l2tp" doesn't provide any security. In
+  TAP mode, it uses a packet format compatible with L2TPv3 Ethernet Pseudowires
+  (`RFC3931 <https://datatracker.ietf.org/doc/html/rfc3931>`_ and
+  `RFC4719 <https://datatracker.ietf.org/doc/html/rfc4719>`_) for payload data.
+
+  Using "null\@lt2p" for new unsecured deployments and migrating existing
+  "null" setups is recommended for a number of reasons:
+
+  - "null" uses a 1-byte packet header, which can make data transfer between
+    kernel and userspace slightly slower on platforms that care about alignment
+  - The L2TP-compatible data format facilitates debugging, as packet sniffers
+    like Wireshark can decode the payload
+  - L2TP can be offloaded to the Linux kernel, significantly increasing
+    throughput
+
+  See :ref:`offload configuration <option-offload>` for information on the setup
+  and limitations of the L2TP offload feature.
+
+* Added support for NetBSD (tested on NetBSD 9.2)
+
+Bugfixes
+~~~~~~~~
+
+* Fix build for MacOS
+
+  This issue was introduced during the move to the Meson build system in fastd
+  v20.
+
+* Fix TUN mode crash on FreeBSD/OpenBSD
+
+  This issue is a regression introduced in fastd v20. The buffer management
+  optimization caused an assertion failure in many configurations upon
+  reading packets from the TUN interface.
+
+* Fix version number format
+
+  When not building from Git, fastd v21 would format its own version number as
+  "21" rather than "v21", deviating from previous releases. This is fixed with
+  v22.
+
+Other changes
+~~~~~~~~~~~~~
+
+* A new handshake format has been introduced, prepending an L2TPv3 Control
+  Message header to the actual fastd handshake. This improves certain
+  interactions between fastd and the L2TP kernel module used for offloading.
+
+  To maintain compatibility with older fastd versions, both handshake formats
+  are accepted. For the initial handshake packet, an old and a new format
+  packet are sent at the same time.
+
+  Sessions established using the old handshake format are marked with "compat
+  mode" in the log.

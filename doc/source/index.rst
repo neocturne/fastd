@@ -14,6 +14,7 @@ Welcome to fastd's documentation!
    :caption: Release notes
    :maxdepth: 2
 
+   releases/v22
    releases/v21
    releases/v20
    releases/v19
