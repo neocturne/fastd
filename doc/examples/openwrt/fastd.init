@@ -1,5 +1,5 @@
 #!/bin/sh /etc/rc.common
-# Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+# Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
 
 set -o pipefail
 
@@ -7,15 +7,28 @@ START=95
 
 USE_PROCD=1
 
-EXTRA_COMMANDS='up down show_key generate_key'
 
-EXTRA_HELP='
-	show_key	shows the public keys of the instances given as
-			additional arguments
-	generate_key	generates the private keys for the instances given as
-			additional arguments and saves them in the configuration
-			(when there in no key configured yet)
+# Backwards compatiblity with OpenWrt 19.07 and older
+if ! command -v extra_command >/dev/null; then
+	EXTRA_HELP='
 '
+	EXTRA_COMMANDS=''
+
+	extra_command() {
+		local cmd="$1"
+		local help="$2"
+
+		local extra="$(printf '\t%-16s%s' "${cmd}" "${help}")"
+		EXTRA_HELP="${EXTRA_HELP}${extra}
+"
+		EXTRA_COMMANDS="${EXTRA_COMMANDS} ${cmd}"
+	}
+fi
+
+extra_command 'up' 'start instances passed as additional arguments'
+extra_command 'down' 'stop instances passed as additional arguments'
+extra_command 'show_key' 'show the public keys of instances passed as additional arguments'
+extra_command 'generate_key' 'generate keys for instances passed as additional arguments and store in UCI'
 
 
 LIST_SEP="
