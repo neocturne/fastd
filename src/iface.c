@@ -412,7 +412,7 @@ void fastd_iface_handle(fastd_iface_t *iface) {
 
 	fastd_buffer_t *buffer;
 	if (multiaf_tun && get_iface_type() == IFACE_TYPE_TUN)
-		buffer = fastd_buffer_alloc(max_len + 4, conf.encrypt_headroom + 12);
+		buffer = fastd_buffer_alloc(max_len + 4, conf.encrypt_headroom + (sizeof(fastd_block128_t) - 4));
 	else
 		buffer = fastd_buffer_alloc(max_len, conf.encrypt_headroom);
 

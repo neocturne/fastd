@@ -667,7 +667,9 @@ static void configure_peers(bool dirs_only) {
 		}
 	}
 
-	size_t headroom = max_size_t(conf.encrypt_headroom, conf.decrypt_headroom + conf.overhead);
+	/* Reserve one extra block of encrypt headroom for multiaf_tun targets */
+	size_t headroom =
+		max_size_t(conf.encrypt_headroom + sizeof(fastd_block128_t), conf.decrypt_headroom + conf.overhead);
 	ctx.max_buffer = alignto(
 		max_size_t(headroom + fastd_max_payload(ctx.max_mtu), MAX_HANDSHAKE_SIZE), sizeof(fastd_block128_t));
 }
