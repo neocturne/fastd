@@ -282,12 +282,14 @@ offload:	TOK_L2TP boolean {
 #ifdef WITH_OFFLOAD_L2TP
 			conf.offload_l2tp = $2;
 #else
+			if ($2) {
 # ifdef __linux__
-			fastd_config_error(&@$, state, "L2TP offload is not supported by this build of fastd");
+				fastd_config_error(&@$, state, "L2TP offload is not supported by this build of fastd");
 # else
-			fastd_config_error(&@$, state, "L2TP offload is not supported on this platform");
+				fastd_config_error(&@$, state, "L2TP offload is not supported on this platform");
 # endif
-			YYERROR;
+				YYERROR;
+			}
 #endif
 		}
 	;
