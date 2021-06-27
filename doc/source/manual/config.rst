@@ -207,6 +207,11 @@ Example config:
   without offloading on a powerful server, but multi-TAP on weak devices that only establish a single connection
   anyways is an option that combines convenience with high performance.
 
+  Using L2TP offloading requires fastd to set the *SO_REUSEADDR* flag flag on its sockets. This allows other local users
+  to open a socket with the same address/port combination, making it possible to monitor and inject traffic on such
+  unencrypted connections without special privileges. For this reason, using a privileged bind port (below 1024) is
+  recommended when using the offload feature on hosts shared with other users.
+
 | ``on pre-up [ sync | async ] "<command>";``
 | ``on up [ sync | async ] "<command>";``
 | ``on down [ sync | async ] "<command>";``
