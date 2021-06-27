@@ -71,12 +71,22 @@ static bool need_cap_net_admin(void) {
 	return false;
 }
 
+static bool need_cap_net_bind_service(void) {
+	if (fastd_use_offload_l2tp())
+		return true;
+
+	return false;
+}
+
 /** Returns true if CAP_NET_RAW should be retained */
 static bool need_cap_net_raw(void) {
 	if (!ctx.sock_default_v4 && conf.bind_addr_default_v4 && conf.bind_addr_default_v4->bindtodev)
 		return true;
 
 	if (!ctx.sock_default_v6 && conf.bind_addr_default_v6 && conf.bind_addr_default_v6->bindtodev)
+		return true;
+
+	if (fastd_use_offload_l2tp())
 		return true;
 
 	return false;
@@ -117,6 +127,9 @@ void fastd_cap_reacquire_drop(void) {
 
 	if (need_cap_net_admin())
 		set_cap(caps, CAP_NET_ADMIN);
+
+	if (need_cap_net_bind_service())
+		set_cap(caps, CAP_NET_BIND_SERVICE);
 
 	if (need_cap_net_raw())
 		set_cap(caps, CAP_NET_RAW);
