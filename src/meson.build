@@ -35,6 +35,7 @@ version_h = vcs_tag(
 		'describe',
 		'--dirty=+',
 	],
+	fallback : 'v' + meson.project_version(),
 )
 
 src = [
