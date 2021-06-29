@@ -98,6 +98,18 @@ static inline size_t ssub_size_t(size_t a, size_t b) {
 
 #include <libkern/OSByteOrder.h>
 
+/** Converts a 16bit integer from host byte order to big endian  */
+#define htobe16(x) OSSwapHostToBigInt16(x)
+
+/** Converts a 16bit integer from host byte order to little endian  */
+#define htole16(x) OSSwapHostToLittleInt16(x)
+
+/** Converts a 16bit integer from big endian to host byte order */
+#define be16toh(x) OSSwapBigToHostInt16(x)
+
+/** Converts a 16bit integer from little endian to host byte order */
+#define le16toh(x) OSSwapLittleToHostInt16(x)
+
 /** Converts a 32bit integer from host byte order to big endian  */
 #define htobe32(x) OSSwapHostToBigInt32(x)
 
@@ -111,6 +123,12 @@ static inline size_t ssub_size_t(size_t a, size_t b) {
 #define le32toh(x) OSSwapLittleToHostInt32(x)
 
 #elif !defined(HAVE_LINUX_ENDIAN)
+
+/** Converts a 16bit integer from big endian to host byte order */
+#define be16toh(x) betoh16(x)
+
+/** Converts a 16bit integer from little endian to host byte order */
+#define le16toh(x) letoh16(x)
 
 /** Converts a 32bit integer from big endian to host byte order */
 #define be32toh(x) betoh32(x)
