@@ -202,7 +202,7 @@ Example config:
   * A Linux kernel with L2TP Ethernet Pseudowire support is required
   * L2TP offloading must be enabled in the fastd build (default on Linux)
   * ``mode`` must be set to ``multitap``
-  * ``persist iface`` must be set to ``no``
+  * ``persist interface`` must be set to ``no``
 
   Using the multi-TAP mode can be inconvenient with high numbers of peers, as it will create a separate network
   interface for each peer. As peers in TAP and multi-TAP modes can communicate with each other, using TAP mode
