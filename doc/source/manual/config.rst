@@ -365,4 +365,4 @@ Example config:
 | ``float yes|no;``
 
   The float option can be used to accept connections from the peer with the specified key from
-  other addresses that the configured ones.
+  other addresses than the configured ones.
