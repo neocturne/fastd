@@ -364,5 +364,6 @@ Example config:
 
 | ``float yes|no;``
 
-  The float option can be used to accept connections from the peer with the specified key from
-  other addresses that the configured ones.
+  Set to ``yes`` to allow incoming connections from any IP address/port for this peer. By default,
+  incoming connections are only accepted from the addresses/ports configured using the ``remote``
+  option when such an option exists. Peers without ``remote`` are always floating.
