@@ -17,6 +17,7 @@
 #ifdef WITH_STATUS_SOCKET
 
 #include "method.h"
+#include "offload/offload.h"
 #include "peer.h"
 
 #include <json-c/json.h>
@@ -67,11 +68,6 @@ static json_object *dump_stat(const fastd_stats_t *stats, fastd_stat_type_t type
 	return ret;
 }
 
-/** Dumps a single traffic stat as a JSON object */
-static json_object *dump_iface(const fastd_iface_t *iface) {
-	return (iface && iface->name) ? json_object_new_string(iface->name) : NULL;
-}
-
 /** Dumps a fastd_stats_t as a JSON object */
 static json_object *dump_stats(const fastd_stats_t *stats) {
 	struct json_object *statistics = json_object_new_object();
@@ -102,8 +98,20 @@ static json_object *dump_peer(const fastd_peer_t *peer) {
 	json_object_object_add(ret, "name", wrap_string_or_null(peer->name));
 	json_object_object_add(ret, "address", json_object_new_string(addr_buf));
 
-	if (!ctx.iface)
-		json_object_object_add(ret, "interface", dump_iface(peer->iface));
+	if (!ctx.iface) {
+		const char *ifname = NULL;
+		uint16_t mtu = 0;
+
+		if (peer) {
+			if (peer->offload) {
+				peer->offload->get_iface(peer->offload_state, &ifname, &mtu);
+			} else if (peer->iface) {
+				ifname = peer->iface->name;
+			}
+		}
+
+		json_object_object_add(ret, "interface", wrap_string_or_null(ifname));
+	}
 
 	struct json_object *connection = NULL;
 
@@ -158,7 +166,7 @@ static void dump_status(int fd) {
 	json_object_object_add(json, "uptime", json_object_new_int64(ctx.now - ctx.started));
 
 	if (ctx.iface)
-		json_object_object_add(json, "interface", dump_iface(ctx.iface));
+		json_object_object_add(json, "interface", wrap_string_or_null(ctx.iface->name));
 
 	json_object_object_add(json, "statistics", dump_stats(&ctx.stats));
 
