@@ -107,10 +107,12 @@ static json_object *dump_peer(const fastd_peer_t *peer) {
 				peer->offload->get_iface(peer->offload_state, &ifname, &mtu);
 			} else if (peer->iface) {
 				ifname = peer->iface->name;
+				mtu = peer->iface->mtu;
 			}
 		}
 
 		json_object_object_add(ret, "interface", wrap_string_or_null(ifname));
+		json_object_object_add(ret, "mtu", mtu ? json_object_new_int(mtu) : NULL);
 	}
 
 	struct json_object *connection = NULL;
