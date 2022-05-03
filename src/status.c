@@ -86,6 +86,10 @@ static json_object *dump_stats(const fastd_stats_t *stats) {
 	return statistics;
 }
 
+/** Returns a string as a json_object *, allows NULL to be passed */
+static json_object *wrap_string_or_null(const char *str) {
+	return str ? json_object_new_string(str) : NULL;
+}
 
 /** Dumps a peer's status as a JSON object */
 static json_object *dump_peer(const fastd_peer_t *peer) {
@@ -95,7 +99,7 @@ static json_object *dump_peer(const fastd_peer_t *peer) {
 	char addr_buf[1 + INET6_ADDRSTRLEN + 2 + IFNAMSIZ + 1 + 5 + 1];
 	fastd_snprint_peer_address(addr_buf, sizeof(addr_buf), &peer->address, NULL, false, false);
 
-	json_object_object_add(ret, "name", peer->name ? json_object_new_string(peer->name) : NULL);
+	json_object_object_add(ret, "name", wrap_string_or_null(peer->name));
 	json_object_object_add(ret, "address", json_object_new_string(addr_buf));
 
 	if (!ctx.iface)
