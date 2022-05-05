@@ -591,7 +591,7 @@ bool fastd_config_single_iface(void) {
 	return (VECTOR_LEN(ctx.peers) == 1);
 }
 
-/** Determines of all interfaces are persistent (i.e. don't need to be created and destroyed dynamically) */
+/** Determines if all interfaces are persistent (i.e. don't need to be created and destroyed dynamically) */
 bool fastd_config_persistent_ifaces(void) {
 	if (fastd_use_android_integration())
 		return true;
