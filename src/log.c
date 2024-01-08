@@ -42,7 +42,7 @@ size_t fastd_snprint_peer_address(
 		if (bind_address)
 			return snprintf_safe(buffer, size, "any:%u", ntohs(address->in.sin_port));
 		else
-			return snprintf(buffer, size, "any");
+			return snprintf_safe(buffer, size, "any");
 
 	case AF_INET:
 		if (!bind_address && hide)
