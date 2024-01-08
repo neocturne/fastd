@@ -30,8 +30,8 @@ version_h = vcs_tag(
 	input : 'version.h.in',
 	command : [
 		'git',
-		'--work-tree=' + meson.source_root(),
-		'--git-dir=' + meson.source_root() / '.git',
+		'--work-tree=' + meson.current_source_dir() / '..',
+		'--git-dir=' + meson.current_source_dir() / '../.git',
 		'describe',
 		'--dirty=+',
 	],
