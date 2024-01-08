@@ -51,8 +51,7 @@
  * This function returns the size of a netlink message (header plus payload)
  * without alignment.
  */
-EXPORT_SYMBOL(mnl_nlmsg_size);
-size_t mnl_nlmsg_size(size_t len)
+EXPORT_SYMBOL size_t mnl_nlmsg_size(size_t len)
 {
 	return len + MNL_NLMSG_HDRLEN;
 }
@@ -64,8 +63,7 @@ size_t mnl_nlmsg_size(size_t len)
  * This function returns the Length of the netlink payload, ie. the length
  * of the full message minus the size of the Netlink header.
  */
-EXPORT_SYMBOL(mnl_nlmsg_get_payload_len);
-size_t mnl_nlmsg_get_payload_len(const struct nlmsghdr *nlh)
+EXPORT_SYMBOL size_t mnl_nlmsg_get_payload_len(const struct nlmsghdr *nlh)
 {
 	return nlh->nlmsg_len - MNL_NLMSG_HDRLEN;
 }
@@ -79,8 +77,7 @@ size_t mnl_nlmsg_get_payload_len(const struct nlmsghdr *nlh)
  * initializes the nlmsg_len field to the size of the Netlink header. This
  * function returns a pointer to the Netlink header structure.
  */
-EXPORT_SYMBOL(mnl_nlmsg_put_header);
-struct nlmsghdr *mnl_nlmsg_put_header(void *buf)
+EXPORT_SYMBOL struct nlmsghdr *mnl_nlmsg_put_header(void *buf)
 {
 	int len = MNL_ALIGN(sizeof(struct nlmsghdr));
 	struct nlmsghdr *nlh = buf;
@@ -101,8 +98,8 @@ struct nlmsghdr *mnl_nlmsg_put_header(void *buf)
  * you call this function. This function returns a pointer to the extra
  * header.
  */
-EXPORT_SYMBOL(mnl_nlmsg_put_extra_header);
-void *mnl_nlmsg_put_extra_header(struct nlmsghdr *nlh, size_t size)
+EXPORT_SYMBOL void *mnl_nlmsg_put_extra_header(struct nlmsghdr *nlh,
+					       size_t size)
 {
 	char *ptr = (char *)nlh + nlh->nlmsg_len;
 	size_t len = MNL_ALIGN(size);
@@ -117,8 +114,7 @@ void *mnl_nlmsg_put_extra_header(struct nlmsghdr *nlh, size_t size)
  *
  * This function returns a pointer to the payload of the netlink message.
  */
-EXPORT_SYMBOL(mnl_nlmsg_get_payload);
-void *mnl_nlmsg_get_payload(const struct nlmsghdr *nlh)
+EXPORT_SYMBOL void *mnl_nlmsg_get_payload(const struct nlmsghdr *nlh)
 {
 	return (void *)nlh + MNL_NLMSG_HDRLEN;
 }
@@ -131,8 +127,8 @@ void *mnl_nlmsg_get_payload(const struct nlmsghdr *nlh)
  * This function returns a pointer to the payload of the netlink message plus
  * a given offset.
  */
-EXPORT_SYMBOL(mnl_nlmsg_get_payload_offset);
-void *mnl_nlmsg_get_payload_offset(const struct nlmsghdr *nlh, size_t offset)
+EXPORT_SYMBOL void *mnl_nlmsg_get_payload_offset(const struct nlmsghdr *nlh,
+						 size_t offset)
 {
 	return (void *)nlh + MNL_NLMSG_HDRLEN + MNL_ALIGN(offset);
 }
@@ -153,8 +149,7 @@ void *mnl_nlmsg_get_payload_offset(const struct nlmsghdr *nlh, size_t offset)
  * The len parameter may become negative in malformed messages during message
  * iteration, that is why we use a signed integer.
  */
-EXPORT_SYMBOL(mnl_nlmsg_ok);
-bool mnl_nlmsg_ok(const struct nlmsghdr *nlh, int len)
+EXPORT_SYMBOL bool mnl_nlmsg_ok(const struct nlmsghdr *nlh, int len)
 {
 	return len >= (int)sizeof(struct nlmsghdr) &&
 	       nlh->nlmsg_len >= sizeof(struct nlmsghdr) &&
@@ -174,8 +169,8 @@ bool mnl_nlmsg_ok(const struct nlmsghdr *nlh, int len)
  * You have to use mnl_nlmsg_ok() to check if the next Netlink message is
  * valid.
  */
-EXPORT_SYMBOL(mnl_nlmsg_next);
-struct nlmsghdr *mnl_nlmsg_next(const struct nlmsghdr *nlh, int *len)
+EXPORT_SYMBOL struct nlmsghdr *mnl_nlmsg_next(const struct nlmsghdr *nlh,
+					      int *len)
 {
 	*len -= MNL_ALIGN(nlh->nlmsg_len);
 	return (struct nlmsghdr *)((void *)nlh + MNL_ALIGN(nlh->nlmsg_len));
@@ -189,8 +184,7 @@ struct nlmsghdr *mnl_nlmsg_next(const struct nlmsghdr *nlh, int *len)
  * to build a message since we continue adding attributes at the end of the
  * message.
  */
-EXPORT_SYMBOL(mnl_nlmsg_get_payload_tail);
-void *mnl_nlmsg_get_payload_tail(const struct nlmsghdr *nlh)
+EXPORT_SYMBOL void *mnl_nlmsg_get_payload_tail(const struct nlmsghdr *nlh)
 {
 	return (void *)nlh + MNL_ALIGN(nlh->nlmsg_len);
 }
@@ -209,8 +203,8 @@ void *mnl_nlmsg_get_payload_tail(const struct nlmsghdr *nlh)
  * socket to send commands to kernel-space (that we want to track) and to
  * listen to events (that we do not track).
  */
-EXPORT_SYMBOL(mnl_nlmsg_seq_ok);
-bool mnl_nlmsg_seq_ok(const struct nlmsghdr *nlh, unsigned int seq)
+EXPORT_SYMBOL bool mnl_nlmsg_seq_ok(const struct nlmsghdr *nlh,
+				    unsigned int seq)
 {
 	return nlh->nlmsg_seq && seq ? nlh->nlmsg_seq == seq : true;
 }
@@ -229,8 +223,8 @@ bool mnl_nlmsg_seq_ok(const struct nlmsghdr *nlh, unsigned int seq)
  * to kernel-space (that we want to track) and to listen to events (that we
  * do not track).
  */
-EXPORT_SYMBOL(mnl_nlmsg_portid_ok);
-bool mnl_nlmsg_portid_ok(const struct nlmsghdr *nlh, unsigned int portid)
+EXPORT_SYMBOL bool mnl_nlmsg_portid_ok(const struct nlmsghdr *nlh,
+				       unsigned int portid)
 {
 	return nlh->nlmsg_pid && portid ? nlh->nlmsg_pid == portid : true;
 }
@@ -363,9 +357,8 @@ static void mnl_nlmsg_fprintf_payload(FILE *fd, const struct nlmsghdr *nlh,
  * - N, that indicates that NLA_F_NESTED is set.
  * - B, that indicates that NLA_F_NET_BYTEORDER is set.
  */
-EXPORT_SYMBOL(mnl_nlmsg_fprintf);
-void mnl_nlmsg_fprintf(FILE *fd, const void *data, size_t datalen,
-		       size_t extra_header_size)
+EXPORT_SYMBOL void mnl_nlmsg_fprintf(FILE *fd, const void *data, size_t datalen,
+				     size_t extra_header_size)
 {
 	const struct nlmsghdr *nlh = data;
 	int len = datalen;
@@ -378,21 +371,26 @@ void mnl_nlmsg_fprintf(FILE *fd, const void *data, size_t datalen,
 }
 
 /**
+ * @}
+ */
+
+/**
  * \defgroup batch Netlink message batch helpers
  *
  * This library provides helpers to batch several messages into one single
  * datagram. These helpers do not perform strict memory boundary checkings.
  *
  * The following figure represents a Netlink message batch:
- *
- *   |<-------------- MNL_SOCKET_BUFFER_SIZE ------------->|
- *   |<-------------------- batch ------------------>|     |
- *   |-----------|-----------|-----------|-----------|-----------|
- *   |<- nlmsg ->|<- nlmsg ->|<- nlmsg ->|<- nlmsg ->|<- nlmsg ->|
- *   |-----------|-----------|-----------|-----------|-----------|
- *                                             ^           ^
- *                                             |           |
- *                                        message N   message N+1
+ *\verbatim
+   |<-------------- MNL_SOCKET_BUFFER_SIZE ------------->|
+   |<-------------------- batch ------------------>|     |
+   |-----------|-----------|-----------|-----------|-----------|
+   |<- nlmsg ->|<- nlmsg ->|<- nlmsg ->|<- nlmsg ->|<- nlmsg ->|
+   |-----------|-----------|-----------|-----------|-----------|
+					     ^           ^
+					     |           |
+					message N   message N+1
+\endverbatim
  *
  * To start the batch, you have to call mnl_nlmsg_batch_start() and you can
  * use mnl_nlmsg_batch_stop() to release it.
@@ -433,8 +431,8 @@ struct mnl_nlmsg_batch {
  * the heap, no restrictions in this regard. This function returns NULL on
  * error.
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_start);
-struct mnl_nlmsg_batch *mnl_nlmsg_batch_start(void *buf, size_t limit)
+EXPORT_SYMBOL struct mnl_nlmsg_batch *mnl_nlmsg_batch_start(void *buf,
+							    size_t limit)
 {
 	struct mnl_nlmsg_batch *b;
 
@@ -457,8 +455,7 @@ struct mnl_nlmsg_batch *mnl_nlmsg_batch_start(void *buf, size_t limit)
  *
  * This function releases the batch allocated by mnl_nlmsg_batch_start().
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_stop);
-void mnl_nlmsg_batch_stop(struct mnl_nlmsg_batch *b)
+EXPORT_SYMBOL void mnl_nlmsg_batch_stop(struct mnl_nlmsg_batch *b)
 {
 	free(b);
 }
@@ -474,8 +471,7 @@ void mnl_nlmsg_batch_stop(struct mnl_nlmsg_batch *b)
  * You have to put at least one message in the batch before calling this
  * function, otherwise your application is likely to crash.
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_next);
-bool mnl_nlmsg_batch_next(struct mnl_nlmsg_batch *b)
+EXPORT_SYMBOL bool mnl_nlmsg_batch_next(struct mnl_nlmsg_batch *b)
 {
 	struct nlmsghdr *nlh = b->cur;
 
@@ -496,8 +492,7 @@ bool mnl_nlmsg_batch_next(struct mnl_nlmsg_batch *b)
  * new one. This function moves the last message which does not fit the
  * batch to the head of the buffer, if any.
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_reset);
-void mnl_nlmsg_batch_reset(struct mnl_nlmsg_batch *b)
+EXPORT_SYMBOL void mnl_nlmsg_batch_reset(struct mnl_nlmsg_batch *b)
 {
 	if (b->overflow) {
 		struct nlmsghdr *nlh = b->cur;
@@ -517,8 +512,7 @@ void mnl_nlmsg_batch_reset(struct mnl_nlmsg_batch *b)
  *
  * This function returns the current size of the batch.
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_size);
-size_t mnl_nlmsg_batch_size(struct mnl_nlmsg_batch *b)
+EXPORT_SYMBOL size_t mnl_nlmsg_batch_size(struct mnl_nlmsg_batch *b)
 {
 	return b->buflen;
 }
@@ -530,8 +524,7 @@ size_t mnl_nlmsg_batch_size(struct mnl_nlmsg_batch *b)
  * This function returns a pointer to the head of the batch, which is the
  * beginning of the buffer that is used.
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_head);
-void *mnl_nlmsg_batch_head(struct mnl_nlmsg_batch *b)
+EXPORT_SYMBOL void *mnl_nlmsg_batch_head(struct mnl_nlmsg_batch *b)
 {
 	return b->buf;
 }
@@ -543,8 +536,7 @@ void *mnl_nlmsg_batch_head(struct mnl_nlmsg_batch *b)
  * This function returns a pointer to the current position in the buffer
  * that is used to store the batch.
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_current);
-void *mnl_nlmsg_batch_current(struct mnl_nlmsg_batch *b)
+EXPORT_SYMBOL void *mnl_nlmsg_batch_current(struct mnl_nlmsg_batch *b)
 {
 	return b->cur;
 }
@@ -555,8 +547,7 @@ void *mnl_nlmsg_batch_current(struct mnl_nlmsg_batch *b)
  *
  * This function returns true if the batch is empty.
  */
-EXPORT_SYMBOL(mnl_nlmsg_batch_is_empty);
-bool mnl_nlmsg_batch_is_empty(struct mnl_nlmsg_batch *b)
+EXPORT_SYMBOL bool mnl_nlmsg_batch_is_empty(struct mnl_nlmsg_batch *b)
 {
 	return b->buflen == 0;
 }

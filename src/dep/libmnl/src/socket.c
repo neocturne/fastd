@@ -59,7 +59,7 @@
  *
  * \section scm Git Tree
  * The current development version of libmnl can be accessed at:
- * http://git.netfilter.org/cgi-bin/gitweb.cgi?p=libmnl.git;a=summary
+ * https://git.netfilter.org/libmnl/
  *
  * \section using Using libmnl
  * You can access several example files under examples/ in the libmnl source
@@ -82,8 +82,7 @@ struct mnl_socket {
  *
  * This function returns the file descriptor of a given netlink socket.
  */
-EXPORT_SYMBOL(mnl_socket_get_fd);
-int mnl_socket_get_fd(const struct mnl_socket *nl)
+EXPORT_SYMBOL int mnl_socket_get_fd(const struct mnl_socket *nl)
 {
 	return nl->fd;
 }
@@ -97,8 +96,7 @@ int mnl_socket_get_fd(const struct mnl_socket *nl)
  * which is not always true. This is the case if you open more than one
  * socket that is binded to the same Netlink subsystem from the same process.
  */
-EXPORT_SYMBOL(mnl_socket_get_portid);
-unsigned int mnl_socket_get_portid(const struct mnl_socket *nl)
+EXPORT_SYMBOL unsigned int mnl_socket_get_portid(const struct mnl_socket *nl)
 {
 	return nl->addr.nl_pid;
 }
@@ -127,8 +125,7 @@ static struct mnl_socket *__mnl_socket_open(int bus, int flags)
  * On error, it returns NULL and errno is appropriately set. Otherwise, it
  * returns a valid pointer to the mnl_socket structure.
  */
-EXPORT_SYMBOL(mnl_socket_open);
-struct mnl_socket *mnl_socket_open(int bus)
+EXPORT_SYMBOL struct mnl_socket *mnl_socket_open(int bus)
 {
 	return __mnl_socket_open(bus, 0);
 }
@@ -145,8 +142,7 @@ struct mnl_socket *mnl_socket_open(int bus)
  * On error, it returns NULL and errno is appropriately set. Otherwise, it
  * returns a valid pointer to the mnl_socket structure.
  */
-EXPORT_SYMBOL(mnl_socket_open2);
-struct mnl_socket *mnl_socket_open2(int bus, int flags)
+EXPORT_SYMBOL struct mnl_socket *mnl_socket_open2(int bus, int flags)
 {
 	return __mnl_socket_open(bus, flags);
 }
@@ -162,8 +158,7 @@ struct mnl_socket *mnl_socket_open2(int bus, int flags)
  * Note that mnl_socket_get_portid() returns 0 if this function is used with
  * non-netlink socket.
  */
-EXPORT_SYMBOL(mnl_socket_fdopen);
-struct mnl_socket *mnl_socket_fdopen(int fd)
+EXPORT_SYMBOL struct mnl_socket *mnl_socket_fdopen(int fd)
 {
 	int ret;
 	struct mnl_socket *nl;
@@ -195,8 +190,8 @@ struct mnl_socket *mnl_socket_fdopen(int fd)
  * success, 0 is returned. You can use MNL_SOCKET_AUTOPID which is 0 for
  * automatic port ID selection.
  */
-EXPORT_SYMBOL(mnl_socket_bind);
-int mnl_socket_bind(struct mnl_socket *nl, unsigned int groups, pid_t pid)
+EXPORT_SYMBOL int mnl_socket_bind(struct mnl_socket *nl, unsigned int groups,
+				  pid_t pid)
 {
 	int ret;
 	socklen_t addr_len;
@@ -234,9 +229,8 @@ int mnl_socket_bind(struct mnl_socket *nl, unsigned int groups, pid_t pid)
  * On error, it returns -1 and errno is appropriately set. Otherwise, it 
  * returns the number of bytes sent.
  */
-EXPORT_SYMBOL(mnl_socket_sendto);
-ssize_t mnl_socket_sendto(const struct mnl_socket *nl, const void *buf,
-			  size_t len)
+EXPORT_SYMBOL ssize_t mnl_socket_sendto(const struct mnl_socket *nl,
+					const void *buf, size_t len)
 {
 	static const struct sockaddr_nl snl = {
 		.nl_family = AF_NETLINK
@@ -259,9 +253,8 @@ ssize_t mnl_socket_sendto(const struct mnl_socket *nl, const void *buf,
  * buffer size ensures that your buffer is big enough to store the netlink
  * message without truncating it.
  */
-EXPORT_SYMBOL(mnl_socket_recvfrom);
-ssize_t mnl_socket_recvfrom(const struct mnl_socket *nl, void *buf,
-			    size_t bufsiz)
+EXPORT_SYMBOL ssize_t mnl_socket_recvfrom(const struct mnl_socket *nl,
+					  void *buf, size_t bufsiz)
 {
 	ssize_t ret;
 	struct sockaddr_nl addr;
@@ -300,8 +293,7 @@ ssize_t mnl_socket_recvfrom(const struct mnl_socket *nl, void *buf,
  * On error, this function returns -1 and errno is appropriately set.
  * On success, it returns 0.
  */
-EXPORT_SYMBOL(mnl_socket_close);
-int mnl_socket_close(struct mnl_socket *nl)
+EXPORT_SYMBOL int mnl_socket_close(struct mnl_socket *nl)
 {
 	int ret = close(nl->fd);
 	free(nl);
@@ -333,9 +325,8 @@ int mnl_socket_close(struct mnl_socket *nl)
  *
  * On error, this function returns -1 and errno is appropriately set.
  */
-EXPORT_SYMBOL(mnl_socket_setsockopt);
-int mnl_socket_setsockopt(const struct mnl_socket *nl, int type,
-			  void *buf, socklen_t len)
+EXPORT_SYMBOL int mnl_socket_setsockopt(const struct mnl_socket *nl, int type,
+					void *buf, socklen_t len)
 {
 	return setsockopt(nl->fd, SOL_NETLINK, type, buf, len);
 }
@@ -349,9 +340,8 @@ int mnl_socket_setsockopt(const struct mnl_socket *nl, int type,
  *
  * On error, this function returns -1 and errno is appropriately set.
  */
-EXPORT_SYMBOL(mnl_socket_getsockopt);
-int mnl_socket_getsockopt(const struct mnl_socket *nl, int type,
-			  void *buf, socklen_t *len)
+EXPORT_SYMBOL int mnl_socket_getsockopt(const struct mnl_socket *nl, int type,
+					void *buf, socklen_t *len)
 {
 	return getsockopt(nl->fd, SOL_NETLINK, type, buf, len);
 }

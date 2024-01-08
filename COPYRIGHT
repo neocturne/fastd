@@ -56,7 +56,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 libmnl ( https://www.netfilter.org/projects/libmnl/ )
 
-The files in src/dep/libmnl were taken from libmnl 1.0.4 without changes, with
+The files in src/dep/libmnl were taken from libmnl 1.0.5 without changes, with
 the exception of internal.h, which was replaced with a fastd-specific file.
 libmnl is relased under LGPLv2.1+, which can be found in src/dep/libmnl/COYPING.
 
