@@ -467,7 +467,7 @@ static fastd_peer_t *match_sender_key(
 /** Sends an initial handshake (type 1) to a peer */
 void fastd_protocol_ec25519_fhmqvc_handshake_init(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer) {
+	fastd_peer_t *peer, unsigned flags) {
 	fastd_protocol_ec25519_fhmqvc_maintenance();
 
 	fastd_buffer_t *buffer =
@@ -493,7 +493,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_init(
 			remote_addr, false);
 	}
 
-	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer, FLAG_INITIAL);
+	fastd_handshake_send_free(sock, local_addr, remote_addr, peer, buffer, flags);
 }
 
 

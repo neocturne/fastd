@@ -11,6 +11,7 @@
 */
 
 #include "peer.h"
+#include "handshake.h"
 #include "offload/offload.h"
 #include "peer_group.h"
 #include "peer_hashtable.h"
@@ -823,7 +824,7 @@ static void send_handshake(fastd_peer_t *peer, fastd_remote_t *next_remote) {
 
 	peer->last_handshake_timeout = ctx.now + MIN_HANDSHAKE_INTERVAL;
 	peer->last_handshake_address = peer->address;
-	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer);
+	conf.protocol->handshake_init(peer->sock, &peer->local_address, &peer->address, peer, FLAG_INITIAL);
 }
 
 /** Marks a peer as established */

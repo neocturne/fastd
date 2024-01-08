@@ -68,7 +68,7 @@ struct fastd_protocol {
 	/** Sends a handshake to the given peer */
 	void (*handshake_init)(
 		fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-		fastd_peer_t *peer);
+		fastd_peer_t *peer, unsigned flags);
 
 	/** Handles a handshake for the given peer */
 	void (*handshake_handle)(

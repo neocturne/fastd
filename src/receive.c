@@ -229,7 +229,7 @@ static void handle_socket_receive(
 	} else if (is_data_packet(packet_type)) {
 		if (!backoff_unknown(remote_addr)) {
 			pr_debug("unexpectedly received payload data from %I", remote_addr);
-			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL);
+			conf.protocol->handshake_init(sock, local_addr, remote_addr, NULL, FLAG_INITIAL);
 		}
 	} else {
 		pr_debug("received packet with invalid type from %I", remote_addr);

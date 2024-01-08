@@ -90,7 +90,7 @@ void fastd_protocol_ec25519_fhmqvc_free_peer_state(fastd_peer_t *peer);
 
 void fastd_protocol_ec25519_fhmqvc_handshake_init(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
-	fastd_peer_t *peer);
+	fastd_peer_t *peer, unsigned flags);
 void fastd_protocol_ec25519_fhmqvc_handshake_handle(
 	fastd_socket_t *sock, const fastd_peer_address_t *local_addr, const fastd_peer_address_t *remote_addr,
 	fastd_peer_t *peer, const fastd_handshake_t *handshake);
