@@ -6,6 +6,6 @@ libmnl = static_library(
 		'src/nlmsg.c',
 		'src/socket.c',
 	],
-	include_directories: 'include',
+	include_directories: include_directories('include'),
 	c_args : '-Wno-unused-parameter',
 )

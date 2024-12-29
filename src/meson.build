@@ -123,7 +123,7 @@ if need_libmnl
 		subdir('dep/libmnl')
 		libmnl_dep = declare_dependency(
 			link_with : libmnl,
-			include_directories : 'dep/libmnl/include',
+			include_directories : include_directories('dep/libmnl/include'),
 		)
 	else
 		libmnl_dep = dependency('libmnl')
