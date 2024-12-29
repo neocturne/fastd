@@ -36,6 +36,8 @@ size_t fastd_snprint_peer_address(
 	char *buffer, size_t size, const fastd_peer_address_t *address, const char *iface, bool bind_address,
 	bool hide) {
 	char addr_buf[INET6_ADDRSTRLEN] = "";
+	uint16_t port;
+	size_t ret;
 
 	switch (address->sa.sa_family) {
 	case AF_UNSPEC:
@@ -45,32 +47,42 @@ size_t fastd_snprint_peer_address(
 			return snprintf_safe(buffer, size, "any");
 
 	case AF_INET:
+		port = ntohs(address->in.sin_port);
+
 		if (!bind_address && hide)
-			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in.sin_port));
+			ret = snprintf_safe(buffer, size, "[hidden]");
 		else if (inet_ntop(AF_INET, &address->in.sin_addr, addr_buf, sizeof(addr_buf)))
-			return snprintf_safe(buffer, size, "%s:%u", addr_buf, ntohs(address->in.sin_port));
+			ret = snprintf_safe(buffer, size, "%s", addr_buf);
 		else
 			return 0;
+		break;
 
 	case AF_INET6:
+		port = ntohs(address->in6.sin6_port);
+
 		if (!bind_address && hide)
-			return snprintf_safe(buffer, size, "[hidden]:%u", ntohs(address->in6.sin6_port));
+			ret = snprintf_safe(buffer, size, "[hidden]");
 		if (inet_ntop(AF_INET6, &address->in6.sin6_addr, addr_buf, sizeof(addr_buf))) {
 			char ifname_buf[IFNAMSIZ];
 			if (!iface && IN6_IS_ADDR_LINKLOCAL(&address->in6.sin6_addr))
 				iface = if_indextoname(address->in6.sin6_scope_id, ifname_buf);
 
 			if (iface)
-				return snprintf_safe(
-					buffer, size, "[%s%%%s]:%u", addr_buf, iface, ntohs(address->in6.sin6_port));
+				ret = snprintf_safe(buffer, size, "[%s%%%s]", addr_buf, iface);
 			else
-				return snprintf_safe(buffer, size, "[%s]:%u", addr_buf, ntohs(address->in6.sin6_port));
+				ret = snprintf_safe(buffer, size, "[%s]", addr_buf);
 		} else
 			return 0;
+		break;
 
 	default:
 		exit_bug("unsupported address family");
 	}
+
+	if (port)
+		ret += snprintf_safe(buffer + ret, size - ret, ":%u", port);
+
+	return ret;
 }
 
 /** Creates a string representation of a peer */
