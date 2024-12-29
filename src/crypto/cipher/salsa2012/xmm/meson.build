@@ -3,9 +3,9 @@ if get_option('cipher_salsa2012_xmm').disabled()
 endif
 
 if host_machine.cpu_family() == 'x86_64'
-	asm_impl = 'salsa2012_amd64_xmm6.s'
+	asm_impl = 'salsa2012_amd64_xmm6.S'
 elif host_machine.cpu_family() == 'x86'
-	asm_impl = 'salsa2012_x86_xmm5.s'
+	asm_impl = 'salsa2012_x86_xmm5.S'
 elif get_option('cipher_salsa2012_xmm').auto()
 	subdir_done()
 else
