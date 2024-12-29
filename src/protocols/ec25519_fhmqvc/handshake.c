@@ -552,7 +552,7 @@ add_dynamic(fastd_socket_t *sock, const fastd_peer_address_t *addr, const unsign
 	*peer->key = peer_key;
 
 	if (!fastd_peer_may_connect(peer)) {
-		pr_debug("not adding dynamic peer %P[%I] because of local constraints", peer, addr);
+		pr_debug("not adding dynamic peer %P[%I] because of configured peer limits", peer, addr);
 		fastd_peer_free(peer);
 		return NULL;
 	}
@@ -664,7 +664,7 @@ void fastd_protocol_ec25519_fhmqvc_handshake_handle(
 	}
 
 	if (!fastd_peer_may_connect(peer)) {
-		pr_debug("ignoring handshake from %P[%I] because of local constraints", peer, remote_addr);
+		pr_debug("ignoring handshake from %P[%I] because of configured peer limits", peer, remote_addr);
 		return;
 	}
 
