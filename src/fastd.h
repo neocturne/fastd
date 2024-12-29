@@ -248,7 +248,8 @@ struct fastd_config {
 	fastd_string_stack_t *method_list; /**< The list of configured method names */
 	fastd_method_info_t *methods;      /**< The list of configured methods */
 
-	size_t overhead;         /**< The maximum overhead of all configured methods */
+	size_t min_overhead;     /**< The minimum overhead of all configured methods */
+	size_t max_overhead;     /**< The maximum overhead of all configured methods */
 	size_t encrypt_headroom; /**< The minimum space a configured methods needs a the beginning of a source buffer to
 				  *   encrypt */
 	size_t decrypt_headroom; /**< The minimum space a configured methods needs a the beginning of a source buffer to

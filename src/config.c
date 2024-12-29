@@ -467,7 +467,9 @@ static void configure_user(void) {
 
 /** Initializes global configuration that depends on the configured methods */
 static void configure_method_parameters(void) {
-	conf.overhead = 0;
+
+	conf.min_overhead = SIZE_MAX;
+	conf.max_overhead = 0;
 	conf.encrypt_headroom = 0;
 	conf.decrypt_headroom = 0;
 
@@ -475,7 +477,8 @@ static void configure_method_parameters(void) {
 	for (i = 0; conf.methods[i].name; i++) {
 		const fastd_method_provider_t *provider = conf.methods[i].provider;
 
-		conf.overhead = max_size_t(conf.overhead, provider->overhead);
+		conf.min_overhead = min_size_t(conf.min_overhead, provider->overhead);
+		conf.max_overhead = max_size_t(conf.max_overhead, provider->overhead);
 		conf.encrypt_headroom = max_size_t(conf.encrypt_headroom, provider->encrypt_headroom);
 		conf.decrypt_headroom = max_size_t(conf.decrypt_headroom, provider->decrypt_headroom);
 	}
@@ -669,7 +672,7 @@ static void configure_peers(bool dirs_only) {
 
 	/* Reserve one extra block of encrypt headroom for multiaf_tun targets */
 	size_t headroom =
-		max_size_t(conf.encrypt_headroom + sizeof(fastd_block128_t), conf.decrypt_headroom + conf.overhead);
+		max_size_t(conf.encrypt_headroom + sizeof(fastd_block128_t), conf.decrypt_headroom + conf.max_overhead);
 	ctx.max_buffer = alignto(
 		max_size_t(headroom + fastd_max_payload(ctx.max_mtu), MAX_HANDSHAKE_SIZE), sizeof(fastd_block128_t));
 }
