@@ -100,20 +100,37 @@ static fastd_handshake_timeout_t *unknown_hash_entry(int64_t base, size_t i, con
 	return &ctx.unknown_handshakes[(size_t)slice % UNKNOWN_TABLES][hash % UNKNOWN_ENTRIES];
 }
 
+/** Sets the port of a fastd_peer_address_t to 0 */
+static void unset_port(fastd_peer_address_t *addr) {
+	switch (addr->sa.sa_family) {
+	case AF_INET:
+		addr->in.sin_port = 0;
+		break;
+
+	case AF_INET6:
+		addr->in6.sin6_port = 0;
+		break;
+
+	default:
+		exit_bug("unset_port: unknown address family");
+	}
+}
 
 /**
    Checks if a handshake should be sent after an unexpected payload packet has been received
 
    backoff_unknown() tries to avoid flooding hosts with handshakes.
 */
-static bool backoff_unknown(const fastd_peer_address_t *addr) {
+static bool backoff_unknown(fastd_peer_address_t addr) {
 	static const size_t table_interval = MIN_HANDSHAKE_INTERVAL / (UNKNOWN_TABLES - 1);
+
+	unset_port(&addr);
 
 	int64_t base = ctx.now / table_interval;
 	size_t first_empty = UNKNOWN_TABLES, i;
 
 	for (i = 0; i < UNKNOWN_TABLES; i++) {
-		const fastd_handshake_timeout_t *t = unknown_hash_entry(base, i, addr);
+		const fastd_handshake_timeout_t *t = unknown_hash_entry(base, i, &addr);
 
 		if (fastd_timed_out(t->timeout)) {
 			if (first_empty == UNKNOWN_TABLES)
@@ -122,10 +139,10 @@ static bool backoff_unknown(const fastd_peer_address_t *addr) {
 			continue;
 		}
 
-		if (!fastd_peer_address_equal(addr, &t->address))
+		if (!fastd_peer_address_equal(&addr, &t->address))
 			continue;
 
-		pr_debug2("sent a handshake to unknown address %I a short time ago, not sending again", addr);
+		pr_debug2("sent a handshake to unknown address %I a short time ago, not sending again", &addr);
 		return true;
 	}
 
@@ -133,9 +150,9 @@ static bool backoff_unknown(const fastd_peer_address_t *addr) {
 	if (first_empty == UNKNOWN_TABLES)
 		first_empty = fastd_rand(0, UNKNOWN_TABLES);
 
-	fastd_handshake_timeout_t *t = unknown_hash_entry(base, first_empty, addr);
+	fastd_handshake_timeout_t *t = unknown_hash_entry(base, first_empty, &addr);
 
-	t->address = *addr;
+	t->address = addr;
 	t->timeout = ctx.now + MIN_HANDSHAKE_INTERVAL - first_empty * table_interval;
 
 	return false;
@@ -227,7 +244,7 @@ static void handle_socket_receive(
 	if (is_handshake_packet(packet_type)) {
 		fastd_handshake_handle(sock, local_addr, remote_addr, peer, buffer, has_control_header);
 	} else if (is_data_packet(packet_type)) {
-		if (!backoff_unknown(remote_addr)) {
+		if (!backoff_unknown(*remote_addr)) {
 			/* In theory, PACKET_DATA_COMPAT could also be a valid first byte for
 			 * a future L2TPv3 extension, but as no such extensions exist and
 			 * Linux is unlikely to just enable such extensions by default in
