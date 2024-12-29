@@ -292,6 +292,8 @@
 .globl fastd_salsa2012_xmm_xor
 _fastd_salsa2012_xmm_xor:
 fastd_salsa2012_xmm_xor:
+endbr32
+
 mov %esp,%eax
 and $31,%eax
 add $704,%eax
@@ -4987,4 +4989,20 @@ jmp ._bytesbetween1and255
 
 #if defined(__linux__) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
+
+.section .note.gnu.property,"a"
+.align __SIZEOF_POINTER__
+.long 4
+.long 1f - 0f
+// NT_GNU_PROPERTY_TYPE_0
+.long 5
+.asciz "GNU"
+0:
+// GNU_PROPERTY_X86_FEATURE_1_AND
+.long 0xc0000002
+.long 4
+// GNU_PROPERTY_X86_FEATURE_1_IBT | GNU_PROPERTY_X86_FEATURE_1_SHSTK
+.long 3
+.align __SIZEOF_POINTER__
+1:
 #endif
