@@ -392,6 +392,7 @@ void fastd_send_data(fastd_buffer_t *buffer, fastd_peer_t *source, fastd_peer_t 
 
 void fastd_receive_unknown_init(void);
 void fastd_receive_unknown_free(void);
+void fastd_receive_unknown_purge(fastd_peer_address_t addr);
 void fastd_receive(fastd_socket_t *sock);
 void fastd_handle_receive(fastd_peer_t *peer, fastd_buffer_t *buffer, bool reordered);
 

@@ -116,6 +116,29 @@ static void unset_port(fastd_peer_address_t *addr) {
 	}
 }
 
+/** Purges an address from the unknown table, allowing handshakes again */
+void fastd_receive_unknown_purge(fastd_peer_address_t addr) {
+	static const size_t table_interval = MIN_HANDSHAKE_INTERVAL / (UNKNOWN_TABLES - 1);
+
+	unset_port(&addr);
+
+	int64_t base = ctx.now / table_interval;
+
+	for (size_t i = 0; i < UNKNOWN_TABLES; i++) {
+		fastd_handshake_timeout_t *t = unknown_hash_entry(base, i, &addr);
+
+		if (fastd_timed_out(t->timeout))
+			continue;
+
+		if (!fastd_peer_address_equal(&addr, &t->address))
+			continue;
+
+		t->timeout = ctx.now;
+		pr_debug2("allowing handshakes from unknown ports for address %I again", &addr);
+		break;
+	}
+}
+
 /**
    Checks if a handshake should be sent after an unexpected payload packet has been received
 

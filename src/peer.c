@@ -874,6 +874,7 @@ bool fastd_peer_set_established(fastd_peer_t *peer, const fastd_offload_t *offlo
 	peer->established = ctx.now;
 	fastd_peer_seen(peer);
 	fastd_peer_clear_keepalive(peer);
+	fastd_receive_unknown_purge(peer->address);
 
 	schedule_peer_task(peer);
 
