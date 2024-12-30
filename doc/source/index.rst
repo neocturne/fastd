@@ -22,6 +22,7 @@ Linux distributions.
    :caption: Release notes
    :maxdepth: 2
 
+   releases/v23
    releases/v22
    releases/v21
    releases/v20

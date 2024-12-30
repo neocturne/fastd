@@ -1,0 +1,80 @@
+fastd v23
+=========
+
+This release contains a number of small improvements and bugfixes, including
+mitigations for the LOW severity vulnerability ``CVE-2025-24356``.
+
+Bugfixes
+~~~~~~~~
+
+* Add mitigations for fast-reconnect amplification attacks
+
+  When receiving a data packet from an unknown IP address/port combination, fastd will assume that
+  one of its connected peers has moved to a new address (for example due to internet lines with
+  dynamic IP, or roaming between WWAN and a local internet connection) and initiate a reconnect by
+  sending a handshake packet. This "fast reconnect" avoids having to wait for a session timeout
+  (up to ~90s) until a new connection is established.
+
+  Even a 1-byte UDP packet just containing the fastd packet type header can trigger a much larger
+  handshake packet (~150 bytes of UDP payload). With fastd v22, this number is doubled, because
+  two handshakes are sent (one in a pre-v22-compatible format and one in a new L2TP-style format).
+  Including IPv4 and UDP headers, the resulting amplification factor is roughly 12-13.
+
+  By sending data packets with a spoofed source address to fastd instances reachable on the
+  internet, this amplification of UDP traffic might be used to facilitate a Distributed Denial
+  of Service attack.
+
+  fastd has always implemented rate limiting for handshakes to unknown IP addresses and ports to
+  1 handshake per 15s to avoid this kind of attack, however the rate is limited per-port and not
+  per-address, thus still allowing handshakes to be sent to all 65535 UDP ports of the same IP
+  address unlimited.
+
+  The issue has been mitigated in fastd v23 by a number of changes:
+
+  - Rate-limiting has been changed changed to be applied per-address instead of per-port
+  - Only one handshake instead of two handshakes is sent for fast-reconnect (by determining from
+    the format of the data packet whether a pre-v22 or L2TP-style handshake should be used)
+  - Require at least a full method header instead of just a single byte for a data packet to be
+    considered valid. This does not have an effect on instances that enable the ``null`` method
+    (regardless of ``null`` being actually in use), as a single-byte UDP packet is a valid ``null``
+    keepalive, but for all other methods the amplification factor is slightly reduced.
+
+  Only fastd instances that allow connections from arbitrary IP addresses are vulnerable. Instances
+  in a "client" role that configure their peers using the ``remote`` config option (which includes
+  the common deployment as part of the `Gluon <https://github.com/freifunk-gluon/gluon>`_ wireless
+  mesh firmware) will not respond to unexpected data packets with a handshake and are therefore
+  unaffected.
+
+  ``CVE-2025-24356`` has been assigned to this issue. The severity of this
+  vulnerability is considered LOW.
+
+  A GitHub security advisory can be found under
+  `GHSA-pggg-vpfv-4rcv <https://github.com/neocturne/fastd/security/advisories/GHSA-pggg-vpfv-4rcv>`_.
+* Fix config loading to fail on ``offload l2tp no;`` when L2TP offloading is
+  unsupported by the fastd build or the kernel
+* Fix assembly Salsa20(/12) implementations accidentally generating the Linux-
+  specific ``.note.GNU-stack`` ELF section on non-Linux systems
+
+  This is unlikely to have caused any issues, as other systems should just
+  ignore the unknown section.
+* Status socket:
+  - Fix interface name information with L2TP offloading
+  - Add per-peer MTU information
+* Documentation:
+  - Fix incorrect "persist interface" examples
+  - Improve explanation of ``float`` option
+* Build:
+  - Fix build on macOS (again)
+  - Fix build with Meson 0.49 (the minimum version marked as supported by fastd)
+
+Other changes
+~~~~~~~~~~~~~
+
+* Add support for Indirect Branch Tracking and Shadow Stacks on x86
+
+  The assembly Salsa20(/12) implementations have been marked compatible with
+  IBT and SHSTK, which are part of Intel CET (Control-flow Enforcement
+  Technology) and can be enabled using the ``-fcf-protection`` GCC option.
+* The file ``COPYRIGHT`` has been renamed to ``LICENSE``
+* The vendored version of libmnl that is used with ``libmnl_builtin=true`` has
+  been updated to 1.0.5
