@@ -90,7 +90,7 @@ void fastd_receive_unknown_free(void) {
 }
 
 /** Returns the i'th hash bucket for a peer address */
-fastd_handshake_timeout_t *unknown_hash_entry(int64_t base, size_t i, const fastd_peer_address_t *addr) {
+static fastd_handshake_timeout_t *unknown_hash_entry(int64_t base, size_t i, const fastd_peer_address_t *addr) {
 	int64_t slice = base - i;
 	uint32_t hash = ctx.unknown_handshake_seed;
 	fastd_hash(&hash, &slice, sizeof(slice));
