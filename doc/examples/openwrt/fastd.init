@@ -1,5 +1,5 @@
 #!/bin/sh /etc/rc.common
-# Copyright (c) 2012-2021, Matthias Schiffer <mschiffer@universe-factory.net>
+# Copyright (c) Matthias Schiffer <mschiffer@universe-factory.net>
 
 set -o pipefail
 

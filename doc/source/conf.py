@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'fastd'
-copyright = '2012-2021, Matthias Schiffer'
+copyright = 'Matthias Schiffer'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

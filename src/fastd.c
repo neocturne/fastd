@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 /*
-  Copyright (c) 2012-2020, Matthias Schiffer <mschiffer@universe-factory.net>
+  Copyright (c) Matthias Schiffer <mschiffer@universe-factory.net>
   All rights reserved.
 
   Android port contributor:
