@@ -1,7 +1,7 @@
 project(
 	'fastd',
 	'c',
-	version : '23',
+	version : '23+',
 	default_options : [ 'c_std=c99', 'warning_level=2' ],
 	meson_version: '>=0.49',
 )
