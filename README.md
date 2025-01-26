@@ -9,4 +9,4 @@ code, but is currently unmaintained. Binary packages are provided by many major
 Linux distributions.
 
 For more information, see the [documentation](https://fastd.readthedocs.io/) and
-the [project wiki](https://github.com/NeoRaider/fastd/wiki).
+the [project wiki](https://github.com/neocturne/fastd/wiki).

@@ -24,7 +24,7 @@ Starting with v20, fastd uses the Meson build system.
 ::
 
     # Get fastd (or use the release tarballs)
-    git clone https://github.com/NeoRaider/fastd.git
+    git clone https://github.com/neocturne/fastd.git
 
     # Set up a build dir
     meson setup fastd fastd-build -Dbuildtype=release

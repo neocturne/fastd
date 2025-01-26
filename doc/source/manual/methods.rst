@@ -4,7 +4,7 @@ fastd supports various combinations of ciphers and authentication schemes using
 different method providers. All ciphers, message authentication codes (MACs) and
 method providers can be disabled during compilation to reduce the binary size.
 
-See `Benchmarks <https://github.com/NeoRaider/fastd/wiki/Benchmarks>`_ for an
+See `Benchmarks <https://github.com/neocturne/fastd/wiki/Benchmarks>`_ for an
 overview of the performance of the different methods.
 
 Recommended methods
